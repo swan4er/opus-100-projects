@@ -1,0 +1,229 @@
+/* ==========================================================================
+   «Сон зимнего леса» — плеер в духе монтажного стола: тёплая умбра вокруг
+   стекла с живописью, крупный кадр, тихие элементы управления.
+   ========================================================================== */
+:root {
+  --bg: #15110e;
+  --ink: #efe4d2;
+  --dim: rgba(239, 228, 210, 0.68);
+  --faint: rgba(239, 228, 210, 0.18);
+  --accent: #e2643f;
+  --cream: #ecdcc2;
+  --ui: "Commissioner", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --title: "Kurale", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --gut: clamp(16px, 3vw, 44px);
+  --fw: min(calc(100vw - 2 * var(--gut)), calc((100vh - 176px) * 16 / 9));
+  --ease: cubic-bezier(0.22, 0.7, 0.2, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); font-family: var(--ui); -webkit-font-smoothing: antialiased; }
+body { overflow-x: hidden; }
+button { font: inherit; color: inherit; }
+
+.stage {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: var(--gut);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 46%, #261d17 0%, rgba(38, 29, 23, 0) 70%),
+    linear-gradient(#17120f, #110d0b);
+}
+
+/* ---------- шапка ---------- */
+.head { width: var(--fw); display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+.head h1 { margin: 0; font-family: var(--title); font-weight: 400; font-size: 30px; line-height: 1.1; letter-spacing: 0.005em; }
+.head .sub { margin: 0; font-size: 14px; color: var(--dim); }
+
+/* ---------- экран ---------- */
+.screen {
+  position: relative;
+  width: var(--fw);
+  aspect-ratio: 16 / 9;
+  background: #0c0a08;
+  border-radius: 3px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.screen canvas { display: block; width: 100%; height: 100%; }
+.nogl { position: absolute; left: 16px; right: 16px; bottom: 16px; margin: 0; padding: 12px 16px; background: rgba(21, 17, 14, 0.82); border-radius: 6px; font-size: 14px; line-height: 1.45; }
+.nogl p { margin: 0; }
+
+/* ---------- плеер ---------- */
+.player {
+  width: var(--fw);
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+.right { display: flex; align-items: center; gap: 6px; }
+
+.ctl {
+  position: relative;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  height: 40px;
+  min-width: 40px;
+  padding: 0 16px 0 11px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  isolation: isolate;
+  transition: transform 0.2s var(--ease);
+}
+.ctl::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: rgba(239, 228, 210, 0.1);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.25s var(--ease);
+}
+.ctl:hover::before { opacity: 1; }
+.ctl:active { transform: scale(0.95); }
+.ctl:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+.ctl svg { width: 20px; height: 20px; fill: currentColor; flex: none; }
+.ctl.icon { width: 40px; padding: 0; justify-content: center; border-radius: 9px; }
+
+.ctl.primary { color: #1c1510; }
+.ctl.primary::before { opacity: 1; background: var(--cream); }
+.ctl.primary:hover::before { background: #f7ead6; }
+
+.play .i-play, .play .i-pause, .play .i-again { display: none; }
+.play:not(.is-playing):not(.is-ended) .i-play { display: block; }
+.play.is-playing .i-pause { display: block; }
+.play.is-ended .i-again { display: block; }
+
+.sound .x { display: none; }
+.sound:not(.is-on):not(.primary) .w1, .sound:not(.is-on):not(.primary) .w2 { display: none; }
+.sound:not(.is-on):not(.primary) .x { display: block; }
+
+#loopBtn[aria-pressed="true"] { color: var(--accent); }
+#loopBtn[aria-pressed="true"]::after {
+  content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; margin-left: -2px;
+  border-radius: 50%; background: var(--accent);
+}
+
+.time { font-size: 13px; color: var(--dim); font-variant-numeric: tabular-nums; min-width: 78px; }
+.time #tCur { color: var(--ink); }
+.time .sep { margin: 0 5px; opacity: 0.6; }
+
+/* ---------- шкала времени со сценами ---------- */
+.timeline {
+  position: relative;
+  height: 44px;
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+}
+.timeline:focus-visible .track { outline: 2px solid var(--cream); outline-offset: 4px; }
+.track {
+  position: absolute; left: 0; right: 0; top: 12px; height: 3px;
+  background: var(--faint);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.fill { position: absolute; inset: 0; background: var(--accent); transform-origin: 0 50%; transform: scaleX(0); }
+.marks { position: absolute; inset: 0; }
+.mark {
+  position: absolute; top: 0; bottom: 0;
+  appearance: none; border: 0; background: transparent; padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.mark::before { content: ""; position: absolute; left: 0; top: 8px; width: 1px; height: 11px; background: rgba(239, 228, 210, 0.45); }
+.mark:first-child::before { display: none; }
+.mark span { position: absolute; left: 6px; bottom: 2px; font-size: 12px; color: var(--dim); white-space: nowrap; transition: opacity 0.25s var(--ease); }
+.mark:first-child span { left: 0; }
+.mark .short { display: none; }
+.mark.now span { color: var(--ink); }
+.mark:hover span { color: var(--ink); }
+.mark:focus-visible { outline: 2px solid var(--cream); outline-offset: -2px; border-radius: 4px; }
+.knob {
+  position: absolute; left: -6px; top: 7.5px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--cream);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.tip {
+  position: absolute; left: 0; bottom: 100%;
+  margin-bottom: 4px;
+  padding: 6px 10px;
+  background: #241d18;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0;
+  translate: -50% 0;
+  transition: opacity 0.2s var(--ease);
+}
+.timeline:hover .tip, .timeline.dragging .tip { opacity: 1; }
+
+.about { width: var(--fw); margin: 4px 0 0; font-size: 14px; line-height: 1.5; color: var(--dim); display: none; }
+.about .keys { display: block; margin-top: 6px; }
+
+/* ---------- полный экран ---------- */
+.stage.fs { padding: 0; gap: 0; background: #000; --fw: min(100vw, calc(100vh * 16 / 9)); justify-content: center; }
+.stage.fs .head, .stage.fs .about { display: none; }
+.stage.fs .screen { border-radius: 0; box-shadow: none; }
+.stage.fs .player {
+  position: fixed; left: 50%; bottom: 0; transform: translateX(-50%);
+  width: min(100vw, 1200px);
+  padding: 34px 24px 18px;
+  background: linear-gradient(rgba(10, 8, 6, 0), rgba(10, 8, 6, 0.72));
+  transition: opacity 0.4s var(--ease);
+}
+.stage.fs.idle .player { opacity: 0; }
+.stage.fs.idle, .stage.fs.idle .screen { cursor: none; }
+
+/* ---------- узкие экраны ---------- */
+@media (max-width: 720px) {
+  :root { --fw: calc(100vw - 2 * var(--gut)); }
+  .stage { justify-content: flex-start; padding-top: 22px; gap: 12px; }
+  .head { gap: 4px 12px; }
+  .head h1 { font-size: 26px; }
+  .head .sub { font-size: 13px; }
+  .player {
+    grid-template-columns: auto 1fr auto auto;
+    grid-template-areas: "tl tl tl tl" "play time loop fs" "snd snd snd snd";
+    gap: 6px 8px;
+  }
+  .right { display: contents; }
+  .timeline { grid-area: tl; }
+  .play { grid-area: play; }
+  .time { grid-area: time; }
+  #loopBtn { grid-area: loop; }
+  #fsBtn { grid-area: fs; }
+  .sound { grid-area: snd; justify-content: center; height: 44px; border-radius: 22px; }
+  .mark .full { display: none; }
+  .mark .short { display: inline; }
+  .about { display: block; }
+}
+@media (max-width: 720px) and (orientation: landscape) {
+  .stage { justify-content: center; }
+  .about { display: none; }
+}
+/* на сенсорных экранах клавиатуры нет — подсказка про клавиши не нужна */
+@media (hover: none) {
+  .about .keys { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ctl, .ctl::before, .tip { transition: none; }
+}

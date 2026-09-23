@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Светомузыка</title>
+<meta name="description" content="Прелюдия по квинтовому кругу, написанная моделью: двенадцать тональностей, каждая светится своим цветом по таблице цветного слуха Скрябина.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oranienbaum&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070509;
+  --ink:#F3EEE6;
+  --dim:rgba(243,238,230,.66);
+  --hair:rgba(243,238,230,.16);
+  --key:#2F6BFF;
+  --serif:'Oranienbaum','Didot','Bodoni 72',Georgia,serif;
+  --sans:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.ui{position:fixed;inset:0;pointer-events:none}
+.ui button,.ui .strip{pointer-events:auto}
+
+.head{position:absolute;left:clamp(18px,3.2vw,48px);top:clamp(18px,3.6vh,40px);max-width:min(460px,60vw)}
+.kicker{font:500 12px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+h1{margin:14px 0 10px;font:400 clamp(44px,5.4vw,84px)/.95 var(--serif);letter-spacing:.005em}
+.head p{margin:0;font:400 15px/1.5 var(--sans);color:var(--dim);max-width:25em}
+
+.keybox{position:absolute;right:clamp(18px,3.2vw,48px);top:clamp(18px,3.6vh,40px);text-align:right}
+.keybox .lab{font:500 12px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.keybox .name{margin-top:12px;font:400 clamp(30px,3.2vw,50px)/1 var(--serif);transition:opacity .5s}
+.keybox .desc{margin-top:10px;font:italic 400 17px/1.3 var(--serif);color:var(--dim);display:flex;gap:10px;align-items:center;justify-content:flex-end;transition:opacity .5s}
+.keybox .chip{width:12px;height:12px;border-radius:50%;background:var(--key);transition:background .9s}
+.fadeout{opacity:0}
+
+.dock{position:absolute;left:clamp(18px,3.2vw,48px);right:clamp(18px,3.2vw,48px);bottom:clamp(16px,3.2vh,34px);display:grid;grid-template-columns:auto 1fr auto;gap:18px 26px;align-items:center}
+.play{width:64px;height:64px;border-radius:50%;border:1px solid var(--hair);background:rgba(243,238,230,.08);color:var(--ink);display:grid;place-items:center;cursor:pointer;transition:transform .2s,background .3s,border-color .3s}
+.play:hover{background:rgba(243,238,230,.16);border-color:rgba(243,238,230,.4)}
+.play:active{transform:scale(.95)}
+.play:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+.play svg{width:22px;height:22px;fill:currentColor}
+.mid{display:flex;flex-direction:column;gap:10px;min-width:0}
+.status{display:flex;justify-content:space-between;align-items:baseline;gap:14px;font:500 13px/1.2 var(--sans);color:var(--dim)}
+.status b{color:var(--ink);font-weight:500}
+.status .time{font-variant-numeric:tabular-nums}
+.strip{position:relative;height:30px;display:flex;gap:2px;cursor:pointer;border-radius:3px}
+.strip .seg{flex:1;position:relative;border-radius:2px;opacity:.55;transition:opacity .3s,transform .3s;transform-origin:bottom}
+.strip .seg.on{opacity:1;transform:scaleY(1.25)}
+.strip .seg span{position:absolute;left:50%;top:-22px;transform:translateX(-50%);font:500 12px/1 var(--sans);color:var(--ink);opacity:0;transition:opacity .2s;white-space:nowrap;pointer-events:none}
+.strip .seg:hover span{opacity:1}
+.strip .head-mark{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink);border-radius:1px;pointer-events:none;box-shadow:0 0 0 1px rgba(7,5,9,.6)}
+.voices{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.voice{appearance:none;border:1px solid var(--hair);background:transparent;color:var(--ink);font:500 13px/1 var(--sans);height:40px;padding:0 13px;border-radius:999px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .25s,color .25s,background .25s}
+.voice:hover{border-color:rgba(243,238,230,.42)}
+.voice:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.voice i{width:8px;height:8px;border-radius:50%;background:var(--ink);transition:transform .25s,opacity .25s}
+.voice.off{color:var(--dim)}
+.voice.off i{transform:scale(.5);opacity:.4}
+.note-foot{position:absolute;left:50%;bottom:clamp(120px,17vh,160px);transform:translateX(-50%);font:500 14px/1.4 var(--sans);color:var(--ink);text-align:center;padding:12px 20px;border-radius:999px;background:rgba(7,5,9,.55);border:1px solid var(--hair);transition:opacity .6s;pointer-events:none}
+.note-foot.gone{opacity:0}
+
+@media (max-width:820px){
+  .head{max-width:70vw}
+  h1{font-size:44px;margin:10px 0 8px}
+  .head p{font-size:14px;max-width:18em}
+  .keybox{top:auto;bottom:236px;right:auto;left:clamp(18px,3.2vw,48px);text-align:left}
+  .keybox .name{font-size:30px;margin-top:8px}
+  .keybox .desc{justify-content:flex-start;font-size:15px}
+  .keybox .lab{display:none}
+  .dock{grid-template-columns:auto 1fr;gap:14px 16px}
+  .voices{grid-column:1/-1;justify-content:flex-start}
+  .voice{height:40px;padding:0 11px;font-size:12.5px}
+  .play{width:56px;height:56px}
+  .status .hide-s{display:none}
+  .note-foot{bottom:auto;top:50%;font-size:13px;white-space:nowrap;padding:10px 16px}
+}
+@media (prefers-reduced-motion:reduce){ .strip .seg{transition:none} }
+</style>
+</head>
+<body>
+<canvas id="cv" aria-label="Анимированная партитура: ноты текут справа налево, фон окрашен в цвет текущей тональности"></canvas>
+<div class="ui">
+  <header class="head">
+    <div class="kicker">102 · звук и цвет</div>
+    <h1>Светомузыка</h1>
+    <p>Прелюдия по&nbsp;квинтовому кругу. Её&nbsp;написала модель Opus&nbsp;5.5, а&nbsp;каждая тональность светится своим цветом — по&nbsp;таблице цветного слуха Скрябина.</p>
+  </header>
+
+  <div class="keybox" aria-live="polite">
+    <div class="lab">Тональность</div>
+    <div class="name" id="keyName">Фа-диез мажор</div>
+    <div class="desc" id="keyDesc"><span class="chip"></span><span id="keyDescT">синий, яркий</span></div>
+  </div>
+
+  <div class="note-foot" id="foot">Предпросмотр без звука — нажмите «Слушать»</div>
+
+  <div class="dock">
+    <button class="play" id="play" aria-label="Слушать"><svg viewBox="0 0 24 24" id="playIco"><path d="M7 4.5v15l13-7.5z"/></svg></button>
+    <div class="mid">
+      <div class="status"><span id="stat"><b>Слушать</b><span class="hide-s"> — 2&nbsp;минуты 13&nbsp;секунд, 12&nbsp;тональностей</span></span><span class="time" id="time">0:00 / 2:13</span></div>
+      <div class="strip" id="strip" role="slider" aria-label="Позиция в пьесе" tabindex="0"></div>
+    </div>
+    <div class="voices" id="voices"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+(function () {
+/* ============================================================
+   1. Партитура. Пьеса обходит все 12 мажорных тональностей по квинтам:
+      в каждой — три такта I – vi – V7/V, последний аккорд ведёт в следующую.
+   ============================================================ */
+const BPM = 76, SPB = 60 / BPM;
+const KEYS = [
+  { pc: 6,  name: 'Фа-диез мажор',   color: '#2F6BFF', desc: 'синий, яркий' },
+  { pc: 1,  name: 'Ре-бемоль мажор', color: '#8A3FFC', desc: 'фиолетовый' },
+  { pc: 8,  name: 'Ля-бемоль мажор', color: '#B45AD6', desc: 'пурпурно-фиолетовый' },
+  { pc: 3,  name: 'Ми-бемоль мажор', color: '#8E9AAE', desc: 'стальной, с металлическим блеском', metal: true },
+  { pc: 10, name: 'Си-бемоль мажор', color: '#A3AEC0', desc: 'стальной, с металлическим блеском', metal: true },
+  { pc: 5,  name: 'Фа мажор',        color: '#A3202F', desc: 'красный, тёмный' },
+  { pc: 0,  name: 'До мажор',        color: '#EA2A2A', desc: 'красный' },
+  { pc: 7,  name: 'Соль мажор',      color: '#F7875A', desc: 'оранжево-розовый' },
+  { pc: 2,  name: 'Ре мажор',        color: '#FFD23F', desc: 'жёлтый, солнечный' },
+  { pc: 9,  name: 'Ля мажор',        color: '#3FC271', desc: 'зелёный' },
+  { pc: 4,  name: 'Ми мажор',        color: '#C4E6F7', desc: 'голубовато-белый, лунный' },
+  { pc: 11, name: 'Си мажор',        color: '#A6CCF2', desc: 'голубовато-белый' }
+];
+// мелодические рисунки: [интервал от тоники в полутонах, длительность в долях]
+const PAT = {
+  A: [[[4,1.5],[2,.5],[0,1],[7,1]], [[9,2],[7,.5],[4,.5],[0,1]], [[6,1.5],[4,.5],[2,1],[0,1]]],
+  B: [[[7,1],[9,.5],[11,.5],[12,1.5],[11,.5]], [[9,1],[12,1],[16,1.5],[14,.5]], [[12,1],[9,.5],[6,.5],[9,1],[14,1]]],
+  C: [[[12,.5],[16,.5],[19,1],[16,.5],[14,.5],[12,1]], [[21,1.5],[19,.5],[16,1],[12,1]], [[18,1],[16,.5],[14,.5],[12,1],[14,1]]],
+  D: [[[4,3],[2,1]], [[0,2],[-3,2]], [[2,2],[0,2]]]
+};
+const PLAN = ['A','B','A','B','A','B','C','C','C','B','D','D'];
+const DYN  = [.5,.56,.6,.64,.68,.74,.9,.96,1,.8,.6,.52];
+const CHORDS = [[0,4,7],[9,0,4],[2,6,9,0]];      // I, vi, II7 (= V7 следующей тональности)
+const ROOTS = [0, 9, 2];
+
+const notes = [];   // {b: доля начала, d: длительность, m: MIDI, v: сила, voice, k: индекс тональности}
+const add = (b, d, m, v, voice, k) => notes.push({ b, d, m, v, voice, k });
+
+// вступление: «мистический» аккорд Скрябина от фа-диеза, рассыпанный снизу вверх
+const MYSTIC = [42, 48, 52, 58, 63, 68];
+MYSTIC.forEach((m, i) => { add(i * 0.5, 8 - i * 0.5, m, 0.34 + i * 0.02, 'piano', 0); add(0, 8, m, 0.5, 'pad', 0); });
+[78, 82, 85].forEach((m, i) => add(6.5 + i / 3, 1.4, m, 0.36, 'celesta', 0));
+
+let beat = 8, prevLast = 70;
+for (let i = 0; i < 12; i++) {
+  const K = KEYS[i], k = K.pc, pat = PAT[PLAN[i]], dyn = DYN[i], style = PLAN[i];
+  // октава мелодии: первая нота ближе всего к последней ноте предыдущей фразы
+  let T = 0, bestD = 1e9;
+  for (let o = 3; o <= 6; o++) {
+    const t = 12 * o + k, first = t + pat[0][0][0];
+    let lo = 1e9, hi = -1e9;
+    for (const bar of pat) for (const [iv] of bar) { lo = Math.min(lo, t + iv); hi = Math.max(hi, t + iv); }
+    if (lo < 55 || hi > 90) continue;
+    const dd = style === 'C' ? -t : Math.abs(first - prevLast); // кульминация — в самом высоком удобном регистре
+    if (dd < bestD) { bestD = dd; T = t; }
+  }
+  for (let bar = 0; bar < 3; bar++) {
+    const b0 = beat + bar * 4;
+    let bb = b0;
+    for (const [iv, d] of pat[bar]) { add(bb, d * 1.02, T + iv, 0.62 * dyn + 0.2, 'melody', i); prevLast = T + iv; bb += d; }
+    // арпеджио: триоли восьмыми по звукам аккорда
+    const pcs = CHORDS[bar].map(x => (x + k) % 12);
+    const tones = []; for (let m = 50; m <= 76; m++) if (pcs.includes(m % 12)) tones.push(m);
+    const seq = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3];
+    if (style === 'D') { for (let q = 0; q < 4; q++) add(b0 + q, 1.6, tones[[0, 2, 4, 2][q]], 0.24 * dyn + 0.1, 'arp', i); }
+    else seq.forEach((s, q) => add(b0 + q / 3, 1.25, tones[Math.min(s + (style === 'C' ? 2 : 0), tones.length - 1)], (0.2 + 0.1 * (q % 3 === 0)) * dyn + 0.08, 'arp', i));
+    // бас
+    let r = 36 + ((ROOTS[bar] + k) % 12); if (r > 45) r -= 12;
+    add(b0, 4, r, 0.5 * dyn + 0.22, 'bass', i);
+    if (style === 'C') add(b0, 4, r + 12, 0.34 * dyn, 'bass', i);
+    // «светоорган» — выдержанные аккорды в кульминации и в тихих тонах
+    if (style === 'C' || style === 'D') CHORDS[bar].forEach(x => { let m = 55 + ((x + k - 7 + 24) % 12); add(b0, 4, m, 0.4 * dyn, 'pad', i); });
+  }
+  // челеста предсказывает следующую тональность
+  const nk = (k + 7) % 12; let nT = 72 + nk; if (nT > 83) nT -= 12;
+  [nT + 12, nT + 16, nT + 19].forEach((m, q) => add(beat + 11 + q / 3, 1.2, m, 0.28 + 0.1 * dyn, 'celesta', i));
+  beat += 12;
+}
+// кода: возвращение в фа-диез мажор
+const CK = 0, cb = beat;
+[[70, 2], [73, 2], [78, 4]].reduce((b, [m, d]) => { add(b, d * 1.02, m, 0.5, 'melody', CK); return b + d; }, cb);
+for (let bar = 0; bar < 2; bar++) {
+  const tones = [54, 58, 61, 66, 70, 73];
+  [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3].forEach((s, q) => add(cb + bar * 4 + q / 3, 1.3, tones[s], 0.2, 'arp', CK));
+  add(cb + bar * 4, 4, 42, 0.46, 'bass', CK);
+}
+[30, 42, 49, 54, 58, 61, 66, 70, 78].forEach((m, i) => { add(cb + 8 + i * 0.12, 7.6 - i * 0.12, m, 0.3 + (i === 8 ? 0.12 : 0), 'piano', CK); });
+[54, 58, 61, 66].forEach(m => add(cb + 8, 8, m, 0.5, 'pad', CK));
+[90, 94, 97].forEach((m, q) => add(cb + 10 + q / 3, 2.4, m, 0.24, 'celesta', CK));
+const TOTAL = cb + 16;
+notes.sort((a, b) => a.b - b.b);
+
+// карта «доля → тональность» для фона
+const keyAt = b => b < 8 ? 0 : b >= cb ? 0 : Math.min(11, Math.floor((b - 8) / 12));
+const SEGMENTS = [{ k: 0, b0: 0, b1: 8, label: 'Вступление · фа-диез' }];
+for (let i = 0; i < 12; i++) SEGMENTS.push({ k: i, b0: 8 + i * 12, b1: 20 + i * 12, label: KEYS[i].name });
+SEGMENTS.push({ k: 0, b0: cb, b1: TOTAL, label: 'Кода · фа-диез мажор' });
+
+/* ============================================================
+   2. Звук: синтез без сэмплов
+   ============================================================ */
+let ac = null, master, rev, buses = {}, playing = false, startT = 0, posBeat = 88, schedIdx = 0, attract = true;
+const VOICES = [
+  { id: 'melody', label: 'Мелодия' }, { id: 'arp', label: 'Арпеджио' },
+  { id: 'bass', label: 'Бас' }, { id: 'celesta', label: 'Челеста' }, { id: 'pad', label: 'Светоорган' }
+];
+const muted = {};
+const live = new Set();
+
+function initAudio() {
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  const comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.25;
+  master = ac.createGain(); master.gain.value = 0.8;
+  master.connect(comp); comp.connect(ac.destination);
+  // реверберация зала: сгенерированная импульсная характеристика
+  const len = Math.floor(ac.sampleRate * 3.4), ir = ac.createBuffer(2, len, ac.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) { const t = i / ac.sampleRate; d[i] = (Math.random() * 2 - 1) * Math.exp(-t / 0.9) * (t < 0.012 ? t / 0.012 : 1); } }
+  rev = ac.createConvolver(); rev.buffer = ir;
+  const wet = ac.createGain(); wet.gain.value = 0.34; rev.connect(wet); wet.connect(master);
+  for (const v of VOICES.concat([{ id: 'piano' }])) {
+    const g = ac.createGain(); g.gain.value = muted[v.id === 'piano' ? 'arp' : v.id] ? 0 : 1;
+    const dry = ac.createGain(); dry.gain.value = 0.9; g.connect(dry); dry.connect(master);
+    const send = ac.createGain(); send.gain.value = v.id === 'pad' ? 0.7 : v.id === 'celesta' ? 0.6 : 0.42; g.connect(send); send.connect(rev);
+    buses[v.id] = g;
+  }
+}
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+
+function piano(n, t, dur, bus, partials) {
+  const f = hz(n.m), v = n.v, out = ac.createGain(); out.gain.value = 1;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900 + 5200 * v * v + f * 1.5; lp.Q.value = 0.3;
+  out.connect(lp); lp.connect(bus);
+  const nodes = [];
+  const decay = Math.max(0.6, 3.4 - (n.m - 36) * 0.035);
+  for (let p = 1; p <= partials; p++) {
+    const fp = f * p * Math.sqrt(1 + 0.00035 * p * p);
+    if (fp > 16000) break;
+    const o = ac.createOscillator(); o.frequency.value = fp; o.type = 'sine';
+    const g = ac.createGain(), a = v * 0.16 / Math.pow(p, 1.15) * (p === 1 ? 1 : 0.9);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a, t + 0.006);
+    g.gain.setTargetAtTime(a * 0.45, t + 0.006, 0.12 / p);
+    g.gain.setTargetAtTime(0, t + 0.08, decay / (1 + 0.45 * (p - 1)));
+    g.gain.setTargetAtTime(0, t + dur, 0.16);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 1.2);
+    nodes.push(o);
+  }
+  return { nodes, end: t + dur + 1.2 };
+}
+function celesta(n, t, dur, bus) {
+  const f = hz(n.m), g = ac.createGain(), nodes = [];
+  [[1, 1], [4.0, 0.22], [2.76, 0.08]].forEach(([r, a]) => {
+    const o = ac.createOscillator(); o.frequency.value = f * r;
+    const gg = ac.createGain(); gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(n.v * 0.12 * a, t + 0.004);
+    gg.gain.setTargetAtTime(0, t + 0.01, r === 1 ? 0.55 : 0.12);
+    o.connect(gg); gg.connect(g); o.start(t); o.stop(t + dur + 1.6); nodes.push(o);
+  });
+  g.connect(bus);
+  return { nodes, end: t + dur + 1.6 };
+}
+function pad(n, t, dur, bus) {
+  const f = hz(n.m), g = ac.createGain(), lp = ac.createBiquadFilter(), nodes = [];
+  lp.type = 'lowpass'; lp.frequency.value = 1300; lp.Q.value = 0.5;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(n.v * 0.028, t + 1.1);
+  g.gain.setTargetAtTime(0, t + dur, 0.6);
+  [-6, 6].forEach(c => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = c; o.connect(lp); o.start(t); o.stop(t + dur + 3); nodes.push(o); });
+  lp.connect(g); g.connect(bus);
+  return { nodes, end: t + dur + 3 };
+}
+function schedule(n, when) {
+  const dur = n.d * SPB, bus = buses[n.voice];
+  let h;
+  if (n.voice === 'celesta') h = celesta(n, when, dur, bus);
+  else if (n.voice === 'pad') h = pad(n, when, dur, bus);
+  else h = piano(n, when, dur, bus, n.voice === 'arp' ? 4 : n.voice === 'bass' ? 5 : 7);
+  live.add(h);
+}
+function stopAll() { // мягко гасим, чтобы не было щелчка
+  const old = [...live]; live.clear();
+  if (!ac) return;
+  const t = ac.currentTime;
+  master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(0, t + 0.06);
+  setTimeout(() => {
+    for (const h of old) for (const o of h.nodes) { try { o.stop(); } catch (e) { /* уже остановлен */ } }
+    const t2 = ac.currentTime; master.gain.cancelScheduledValues(t2); master.gain.setValueAtTime(0, t2); master.gain.linearRampToValueAtTime(0.8, t2 + 0.05);
+  }, 80);
+}
+function scheduler() {
+  if (!playing || !ac) return;
+  const horizon = ac.currentTime + 0.18;
+  while (schedIdx < notes.length) {
+    const n = notes[schedIdx], when = startT + n.b * SPB;
+    if (when > horizon) break;
+    if (!muted[n.voice === 'piano' ? 'arp' : n.voice] && when > ac.currentTime - 0.05) schedule(n, Math.max(when, ac.currentTime));
+    schedIdx++;
+  }
+  for (const h of live) if (h.end < ac.currentTime) live.delete(h);
+}
+setInterval(scheduler, 40);
+
+function seekTo(b) {
+  posBeat = Math.max(0, Math.min(TOTAL, b));
+  schedIdx = notes.findIndex(n => n.b >= posBeat); if (schedIdx < 0) schedIdx = notes.length;
+  if (playing) { stopAll(); startT = ac.currentTime + 0.14 - posBeat * SPB; }
+}
+function play(fromStart) {
+  if (!ac) initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  if (attract) { attract = false; document.getElementById('foot').classList.add('gone'); fromStart = true; }
+  if (fromStart || posBeat >= TOTAL) posBeat = 0;
+  playing = true; seekTo(posBeat);
+  startT = ac.currentTime + 0.14 - posBeat * SPB;
+  updatePlayUI();
+}
+function pause() { playing = false; stopAll(); updatePlayUI(); }
+
+/* ============================================================
+   3. Интерфейс
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const strip = $('strip');
+SEGMENTS.forEach((s, i) => {
+  const d = document.createElement('div'); d.className = 'seg';
+  d.style.flex = String(s.b1 - s.b0); d.style.background = KEYS[s.k].color;
+  const sp = document.createElement('span'); sp.textContent = s.label; d.appendChild(sp);
+  strip.appendChild(d);
+});
+const headMark = document.createElement('div'); headMark.className = 'head-mark'; strip.appendChild(headMark);
+function stripToBeat(clientX) {
+  const r = strip.getBoundingClientRect(); return (clientX - r.left) / r.width * TOTAL;
+}
+strip.addEventListener('pointerdown', e => {
+  const b = stripToBeat(e.clientX);
+  if (attract) { play(true); }
+  seekTo(b);
+  if (!playing) updateUI(true);
+});
+strip.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { seekTo(posBeat + 8); e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { seekTo(posBeat - 8); e.preventDefault(); }
+});
+$('play').addEventListener('click', () => { if (playing) pause(); else play(false); });
+addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); $('play').click(); } });
+const vbox = $('voices');
+VOICES.forEach(v => {
+  const b = document.createElement('button'); b.className = 'voice'; b.innerHTML = `<i></i>${v.label}`;
+  b.setAttribute('aria-pressed', 'true');
+  b.addEventListener('click', () => {
+    muted[v.id] = !muted[v.id]; b.classList.toggle('off', !!muted[v.id]); b.setAttribute('aria-pressed', String(!muted[v.id]));
+    if (buses[v.id]) buses[v.id].gain.setTargetAtTime(muted[v.id] ? 0 : 1, ac.currentTime, 0.05);
+    if (v.id === 'arp' && buses.piano) buses.piano.gain.setTargetAtTime(muted[v.id] ? 0 : 1, ac.currentTime, 0.05);
+  });
+  vbox.appendChild(b);
+});
+const fmtT = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+function updatePlayUI() {
+  $('playIco').innerHTML = playing ? '<path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/>' : '<path d="M7 4.5v15l13-7.5z"/>';
+  $('play').setAttribute('aria-label', playing ? 'Пауза' : 'Слушать');
+  $('stat').innerHTML = playing ? '<b>Звучит</b><span class="hide-s"> — пробел ставит на паузу</span>' : (attract ? '<b>Слушать</b><span class="hide-s"> — 2&nbsp;минуты 13&nbsp;секунд, 12&nbsp;тональностей</span>' : '<b>Пауза</b>');
+}
+let shownKey = -1;
+function updateUI(force) {
+  const k = keyAt(posBeat);
+  if (k !== shownKey || force) {
+    if (k !== shownKey) {
+      shownKey = k;
+      const K = KEYS[k];
+      $('keyName').classList.add('fadeout'); $('keyDesc').classList.add('fadeout');
+      setTimeout(() => { $('keyName').textContent = K.name; $('keyDescT').textContent = K.desc; $('keyName').classList.remove('fadeout'); $('keyDesc').classList.remove('fadeout'); }, 350);
+      document.documentElement.style.setProperty('--key', K.color);
+    }
+  }
+  const segs = strip.querySelectorAll('.seg');
+  SEGMENTS.forEach((s, i) => segs[i].classList.toggle('on', posBeat >= s.b0 && posBeat < s.b1));
+  headMark.style.left = (posBeat / TOTAL * 100) + '%';
+  $('time').textContent = fmtT(Math.min(posBeat, TOTAL) * SPB) + ' / ' + fmtT(Math.round(TOTAL * SPB));
+}
+
+/* ============================================================
+   4. Рисование: партитура-анимация и свет
+   ============================================================ */
+const cv = $('cv'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+const fieldCv = document.createElement('canvas'); fieldCv.width = 96; fieldCv.height = 60;
+const fctx = fieldCv.getContext('2d');
+const vigCv = document.createElement('canvas'); vigCv.width = 160; vigCv.height = 100;
+const glowCache = new Map();
+function glowSprite(c) { // мягкое пятно света нужного цвета, рисуется один раз
+  const key = c.map(v => v | 0).join(',');
+  if (glowCache.has(key)) return glowCache.get(key);
+  const g = document.createElement('canvas'); g.width = g.height = 128;
+  const x = g.getContext('2d'), gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, `rgba(${key},1)`); gr.addColorStop(0.35, `rgba(${key},0.35)`); gr.addColorStop(1, `rgba(${key},0)`);
+  x.fillStyle = gr; x.fillRect(0, 0, 128, 128); glowCache.set(key, g); return g;
+}
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  const v = vigCv.getContext('2d'), vg = v.createRadialGradient(80, 50, 30, 80, 50, 95);
+  vg.addColorStop(0, 'rgba(7,5,9,0)'); vg.addColorStop(1, 'rgba(7,5,9,0.72)');
+  v.clearRect(0, 0, 160, 100); v.fillStyle = vg; v.fillRect(0, 0, 160, 100);
+}
+addEventListener('resize', resize); resize();
+const rgb = hex => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+const KRGB = KEYS.map(k => rgb(k.color));
+const mix3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const css = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+let field = KRGB[keyAt(posBeat)].slice(), energy = 0;
+const parts = [];
+let lastSpawnIdx = 0;
+
+function draw(dt, now) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const small = W < 820;
+  const pxb = small ? 34 : 58;              // пикселей на долю
+  const nowX = W * (small ? 0.3 : 0.36);
+  const top = small ? H * 0.2 : H * 0.17, bot = small ? H * 0.64 : H * 0.8;
+  const mLo = 28, mHi = 98;
+  const yOf = m => bot - (m - mLo) / (mHi - mLo) * (bot - top);
+  const rowH = (bot - top) / (mHi - mLo);
+
+  // цвет зала плавно догоняет цвет тональности
+  const k = keyAt(posBeat), target = KRGB[k];
+  field = mix3(field, target, Math.min(1, dt * 1.4));
+  // громкость «сейчас» — для дыхания света
+  let e = 0;
+  for (const n of notes) { if (n.b > posBeat) break; if (n.b + n.d > posBeat && n.voice !== 'pad') e += n.v * (n.voice === 'melody' ? 1.4 : n.voice === 'bass' ? 0.8 : 0.35); }
+  energy += (Math.min(e, 3) - energy) * Math.min(1, dt * 3);
+
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#070509'; ctx.fillRect(0, 0, W, H);
+  // светоорган: большие мягкие поля цвета
+  const t = now / 1000;
+  // светоорган: большие мягкие поля цвета — на маленьком холсте, растягиваются сглаживанием
+  const FW = 96, FH = 60, M = Math.max(FW, FH);
+  fctx.globalCompositeOperation = 'source-over'; fctx.clearRect(0, 0, FW, FH); fctx.globalCompositeOperation = 'lighter';
+  const blobs = [[0.34 + 0.05 * Math.sin(t * 0.21), 0.52, 0.75], [0.78 + 0.04 * Math.cos(t * 0.17), 0.35, 0.6], [0.15, 0.9 + 0.03 * Math.sin(t * 0.3), 0.55]];
+  blobs.forEach(([bx, by, br], i) => {
+    const R = M * br;
+    const g = fctx.createRadialGradient(bx * FW, by * FH, 0, bx * FW, by * FH, R);
+    const a = (0.13 + 0.08 * energy) * (i === 0 ? 1 : 0.7);
+    g.addColorStop(0, css(field, a)); g.addColorStop(0.5, css(field, a * 0.35)); g.addColorStop(1, css(field, 0));
+    fctx.fillStyle = g; fctx.fillRect(0, 0, FW, FH);
+  });
+  if (KEYS[k].metal) { // металлический блеск ми-бемоль и си-бемоль мажора
+    const sx = ((t * 0.18) % 1.6 - 0.3) * FW;
+    const g = fctx.createLinearGradient(sx - FW * 0.25, 0, sx + FW * 0.25, FH);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(225,235,255,0.07)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    fctx.fillStyle = g; fctx.fillRect(0, 0, FW, FH);
+  }
+  ctx.globalCompositeOperation = 'lighter'; ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(fieldCv, 0, 0, W, H);
+
+  // ноты
+  const b0 = posBeat - nowX / pxb - 1, b1 = posBeat + (W - nowX) / pxb + 1;
+  for (const n of notes) {
+    if (n.b > b1) break;
+    if (n.b + n.d < b0) continue;
+    const x = nowX + (n.b - posBeat) * pxb, w = Math.max(3, n.d * pxb - 2), y = yOf(n.m);
+    const c = KRGB[n.k];
+    const active = n.b <= posBeat && n.b + n.d > posBeat;
+    const past = n.b + n.d <= posBeat;
+    const since = posBeat - n.b;
+    let a, h;
+    switch (n.voice) {
+      case 'melody': h = rowH * 2.1; a = active ? 1 : past ? 0.28 : 0.55; break;
+      case 'bass': h = rowH * 2.6; a = active ? 0.8 : past ? 0.18 : 0.36; break;
+      case 'arp': case 'piano': h = rowH * 1.1; a = active ? 0.85 : past ? 0.16 : 0.32; break;
+      case 'celesta': h = rowH * 1.3; a = active ? 1 : past ? 0.22 : 0.5; break;
+      case 'pad': h = rowH * 0.9; a = active ? 0.2 : 0.07; break;
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    if (active && (n.voice === 'melody' || n.voice === 'bass' || n.voice === 'celesta')) { // свечение звучащей ноты
+      const flash = Math.max(0, 1 - since * 0.9);
+      const gr = h * (2.2 + 2.5 * flash) * 2.2;
+      ctx.globalAlpha = Math.min(1, 0.45 * n.v + 0.35 * flash);
+      ctx.drawImage(glowSprite(c), nowX - gr, y - gr, gr * 2, gr * 2);
+      ctx.globalAlpha = 1;
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    const bright = active ? mix3(c, [255, 255, 255], 0.35) : c;
+    ctx.fillStyle = css(bright, a);
+    if (n.voice === 'celesta') {
+      ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x + h, y); ctx.lineTo(x, y + h); ctx.lineTo(x - h, y); ctx.closePath(); ctx.fill();
+    } else roundRect(x, y - h / 2, w, h, Math.min(h / 2, 6));
+    if (!past && !active && n.voice === 'melody') { ctx.strokeStyle = css(c, 0.6); ctx.lineWidth = 1; strokeRound(x, y - h / 2, w, h, Math.min(h / 2, 6)); }
+  }
+  // линия «сейчас»
+  ctx.globalCompositeOperation = 'lighter';
+  const lg = ctx.createLinearGradient(0, top - 40, 0, bot + 40);
+  lg.addColorStop(0, css(field, 0)); lg.addColorStop(0.5, css(mix3(field, [255, 255, 255], 0.5), 0.55)); lg.addColorStop(1, css(field, 0));
+  ctx.fillStyle = lg; ctx.fillRect(nowX - 1, top - 40, 2, bot - top + 80);
+
+  // частицы от вступающих нот мелодии и челесты
+  {
+    while (lastSpawnIdx < notes.length && notes[lastSpawnIdx].b <= posBeat) {
+      const n = notes[lastSpawnIdx++];
+      if ((n.voice === 'melody' || n.voice === 'celesta') && posBeat - n.b < 0.3) {
+        for (let q = 0; q < (n.voice === 'celesta' ? 5 : 9); q++) parts.push({ x: nowX, y: yOf(n.m), vx: -10 - Math.random() * 40, vy: -12 - Math.random() * 30, l: 1, c: KRGB[n.k], s: 1 + Math.random() * 2 });
+      }
+    }
+  }
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i]; p.l -= dt * 0.55; if (p.l <= 0) { parts.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vy -= 4 * dt;
+    ctx.fillStyle = css(mix3(p.c, [255, 255, 255], 0.3), p.l * 0.8);
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.s * p.l + 0.4, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  // лёгкая виньетка
+  ctx.drawImage(vigCv, 0, 0, W, H);
+}
+function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); ctx.fill(); }
+function strokeRound(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); ctx.stroke(); }
+
+/* ——— цикл ——— */
+let last = performance.now();
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (playing && ac) {
+    posBeat = (ac.currentTime - startT) / SPB;
+    if (posBeat > TOTAL + 1) { pause(); posBeat = TOTAL; }
+  } else if (attract) {
+    posBeat += dt / SPB * (reduce ? 0.3 : 1);
+    if (posBeat > TOTAL) { posBeat = 0; lastSpawnIdx = 0; }
+  }
+  if (lastSpawnIdx > 0 && notes[lastSpawnIdx - 1].b > posBeat + 0.01) lastSpawnIdx = Math.max(0, notes.findIndex(n => n.b > posBeat));
+  if (lastSpawnIdx < 0) lastSpawnIdx = notes.length;
+  draw(dt, now);
+  updateUI(false);
+}
+lastSpawnIdx = notes.findIndex(n => n.b > posBeat);
+updatePlayUI();
+setTimeout(() => $('foot').classList.add('gone'), 6000);
+requestAnimationFrame(frame);
+window.__score = { notes, TOTAL, SEGMENTS, KEYS };
+})();
+</script>
+</body>
+</html>

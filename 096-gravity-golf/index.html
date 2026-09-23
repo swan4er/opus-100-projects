@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Гравитационный гольф</title>
+<meta name="description" content="Запустите зонд так, чтобы гравитация планет донесла его до червоточины. 20 уровней, честная физика.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f3ebdd;
+    --paper-2: #fbf6ec;
+    --ink: #2b2d42;
+    --ink-2: #4a4c63;
+    --ink-3: #6b6c80;
+    --coral: #ef7d68;
+    --teal: #2f7a79;
+    --butter: #f2b64c;
+    --line: rgba(43, 45, 66, .14);
+    --display: 'Unbounded', 'Arial Rounded MT Bold', system-ui, sans-serif;
+    --text: 'Nunito', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    --spring: cubic-bezier(.34, 1.56, .64, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink); font: 600 15px/1.45 var(--text); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+  #game { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; cursor: crosshair; }
+  body:not(.playing) #game { cursor: default; }
+
+  button { font: inherit; color: inherit; }
+  .icon-btn {
+    appearance: none; width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--paper-2);
+    display: grid; place-items: center; cursor: pointer; color: var(--ink);
+    box-shadow: 0 2px 0 rgba(43, 45, 66, .08); transition: transform .2s var(--ease), border-color .2s var(--ease), background .2s var(--ease);
+  }
+  .icon-btn:hover { transform: translateY(-1px); border-color: rgba(43, 45, 66, .3); }
+  .icon-btn:active { transform: translateY(1px); }
+  .icon-btn svg { width: 20px; height: 20px; }
+  #btnSound .off-line { opacity: 0; }
+  #btnSound.off .wave { opacity: 0; }
+  #btnSound.off .off-line { opacity: 1; }
+  :focus-visible { outline: 2px solid var(--coral); outline-offset: 3px; }
+
+  .btn {
+    appearance: none; height: 50px; padding: 0 26px; border-radius: 999px; cursor: pointer; border: 2px solid var(--ink);
+    font: 700 16px/1 var(--text); letter-spacing: .01em; display: inline-flex; align-items: center; gap: 10px;
+    transition: transform .2s var(--ease), background .2s var(--ease), color .2s var(--ease), box-shadow .2s var(--ease);
+  }
+  .btn.primary { background: var(--ink); color: var(--paper-2); box-shadow: 0 4px 0 #15161f; }
+  .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #15161f; }
+  .btn.primary:active { transform: translateY(3px); box-shadow: 0 1px 0 #15161f; }
+  .btn.ghost { background: transparent; color: var(--ink); }
+  .btn.ghost:hover { background: rgba(43, 45, 66, .06); }
+  .btn svg { width: 18px; height: 18px; }
+
+  /* HUD */
+  .hud { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; padding: 22px clamp(18px, 3vw, 40px) 0; pointer-events: none; z-index: 3; opacity: 0; transform: translateY(-8px); transition: opacity .5s var(--ease), transform .5s var(--ease); }
+  body.playing .hud { opacity: 1; transform: none; }
+  .hud > * { pointer-events: auto; }
+  .lv { display: grid; grid-template-columns: auto 1fr; column-gap: 16px; align-items: baseline; max-width: min(700px, 64vw); }
+  .lv-num { font: 700 44px/1 var(--display); color: var(--coral); letter-spacing: -.02em; grid-row: span 2; }
+  .lv-name { font: 600 21px/1.15 var(--display); letter-spacing: -.01em; }
+  .lv-hint { margin-top: 6px; font: 600 15px/1.4 var(--text); color: var(--ink-2); max-width: 52ch; }
+  .hud-right { display: flex; align-items: center; gap: 10px; }
+  .score { text-align: right; margin-right: 6px; }
+  .score .att { font: 700 13px/1 var(--text); color: var(--ink-2); }
+  .score .best { display: flex; gap: 2px; justify-content: flex-end; margin-top: 6px; }
+
+  .tip { position: fixed; left: 50%; bottom: 18px; transform: translate(-50%, 8px); z-index: 3; font: 700 13px/1.3 var(--text); color: var(--ink-2); background: rgba(251, 246, 236, .9); border: 1.5px solid var(--line); padding: 9px 16px; border-radius: 999px; opacity: 0; transition: opacity .4s var(--ease), transform .4s var(--ease); pointer-events: none; white-space: nowrap; }
+  .tip.show { opacity: 1; transform: translate(-50%, 0); }
+  .tip kbd { font: 800 12px/1 var(--text); border: 1.5px solid var(--line); border-bottom-width: 3px; border-radius: 6px; padding: 2px 6px; background: var(--paper-2); }
+  .toast { position: fixed; left: 50%; bottom: 70px; transform: translate(-50%, 12px) scale(.96); z-index: 4; background: var(--ink); color: var(--paper-2); font: 700 15px/1.3 var(--text); padding: 12px 20px; border-radius: 14px; opacity: 0; transition: opacity .3s var(--ease), transform .4s var(--spring); pointer-events: none; max-width: min(520px, 90vw); text-align: center; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+
+  /* заставка */
+  .intro { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; padding: 0 clamp(20px, 7vw, 120px); pointer-events: none; opacity: 0; transition: opacity .6s var(--ease); }
+  .intro.show { opacity: 1; }
+  .intro.show .intro-card { pointer-events: auto; }
+  .intro-card {
+    max-width: 540px; background: rgba(251, 246, 236, .92); border: 2px solid var(--ink); border-radius: 28px;
+    padding: 36px 38px 34px; box-shadow: 10px 12px 0 rgba(43, 45, 66, .9);
+    transform: translateY(14px) rotate(-.6deg); transition: transform .8s var(--spring);
+  }
+  .intro.show .intro-card { transform: rotate(-.6deg); }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font: 800 12px/1 var(--text); letter-spacing: .14em; text-transform: uppercase; color: var(--teal); }
+  .eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); }
+  .intro h1 { margin: 14px 0 12px; font: 700 clamp(30px, 3.2vw, 46px)/1.04 var(--display); letter-spacing: -.03em; }
+  .intro h1 span { color: var(--coral); }
+  .intro p { margin: 0 0 26px; font: 600 17px/1.5 var(--text); color: var(--ink-2); max-width: 38ch; }
+  .intro .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .intro .facts { display: flex; gap: 18px; margin-top: 24px; font: 700 13px/1.3 var(--text); color: var(--ink-3); flex-wrap: wrap; }
+  .intro .facts b { display: block; font: 700 22px/1 var(--display); color: var(--ink); margin-bottom: 4px; }
+
+  /* результат */
+  .modal { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center; padding: 20px; background: rgba(243, 235, 221, .55); opacity: 0; pointer-events: none; transition: opacity .35s var(--ease); }
+  .modal.show { opacity: 1; pointer-events: auto; }
+  .card { background: var(--paper-2); border: 2px solid var(--ink); border-radius: 26px; box-shadow: 8px 10px 0 rgba(43, 45, 66, .9); padding: 30px 32px 28px; text-align: center; width: min(420px, 100%); transform: scale(.9) translateY(10px); transition: transform .5s var(--spring); }
+  .modal.show .card { transform: none; }
+  .card .stars { display: flex; justify-content: center; gap: 6px; }
+  .card .stars svg { animation: pop .6s var(--spring) both; }
+  .card .stars svg:nth-child(2) { animation-delay: .12s; }
+  .card .stars svg:nth-child(3) { animation-delay: .24s; }
+  @keyframes pop { from { transform: scale(0) rotate(-40deg); opacity: 0; } to { transform: none; opacity: 1; } }
+  .card h2 { margin: 14px 0 6px; font: 700 26px/1.1 var(--display); letter-spacing: -.02em; }
+  .card p { margin: 0 0 22px; color: var(--ink-2); font: 600 15px/1.45 var(--text); }
+  .card .row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+  /* уровни */
+  .levels { position: fixed; inset: 0; z-index: 7; background: rgba(243, 235, 221, .97); overflow-y: auto; padding: clamp(22px, 4vw, 48px) clamp(18px, 5vw, 72px); opacity: 0; pointer-events: none; transition: opacity .35s var(--ease); }
+  .levels.show { opacity: 1; pointer-events: auto; }
+  .levels header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 26px; max-width: 1180px; margin-inline: auto; }
+  .levels h2 { margin: 0; font: 700 clamp(28px, 3.6vw, 44px)/1 var(--display); letter-spacing: -.03em; }
+  .levels .sub { margin-top: 8px; font: 700 14px/1 var(--text); color: var(--ink-2); display: flex; gap: 8px; align-items: center; }
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .lvcard {
+    appearance: none; text-align: left; cursor: pointer; border: 2px solid var(--ink); border-radius: 18px; background: var(--paper-2);
+    padding: 16px 16px 14px; display: grid; gap: 8px; min-height: 124px; box-shadow: 4px 5px 0 rgba(43, 45, 66, .85);
+    transition: transform .2s var(--ease), box-shadow .2s var(--ease), background .2s var(--ease);
+  }
+  .lvcard:hover { transform: translate(-2px, -2px); box-shadow: 6px 7px 0 rgba(43, 45, 66, .85); background: #fff; }
+  .lvcard:active { transform: translate(2px, 3px); box-shadow: 1px 1px 0 rgba(43, 45, 66, .85); }
+  .lvcard .n { font: 700 26px/1 var(--display); color: var(--coral); }
+  .lvcard.done .n { color: var(--teal); }
+  .lvcard .t { font: 700 15px/1.2 var(--text); }
+  .lvcard .s { display: flex; gap: 2px; align-self: end; }
+  .levels .foot { max-width: 1180px; margin: 26px auto 0; display: flex; justify-content: flex-end; }
+  .linkbtn { appearance: none; border: 0; background: none; cursor: pointer; color: var(--ink-3); font: 700 13px/1 var(--text); text-decoration: underline; text-underline-offset: 4px; padding: 10px 0; }
+  .linkbtn:hover { color: var(--ink); }
+
+  @media (max-width: 900px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 720px) {
+    .hud { padding-top: 14px; }
+    .lv { column-gap: 12px; max-width: calc(100vw - 150px); }
+    .lv-num { font-size: 32px; }
+    .lv-name { font-size: 17px; }
+    .lv-hint { font-size: 14px; line-height: 1.35; }
+    .score { display: none; }
+    .hud-right { gap: 6px; }
+    .icon-btn { width: 40px; height: 40px; }
+    .intro { align-items: flex-end; padding: 0 14px calc(18px + env(safe-area-inset-bottom)); }
+    .intro-card { padding: 22px 20px 20px; border-radius: 22px; box-shadow: 6px 8px 0 rgba(43, 45, 66, .9); }
+    .intro h1 { font-size: 28px; }
+    .intro p { font-size: 15px; margin-bottom: 18px; }
+    .intro .facts { display: none; }
+    .btn { height: 46px; padding: 0 20px; font-size: 15px; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .lvcard { min-height: 108px; }
+    .tip { white-space: normal; width: max-content; max-width: 92vw; text-align: center; }
+    .tip .kbd-only { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration: .01s !important; animation-duration: .01s !important; } }
+</style>
+</head>
+<body>
+  <canvas id="game" aria-label="Игровое поле: потяните от зонда и отпустите"></canvas>
+
+  <div class="hud" role="region" aria-label="Уровень">
+    <div class="lv">
+      <div class="lv-num" id="lvNum">01</div>
+      <div class="lv-name" id="lvName">Первый толчок</div>
+      <div class="lv-hint" id="lvHint"></div>
+    </div>
+    <div class="hud-right">
+      <div class="score"><div class="att" id="attempts">первая попытка</div><div class="best" id="best"></div></div>
+      <button class="icon-btn" id="btnRestart" type="button" aria-label="Заново (R)" title="Заново (R)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>
+      </button>
+      <button class="icon-btn" id="btnLevels" type="button" aria-label="Уровни (Esc)" title="Уровни (Esc)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/></svg>
+      </button>
+      <button class="icon-btn" id="btnSound" type="button" aria-label="Выключить звук" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="wave" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/><path class="off-line" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="tip" id="tip">Тяните в сторону от зонда и отпустите <span class="kbd-only">· или <kbd>←</kbd><kbd>→</kbd> угол, <kbd>↑</kbd><kbd>↓</kbd> сила, <kbd>Пробел</kbd> — пуск</span></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <section class="intro" id="intro" aria-hidden="false">
+    <div class="intro-card">
+      <div class="eyebrow"><i></i>Опыт № 096 · физика в игре</div>
+      <h1>Гравитационный <span>гольф</span></h1>
+      <p>Запустите зонд так, чтобы притяжение планет само донесло его до&nbsp;червоточины. Никаких двигателей в&nbsp;полёте&nbsp;— только расчёт.</p>
+      <div class="row">
+        <button class="btn primary" id="btnPlay" type="button">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10-6.5z"/></svg>Играть
+        </button>
+        <button class="btn ghost" id="btnPick" type="button">Выбрать уровень</button>
+      </div>
+      <div class="facts"><div><b>20</b>уровней</div><div><b>240</b>шагов физики в секунду</div><div><b>100 %</b>уровней проверено решателем</div></div>
+    </div>
+  </section>
+
+  <section class="modal" id="result" aria-hidden="true" role="dialog" aria-labelledby="resTitle">
+    <div class="card">
+      <div class="stars" id="resStars"></div>
+      <h2 id="resTitle">Точно в червоточину!</h2>
+      <p id="resText"></p>
+      <div class="row">
+        <button class="btn primary" id="resNext" type="button">Дальше</button>
+        <button class="btn ghost" id="resAgain" type="button">Ещё раз</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="levels" id="levels" aria-hidden="true" role="dialog" aria-labelledby="levelsTitle">
+    <header>
+      <div>
+        <h2 id="levelsTitle">Уровни</h2>
+        <div class="sub">Звёзды: <span id="totalStars">0 из 60</span></div>
+      </div>
+      <button class="icon-btn" id="closeLevels" type="button" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+    <div class="grid" id="levelGrid"></div>
+    <div class="foot"><button class="linkbtn" id="resetProgress" type="button">Сбросить прогресс</button></div>
+  </section>
+
+  <script src="physics.js"></script>
+  <script src="levels.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

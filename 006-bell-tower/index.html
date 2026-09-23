@@ -1,0 +1,1061 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Колокольня</title>
+<meta name="description" content="Русский колокольный звон: благовест, перебор, перезвон и трезвон. Восемь колоколов синтезированы из негармонических обертонов; раскачивается язык, а колокол неподвижен.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;1,400&family=Ruslan+Display&display=swap" rel="stylesheet">
+<style>
+:root{
+  --plum:#1d141c;
+  --cream:#fff3dd;
+  --cream-2:rgba(255,243,221,.86);
+  --cream-3:rgba(255,243,221,.72);
+  --gold:#f3c26b;
+  --gold-line:rgba(243,194,107,.3);
+  --serif:'Alegreya',Georgia,'Times New Roman',serif;
+  --display:'Ruslan Display','Alegreya',Georgia,serif;
+  --ease:cubic-bezier(.22,.7,.2,1);
+  --stage-x:64vw;
+  --stage-w:760px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#2b2036;color:var(--cream);font-family:var(--serif);-webkit-font-smoothing:antialiased}
+#cv{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:manipulation}
+#cv.hov{cursor:pointer}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+
+/* ---------- заголовок ---------- */
+.head{position:fixed;left:48px;top:38px;width:400px;z-index:3;pointer-events:none;text-shadow:0 1px 16px rgba(30,16,30,.55)}
+.over{font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:var(--cream-2)}
+h1{font-family:var(--display);font-weight:400;font-size:70px;line-height:.95;margin:10px 0 14px;color:#fff6e4}
+.sub{font-size:19px;line-height:1.42;color:var(--cream-2);font-style:italic}
+
+/* ---------- кнопка звука ---------- */
+.sound{position:fixed;right:40px;top:36px;z-index:4;display:flex;align-items:center;gap:10px;min-height:46px;padding:10px 20px 10px 16px;border-radius:999px;
+  background:var(--cream);color:#2a1a14;font-size:18px;box-shadow:0 10px 28px rgba(30,14,20,.3);transition:transform .2s var(--ease)}
+.sound:hover{transform:translateY(-1px)}
+.sound:active{transform:translateY(1px)}
+.sound svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.sound .i-on{display:none}
+.sound.on{background:rgba(29,20,28,.86);color:var(--cream);box-shadow:none;outline:1px solid var(--gold-line);outline-offset:-1px}
+.sound.on .i-on{display:block}.sound.on .i-off{display:none}
+.sound .dot{width:8px;height:8px;border-radius:50%;background:#c8432d;animation:pl 1.6s ease-in-out infinite;flex:0 0 auto}
+.sound.on .dot{display:none}
+@keyframes pl{50%{transform:scale(1.6);opacity:.45}}
+
+/* ---------- боковая панель: звоны и обертоны ---------- */
+.panel{background:linear-gradient(180deg,rgba(43,30,42,.93),rgba(28,19,27,.95));border:1px solid var(--gold-line);border-radius:18px;box-shadow:0 20px 44px rgba(18,8,18,.34)}
+.side{position:fixed;left:40px;bottom:24px;width:380px;z-index:3;padding:17px 20px 18px;display:flex;flex-direction:column;gap:12px}
+.lbl{font-weight:500;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+.lbl-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.lbl-row span{font-size:14px;color:var(--cream-3);font-style:italic;white-space:nowrap}
+.modes{display:flex;flex-wrap:wrap;gap:6px}
+.mode{font-size:17px;min-height:40px;padding:6px 13px;border-radius:10px;color:var(--cream-2);border:1px solid rgba(255,243,221,.22)}
+.mode:hover{border-color:rgba(255,243,221,.55);color:#fff}
+.mode[aria-pressed="true"]{background:var(--cream);color:#2a1a14;border-color:var(--cream)}
+.desc{font-size:16px;line-height:1.45;color:var(--cream);min-height:69px;transition:opacity .3s var(--ease)}
+.play{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--cream-3)}
+.prog{flex:1;height:2px;background:rgba(255,243,221,.16);border-radius:2px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--gold);transform-origin:0 50%;transform:scaleX(0)}
+.tempo{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--cream-3)}
+.tempo input{flex:1;-webkit-appearance:none;appearance:none;height:28px;background:transparent;cursor:pointer;min-width:0}
+.tempo input::-webkit-slider-runnable-track{height:2px;background:rgba(255,243,221,.32);border-radius:2px}
+.tempo input::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--gold);margin-top:-8px;border:3px solid #22161f;box-shadow:0 0 0 1px var(--gold);transition:transform .15s var(--ease)}
+.tempo input:active::-webkit-slider-thumb{transform:scale(1.15)}
+.tempo input::-moz-range-track{height:2px;background:rgba(255,243,221,.32)}
+.tempo input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--gold);border:3px solid #22161f}
+.tempo output{min-width:88px;text-align:right;color:var(--cream-2);font-variant-numeric:tabular-nums}
+.rule{height:1px;background:linear-gradient(90deg,transparent,var(--gold-line) 10%,var(--gold-line) 90%,transparent);margin:2px 0}
+#spec{display:block;width:100%;height:92px}
+.cap{font-size:14px;line-height:1.4;color:var(--cream-3)}
+.fine{font-size:13px;line-height:1.4;color:var(--cream-3)}
+
+/* ---------- клавиши-колокола ---------- */
+.keys{position:fixed;left:var(--stage-x);bottom:22px;transform:translateX(-50%);z-index:3;width:min(820px,var(--stage-w));display:flex;gap:3px;padding:7px;border-radius:16px}
+.key{position:relative;flex:1 1 0;min-width:0;height:98px;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;padding:6px 4px 9px}
+.key:hover{background:rgba(255,243,221,.07)}
+.key .bl{width:46px;height:46px;transform-origin:50% 100%;transform:scale(var(--s));transition:transform .18s var(--ease);margin-bottom:5px;overflow:visible}
+.key:active .bl{transform:scale(var(--s)) translateY(2px)}
+.key .num{position:absolute;left:10px;top:8px;font-family:var(--display);font-size:17px;line-height:1;color:var(--gold)}
+.key .nm{font-size:14px;line-height:1.15;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.key .wt{font-size:12px;line-height:1.2;color:var(--cream-3);white-space:nowrap}
+.key .flash{position:absolute;inset:0;border-radius:inherit;background:radial-gradient(60% 70% at 50% 38%,rgba(255,214,140,.34),rgba(255,214,140,0));opacity:0;transition:opacity 1.1s var(--ease);pointer-events:none}
+.key.hit .flash{opacity:1;transition:none}
+.keys.narrow .key .nm{font-size:12.5px}.keys.narrow .key .wt{display:none}
+.key .wave{position:absolute;left:50%;top:34px;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;border:1.5px solid rgba(255,214,140,.7);opacity:0;transform:scale(.4);pointer-events:none}
+.key.ring .wave{animation:wave .9s var(--ease)}
+@keyframes wave{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(1.5)}}
+
+@media (max-height:860px) and (min-width:900px){ .cap,.fine{display:none} .desc{min-height:0} }
+@media (max-height:720px) and (min-width:900px){ .specbox{display:none} .head .sub{display:none} }
+
+/* ---------- телефон ---------- */
+@media (max-width:899px){
+  .head{left:18px;top:16px;width:auto;right:80px}
+  .over{font-size:12px;letter-spacing:.14em}
+  h1{font-size:42px;margin:6px 0 8px}
+  .sub{font-size:15px;line-height:1.38;max-width:290px}
+  .sound{right:14px;top:14px;padding:0;width:48px;height:48px;justify-content:center}
+  .sound .slbl{display:none}
+  .sound .dot{position:absolute;right:8px;top:8px;width:7px;height:7px}
+  .side{left:0;right:0;width:auto;bottom:162px;padding:0 10px;background:none;border:0;box-shadow:none;gap:0;border-radius:0}
+  .side>*:not(.modes){display:none}
+  .modes{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:2px 2px 4px}
+  .modes::-webkit-scrollbar{display:none}
+  .mode{flex:0 0 auto;font-size:16px;background:rgba(29,20,28,.84)}
+  .keys{left:10px;right:10px;width:auto;transform:none;bottom:10px;flex-wrap:wrap;gap:4px;padding:6px}
+  .key{flex:0 0 calc(25% - 3px);height:66px;padding:4px 2px 6px}
+  .key .bl{width:30px;height:30px;margin-bottom:3px}
+  .key .wt{display:none}
+  .key .nm{font-size:12px}
+  .key .num{font-size:14px;left:7px;top:6px}
+  .key .wave{top:22px}
+}
+@media (max-width:899px) and (max-height:700px){ .sub{display:none} }
+@media (prefers-reduced-motion:reduce){ .sound .dot{animation:none} .key.ring .wave{animation:none} }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="bronze" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#6b4217"/><stop offset=".45" stop-color="#c98d3a"/><stop offset=".72" stop-color="#ffe7a8"/><stop offset="1" stop-color="#9a6424"/>
+    </linearGradient>
+    <symbol id="bellIco" viewBox="0 0 40 40">
+      <path d="M17.6 2.8h4.8v2.6h-4.8z" fill="#8a5a22"/>
+      <path d="M13.4 7.2c1.7-1.5 3.9-2.1 6.6-2.1s4.9.6 6.6 2.1c1.2 1.1 1.3 3.8 1.5 7.1.3 5.6 1.3 11.2 6.9 16 .9.8.4 2.2-.8 2.2H5.8c-1.2 0-1.7-1.4-.8-2.2 5.6-4.8 6.6-10.4 6.9-16 .2-3.3.3-6 1.5-7.1z" fill="url(#bronze)"/>
+      <path d="M8.8 27.6h22.4" stroke="#fff0c0" stroke-opacity=".55" stroke-width=".9"/>
+      <circle cx="20" cy="36.6" r="2.4" fill="#c98d3a"/>
+    </symbol>
+  </defs>
+</svg>
+
+<canvas id="cv" aria-label="Звонница на закате с восемью колоколами"></canvas>
+
+<header class="head">
+  <p class="over">Русский колокольный звон</p>
+  <h1>Колокольня</h1>
+  <p class="sub">Язык раскачивается&nbsp;— колокол неподвижен. Каждый звук собран из&nbsp;обертонов бронзы: ни&nbsp;одной записи.</p>
+</header>
+
+<button class="sound" id="sound" aria-pressed="false" aria-label="Включить звон"><span class="dot"></span>
+  <svg viewBox="0 0 24 24" class="i-off"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+  <svg viewBox="0 0 24 24" class="i-on"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+  <span class="slbl" id="sndLbl">Включить звон</span></button>
+
+<section class="side panel" aria-labelledby="modesH">
+  <div class="lbl-row"><h2 class="lbl" id="modesH">Звоны</h2><span id="status">звук выключен</span></div>
+  <div class="modes" id="modes" role="group" aria-label="Виды звона"></div>
+  <p class="desc" id="desc" aria-live="polite"></p>
+  <div class="play"><div class="prog" aria-hidden="true"><i id="prog"></i></div></div>
+  <div class="tempo"><label for="tempo">Темп</label><input type="range" id="tempo" min="70" max="140" value="100"><output id="tempoV" for="tempo"></output></div>
+  <div class="rule specbox"></div>
+  <div class="specbox">
+    <div class="lbl-row"><h2 class="lbl" id="specH">Обертоны</h2><span id="specName"></span></div>
+    <canvas id="spec" aria-label="Спектр звучащих колоколов: каждая черта&nbsp;— обертон"></canvas>
+  </div>
+  <p class="cap">Каждая черта&nbsp;— обертон. Низкий гул тянется долго, верхние призвуки гаснут за&nbsp;секунды.</p>
+  <p class="fine">Веса условные, 1&nbsp;пуд ≈ 16,4&nbsp;кг. Русские колокола не&nbsp;настраивают под звукоряд: набор подбирают на&nbsp;слух.</p>
+</section>
+
+<div class="keys panel" id="keys" role="group" aria-label="Колокола: клавиши 1–8"></div>
+
+<script>
+(() => {
+'use strict';
+const SHOT = !!window.__SHOT__;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function rnd(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function plural(n, a, b, c) { n = Math.abs(n) % 100; const d = n % 10; if (n > 10 && n < 20) return c; if (d > 1 && d < 5) return b; if (d === 1) return a; return c; }
+
+/* =========================================================================
+   Колокола и их обертоны
+   ========================================================================= */
+const BELLS = [
+  { name: 'Благовестник', wt: 540, f: 110, size: 1.0 },
+  { name: 'Подзвонный', wt: 160, f: 174, size: .72 },
+  { name: 'Подзвонный', wt: 90, f: 219, size: .62 },
+  { name: 'Зазвонный', wt: 30, f: 331, size: .45 },
+  { name: 'Зазвонный', wt: 18, f: 393, size: .4 },
+  { name: 'Зазвонный', wt: 10, f: 493, size: .35 },
+  { name: 'Зазвонный', wt: 5, f: 589, size: .31 },
+  { name: 'Зазвонный', wt: 3, f: 741, size: .27 }
+];
+// [отношение к основному тону, амплитуда, доля от времени затухания]:
+// гул, основной тон, малая терция, квинта, октава и верхние призвуки — нарочно «не в строй»
+const PARTIALS = [[.5, .34, 1], [1, .55, .82], [1.19, .5, .66], [1.505, .22, .46], [2, .44, .42], [2.52, .26, .3], [2.67, .17, .26],
+  [3.02, .2, .22], [4.08, .14, .14], [5.3, .1, .1], [6.52, .07, .07], [7.93, .05, .05], [9.4, .035, .04]];
+BELLS.forEach((b, bi) => {
+  const r = rnd(77 + bi * 31), tauBase = 3 + b.size * 10.5;
+  b.partials = PARTIALS.map(([ratio, a, ts]) => {
+    const f = b.f * ratio * (1 + (r() - .5) * .024 * (ratio > 1.1 ? 1 : .3));
+    const beat = (.25 + r() * 1.5) * (b.size + .3);   // биения: каждый обертон — пара близких частот
+    const tau = tauBase * ts * (.85 + r() * .3);
+    return { f, a, beat, tau };
+  });
+  b.gain = .55 + .45 * b.size;
+  b.dur = 4 + b.size * 20;
+});
+
+/* =========================================================================
+   Звук: синтез в фоновом потоке, реверберация «над округой»
+   ========================================================================= */
+let actx = null, master = null, wet = null, audioOn = false, audioReady = false, pending = [];
+const buffers = [], voices = BELLS.map(() => []);
+const WORKER = `
+onmessage = e => {
+  const { sr, bells } = e.data;
+  bells.forEach((b, bi) => {
+    let seed = 991 + bi * 17;
+    const r = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const len = Math.floor(b.dur * sr), out = new Float32Array(len);
+    for (const p of b.partials) {
+      if (p.f > sr * .45) continue;
+      const fs = [p.f - p.beat / 2, p.f + p.beat / 2], as = [.5 + (r() - .5) * .3, .5];
+      for (let j = 0; j < 2; j++) {
+        const w = 2 * Math.PI * fs[j] / sr, c2 = 2 * Math.cos(w), k = Math.exp(-1 / (p.tau * sr)), ph = r() * 6.283;
+        let s1 = Math.sin(ph), s0 = Math.sin(ph - w), env = p.a * as[j];
+        const n = Math.min(len, Math.floor(p.tau * sr * 9.5));
+        for (let i = 0; i < n; i++) { const s = c2 * s1 - s0; s0 = s1; s1 = s; out[i] += s * env; env *= k; }
+      }
+    }
+    // удар языка: короткий шумовой всплеск через полосовой фильтр
+    const fc = Math.min(6800, b.f * 6.5), q = 2.2, w0 = 2 * Math.PI * fc / sr, al = Math.sin(w0) / (2 * q), a0 = 1 + al;
+    const b0 = al / a0, b2 = -al / a0, a1 = -2 * Math.cos(w0) / a0, a2 = (1 - al) / a0;
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    const nl = Math.floor(sr * .09);
+    for (let i = 0; i < nl; i++) { const x = (r() * 2 - 1) * Math.exp(-i / (sr * .011)); const y = b0 * x + b2 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = x; y2 = y1; y1 = y; out[i] += y * .9; }
+    // мягкая атака 4 мс и плавный уход в конце буфера — без щелчков
+    const na = Math.floor(sr * .004); for (let i = 0; i < na; i++) out[i] *= i / na;
+    const nf = Math.floor(len * .25); for (let i = 0; i < nf; i++) { const q2 = i / nf; out[len - 1 - i] *= q2 * q2; }
+    let pk = 0; for (let i = 0; i < len; i++) pk = Math.max(pk, Math.abs(out[i]));
+    const g = .9 / (pk || 1); for (let i = 0; i < len; i++) out[i] *= g;
+    postMessage({ i: bi, data: out }, [out.buffer]);
+  });
+};`;
+function initAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  const comp = actx.createDynamicsCompressor();
+  comp.threshold.value = -14; comp.ratio.value = 3.5; comp.attack.value = .004; comp.release.value = .3;
+  master = actx.createGain(); master.gain.value = .52;
+  master.connect(comp); comp.connect(actx.destination);
+  // «воздух над округой»: длинный хвост, который темнеет со временем
+  const conv = actx.createConvolver(), sr = actx.sampleRate, L = Math.floor(sr * 5.2), ir = actx.createBuffer(2, L, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch); let lp = 0;
+    for (let i = 0; i < L; i++) { const t = i / sr, a = .35 + .6 * Math.min(1, t * 2.2); lp = lp * a + (Math.random() * 2 - 1) * (1 - a); d[i] = lp * Math.exp(-t / 1.25) * (t < .012 ? t / .012 : 1); }
+  }
+  conv.buffer = ir;
+  wet = actx.createGain(); wet.gain.value = .42;
+  const pre = actx.createDelay(.2); pre.delayTime.value = .045;
+  wet.connect(pre); pre.connect(conv); conv.connect(master);
+  const w = new Worker(URL.createObjectURL(new Blob([WORKER], { type: 'text/javascript' })));
+  let got = 0;
+  w.onmessage = e => {
+    const { i, data } = e.data, buf = actx.createBuffer(1, data.length, actx.sampleRate);
+    buf.copyToChannel(data, 0); buffers[i] = buf;
+    if (++got === BELLS.length) {
+      audioReady = true; w.terminate();
+      if (audioOn) { startMode(mode); pending.forEach(([b, v]) => playBell(b, v, 0)); }
+      pending = [];
+    }
+  };
+  w.postMessage({ sr: actx.sampleRate, bells: BELLS.map(b => ({ f: b.f, dur: b.dur, partials: b.partials })) });
+}
+function playBell(i, vel, when) {
+  if (!audioOn || !audioReady || !buffers[i]) return;
+  const t = Math.max(actx.currentTime, when || 0);
+  const src = actx.createBufferSource(); src.buffer = buffers[i];
+  // мягкий удар темнее: высокие обертоны возбуждаются слабее
+  const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400 + vel * vel * 9000; lp.Q.value = .4;
+  const g = actx.createGain(); g.gain.value = (.32 + .68 * vel) * BELLS[i].gain;
+  src.connect(lp); lp.connect(g);
+  if (actx.createStereoPanner) {
+    const pan = actx.createStereoPanner(); pan.pan.value = clamp(bellGeo[i] ? bellGeo[i].px * .8 : 0, -.8, .8);
+    g.connect(pan); pan.connect(master); pan.connect(wet);
+  } else { g.connect(master); g.connect(wet); }
+  src.start(t);
+  const v = { src, g, t };
+  voices[i].push(v);
+  src.onended = () => { const k = voices[i].indexOf(v); if (k >= 0) voices[i].splice(k, 1); };
+  // не больше шести голосов на колокол: самый старый мягко уходит
+  if (voices[i].length > 6) {
+    const old = voices[i].shift(), at = Math.max(t, actx.currentTime);
+    try { old.g.gain.setTargetAtTime(0, at, .25); old.src.stop(at + 1.6); } catch (e) { /* уже остановлен */ }
+  }
+}
+function stopFuture() {
+  if (!actx) return;
+  const now = actx.currentTime;
+  voices.forEach(list => list.forEach(v => { if (v.t > now + .005) { try { v.src.stop(); } catch (e) { /* уже остановлен */ } } }));
+}
+
+/* =========================================================================
+   Виды звона: расписание ударов
+   ========================================================================= */
+const NB = s => { let o = s, p; do { p = o; o = o.replace(/(^|[\s(«—])(в|к|с|и|а|о|у|я|но|на|по|за|от|до|из|не|ни|во|со|же|В|К|С|И|А|О|У|Но|На|По|За|От|До|Из|Не)\s/g, '$1$2 '); } while (o !== p); return o.replace(/ —/g, '\u00a0—'); };
+const MODES = {
+  blag: { name: 'Благовест', desc: NB('Удары в один большой колокол — так зовут к службе. Сначала три редких протяжных удара: каждый ждёт, пока уляжется гул. Потом — ровные и мерные.') },
+  perebor: { name: 'Перебор', desc: NB('По одному удару в каждый колокол — от самого маленького до самого большого, затем во все разом. И снова. Звон печальный, заупокойный.') },
+  perezvon: { name: 'Перезвон', desc: NB('Поочерёдные удары в каждый колокол — от самого большого к самому малому. Так звонят в Великую пятницу и Великую субботу.') },
+  trezvon: { name: 'Трезвон', desc: NB('Праздничный звон во все колокола в три приёма, с паузами, — отсюда название. Зазвонные ведут узор, подзвонные отвечают, большой держит ритм.') },
+  free: { name: 'Сам звонарь', desc: NB('Играйте сами: клавиши 1–8 или щелчок по колоколу. Пробел — большой колокол, как педаль у звонаря. С Shift удар мягче.') }
+};
+function pattern(m, bpm) {
+  const k = 100 / bpm, intro = [], loop = [];
+  let introLen = 0, loopLen = 0;
+  if (m === 'blag') {
+    [0, 6.4, 12.8].forEach(t => intro.push([t * k, 0, 1]));
+    introLen = 18.6 * k;
+    for (let i = 0; i < 8; i++) loop.push([i * 2.9 * k, 0, .8 + (i % 2) * .07]);
+    loopLen = 8 * 2.9 * k;
+  } else if (m === 'perebor') {
+    let t = 0;
+    for (let b = 7; b >= 0; b--) { loop.push([t * k, b, .8]); t += 2.3 + (7 - b) * .2; }
+    t += .5; for (let b = 0; b < 8; b++) loop.push([(t + b * .012) * k, b, .95]);
+    loopLen = (t + 7.5) * k;
+  } else if (m === 'perezvon') {
+    let t = 0;
+    for (let b = 0; b < 8; b++) {
+      const n = b < 3 ? 3 : 4, gap = .72 + BELLS[b].size * .5;
+      for (let r = 0; r < n; r++) loop.push([(t + r * gap) * k, b, .84 - r * .06]);
+      t += n * gap + .9;
+    }
+    loopLen = (t + 3.5) * k;
+  } else if (m === 'trezvon') {
+    // три приёма; в каждом свой узор зазвонных, подзвонные на слабых долях, большой — на сильных
+    const beat = .6 * k, figs = [[7, 6, 5, 6, 7, 6, 4, 5], [7, 5, 6, 4, 7, 5, 6, 3], [7, 6, 7, 5, 6, 4, 5, 3]];
+    let t = 0;
+    figs.forEach((fig, part) => {
+      for (let bar = 0; bar < 4; bar++) {
+        const b0 = t + bar * 4 * beat;
+        loop.push([b0, 0, bar === 0 ? 1 : .86]);
+        if (bar % 2 === 1) loop.push([b0 + 2 * beat, 0, .7]);
+        loop.push([b0 + beat, 1, .72], [b0 + 3 * beat, 2, .72]);
+        if (part > 0) loop.push([b0 + 2.5 * beat, 1 + (bar % 2), .55]);
+        fig.forEach((b, i) => loop.push([b0 + i * beat / 2, b, i % 4 === 0 ? .82 : .58]));
+        if (part === 2 && bar === 3) [3, 4, 5, 6, 7].forEach((b, i) => loop.push([b0 + 4 * beat - .18 + i * .03, b, .9]));
+      }
+      t += 16 * beat + (part < 2 ? 2.2 * k : 0);
+    });
+    loop.push([t, 0, 1], [t, 1, .9], [t, 2, .9]);
+    loopLen = t + 9 * k;
+  } else return null;
+  const ev = intro.concat(loop.map(([t, b, v]) => [t + introLen, b, v])).sort((a, b) => a[0] - b[0]);
+  return { ev, introLen, loopLen, loopIdx: intro.length };
+}
+let mode = 'blag', sched = null, schedIdx = 0, schedT0 = 0, schedOff = 0, bpm = 100;
+const LOOKAHEAD = .45;
+function setDesc(m, instant) {
+  const d = $('desc');
+  if (instant) { d.textContent = MODES[m].desc; d.style.opacity = 1; return; }
+  d.style.opacity = 0;
+  setTimeout(() => { d.textContent = MODES[m].desc; d.style.opacity = 1; }, 180);
+}
+function startMode(m) {
+  const changed = m !== mode;
+  mode = m;
+  document.querySelectorAll('.mode').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === m ? 'true' : 'false'));
+  if (changed) setDesc(m);
+  stopFuture(); visualQ.length = 0; bellState.forEach(s => { s.pull = null; });
+  if (!actx || !audioOn || !audioReady) { sched = null; return; }
+  sched = pattern(m, bpm); schedIdx = 0; schedOff = 0; schedT0 = actx.currentTime + .3;
+}
+function scheduler() {
+  if (!sched || !actx || !audioOn) return;
+  const now = actx.currentTime;
+  for (let guard = 0; guard < 500; guard++) {
+    if (schedIdx >= sched.ev.length) {
+      schedIdx = sched.loopIdx; schedOff += sched.loopLen;
+      // после долгого перерыва (вкладка была скрыта) не догоняем пропущенное
+      const lag = now - (schedT0 + schedOff + sched.introLen);
+      if (lag > sched.loopLen) schedOff += Math.floor(lag / sched.loopLen) * sched.loopLen;
+    }
+    const [t, b, v] = sched.ev[schedIdx], at = schedT0 + schedOff + t;
+    if (at > now + LOOKAHEAD) break;
+    if (at >= now - .05) { playBell(b, v, at); queueVisual(b, v, at + (actx.outputLatency || actx.baseLatency || 0)); }
+    schedIdx++;
+  }
+}
+function progress() {
+  if (!sched || !actx) return 0;
+  const pos = actx.currentTime - schedT0, first = sched.introLen + sched.loopLen;
+  if (pos < 0) return 0;
+  if (pos < first) return pos / first;
+  return ((pos - sched.introLen) % sched.loopLen) / sched.loopLen;
+}
+
+/* =========================================================================
+   Сцена: небо, облака, дали, звонница
+   ========================================================================= */
+const cv = $('cv'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1, skyC = null, landC = null, clouds = [], bellSprites = [], wall = null, mobile = false;
+const bellGeo = [], bellState = BELLS.map(() => ({ ang: 0, vel: 0, flash: 0, pull: null }));
+const rings = [], visualQ = [], stars = [];
+const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',');
+
+function layout() {
+  const cw = W / DPR, ch = H / DPR;
+  mobile = cw < 900;
+  let s, cx, y0;
+  if (mobile) {
+    y0 = H - (ch < 700 ? 200 : 226) * DPR;
+    s = Math.min(W * .95 / 1000, (y0 - (ch < 700 ? 124 : 196) * DPR) / 1090);
+    cx = W / 2;
+  } else {
+    const left = 440 * DPR, avail = W - left - 24 * DPR;
+    y0 = H + 10 * DPR;
+    s = Math.min(avail / 1000, (y0 - 28 * DPR) / 1090);
+    cx = left + avail / 2;
+  }
+  wall = { s, x0: cx - 500 * s, y0, cx };
+  wall.X = u => wall.x0 + u * s; wall.Y = v => wall.y0 - v * s;
+  wall.shore = mobile ? y0 - 4 * DPR : H * .84;
+  wall.hz = wall.shore - H * .1;
+  // арки: нижний ярус — три больших, верхний — пять малых
+  wall.arches = [
+    { cx: 500, bot: 70, top: 520, w: 270 }, { cx: 190, bot: 70, top: 430, w: 210 }, { cx: 810, bot: 70, top: 430, w: 210 },
+    { cx: 160, bot: 560, top: 770, w: 118 }, { cx: 330, bot: 560, top: 780, w: 118 }, { cx: 500, bot: 560, top: 790, w: 118 },
+    { cx: 670, bot: 560, top: 780, w: 118 }, { cx: 840, bot: 560, top: 770, w: 118 }
+  ];
+  wall.beams = [480, 398, 398, 752, 752, 752, 752, 752];
+  const hang = [[500, 473], [190, 391], [810, 391], [160, 745], [330, 745], [500, 745], [670, 745], [840, 745]];
+  // верёвки уходят к звонарю — за парапет, ближе к середине яруса
+  const ropeTo = [[532, 88], [238, 88], [762, 88], [196, 574], [356, 574], [522, 574], [644, 574], [804, 574]];
+  BELLS.forEach((b, i) => {
+    const [u, v] = hang[i], h = 230 * b.size * s, w = h * .98;
+    const g = bellGeo[i] = { x: wall.X(u), y: wall.Y(v), h, w, px: (u - 500) / 500 };
+    g.side = ropeTo[i][0] >= u ? 1 : -1;
+    g.parTop = wall.Y(i < 3 ? 112 : 596);
+    g.rope = [wall.X(ropeTo[i][0]), wall.Y(ropeTo[i][1])];
+    g.mouthY = g.y + h * 1.035; g.rx = w * .49; g.ry = h * .045;
+    g.pivY = g.y + h * .2; g.L = g.mouthY - h * .02 - g.pivY; g.ballR = w * .072; g.tail = h * .2;
+    g.thc = Math.asin(clamp((g.rx * .84 - g.ballR) / g.L, .05, .9));
+    g.w0 = Math.sqrt(9.8 / (.25 + 1.25 * b.size));        // язык — физический маятник
+  });
+  const r = document.documentElement.style;
+  r.setProperty('--stage-x', (cx / DPR).toFixed(1) + 'px');
+  r.setProperty('--stage-w', (1000 * s / DPR).toFixed(1) + 'px');
+  $('keys').classList.toggle('narrow', !mobile && Math.min(820, 1000 * s / DPR) / 8 < 90);
+  // первые звёзды в тёмной вышине
+  const sr = rnd(88); stars.length = 0;
+  for (let i = 0; i < 70; i++) { const y = sr() * sr() * wall.hz * .42; stars.push({ x: sr() * W, y, a: .25 + sr() * .55 * (1 - y / (wall.hz * .42)), f: .6 + sr() * 1.8, p: sr() * 6.28, s: (sr() < .12 ? 1.6 : 1) * DPR }); }
+}
+
+/* ---------- небо и солнце ---------- */
+function paintSky() {
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), hz = wall.hz;
+  const sky = g.createLinearGradient(0, 0, 0, hz + H * .08);
+  sky.addColorStop(0, '#211b36'); sky.addColorStop(.28, '#46365d'); sky.addColorStop(.52, '#8c586d'); sky.addColorStop(.72, '#d27f6b');
+  sky.addColorStop(.87, '#f4ad6b'); sky.addColorStop(1, '#ffd99b');
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+  const sunX = mobile ? W * .86 : W - 70 * DPR, sunY = hz - H * .028;
+  const sg = g.createRadialGradient(sunX, sunY, 0, sunX, sunY, Math.max(W, H) * .62);
+  sg.addColorStop(0, 'rgba(255,238,200,.95)'); sg.addColorStop(.05, 'rgba(255,212,140,.62)'); sg.addColorStop(.22, 'rgba(255,168,100,.2)'); sg.addColorStop(1, 'rgba(255,150,100,0)');
+  g.fillStyle = sg; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#fff5da'; g.beginPath(); g.arc(sunX, sunY, H * .027, 0, 7); g.fill();
+  skyC = c;
+}
+
+/* ---------- облака: слоистые полосы, подсвеченные снизу; два слоя плывут ---------- */
+function blob(g, x, y, rx, ry, col, a, span) {
+  for (const dx of [0, -span, span]) {
+    const X = x + dx; if (X + rx < 0 || X - rx > span) continue;
+    g.save(); g.translate(X, y); g.scale(1, ry / rx);
+    const gr = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+    gr.addColorStop(0, `rgba(${col},${a})`); gr.addColorStop(.5, `rgba(${col},${a * .6})`); gr.addColorStop(1, `rgba(${col},0)`);
+    g.fillStyle = gr; g.fillRect(-rx, -rx, rx * 2, rx * 2); g.restore();
+  }
+}
+function paintClouds(layer) {
+  const span = Math.round(W * 1.6), c = document.createElement('canvas'); c.width = span; c.height = Math.ceil(wall.hz);
+  const g = c.getContext('2d'), r = rnd(layer ? 404 : 202), hz = wall.hz;
+  const n = layer ? 6 : 9;
+  for (let k = 0; k < n; k++) {
+    const cy = hz * (layer ? .1 + r() * .3 : .22 + r() * .6), t = clamp(cy / hz, 0, 1);
+    const cx = r() * span, cw = W * (.2 + r() * .32) * (layer ? 1.25 : 1), chh = H * (.016 + r() * .026);
+    const sh = mix([48, 36, 66], [170, 98, 110], t * t), lit = mix([214, 122, 142], [255, 212, 152], t);
+    const nb = 28 + (r() * 16 | 0);
+    for (let j = 0; j < nb; j++) {
+      const u = r() - .5, x = cx + u * cw, y = cy + (r() - .5) * chh * .6 - Math.cos(u * Math.PI) * chh * .3;
+      const rx = cw * (.05 + r() * .09) * (1 - Math.abs(u) * 1.1) + 4 * DPR, ry = rx * (.2 + r() * .12);
+      blob(g, x, y, rx, ry, sh, .2 + r() * .14, span);
+    }
+    for (let j = 0; j < nb * .7; j++) {        // освещённая снизу кромка
+      const u = r() - .5, x = cx + u * cw * .92, y = cy + chh * (.16 + r() * .22);
+      const rx = cw * (.035 + r() * .06) * (1 - Math.abs(u) * 1.1) + 3 * DPR, ry = rx * (.12 + r() * .08);
+      blob(g, x, y, rx, ry, lit, .22 + r() * .22 * (.4 + t), span);
+    }
+  }
+  return c;
+}
+
+/* ---------- дали, река, берег и звонница ---------- */
+function paintLand() {
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), r = rnd(1917), hz = wall.hz, shore = wall.shore;
+  const hills = [[hz - H * .035, '#b48a8e', .016], [hz - H * .01, '#8b6a79', .02], [hz + H * .025, '#5b495d', .026]];
+  hills.forEach(([yy, col, amp], k) => {
+    g.fillStyle = col; g.beginPath(); g.moveTo(0, H);
+    const ph = r() * 10;
+    for (let x = 0; x <= W + 6 * DPR; x += 6 * DPR) g.lineTo(x, yy - Math.sin(x / W * 5 + ph) * H * amp - Math.sin(x / W * 17 + ph * 2) * H * amp * .35);
+    g.lineTo(W, H); g.fill();
+    if (k === 1) {   // далёкий городок с куполами
+      g.fillStyle = '#7a5e6f';
+      for (let j = 0; j < 7; j++) {
+        const x = W * (.03 + j * .045 + r() * .01), bw = Math.max(5 * DPR, W * .011), by = yy - H * .004 - Math.sin(x / W * 5 + ph) * H * amp;
+        g.fillRect(x, by - H * .02, bw, H * .02 + 4 * DPR);
+        g.beginPath(); g.ellipse(x + bw / 2, by - H * .02, bw * .55, H * .009, 0, Math.PI, 0); g.fill();
+        g.fillRect(x + bw / 2 - .7 * DPR, by - H * .036, 1.4 * DPR, H * .008);
+      }
+    }
+  });
+  // река, отражающая небо, и блики на воде
+  const ry = shore - H * .04;
+  const rg = g.createLinearGradient(0, ry, 0, shore + H * .02);
+  rg.addColorStop(0, 'rgba(255,212,146,.78)'); rg.addColorStop(1, 'rgba(150,96,110,.5)');
+  g.fillStyle = rg; g.beginPath(); g.moveTo(0, ry + H * .008);
+  for (let x = 0; x <= W; x += 8 * DPR) g.lineTo(x, ry + Math.sin(x / W * 3) * H * .008);
+  g.lineTo(W, shore + H * .02); g.lineTo(0, shore + H * .02); g.fill();
+  g.fillStyle = 'rgba(255,240,205,.5)';
+  for (let i = 0; i < 40; i++) { const x = W * (.55 + r() * .45), y = ry + H * (.006 + r() * .028); g.fillRect(x, y, (6 + r() * 30) * DPR, 1.2 * DPR); }
+  // ближний берег
+  g.fillStyle = '#3a2b37'; g.beginPath(); g.moveTo(0, H);
+  for (let x = 0; x <= W + 6 * DPR; x += 6 * DPR) g.lineTo(x, shore - Math.sin(x / W * 4 + 1) * H * .012 - Math.sin(x / W * 23) * H * .004);
+  g.lineTo(W, H); g.fill();
+  g.fillStyle = '#291e29';
+  for (let i = 0; i < 70; i++) { const x = r() * W, y = shore + H * r() * .02, rr = H * (.01 + r() * .028); g.beginPath(); g.ellipse(x, y, rr * 1.6, rr, 0, 0, 7); g.fill(); }
+  paintWall(g, r);
+  landC = c;
+}
+
+function archPath(g, a, inset = 0) {
+  const X = wall.X, Y = wall.Y, s = wall.s;
+  const hw = a.w / 2 - inset, top = a.top - inset;
+  g.moveTo(X(a.cx - hw), Y(a.bot));
+  g.lineTo(X(a.cx - hw), Y(top - hw));
+  g.arc(X(a.cx), Y(top - hw), hw * s, Math.PI, 0);
+  g.lineTo(X(a.cx + hw), Y(a.bot));
+}
+function paintWall(g, r) {
+  const X = wall.X, Y = wall.Y, s = wall.s;
+  const gables = [160, 330, 500, 670, 840], gh = i => i === 2 ? 920 : i === 1 || i === 3 ? 890 : 862;
+  const wallPath = () => {
+    g.beginPath();
+    g.moveTo(X(0), Y(-30)); g.lineTo(X(0), Y(540)); g.lineTo(X(70), Y(540)); g.lineTo(X(70), Y(830));
+    gables.forEach((u, i) => { const h = gh(i); g.lineTo(X(u - 85), Y(830)); g.quadraticCurveTo(X(u - 40), Y(h - 18), X(u), Y(h)); g.quadraticCurveTo(X(u + 40), Y(h - 18), X(u + 85), Y(830)); });
+    g.lineTo(X(930), Y(830)); g.lineTo(X(930), Y(540)); g.lineTo(X(1000), Y(540)); g.lineTo(X(1000), Y(-30)); g.closePath();
+  };
+  // тень стены на земле
+  g.fillStyle = 'rgba(40,24,34,.42)'; g.beginPath(); g.ellipse(X(430), Y(-4), 580 * s, 36 * s, 0, 0, 7); g.fill();
+  // белый камень в закатном свете: слева сиреневая тень, справа тёплый свет
+  wallPath();
+  const lg = g.createLinearGradient(X(0), 0, X(1000), 0);
+  lg.addColorStop(0, '#b0929e'); lg.addColorStop(.55, '#eaccb3'); lg.addColorStop(1, '#ffe3c1');
+  g.fillStyle = lg; g.fill();
+  g.save(); wallPath(); g.clip();
+  const vg = g.createLinearGradient(0, Y(920), 0, Y(0));
+  vg.addColorStop(0, 'rgba(255,220,170,.22)'); vg.addColorStop(1, 'rgba(90,60,80,.3)');
+  g.fillStyle = vg; g.fillRect(X(-10), Y(940), 1020 * s, 980 * s);
+  // лопатки между арками
+  [[310, 350, 70, 540], [650, 690, 70, 540], [0, 34, 70, 540], [966, 1000, 70, 540], [236, 254, 560, 830], [406, 424, 560, 830], [576, 594, 560, 830], [746, 764, 560, 830]].forEach(([u0, u1, v0, v1]) => {
+    g.fillStyle = 'rgba(255,244,228,.16)'; g.fillRect(X(u0), Y(v1), (u1 - u0) * s, (v1 - v0) * s);
+    g.fillStyle = 'rgba(96,62,78,.16)'; g.fillRect(X(u0), Y(v1), 3 * s, (v1 - v0) * s);
+  });
+  // штукатурка: пятна и потёки
+  for (let i = 0; i < 240; i++) {
+    const x = X(r() * 1000), y = Y(r() * 920), rr = (4 + r() * 28) * s;
+    g.fillStyle = r() < .5 ? 'rgba(120,80,70,.05)' : 'rgba(255,245,230,.06)';
+    g.beginPath(); g.ellipse(x, y, rr, rr * (.5 + r()), r() * 3, 0, 7); g.fill();
+  }
+  for (let i = 0; i < 24; i++) { const x = X(r() * 1000), y = Y(200 + r() * 700); g.fillStyle = 'rgba(110,80,80,.07)'; g.fillRect(x, y, (1 + r() * 3) * s, (30 + r() * 100) * s); }
+  // карниз между ярусами и поребрик под ним
+  g.fillStyle = 'rgba(80,50,60,.24)'; g.fillRect(X(0), Y(546), 1000 * s, 11 * s);
+  g.fillStyle = 'rgba(255,240,220,.55)'; g.fillRect(X(0), Y(557), 1000 * s, 4 * s);
+  const saw = (v, hgt, step, col) => { g.fillStyle = col; g.beginPath(); for (let u = 0; u < 1000; u += step) { g.moveTo(X(u), Y(v)); g.lineTo(X(u + step / 2), Y(v - hgt)); g.lineTo(X(u + step), Y(v)); } g.fill(); };
+  saw(535, 12, 18, 'rgba(96,60,76,.26)');
+  saw(826, 10, 16, 'rgba(96,60,76,.22)');
+  g.restore();
+  // проёмы арок
+  wall.arches.forEach((a, i) => {
+    g.beginPath(); archPath(g, a); g.closePath();
+    const ag = g.createLinearGradient(X(a.cx - a.w / 2), 0, X(a.cx + a.w / 2), 0);
+    ag.addColorStop(0, '#46313e'); ag.addColorStop(.4, '#3a2632'); ag.addColorStop(1, '#2a1b25');
+    g.fillStyle = ag; g.fill();
+    if (i >= 3) {   // небо сквозь верхние арки
+      g.save(); g.beginPath(); archPath(g, a, 14); g.closePath(); g.clip();
+      const sg = g.createLinearGradient(0, Y(a.top), 0, Y(a.bot));
+      sg.addColorStop(0, 'rgba(110,84,126,.85)'); sg.addColorStop(1, 'rgba(232,156,110,.9)');
+      g.fillStyle = sg; g.fillRect(X(a.cx - a.w / 2), Y(a.top), a.w * s, (a.top - a.bot) * s); g.restore();
+    } else {        // глубина нижних арок: отсвет с пола
+      g.save(); g.beginPath(); archPath(g, a, 10); g.closePath(); g.clip();
+      const fg = g.createLinearGradient(0, Y(a.bot + 200), 0, Y(a.bot));
+      fg.addColorStop(0, 'rgba(255,190,130,0)'); fg.addColorStop(1, 'rgba(255,190,130,.12)');
+      g.fillStyle = fg; g.fillRect(X(a.cx - a.w / 2), Y(a.top), a.w * s, (a.top - a.bot) * s); g.restore();
+    }
+    g.strokeStyle = 'rgba(255,240,222,.55)'; g.lineWidth = 5 * s; g.beginPath(); archPath(g, a, -4); g.stroke();
+    g.strokeStyle = 'rgba(90,60,70,.35)'; g.lineWidth = 2 * s; g.beginPath(); archPath(g, a, 2); g.stroke();
+    // балка, на которой висит колокол
+    const by = wall.beams[i];
+    g.fillStyle = '#4a3024'; g.fillRect(X(a.cx - a.w / 2), Y(by + 7), a.w * s, 14 * s);
+    g.fillStyle = 'rgba(255,190,120,.28)'; g.fillRect(X(a.cx - a.w / 2), Y(by + 7), a.w * s, 3 * s);
+    // парапет: за ним уходят верёвки к звонарю
+    const ph = i < 3 ? 42 : 36;
+    g.fillStyle = '#d9bca8'; g.fillRect(X(a.cx - a.w / 2), Y(a.bot + ph), a.w * s, ph * s);
+    g.fillStyle = 'rgba(90,60,76,.28)'; g.fillRect(X(a.cx - a.w / 2), Y(a.bot + ph), a.w * s, ph * s * .35);
+    g.fillStyle = 'rgba(255,246,232,.7)'; g.fillRect(X(a.cx - a.w / 2), Y(a.bot + ph), a.w * s, 3 * s);
+  });
+  // крыши-щипцы над верхними арками
+  gables.forEach((u, i) => {
+    const h = gh(i);
+    g.fillStyle = '#4d4a48';
+    g.beginPath(); g.moveTo(X(u - 92), Y(826)); g.quadraticCurveTo(X(u - 42), Y(h - 12), X(u), Y(h + 8)); g.quadraticCurveTo(X(u + 42), Y(h - 12), X(u + 92), Y(826));
+    g.lineTo(X(u + 84), Y(818)); g.quadraticCurveTo(X(u + 40), Y(h - 28), X(u), Y(h - 8)); g.quadraticCurveTo(X(u - 40), Y(h - 28), X(u - 84), Y(818)); g.fill();
+    g.strokeStyle = 'rgba(255,200,140,.45)'; g.lineWidth = 2 * s;
+    g.beginPath(); g.moveTo(X(u - 92), Y(826)); g.quadraticCurveTo(X(u - 42), Y(h - 12), X(u), Y(h + 8)); g.stroke();
+  });
+  // главка: барабан, золотая луковица, крест
+  const dx = X(500), dy = Y(930);
+  g.fillStyle = '#e9cfb3'; g.fillRect(dx - 26 * s, dy - 34 * s, 52 * s, 36 * s);
+  g.fillStyle = 'rgba(120,80,90,.3)'; g.fillRect(dx - 26 * s, dy - 34 * s, 20 * s, 36 * s);
+  const dome = g.createLinearGradient(dx - 40 * s, 0, dx + 40 * s, 0);
+  dome.addColorStop(0, '#6e4212'); dome.addColorStop(.25, '#a8681f'); dome.addColorStop(.65, '#f0bc55'); dome.addColorStop(1, '#fff0b8');
+  g.fillStyle = dome; g.beginPath();
+  g.moveTo(dx - 34 * s, dy - 34 * s);
+  g.bezierCurveTo(dx - 44 * s, dy - 70 * s, dx - 10 * s, dy - 82 * s, dx, dy - 108 * s);
+  g.bezierCurveTo(dx + 10 * s, dy - 82 * s, dx + 44 * s, dy - 70 * s, dx + 34 * s, dy - 34 * s); g.closePath(); g.fill();
+  g.strokeStyle = '#d9a444'; g.lineWidth = 3 * s; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(dx, dy - 106 * s); g.lineTo(dx, dy - 160 * s); g.stroke();
+  g.beginPath(); g.moveTo(dx - 14 * s, dy - 140 * s); g.lineTo(dx + 14 * s, dy - 140 * s); g.stroke();
+  g.lineWidth = 2.2 * s; g.beginPath(); g.moveTo(dx - 9 * s, dy - 122 * s); g.lineTo(dx + 9 * s, dy - 128 * s); g.stroke();
+  g.lineCap = 'butt';
+  // площадка у подножия
+  g.fillStyle = '#d7b8a4'; g.fillRect(X(-10), Y(70), 1020 * s, 18 * s);
+  g.fillStyle = 'rgba(80,50,60,.3)'; g.fillRect(X(-10), Y(52), 1020 * s, 8 * s);
+}
+
+/* ---------- колокол: бронза, пояски, вязь, зев снизу ---------- */
+function profileX(y) {
+  // полуширина силуэта (в долях полуширины) на высоте y — по тем же кривым, что и контур
+  const segs = [[[.32, .09], [.42, .12], [.44, .3], [.47, .52]], [[.47, .52], [.5, .72], [.62, .88], [.98, .975]]];
+  for (const S of segs) {
+    if (y < S[0][1] || y > S[3][1]) continue;
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 24; i++) {
+      const t = (lo + hi) / 2, u = 1 - t, yy = u * u * u * S[0][1] + 3 * u * u * t * S[1][1] + 3 * u * t * t * S[2][1] + t * t * t * S[3][1];
+      if (yy < y) lo = t; else hi = t;
+    }
+    const t = (lo + hi) / 2, u = 1 - t;
+    return u * u * u * S[0][0] + 3 * u * u * t * S[1][0] + 3 * u * t * t * S[2][0] + t * t * t * S[3][0];
+  }
+  return .32;
+}
+function paintBell(size, seed) {
+  const h = 230 * size * wall.s, w = h * .98, pad = Math.ceil(h * .1);
+  const c = document.createElement('canvas'); c.width = Math.ceil(w + pad * 2); c.height = Math.ceil(h * 1.14 + pad * 2);
+  const g = c.getContext('2d'), cx = c.width / 2, hangY = pad, top = hangY + h * .06;
+  const P = (x, y) => [cx + x * w / 2, top + y * h];
+  const my = top + .975 * h, rx = w * .49, ry = h * .045, sq = ry / rx;
+  const body = () => {
+    g.beginPath();
+    g.moveTo(...P(-.32, .09));
+    g.bezierCurveTo(...P(-.42, .12), ...P(-.44, .3), ...P(-.47, .52));
+    g.bezierCurveTo(...P(-.5, .72), ...P(-.62, .88), ...P(-.98, .975));
+    g.ellipse(cx, my, rx, ry, 0, Math.PI, 0, true);
+    g.bezierCurveTo(...P(.62, .88), ...P(.5, .72), ...P(.47, .52));
+    g.bezierCurveTo(...P(.44, .3), ...P(.42, .12), ...P(.32, .09));
+    g.bezierCurveTo(...P(.2, .03), ...P(-.2, .03), ...P(-.32, .09));
+    g.closePath();
+  };
+  // подвес и уши
+  g.strokeStyle = '#3a2615'; g.lineWidth = Math.max(1.5, w * .03);
+  g.beginPath(); g.moveTo(cx, hangY - 2); g.lineTo(cx, top + h * .02); g.stroke();
+  g.strokeStyle = '#6b4520'; g.lineWidth = Math.max(1.5, w * .045);
+  g.beginPath(); g.arc(cx, top + h * .03, w * .08, Math.PI, 0); g.stroke();
+  g.lineWidth = Math.max(1.2, w * .035);
+  g.beginPath(); g.arc(cx - w * .1, top + h * .05, w * .05, Math.PI, 0); g.stroke();
+  g.beginPath(); g.arc(cx + w * .1, top + h * .05, w * .05, Math.PI, 0); g.stroke();
+  // тело
+  body();
+  const br = g.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0);
+  br.addColorStop(0, '#2d1a0a'); br.addColorStop(.14, '#4a2c12'); br.addColorStop(.38, '#7a4d1e'); br.addColorStop(.6, '#c68a38');
+  br.addColorStop(.73, '#fff0b5'); br.addColorStop(.83, '#e7b05a'); br.addColorStop(1, '#5a3614');
+  g.fillStyle = br; g.fill();
+  g.save(); body(); g.clip();
+  const vg = g.createLinearGradient(0, top, 0, top + h);
+  vg.addColorStop(0, 'rgba(255,220,150,.2)'); vg.addColorStop(.55, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(30,10,0,.32)');
+  g.fillStyle = vg; g.fillRect(0, 0, c.width, c.height);
+  // пояски — дуги: смотрим снизу, поэтому ближняя сторона круга выгибается вверх
+  const band = (y, th, a) => {
+    const bx = profileX(y) * w / 2 * 1.02, by = top + y * h;
+    g.lineWidth = Math.max(1, th * h);
+    g.strokeStyle = `rgba(255,226,160,${a})`; g.beginPath(); g.ellipse(cx, by, bx, bx * sq, 0, Math.PI, 2 * Math.PI); g.stroke();
+    g.strokeStyle = `rgba(40,20,5,${a * .8})`; g.beginPath(); g.ellipse(cx, by + th * h * 1.1, bx, bx * sq, 0, Math.PI, 2 * Math.PI); g.stroke();
+  };
+  band(.19, .016, .5); band(.27, .009, .38); band(.8, .016, .5); band(.87, .01, .38);
+  // вязь надписи между поясками
+  const r = rnd(seed), iy = top + .235 * h, ix = profileX(.235) * w / 2;
+  g.fillStyle = 'rgba(58,30,8,.55)';
+  for (let k = 0; k < 64; k++) {
+    const ph = Math.PI + (k + .5) / 64 * Math.PI; if (r() < .18) continue;
+    const x = cx + Math.cos(ph) * ix * .98, y = iy + Math.sin(ph) * ix * sq, sw = Math.max(.8, w * .01 * Math.abs(Math.sin(ph)));
+    g.fillRect(x - sw / 2, y - h * .022, sw, h * .03 * (.55 + r() * .45));
+  }
+  // клеймо-медальон
+  g.strokeStyle = 'rgba(255,225,160,.42)'; g.lineWidth = Math.max(1, w * .011);
+  g.beginPath(); g.ellipse(cx + w * .07, top + h * .55, w * .075, h * .075, 0, 0, 7); g.stroke();
+  g.beginPath(); g.ellipse(cx + w * .07, top + h * .55, w * .05, h * .05, 0, 0, 7); g.stroke();
+  g.restore();
+  // зев: тёмная внутренность, видная снизу, и светлая кромка ближней губы
+  const mg = g.createRadialGradient(cx, my + ry * .4, 0, cx, my, rx);
+  mg.addColorStop(0, '#0f0804'); mg.addColorStop(.75, '#23140a'); mg.addColorStop(1, '#3d2611');
+  g.fillStyle = mg; g.beginPath(); g.ellipse(cx, my, rx, ry, 0, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(150,92,36,.55)'; g.lineWidth = Math.max(1, h * .008);
+  g.beginPath(); g.ellipse(cx, my, rx * .97, ry * .72, 0, .2, Math.PI - .2); g.stroke();
+  g.strokeStyle = 'rgba(255,228,165,.75)'; g.lineWidth = Math.max(1, h * .012);
+  g.beginPath(); g.ellipse(cx, my, rx, ry, 0, Math.PI, 2 * Math.PI); g.stroke();
+  return { c, ox: cx, oy: hangY };
+}
+
+/* =========================================================================
+   Галки на коньках звонницы
+   ========================================================================= */
+const birds = [];
+function initBirds() {
+  birds.length = 0;
+  const perch = [[62, 836], [118, 836], [248, 836], [402, 836], [594, 836], [612, 836], [750, 836], [905, 836], [960, 548], [30, 548]];
+  perch.forEach(([u, v], i) => birds.push({ u, v, x: 0, y: 0, vx: 0, vy: 0, state: 'sit', t: Math.random() * 10, back: 0, flap: Math.random() * 6, face: i % 3 ? 1 : -1 }));
+}
+function scare(power) {
+  birds.forEach(b => {
+    if (b.state !== 'sit' || Math.random() > power) return;
+    b.state = 'fly'; b.back = 9 + Math.random() * 12;
+    b.x = wall.X(b.u); b.y = wall.Y(b.v);
+    b.vx = (Math.random() - .5) * 3 * DPR; b.vy = -(2 + Math.random() * 2) * DPR;
+  });
+}
+function updateBirds(dt) {
+  const cxs = wall.X(520), cys = wall.Y(1250);
+  birds.forEach(b => {
+    b.t += dt;
+    if (b.state === 'sit') { b.x = wall.X(b.u); b.y = wall.Y(b.v); if (Math.random() < dt * .15) b.face *= -1; return; }
+    b.flap += dt * 14; b.back -= dt;
+    let tx = cxs + Math.cos(b.t * .6 + b.u) * 320 * wall.s, ty = cys + Math.sin(b.t * .9 + b.u) * 90 * wall.s;
+    if (b.back < 0) { tx = wall.X(b.u); ty = wall.Y(b.v); }
+    b.vx += (tx - b.x) * .72 * dt; b.vy += (ty - b.y) * .72 * dt;
+    const sp = Math.hypot(b.vx, b.vy), mx = 5 * DPR * Math.max(.5, wall.s * 1.6);
+    if (sp > mx) { b.vx *= mx / sp; b.vy *= mx / sp; }
+    b.x += b.vx * dt * 60; b.y += b.vy * dt * 60;
+    b.face = b.vx > 0 ? 1 : -1;
+    if (b.back < 0 && Math.hypot(b.x - tx, b.y - ty) < 6 * DPR) { b.state = 'sit'; b.vx = b.vy = 0; }
+  });
+}
+function drawBirds(g) {
+  const s = wall.s * 1.1;
+  g.fillStyle = '#231824';
+  birds.forEach(b => {
+    g.save(); g.translate(b.x, b.y); g.scale(b.face, 1);
+    if (b.state === 'sit') {
+      const bob = Math.sin(b.t * 2.3) > .96 ? 2 * s : 0;
+      g.beginPath(); g.ellipse(0, -9 * s, 9 * s, 6.5 * s, -.2, 0, 7); g.fill();
+      g.beginPath(); g.arc(7 * s, -15 * s - bob, 4.3 * s, 0, 7); g.fill();
+      g.beginPath(); g.moveTo(11 * s, -15 * s - bob); g.lineTo(15 * s, -14 * s - bob); g.lineTo(11 * s, -13 * s - bob); g.fill();
+      g.beginPath(); g.moveTo(-8 * s, -8 * s); g.lineTo(-17 * s, -4 * s); g.lineTo(-7 * s, -5 * s); g.fill();
+    } else {
+      const f = Math.sin(b.flap);
+      g.beginPath(); g.ellipse(0, 0, 8 * s, 3.5 * s, 0, 0, 7); g.fill();
+      g.beginPath(); g.arc(8 * s, -1 * s, 3 * s, 0, 7); g.fill();
+      g.beginPath(); g.moveTo(-2 * s, 0); g.quadraticCurveTo(-6 * s, -14 * s * f, -16 * s, -12 * s * f); g.lineTo(3 * s, 0); g.fill();
+      g.beginPath(); g.moveTo(-7 * s, 0); g.lineTo(-14 * s, 3 * s); g.lineTo(-6 * s, 2 * s); g.fill();
+    }
+    g.restore();
+  });
+}
+
+/* =========================================================================
+   Удары: замах языка, удар в губу, отскок; кольца звука
+   ========================================================================= */
+const clockNow = () => (audioOn && actx) ? actx.currentTime : performance.now() / 1000;
+function queueVisual(b, v, at) { visualQ.push({ b, v, at, pulled: false }); }
+function swingTime(b) { return Math.min(.4, Math.PI / 2 / bellGeo[b].w0 * .7); }
+function processVisuals(now) {
+  for (let i = 0; i < visualQ.length; i++) {
+    const it = visualQ[i];
+    if (!it.pulled && now >= it.at - swingTime(it.b)) {
+      const st = bellState[it.b];
+      st.pull = { from: st.ang, t0: now, t1: Math.max(now + .03, it.at) };
+      it.pulled = true;
+    }
+    if (now >= it.at) { strikeVisual(it.b, it.v); visualQ.splice(i--, 1); }
+  }
+}
+function strikeVisual(b, v) {
+  const st = bellState[b], geo = bellGeo[b];
+  st.pull = null;
+  st.ang = geo.side * geo.thc; st.vel = -geo.side * geo.thc * geo.w0 * .8;
+  st.flash = Math.max(st.flash, .6 + .4 * v);
+  rings.push({ b, t: 0, v, life: 2.2 + BELLS[b].size * 3 });
+  if (rings.length > 40) rings.shift();
+  specHit(b, v);
+  if (b === 0 && v > .7) scare(.8); else if (v > .9) scare(.3);
+  const k = keyEls[b];
+  if (k) { k.classList.add('hit'); k.classList.remove('ring'); void k.offsetWidth; k.classList.add('ring'); setTimeout(() => k.classList.remove('hit'), 90); }
+}
+function strike(b, v = .9) {
+  if (!audioOn) enableSound('free');
+  if (audioReady) playBell(b, v, 0); else pending.push([b, v]);
+  strikeVisual(b, v);
+}
+
+function drawBells(g, dt, now) {
+  BELLS.forEach((B, i) => {
+    const geo = bellGeo[i], spr = bellSprites[i], st = bellState[i];
+    // язык: при замахе — движение к губе с разгоном, иначе — затухающий маятник
+    if (st.pull) {
+      const p = clamp((now - st.pull.t0) / (st.pull.t1 - st.pull.t0), 0, 1);
+      st.ang = st.pull.from + (geo.side * geo.thc - st.pull.from) * p * p; st.vel = 0;
+    } else {
+      const steps = Math.ceil(dt / (1 / 120)), h = dt / steps;
+      for (let k = 0; k < steps; k++) {
+        st.vel += (-geo.w0 * geo.w0 * Math.sin(st.ang) - 2 * .22 * geo.w0 * st.vel) * h;
+        st.ang += st.vel * h;
+        if (Math.abs(st.ang) > geo.thc) { st.ang = Math.sign(st.ang) * geo.thc; st.vel *= -.3; }
+      }
+    }
+    st.flash = Math.max(0, st.flash - dt * (1.25 - B.size * .6));
+    const x = geo.x, sa = Math.sin(st.ang), ca = Math.cos(st.ang);
+    const bx = x + sa * geo.L, by = geo.pivY + ca * geo.L;
+    const tx = bx + sa * geo.tail, ty = by + ca * geo.tail;
+    // верёвка от хвостовика языка — за парапет, к звонарю
+    g.save(); g.beginPath(); g.rect(0, 0, W, geo.parTop); g.clip();
+    const [ax, ay] = geo.rope, slack = 1 - Math.abs(st.ang) / geo.thc;
+    g.strokeStyle = '#3a271c'; g.lineWidth = Math.max(1, 2.4 * wall.s * (.5 + B.size));
+    g.beginPath(); g.moveTo(tx, ty); g.quadraticCurveTo((tx + ax) / 2 - geo.side * 6 * wall.s * slack, Math.max(ty, ay) - (ay - ty) * .35 + 26 * wall.s * slack, ax, ay); g.stroke();
+    g.restore();
+    // колокол неподвижен
+    g.drawImage(spr.c, x - spr.ox, geo.y - spr.oy);
+    // язык виден только в зеве и ниже кромки
+    g.save(); g.beginPath();
+    g.moveTo(x - geo.w * 2, geo.mouthY); g.lineTo(x - geo.rx, geo.mouthY);
+    g.ellipse(x, geo.mouthY, geo.rx, geo.ry, 0, Math.PI, 2 * Math.PI);
+    g.lineTo(x + geo.w * 2, geo.mouthY); g.lineTo(x + geo.w * 2, H); g.lineTo(x - geo.w * 2, H); g.closePath(); g.clip();
+    g.strokeStyle = '#1e1208'; g.lineWidth = Math.max(1.5, geo.w * .034); g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x, geo.pivY); g.lineTo(tx, ty); g.stroke();
+    const bg = g.createRadialGradient(bx + geo.ballR * .35, by - geo.ballR * .35, geo.ballR * .1, bx, by, geo.ballR);
+    bg.addColorStop(0, '#8a6038'); bg.addColorStop(.5, '#3b2412'); bg.addColorStop(1, '#1a0f06');
+    g.fillStyle = bg; g.beginPath(); g.ellipse(bx, by, geo.ballR * .92, geo.ballR, st.ang, 0, 7); g.fill();
+    g.strokeStyle = '#2c1a0c'; g.lineWidth = Math.max(1, geo.w * .02);
+    g.beginPath(); g.arc(tx, ty + geo.w * .02, geo.w * .028, 0, 7); g.stroke();
+    g.lineCap = 'butt'; g.restore();
+    // вспышка бронзы в момент удара
+    if (st.flash > .01) {
+      g.save(); g.globalCompositeOperation = 'lighter';
+      const fx = x + geo.side * geo.w * .18, fy = geo.y + geo.h * .6;
+      const fg = g.createRadialGradient(fx, fy, 0, x, geo.y + geo.h * .55, geo.h * .95);
+      fg.addColorStop(0, `rgba(255,214,140,${.42 * st.flash})`); fg.addColorStop(1, 'rgba(255,180,100,0)');
+      g.fillStyle = fg; g.beginPath(); g.arc(x, geo.y + geo.h * .55, geo.h * .95, 0, 7); g.fill();
+      g.restore();
+    }
+  });
+}
+function drawRings(g, dt) {
+  g.save(); g.globalCompositeOperation = 'lighter';
+  for (let i = rings.length - 1; i >= 0; i--) {
+    const r = rings[i]; r.t += dt;
+    if (r.t > r.life) { rings.splice(i, 1); continue; }
+    const geo = bellGeo[r.b], B = BELLS[r.b], p = r.t / r.life;
+    const rad = geo.h * (.55 + p * (2.2 + B.size * 2.8)), a = (1 - p) * (1 - p) * .36 * r.v;
+    for (let k = 0; k < 3; k++) {
+      const rr = rad * (1 - k * .12);
+      g.strokeStyle = `rgba(255,${200 + k * 12},${130 + k * 25},${a * (1 - k * .3)})`;
+      g.lineWidth = (2.4 - k * .6) * DPR * (.6 + B.size);
+      g.beginPath(); g.ellipse(geo.x, geo.y + geo.h * .7, rr, rr * .62, 0, Math.PI * 1.02, Math.PI * 1.98); g.stroke();
+    }
+  }
+  g.restore();
+}
+function drawClouds(g, t) {
+  clouds.forEach((c, k) => {
+    const speed = (k ? 7 : 3.5) * DPR, off = ((t * speed) % c.width + c.width) % c.width;
+    g.drawImage(c, -off, 0); if (c.width - off < W) g.drawImage(c, c.width - off, 0);
+  });
+}
+
+/* =========================================================================
+   Обертоны: спектр всех звучащих колоколов
+   ========================================================================= */
+const specC = $('spec'), sctx = specC.getContext('2d');
+const specAmp = BELLS.map(b => b.partials.map(() => 0)), specHitAt = BELLS.map(() => -1e9);
+let specLast = 0, specW = 0, specH = 0;
+const F0 = 40, F1 = 8000;
+function specHit(b, v) {
+  const B = BELLS[b];
+  B.partials.forEach((p, i) => { specAmp[b][i] = Math.min(1.4, specAmp[b][i] * .6 + p.a * v * B.gain * 1.7); });
+  specHitAt[b] = performance.now() / 1000; specLast = b;
+  $('specName').textContent = `${B.name} · ${B.f} Гц`;
+}
+function sizeSpec() {
+  const r = specC.getBoundingClientRect();
+  specW = Math.round(r.width * DPR); specH = Math.round(r.height * DPR);
+  if (specW && specH) { specC.width = specW; specC.height = specH; }
+}
+function drawSpec(dt) {
+  if (!specW || !specH || !specC.offsetParent) return;
+  const g = sctx, w = specW, h = specH, base = h - 20 * DPR, top = 6 * DPR, now = performance.now() / 1000;
+  g.clearRect(0, 0, w, h);
+  const X = f => 4 * DPR + Math.log2(f / F0) / Math.log2(F1 / F0) * (w - 8 * DPR);
+  // шкала частот
+  g.strokeStyle = 'rgba(255,243,221,.22)'; g.lineWidth = DPR;
+  g.beginPath(); g.moveTo(0, base + .5); g.lineTo(w, base + .5); g.stroke();
+  g.font = `${12 * DPR}px Alegreya, Georgia, serif`; g.fillStyle = 'rgba(255,243,221,.62)'; g.textBaseline = 'top';
+  [[50], [100, '100 Гц'], [200], [500], [1000, '1 кГц'], [2000], [5000, '5 кГц']].forEach(([f, lab]) => {
+    const x = X(f);
+    g.beginPath(); g.moveTo(x, base); g.lineTo(x, base + (lab ? 5 : 3) * DPR); g.stroke();
+    if (lab) { g.textAlign = f > 3000 ? 'right' : 'center'; g.fillText(lab.replace(' ', ' '), f > 3000 ? Math.min(x + 12 * DPR, w) : x, base + 6 * DPR); }
+  });
+  // черты обертонов: высота — в децибелах, чтобы было видно, как каждый гаснет со своей скоростью
+  g.lineCap = 'round';
+  BELLS.forEach((B, b) => {
+    const tb = now - specHitAt[b];
+    B.partials.forEach((p, i) => {
+      specAmp[b][i] *= Math.exp(-dt / p.tau);
+      const a = specAmp[b][i] * (1 + .22 * Math.cos(2 * Math.PI * p.beat * tb));
+      if (a < .004) return;
+      const db = clamp((20 * Math.log10(a) + 48) / 48, 0, 1), x = X(p.f);
+      if (x < 0 || x > w) return;
+      const hh = (base - top) * db;
+      g.strokeStyle = b === specLast ? `rgba(255,243,221,${.5 + .5 * db})` : `rgba(243,194,107,${.25 + .6 * db})`;
+      g.lineWidth = (b === specLast ? 2.4 : 1.7) * DPR;
+      g.beginPath(); g.moveTo(x, base - 1 * DPR); g.lineTo(x, base - hh); g.stroke();
+    });
+  });
+  g.lineCap = 'butt';
+}
+
+/* =========================================================================
+   Интерфейс
+   ========================================================================= */
+const keysBox = $('keys'), keyEls = [];
+BELLS.forEach((b, i) => {
+  const k = document.createElement('button');
+  k.className = 'key'; k.dataset.b = i;
+  k.style.setProperty('--s', (.5 + .5 * b.size).toFixed(3));
+  k.setAttribute('aria-label', `${b.name}, клавиша ${i + 1}`);
+  k.title = `${b.name}: ${b.wt} ${plural(b.wt, 'пуд', 'пуда', 'пудов')} (условно), основной тон ${b.f}\u00a0Гц`;
+  k.innerHTML = `<span class="flash"></span><span class="wave"></span><span class="num">${i + 1}</span>
+    <svg class="bl" viewBox="0 0 40 40" aria-hidden="true"><use href="#bellIco"/></svg>
+    <span class="nm">${b.name}</span><span class="wt">${b.wt} ${plural(b.wt, 'пуд', 'пуда', 'пудов')}</span>`;
+  k.addEventListener('pointerdown', e => { if (e.button === 0) { e.preventDefault(); strike(i, .92); } });
+  k.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); strike(i, .92); } });
+  keysBox.appendChild(k); keyEls.push(k);
+});
+const modesBox = $('modes');
+Object.entries(MODES).forEach(([id, m]) => {
+  const b = document.createElement('button'); b.className = 'mode'; b.dataset.m = id; b.textContent = m.name;
+  b.setAttribute('aria-pressed', id === mode ? 'true' : 'false');
+  b.onclick = () => { if (!audioOn) enableSound(id); else startMode(id); };
+  modesBox.appendChild(b);
+});
+setDesc(mode, true);
+const tempo = $('tempo');
+const syncTempo = () => { bpm = +tempo.value; $('tempoV').textContent = `${bpm} %`; };
+tempo.addEventListener('input', syncTempo);
+tempo.addEventListener('change', () => { syncTempo(); if (audioOn && audioReady && mode !== 'free') startMode(mode); });
+syncTempo();
+$('tempoV').title = 'Скорость звона относительно обычной';
+
+function setStatus() {
+  $('status').textContent = !audioOn ? 'звук выключен' : !audioReady ? 'отливаем звук…' : mode === 'free' ? 'играете вы' : 'звонят';
+}
+function enableSound(m) {
+  audioOn = true; initAudio();
+  if (actx.state === 'suspended') actx.resume();
+  const sb = $('sound'); sb.classList.add('on'); sb.setAttribute('aria-pressed', 'true'); sb.setAttribute('aria-label', 'Выключить звук'); $('sndLbl').textContent = 'Звук включён';
+  visualQ.length = 0;
+  if (m && m !== mode) { mode = m; setDesc(m); }
+  startMode(mode);
+  setStatus();
+}
+function disableSound() {
+  stopFuture();
+  audioOn = false; sched = null; visualQ.length = 0; bellState.forEach(s => { s.pull = null; });
+  if (actx) actx.suspend();
+  const sb = $('sound'); sb.classList.remove('on'); sb.setAttribute('aria-pressed', 'false'); sb.setAttribute('aria-label', 'Включить звон'); $('sndLbl').textContent = 'Включить звон';
+  idleT = 1.2; setStatus();
+}
+$('sound').onclick = () => audioOn ? disableSound() : enableSound();
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= 8) strike(n - 1, e.shiftKey ? .55 : .92);
+  else if (e.code === 'Space' && !(e.target.closest && e.target.closest('button'))) { e.preventDefault(); strike(0, e.shiftKey ? .6 : .95); }
+});
+function bellAt(cx, cy) {
+  const x = cx * DPR, y = cy * DPR;
+  let best = -1, bd = 1e9;
+  bellGeo.forEach((g, i) => { const d = Math.hypot(x - g.x, y - (g.y + g.h * .55)); if (d < g.h * .72 && d < bd) { bd = d; best = i; } });
+  return best;
+}
+cv.addEventListener('pointerdown', e => { const b = bellAt(e.clientX, e.clientY); if (b >= 0) strike(b, .95); });
+cv.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') cv.classList.toggle('hov', bellAt(e.clientX, e.clientY) >= 0); });
+
+/* =========================================================================
+   Размер и цикл
+   ========================================================================= */
+function resize() {
+  DPR = Math.min(devicePixelRatio || 1, SHOT ? 1 : 2);
+  const w = Math.round(innerWidth * DPR), h = Math.round(innerHeight * DPR);
+  if (w === W && h === H) return;
+  W = cv.width = w; H = cv.height = h;
+  layout(); paintSky(); clouds = [paintClouds(1), paintClouds(0)]; paintLand();
+  bellSprites = BELLS.map((b, i) => paintBell(b.size, 300 + i * 17));
+  if (!birds.length) initBirds();
+  sizeSpec();
+}
+let rzT = 0;
+addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(resize, 120); });
+
+let last = performance.now(), idleT = 1.9, T = 0;
+const progEl = $('prog');
+let progShown = -1;
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.min(.05, (now - last) / 1000); last = now; T += dt;
+  scheduler();
+  const clk = clockNow();
+  // пока звук не включён — «беззвучный» благовест, чтобы сцена жила
+  if (!audioOn && !REDUCED) { idleT -= dt; if (idleT <= 0) { idleT = 4.6; queueVisual(0, .8, clk + .45); } }
+  processVisuals(clk);
+  ctx.drawImage(skyC, 0, 0);
+  for (const st of stars) { ctx.fillStyle = `rgba(255,246,228,${(st.a * (.75 + .25 * Math.sin(T * st.f + st.p))).toFixed(3)})`; ctx.fillRect(st.x, st.y, st.s, st.s); }
+  drawClouds(ctx, REDUCED ? 0 : T);
+  ctx.drawImage(landC, 0, 0);
+  drawRings(ctx, dt);
+  drawBells(ctx, dt, clk);
+  updateBirds(dt); drawBirds(ctx);
+  const hz = ctx.createLinearGradient(0, H * .88, 0, H);
+  hz.addColorStop(0, 'rgba(40,24,36,0)'); hz.addColorStop(1, 'rgba(34,20,30,.5)');
+  ctx.fillStyle = hz; ctx.fillRect(0, H * .88, W, H * .12);
+  drawSpec(dt);
+  const p = audioOn ? progress() : 0;
+  if (Math.abs(p - progShown) > .002) { progEl.style.transform = `scaleX(${p.toFixed(4)})`; progShown = p; }
+  if (audioOn && audioReady && $('status').textContent === 'отливаем звук…') setStatus();
+}
+resize();
+// первый кадр: от большого колокола уже расходятся кольца, язык отходит от губы
+strikeVisual(0, .8); rings[0].t = .7; bellState[0].ang *= .45;
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

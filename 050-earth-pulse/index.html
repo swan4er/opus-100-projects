@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Пульс Земли — землетрясения в реальном времени</title>
+<meta name="description" content="Живые данные USGS на 3D-глобусе: землетрясения пульсируют по магнитуде, границы плит светятся, глубины видны в режиме рентгена.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600;700&family=Martian+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #06080b;
+    --panel: rgba(10, 14, 19, .82);
+    --line: rgba(160, 185, 205, .14);
+    --text: #e8edf2;
+    --text-2: #aab6c2;
+    --text-3: #8795a3;
+    --amber: #ffb454;
+    --shallow: #ffd166;
+    --mid: #ff7b3a;
+    --deep: #e0457b;
+    --teal: #6fd3c9;
+    --sans: 'Geologica', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    --mono: 'Martian Mono', ui-monospace, Menlo, monospace;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font: 400 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  #globe { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: grab; touch-action: none; }
+  #globe:active { cursor: grabbing; }
+  .vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(75% 75% at 38% 48%, transparent 55%, rgba(0, 0, 0, .55)); }
+
+  .brand { position: fixed; top: 28px; left: 32px; z-index: 2; max-width: 440px; pointer-events: none; }
+  .kicker { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); display: flex; align-items: center; gap: 10px; }
+  .live { display: inline-flex; align-items: center; gap: 7px; color: var(--shallow); }
+  .live i { position: relative; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .live i::after { content: ''; position: absolute; inset: -1px; border-radius: 50%; border: 1.5px solid currentColor; animation: ping 1.8s var(--ease) infinite; }
+  .live.archive { color: var(--text-2); }
+  .live.archive i::after { animation: none; opacity: 0; }
+  @keyframes ping { from { transform: scale(1); opacity: .8; } to { transform: scale(2.6); opacity: 0; } }
+  h1 { margin: 12px 0 0; font: 700 56px/.96 var(--sans); letter-spacing: -.035em; }
+  .lead { margin: 12px 0 0; color: var(--text-2); font-size: 15px; max-width: 36ch; }
+
+  .panel {
+    position: fixed; top: 20px; right: 20px; bottom: 20px; width: 380px; z-index: 3; overflow-y: auto; overscroll-behavior: contain;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px 20px 18px;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); scrollbar-width: thin; scrollbar-color: rgba(160, 185, 205, .25) transparent;
+  }
+  .panel h2 { margin: 0 0 10px; font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+  .panel section + section { margin-top: 22px; }
+  .source { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+  .source b { color: var(--text); font-weight: 500; }
+  .big { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+  .big b { font: 600 38px/1 var(--sans); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .big span { color: var(--text-2); font-size: 14px; }
+
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: rgba(160, 185, 205, .07); padding: 4px; border-radius: 8px; }
+  .seg button { appearance: none; border: 0; border-radius: 5px; background: transparent; color: var(--text-2); font: 500 13px/1.2 var(--sans); padding: 9px 4px 8px; cursor: pointer; transition: background .2s var(--ease), color .2s var(--ease); }
+  .seg button small { display: block; font: 400 12px/1.2 var(--mono); color: var(--text-3); margin-top: 3px; }
+  .seg button.on { background: rgba(232, 237, 242, .1); color: var(--text); }
+  .seg button:hover:not(.on) { color: var(--text); }
+  button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  .toggles { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .tg { appearance: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--text-2); font: 500 13px/1 var(--sans); cursor: pointer; transition: border-color .2s var(--ease), color .2s var(--ease), background .2s var(--ease); }
+  .tg i { width: 26px; height: 16px; border-radius: 10px; background: rgba(160, 185, 205, .2); position: relative; transition: background .2s var(--ease); }
+  .tg i::after { content: ''; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-2); transition: transform .2s var(--ease), background .2s var(--ease); }
+  .tg[aria-pressed="true"] { color: var(--text); border-color: rgba(232, 237, 242, .3); }
+  .tg[aria-pressed="true"] i { background: rgba(111, 211, 201, .45); }
+  .tg[aria-pressed="true"] i::after { transform: translateX(10px); background: #fff; }
+
+  .legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font: 400 12px/1.35 var(--sans); color: var(--text-2); }
+  .legend div { display: flex; gap: 8px; align-items: flex-start; }
+  .legend .d { width: 10px; height: 10px; border-radius: 50%; margin-top: 3px; flex: none; }
+  .sizes { display: flex; align-items: flex-end; gap: 14px; margin-top: 12px; font: 400 12px/1 var(--mono); color: var(--text-3); }
+  .sizes span { display: grid; justify-items: center; gap: 6px; }
+  .sizes i { border-radius: 50%; border: 1.5px solid var(--text-2); display: block; }
+
+  #gr { width: 100%; height: 150px; display: block; }
+  .grnote { font-size: 13px; color: var(--text-2); margin-top: 6px; line-height: 1.45; }
+  .grnote b { color: var(--text); font: 500 13px/1 var(--mono); }
+
+  .top { list-style: none; margin: 0; padding: 0; }
+  .top li button { width: 100%; appearance: none; border: 0; background: transparent; color: inherit; text-align: left; display: grid; grid-template-columns: 50px 1fr auto; gap: 10px; align-items: center; padding: 9px 6px; border-radius: 6px; cursor: pointer; transition: background .2s var(--ease); }
+  .top li button:hover { background: rgba(232, 237, 242, .06); }
+  .top li + li { border-top: 1px solid var(--line); }
+  .mag { font: 500 15px/1 var(--mono); padding: 6px 0; border-radius: 4px; text-align: center; color: #0a0d11; }
+  .place { font-size: 13px; line-height: 1.3; color: var(--text); }
+  .when { font: 400 12px/1.2 var(--mono); color: var(--text-3); white-space: nowrap; }
+
+  .timeline { position: fixed; left: 32px; right: 424px; bottom: 26px; z-index: 2; display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: end; }
+  .play { appearance: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(232, 237, 242, .3); background: rgba(10, 14, 19, .7); color: var(--text); display: grid; place-items: center; cursor: pointer; transition: background .2s var(--ease); }
+  .play:hover { background: rgba(232, 237, 242, .1); }
+  .play svg { width: 16px; height: 16px; }
+  .tl-wrap { min-width: 0; }
+  .tl-head { display: flex; justify-content: space-between; font: 400 12px/1 var(--mono); color: var(--text-3); margin-bottom: 6px; }
+  #tl { width: 100%; height: 54px; display: block; cursor: pointer; }
+
+  .card { position: fixed; left: 32px; top: 50%; transform: translateY(-50%) translateX(-12px); z-index: 4; width: 300px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; opacity: 0; pointer-events: none; transition: opacity .3s var(--ease), transform .3s var(--ease); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  .card.show { opacity: 1; pointer-events: auto; transform: translateY(-50%); }
+  .card .m { font: 600 44px/1 var(--sans); letter-spacing: -.02em; }
+  .card .p { margin-top: 6px; font-size: 15px; line-height: 1.35; }
+  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 12px 0 10px; font-size: 13px; }
+  .card dt { color: var(--text-3); }
+  .card dd { margin: 0; font: 400 13px/1.4 var(--mono); }
+  .card a { color: var(--teal); font-size: 13px; text-underline-offset: 3px; }
+  .card .x { position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: transparent; color: var(--text-2); cursor: pointer; font-size: 20px; line-height: 1; }
+  .card .x:hover { color: var(--text); background: rgba(232, 237, 242, .08); }
+
+  .offline { display: none; position: fixed; inset: 0; z-index: 10; place-items: center; text-align: center; padding: 24px; background: var(--bg); }
+  .offline h2 { font: 700 40px/1.05 var(--sans); letter-spacing: -.03em; margin: 0 0 10px; }
+  .offline p { color: var(--text-2); max-width: 44ch; margin: 0 auto; }
+  body.no-cdn .offline { display: grid; }
+  .hint { position: fixed; left: 50%; top: 22px; transform: translateX(-50%); z-index: 2; font: 400 12px/1 var(--mono); color: var(--text-3); pointer-events: none; }
+
+  @media (max-width: 900px) {
+    .brand { top: 16px; left: 16px; right: 16px; }
+    h1 { font-size: 38px; }
+    .lead { display: none; }
+    .hint { display: none; }
+    .panel { top: auto; left: 10px; right: 10px; bottom: 10px; width: auto; height: 40vh; padding: 16px; }
+    .timeline { left: 16px; right: 16px; bottom: calc(40vh + 22px); grid-template-columns: auto 1fr; }
+    .card { left: 10px; right: 10px; width: auto; top: auto; bottom: calc(40vh + 22px); transform: translateY(12px); }
+    .card.show { transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .live i::after { animation: none; } * { transition-duration: .01s !important; } }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+    "topojson-client": "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm"
+  }
+}
+</script>
+</head>
+<body>
+  <canvas id="globe" aria-label="Глобус с землетрясениями: тяните, чтобы вращать, колесо — приблизить"></canvas>
+  <div class="vignette"></div>
+
+  <header class="brand">
+    <div class="kicker"><span class="live" id="live"><i></i><span id="liveText">загрузка</span></span><span>Опыт № 050</span></div>
+    <h1>Пульс Земли</h1>
+    <p class="lead">Каждая вспышка — настоящее землетрясение из ленты Геологической службы США. Размер — магнитуда, цвет — глубина очага.</p>
+  </header>
+  <div class="hint">тяните — вращать · колесо — приблизить · щелчок по вспышке — подробности</div>
+
+  <div class="timeline">
+    <button class="play" id="play" type="button" aria-label="Проиграть хронику">
+      <svg viewBox="0 0 16 16" fill="currentColor" id="icoPlay"><path d="M4 2.5l9.5 5.5L4 13.5z"/></svg>
+      <svg viewBox="0 0 16 16" fill="currentColor" id="icoStop" style="display:none"><rect x="3.5" y="3.5" width="9" height="9" rx="1"/></svg>
+    </button>
+    <div class="tl-wrap">
+      <div class="tl-head"><span id="tlStart"></span><span id="tlNow">хроника за период</span><span id="tlEnd"></span></div>
+      <canvas id="tl" aria-label="Число толчков по времени"></canvas>
+    </div>
+  </div>
+
+  <aside class="panel" aria-label="Данные">
+    <section>
+      <div class="big"><b id="count">—</b><span id="countLabel">толчков</span></div>
+      <div class="source" id="source">Загружаем ленту USGS…</div>
+    </section>
+    <section>
+      <h2>Период и порог</h2>
+      <div class="seg" role="group" aria-label="Лента данных">
+        <button type="button" data-feed="day">Сутки<small>M1+</small></button>
+        <button type="button" data-feed="week" class="on">Неделя<small>M2,5+</small></button>
+        <button type="button" data-feed="month">Месяц<small>M4,5+</small></button>
+      </div>
+      <div class="toggles">
+        <button class="tg" id="tgXray" type="button" aria-pressed="false"><i></i>Рентген глубин</button>
+        <button class="tg" id="tgRotate" type="button" aria-pressed="true"><i></i>Вращение</button>
+      </div>
+    </section>
+    <section>
+      <h2>Глубина очага</h2>
+      <div class="legend">
+        <div><span class="d" style="background: var(--shallow)"></span>мелкие<br>0–70 км</div>
+        <div><span class="d" style="background: var(--mid)"></span>средние<br>70–300 км</div>
+        <div><span class="d" style="background: var(--deep)"></span>глубокие<br>300–700 км</div>
+      </div>
+      <div class="sizes" aria-hidden="true">
+        <span><i style="width:6px;height:6px"></i>M3</span>
+        <span><i style="width:11px;height:11px"></i>M5</span>
+        <span><i style="width:19px;height:19px"></i>M7</span>
+      </div>
+    </section>
+    <section>
+      <h2>Закон Гутенберга — Рихтера</h2>
+      <canvas id="gr" aria-label="Число толчков не слабее магнитуды M"></canvas>
+      <p class="grnote" id="grNote"></p>
+    </section>
+    <section>
+      <h2>Самые сильные</h2>
+      <ul class="top" id="top"></ul>
+    </section>
+  </aside>
+
+  <div class="card" id="card" role="dialog" aria-live="polite">
+    <button class="x" id="cardClose" type="button" aria-label="Закрыть">×</button>
+    <div class="m" id="cM"></div>
+    <div class="p" id="cP"></div>
+    <dl>
+      <dt>Когда</dt><dd id="cT"></dd>
+      <dt>Глубина</dt><dd id="cD"></dd>
+      <dt>Координаты</dt><dd id="cC"></dd>
+    </dl>
+    <a id="cL" href="#" target="_blank" rel="noopener">Страница события на сайте USGS ↗</a>
+  </div>
+
+  <div class="offline">
+    <div>
+      <h2>Нужен интернет</h2>
+      <p>Глобус рисуется библиотекой three.js, а землетрясения приходят из ленты USGS. Подключитесь к сети и обновите страницу.</p>
+    </div>
+  </div>
+
+  <script>
+    // если модули с CDN не загрузились за 12 секунд — показываем понятное сообщение
+    setTimeout(function () { if (!window.__EP_BOOTED) document.body.classList.add('no-cdn'); }, 12000);
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>

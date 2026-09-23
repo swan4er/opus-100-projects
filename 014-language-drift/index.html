@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Дрейф языков</title>
+<meta name="description" content="Праязык расселяется по карте, а в сёлах копятся звуковые изменения: через века появляются диалекты, родословное древо и сравнительная таблица слов.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=PT+Sans:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --parch:#F1E6CC;
+  --parch2:#E6D6B2;
+  --ink:#2A1E14;
+  --sepia:#6A4C2C;
+  --red:#A33222;
+  --blue:#2F5A78;
+  --line:rgba(42,30,20,.22);
+  --serif:'Old Standard TT','Georgia',serif;
+  --sans:'PT Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#D9C9A4;color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+.app{display:grid;grid-template-columns:minmax(0,1fr) minmax(420px,520px);min-height:100vh}
+.mapwrap{position:relative;min-height:100vh;background:#CDBB93;display:grid;place-items:center;padding:22px}
+/* карта и подпись под ней — как таблица в атласе */
+.plate{width:min(100%,calc((100vh - 136px) * 1.3158));display:grid;gap:14px}
+#map{display:block;width:100%;height:auto;box-shadow:0 18px 40px rgba(60,40,15,.35),0 2px 6px rgba(60,40,15,.3);cursor:default;touch-action:manipulation}
+.mapfoot{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 28px;align-items:start}
+.legend{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;font:400 14px/1.35 var(--sans);color:var(--ink);min-height:40px}
+.legend .lh{font:italic 400 15px/1.35 var(--serif);color:var(--sepia)}
+.legend span{white-space:nowrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:0;border:1px solid rgba(42,30,20,.55)}
+.legend em{font:italic 400 16px/1 var(--serif)}
+.legend small{font-size:13px;color:var(--sepia)}
+.legend .iso{display:inline-block;width:22px;height:0;border-top:2px dashed var(--red);margin-right:7px;vertical-align:4px}
+.maphint{margin:0;font:italic 400 14px/1.35 var(--serif);color:var(--sepia);max-width:330px;text-align:right}
+.card{position:absolute;min-width:250px;max-width:320px;background:var(--parch);border:1px solid var(--ink);padding:14px 16px 12px;box-shadow:0 10px 26px rgba(60,40,15,.3);font:400 14px/1.4 var(--sans);display:none}
+.card.show{display:block}
+.card h2{margin:0 0 2px;font:700 20px/1.1 var(--serif)}
+.card .ety{font:italic 400 14px/1.3 var(--serif);color:var(--sepia);margin-bottom:8px}
+.card ul{list-style:none;margin:8px 0 0;padding:0;font:400 13px/1.45 var(--sans);max-height:190px;overflow:auto;display:grid;gap:3px}
+.card li{display:grid;grid-template-columns:52px 1fr;gap:6px}
+.card li span{color:var(--red);font:400 13px/1.45 var(--serif)}
+.card .x{position:absolute;right:6px;top:6px;width:32px;height:32px;border:0;background:none;font:400 20px/1 var(--serif);cursor:pointer;color:var(--ink)}
+
+.panel{background:var(--parch);border-left:1px solid var(--ink);padding:30px 30px 26px;display:flex;flex-direction:column;gap:18px;min-width:0;position:relative}
+.panel::before{content:"";position:absolute;inset:8px;border:1px solid var(--line);pointer-events:none}
+.kicker{font:700 12px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--sepia)}
+h1{margin:6px 0 0;font:700 44px/1 var(--serif);letter-spacing:-.005em}
+.lead{margin:0;font:400 16px/1.45 var(--sans);color:var(--ink);max-width:30em}
+
+.timebar{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;align-items:center;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:14px 0}
+.year{font:400 46px/1 var(--serif);font-variant-numeric:lining-nums tabular-nums;min-width:4.4ch}
+.year small{display:block;font:700 12px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--sepia);margin-bottom:6px}
+.tctl{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.btn{appearance:none;border:1px solid var(--ink);background:transparent;color:var(--ink);font:700 13px/1 var(--sans);height:40px;padding:0 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:background .15s,color .15s}
+.btn:hover{background:var(--ink);color:var(--parch)}
+.btn:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.btn.on{background:var(--ink);color:var(--parch)}
+.btn svg{width:14px;height:14px;fill:currentColor}
+.seg{display:inline-flex;border:1px solid var(--ink)}
+.seg button{appearance:none;border:0;border-right:1px solid var(--ink);background:none;font:700 13px/1 var(--sans);height:38px;padding:0 11px;cursor:pointer;color:var(--ink)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink);color:var(--parch)}
+.seg button:focus-visible{outline:2px solid var(--red);outline-offset:-3px}
+
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--ink)}
+.tab{appearance:none;background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;font:700 14px/1 var(--sans);padding:10px 14px 11px;cursor:pointer;color:var(--sepia)}
+.tab.on{color:var(--ink);border-bottom-color:var(--red)}
+.tab:focus-visible{outline:2px solid var(--red);outline-offset:-2px}
+.pane{display:none;min-height:0}
+.pane.on{display:block}
+.tablewrap{overflow-x:auto;max-height:calc(100vh - 470px);min-height:240px;overflow-y:auto}
+table{border-collapse:collapse;width:100%;font:400 14px/1.2 var(--sans)}
+th{position:sticky;top:0;background:var(--parch);text-align:left;font:700 12.5px/1.2 var(--sans);padding:8px 6px 7px;border-bottom:1px solid var(--ink);white-space:nowrap;z-index:1}
+th i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+td{padding:6px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.gl{font:700 13px/1 var(--sans);color:var(--sepia);position:sticky;left:0;background:var(--parch)}
+th:first-child{left:0;z-index:2}
+td.f{font:italic 400 16px/1 var(--serif)}
+td.f b{font-weight:400;color:var(--red)}
+tr{cursor:pointer}
+tr:hover td{background:rgba(163,50,34,.06)}
+tr.sel td{background:rgba(163,50,34,.12)}
+.tree svg{width:100%;height:auto;display:block}
+.chron{list-style:none;margin:0;padding:0;display:grid;gap:10px;max-height:calc(100vh - 470px);overflow:auto;min-height:240px}
+.chron li{font:400 14px/1.4 var(--sans);display:grid;grid-template-columns:62px 1fr;gap:10px}
+.chron time{font:400 16px/1.2 var(--serif);color:var(--red)}
+.chron em{font:italic 400 15px/1 var(--serif)}
+details.params{border-top:1px solid var(--ink);padding-top:12px;margin-top:auto}
+details.params summary{font:700 13px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;color:var(--sepia);list-style:none;padding:6px 0}
+details.params summary::-webkit-details-marker{display:none}
+details.params summary::before{content:"+ ";}
+details.params[open] summary::before{content:"− ";}
+.sl{display:grid;grid-template-columns:120px 1fr 44px;gap:10px;align-items:center;margin-top:10px;font:400 14px/1.2 var(--sans)}
+.sl output{font:400 13px/1 var(--sans);color:var(--sepia);text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:1px;background:var(--ink)}
+input[type=range]::-moz-range-track{height:1px;background:var(--ink)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-7px;border-radius:50%;background:var(--parch);border:1.5px solid var(--ink)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--parch);border:1.5px solid var(--ink)}
+input[type=range]:focus-visible::-webkit-slider-thumb{outline:2px solid var(--red);outline-offset:2px}
+.wordmode{font:400 14px/1.35 var(--sans);color:var(--ink);display:flex;justify-content:space-between;gap:12px;align-items:center;min-height:24px}
+.wordmode b{font:italic 400 17px/1 var(--serif);color:var(--red)}
+.linkbtn{appearance:none;background:none;border:0;padding:4px 0;font:700 13px/1 var(--sans);text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:var(--ink)}
+.linkbtn:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+
+@media (max-width:1100px){
+  .app{grid-template-columns:1fr}
+  .mapwrap{min-height:0;padding:10px}
+  #map{max-height:none;width:100%}
+  .mapwrap{display:block}
+  .plate{width:100%;gap:10px}
+  .mapfoot{grid-template-columns:1fr;padding:0 2px}
+  .maphint{text-align:left;max-width:none;font-size:13.5px}
+  .legend{min-height:0;font-size:13.5px}
+  .panel{border-left:0;border-top:1px solid var(--ink);padding:22px 18px}
+  h1{font-size:36px}
+  .year{font-size:38px}
+  .tablewrap,.chron{max-height:none}
+  .sl{grid-template-columns:100px 1fr 40px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="mapwrap">
+    <figure class="plate" style="margin:0">
+      <canvas id="map" width="1000" height="760" aria-label="Карта: сёла, горы, реки и диалектные области"></canvas>
+      <figcaption class="mapfoot">
+        <div class="legend" id="legend" aria-live="polite"></div>
+        <p class="maphint" id="maphint">Клик по&nbsp;селу&nbsp;— его звуковая биография. Клик по&nbsp;строке таблицы&nbsp;— как это слово звучит по&nbsp;всей карте.</p>
+      </figcaption>
+    </figure>
+    <div class="card" id="card" role="dialog" aria-label="Село"><button class="x" id="cardX" aria-label="Закрыть">×</button><div id="cardBody"></div></div>
+  </div>
+
+  <aside class="panel">
+    <div>
+      <div class="kicker">014 · слово, язык, история</div>
+      <h1>Дрейф языков</h1>
+    </div>
+    <p class="lead">Праязык расселяется по&nbsp;карте. В&nbsp;каждом селе копятся звуковые изменения и&nbsp;расходятся к&nbsp;соседям — горы, реки и&nbsp;море мешают общению, и&nbsp;язык распадается на&nbsp;говоры.</p>
+
+    <div class="timebar">
+      <div class="year"><small>год от начала</small><span id="year">0</span></div>
+      <div class="tctl">
+        <button class="btn" id="playBtn" aria-label="Пауза"><svg viewBox="0 0 14 14" id="playIco"><path d="M3 2h3v10H3zM8 2h3v10H8z"/></svg><span id="playLbl">Пауза</span></button>
+        <div class="seg" role="group" aria-label="Скорость">
+          <button data-s="1" class="on">×1</button><button data-s="4">×4</button><button data-s="12">×12</button>
+        </div>
+        <button class="btn" id="restartBtn">Сначала</button>
+        <button class="btn" id="newBtn">Новый мир</button>
+      </div>
+    </div>
+
+    <div class="wordmode" id="wordmode"><span>На карте — названия сёл.</span></div>
+
+    <div>
+      <div class="tabs" role="tablist">
+        <button class="tab on" data-t="words" role="tab" aria-selected="true">Слова</button>
+        <button class="tab" data-t="tree" role="tab" aria-selected="false">Древо</button>
+        <button class="tab" data-t="chron" role="tab" aria-selected="false">Летопись</button>
+      </div>
+      <div class="pane on" id="p-words"><div class="tablewrap"><table id="tbl"></table></div></div>
+      <div class="pane tree" id="p-tree"></div>
+      <div class="pane" id="p-chron"><ol class="chron" id="chron"></ol></div>
+    </div>
+
+    <details class="params">
+      <summary>Параметры мира</summary>
+      <div class="sl"><label for="sInn">Новшества</label><input id="sInn" type="range" min="0.2" max="3" step="0.1" value="1"><output id="oInn">×1,0</output></div>
+      <div class="sl"><label for="sCon">Общение</label><input id="sCon" type="range" min="0" max="2" step="0.1" value="1"><output id="oCon">×1,0</output></div>
+      <div class="sl"><label for="sMnt">Горы мешают</label><input id="sMnt" type="range" min="0" max="1" step="0.05" value="0.9"><output id="oMnt">90%</output></div>
+    </details>
+  </aside>
+</div>
+
+<script>
+'use strict';
+(function () {
+/* ============================================================
+   1. Фонология праязыка и звуковые законы.
+      Слово — массив фонем (кириллицей) и индекс ударной гласной.
+   ============================================================ */
+const VOW = new Set(['а', 'о', 'у', 'е', 'и', 'ы']);
+const FRONT = new Set(['е', 'и']);
+const VOICED = { п: 'б', т: 'д', к: 'г', с: 'з', ф: 'в', ш: 'ж', ц: 'дз', х: 'г' };
+const DEVOICE = { б: 'п', д: 'т', г: 'к', з: 'с', в: 'ф', ж: 'ш', дз: 'ц' };
+const OBSTR = new Set(['п', 'б', 'т', 'д', 'к', 'г', 'с', 'з', 'ф', 'в', 'ш', 'ж', 'х', 'ц', 'ч', 'дз']);
+const isV = c => VOW.has(c), isC = c => c != null && !VOW.has(c);
+
+function parse(str) { // «ве́дор» → {t:[в,е,д,о,р], s:1}
+  const t = []; let s = -1;
+  for (const ch of str.normalize('NFD')) { if (ch === '́') s = t.length - 1; else t.push(ch.normalize('NFC')); }
+  if (s < 0) s = t.findIndex(isV);
+  return { t, s };
+}
+const show = w => w.t.join('');
+const clone = w => ({ t: w.t.slice(), s: w.s });
+function del(w, i) { w.t.splice(i, 1); if (w.s > i) w.s--; else if (w.s === i) w.s = -1; }
+function ins(w, i, c) { w.t.splice(i, 0, c); if (w.s >= i) w.s++; }
+const vowelsLeft = w => w.t.filter(isV).length;
+
+// каталог законов: каждый применяется регулярно — ко всем словам села сразу
+const RULES = [
+  { id: 'devoice', name: 'оглушение на конце слова', ex: 'звонкий на конце становится глухим', w: 1.2,
+    ap(w) { const i = w.t.length - 1; if (DEVOICE[w.t[i]]) w.t[i] = DEVOICE[w.t[i]]; } },
+  { id: 'palat', name: 'палатализация', ex: 'к, г, х перед е и и превращаются в ч, ж, ш', w: 1.1,
+    ap(w) { for (let i = 0; i < w.t.length - 1; i++) if (FRONT.has(w.t[i + 1])) { const m = { к: 'ч', г: 'ж', х: 'ш' }[w.t[i]]; if (m) w.t[i] = m; } } },
+  { id: 'lenit', name: 'озвончение между гласными', ex: 'п, т, к, с между гласными звучат звонко', w: 1,
+    ap(w) { for (let i = 1; i < w.t.length - 1; i++) if (isV(w.t[i - 1]) && isV(w.t[i + 1]) && ['п', 'т', 'к', 'с'].includes(w.t[i])) w.t[i] = VOICED[w.t[i]]; } },
+  { id: 'spir', name: 'спирантизация', ex: 'б и г между гласными ослабевают до в и х', w: 0.8,
+    ap(w) { for (let i = 1; i < w.t.length - 1; i++) if (isV(w.t[i - 1]) && isV(w.t[i + 1])) { if (w.t[i] === 'б') w.t[i] = 'в'; else if (w.t[i] === 'г') w.t[i] = 'х'; } } },
+  { id: 'akan', name: 'аканье', ex: 'безударное о звучит как а', w: 1.2,
+    ap(w) { w.t.forEach((c, i) => { if (c === 'о' && i !== w.s) w.t[i] = 'а'; }); } },
+  { id: 'ikan', name: 'иканье', ex: 'безударное е звучит как и', w: 0.9,
+    ap(w) { w.t.forEach((c, i) => { if (c === 'е' && i !== w.s) w.t[i] = 'и'; }); } },
+  { id: 'raiseE', name: 'сужение ударного е', ex: 'ударное е переходит в и', w: 0.6,
+    ap(w) { if (w.t[w.s] === 'е') w.t[w.s] = 'и'; } },
+  { id: 'raiseO', name: 'сужение ударного о', ex: 'ударное о переходит в у', w: 0.6,
+    ap(w) { if (w.t[w.s] === 'о') w.t[w.s] = 'у'; } },
+  { id: 'apoc', name: 'отпадение конечного гласного', ex: 'безударный гласный на конце исчезает', w: 1,
+    ap(w) { const n = w.t.length - 1; if (n >= 3 && isV(w.t[n]) && n !== w.s && isC(w.t[n - 1]) && isV(w.t[n - 2]) && vowelsLeft(w) >= 2) del(w, n); } },
+  { id: 'sync', name: 'выпадение безударного', ex: 'безударный гласный между согласными выпадает', w: 0.7,
+    ap(w) { for (let i = w.t.length - 2; i >= 1; i--) if (isV(w.t[i]) && i !== w.s && isC(w.t[i - 1]) && isC(w.t[i + 1]) && !isC(w.t[i - 2]) && !isC(w.t[i + 2]) && vowelsLeft(w) >= 2) { del(w, i); break; } } },
+  { id: 'metath', name: 'перестановка плавных', ex: 'ол и ор между согласными становятся ло и ро', w: 0.7,
+    ap(w) { for (let i = 1; i < w.t.length - 2; i++) if (isC(w.t[i - 1]) && (w.t[i] === 'о' || w.t[i] === 'е') && (w.t[i + 1] === 'л' || w.t[i + 1] === 'р') && isC(w.t[i + 2])) { const v = w.t[i]; const st = w.s === i; w.t[i] = w.t[i + 1]; w.t[i + 1] = v; if (st) w.s = i + 1; } } },
+  { id: 'pleo', name: 'полногласие', ex: 'между согласными ол, ор, ер распеваются в оло, оро, ере', w: 0.7,
+    ap(w) { for (let i = 1; i < w.t.length - 2; i++) if (isC(w.t[i - 1]) && (w.t[i] === 'о' || w.t[i] === 'е') && (w.t[i + 1] === 'л' || w.t[i + 1] === 'р') && isC(w.t[i + 2])) { ins(w, i + 2, w.t[i]); i += 2; } } },
+  { id: 'clust', name: 'упрощение групп', ex: 'кт → т (перед е, и — ч), тл и дл → л', w: 0.8,
+    ap(w) { for (let i = 0; i < w.t.length - 1; i++) { const a = w.t[i], b = w.t[i + 1];
+      if (a === 'к' && b === 'т') { if (FRONT.has(w.t[i + 2])) { w.t[i + 1] = 'ч'; } del(w, i); }
+      else if ((a === 'т' || a === 'д') && b === 'л') del(w, i); } } },
+  { id: 'rhot', name: 'ротацизм', ex: 'з между гласными превращается в р', w: 0.6,
+    ap(w) { for (let i = 1; i < w.t.length - 1; i++) if (w.t[i] === 'з' && isV(w.t[i - 1]) && isV(w.t[i + 1])) w.t[i] = 'р'; } },
+  { id: 'hdrop', name: 'потеря начального х', ex: 'начальное х исчезает', w: 0.6,
+    ap(w) { if (w.t[0] === 'х' && w.t.length > 2 && isV(w.t[1])) del(w, 0); } },
+  { id: 'proth', name: 'протеза', ex: 'перед начальным о и у появляется в', w: 0.7,
+    ap(w) { if (w.t[0] === 'о' || w.t[0] === 'у') ins(w, 0, 'в'); } },
+  { id: 'assim', name: 'уподобление по звонкости', ex: 'шумный согласный перенимает звонкость следующего', w: 0.8,
+    ap(w) { for (let i = w.t.length - 2; i >= 0; i--) { const a = w.t[i], b = w.t[i + 1]; if (!OBSTR.has(a) || !OBSTR.has(b) || b === 'в') continue;
+      const bVoiced = !!DEVOICE[b]; if (bVoiced && VOICED[a]) w.t[i] = VOICED[a]; else if (!bVoiced && DEVOICE[a]) w.t[i] = DEVOICE[a]; } } },
+  { id: 'assib', name: 'цеканье и дзеканье', ex: 'т и д перед и произносятся как ц и дз', w: 0.7,
+    ap(w) { for (let i = 0; i < w.t.length - 1; i++) if (w.t[i + 1] === 'и') { if (w.t[i] === 'т') w.t[i] = 'ц'; else if (w.t[i] === 'д') w.t[i] = 'дз'; } } },
+  { id: 'nloss', name: 'утрата носового', ex: 'н перед согласным исчезает', w: 0.5,
+    ap(w) { for (let i = w.t.length - 2; i >= 1; i--) if (w.t[i] === 'н' && isC(w.t[i + 1]) && isV(w.t[i - 1])) del(w, i); } },
+  { id: 'lvoc', name: 'л в у неслоговое', ex: 'л в конце слога превращается в ў', w: 0.6,
+    ap(w) { for (let i = 1; i < w.t.length; i++) if (w.t[i] === 'л' && isV(w.t[i - 1]) && (i === w.t.length - 1 || isC(w.t[i + 1]))) w.t[i] = 'ў'; } },
+  { id: 'jfort', name: 'усиление й', ex: 'начальное й превращается в ж', w: 0.5,
+    ap(w) { if (w.t[0] === 'й') w.t[0] = 'ж'; } }
+];
+const RULE = Object.fromEntries(RULES.map(r => [r.id, r]));
+const RULE_W = RULES.reduce((a, r) => a + r.w, 0);
+
+const LEX = [
+  ['вода', 'ве́дор'], ['огонь', 'огни́'], ['земля', 'зе́мла'], ['рука', 'ра́ки'], ['глаз', 'ке́лод'],
+  ['сердце', 'са́рдо'], ['солнце', 'су́лен'], ['луна', 'ме́нас'], ['звезда', 'гви́зда'], ['дерево', 'до́лбо'],
+  ['камень', 'ка́мен'], ['ночь', 'но́кти'], ['день', 'ди́на'], ['мать', 'ма́тер'], ['отец', 'а́та'],
+  ['рыба', 'хи́ба'], ['птица', 'пе́то'], ['собака', 'ку́ван'], ['дом', 'до́ма'], ['ветер', 'йа́вар']
+];
+const PROTO = LEX.map(([g, f]) => parse(f));
+
+/* ============================================================
+   2. Мир: рельеф, реки, море (детерминированно по зерну)
+   ============================================================ */
+const MW = 1000, MH = 760, SEA = 0.4, MOUNT = 0.7;
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hash2(x, y, s) { let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 2246822519); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+function vnoise(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi, s), b = hash2(xi + 1, yi, s), c = hash2(xi, yi + 1, s), d = hash2(xi + 1, yi + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, y, s) { let f = 0, a = 0.5, fr = 1; for (let o = 0; o < 5; o++) { f += a * vnoise(x * fr, y * fr, s + o * 17); a *= 0.5; fr *= 2.03; } return f; }
+
+const GW = 250, GH = 190; // сетка высот (шаг 4 единицы карты)
+let seed = 7, world = null;
+function buildWorld(sd) {
+  const rnd = mulberry32(sd * 9973 + 1);
+  const H = new Float32Array(GW * GH);
+  const cx = 0.5 + (rnd() - 0.5) * 0.1, cy = 0.5 + (rnd() - 0.5) * 0.1;
+  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
+    const x = i / GW, y = j / GH;
+    let h = fbm(x * 4.2, y * 4.2 * 0.76, sd);
+    const ridge = 1 - Math.abs(fbm(x * 3 + 7, y * 3 + 3, sd + 5) * 2 - 1);
+    h = h * 0.75 + ridge * 0.32;
+    const dx = (x - cx) * 1.15, dy = (y - cy) * 1.3, d = Math.sqrt(dx * dx + dy * dy);
+    h = h * 1.25 - d * d * 1.5 - 0.02 + (fbm(x * 9, y * 9, sd + 11) - 0.5) * 0.12;
+    H[j * GW + i] = h;
+  }
+  // нормируем, чтобы суша занимала ~55 %
+  const sorted = Float32Array.from(H).sort();
+  const lo = sorted[Math.floor(sorted.length * 0.45)], hi = sorted[sorted.length - 1];
+  for (let k = 0; k < H.length; k++) H[k] = SEA + (H[k] - lo) / (hi - lo) * (1 - SEA) * (H[k] >= lo ? 1 : 1.6);
+  const h = (x, y) => { // билинейно в координатах карты
+    const gx = Math.min(GW - 1.001, Math.max(0, x / 4)), gy = Math.min(GH - 1.001, Math.max(0, y / 4));
+    const i = Math.floor(gx), j = Math.floor(gy), fx = gx - i, fy = gy - j;
+    const a = H[j * GW + i], b = H[j * GW + i + 1], c = H[(j + 1) * GW + i], d = H[(j + 1) * GW + i + 1];
+    return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+  };
+  // реки: от горных истоков вниз по склону
+  const rivers = [];
+  for (let n = 0, tries = 0; n < 8 && tries < 400; tries++) {
+    const x = 40 + rnd() * (MW - 80), y = 40 + rnd() * (MH - 80), h0 = h(x, y);
+    if (h0 < 0.62 || h0 > 0.8) continue;
+    const pts = [[x, y]]; let px = x, py = y, ok = false, ang = rnd() * 6.28;
+    for (let s = 0; s < 500; s++) {
+      const e = 3, gx = (h(px + e, py) - h(px - e, py)), gy = (h(px, py + e) - h(px, py - e));
+      const ga = Math.atan2(-gy, -gx);
+      ang = ang + Math.atan2(Math.sin(ga - ang), Math.cos(ga - ang)) * 0.35 + (rnd() - 0.5) * 0.5;
+      px += Math.cos(ang) * 4; py += Math.sin(ang) * 4;
+      if (px < 5 || py < 5 || px > MW - 5 || py > MH - 5) break;
+      pts.push([px, py]);
+      if (h(px, py) < SEA) { ok = true; break; }
+    }
+    if (ok && pts.length > 25) { rivers.push(pts); n++; }
+  }
+  return { H, h, rivers, rnd };
+}
+
+/* ============================================================
+   3. Сёла, контакты, распространение новшеств
+   ============================================================ */
+let villages = [], edges = [], events = [], chronicle = [], year = 0, stepN = 0, ruleCount = {};
+let params = { inn: 1, con: 1, mnt: 0.9 };
+let rng = mulberry32(1);
+const NAME_SYL = ['ка', 'ке', 'ки', 'ко', 'ку', 'га', 'ге', 'ги', 'го', 'та', 'те', 'ти', 'то', 'да', 'де', 'ди', 'до', 'па', 'пе', 'по', 'ба', 'бе', 'бо', 'ма', 'ме', 'ми', 'на', 'не', 'ни', 'но', 'ла', 'ле', 'ли', 'ло', 'ра', 'ре', 'ри', 'ро', 'са', 'се', 'си', 'со', 'за', 'зе', 'зо', 'ва', 'ве', 'ви', 'во', 'ха', 'хи', 'йа'];
+const NAME_FIN = ['н', 'р', 'д', 'г', 'с', 'л', 'к', 'т', 'м', '', '', ''];
+function protoName() {
+  const n = 2 + (rng() < 0.35 ? 1 : 0);
+  let str = ''; for (let i = 0; i < n; i++) str += NAME_SYL[Math.floor(rng() * NAME_SYL.length)];
+  str += NAME_FIN[Math.floor(rng() * NAME_FIN.length)];
+  const w = parse(str); const vs = w.t.map((c, i) => isV(c) ? i : -1).filter(i => i >= 0);
+  w.s = vs[Math.floor(rng() * vs.length)];
+  return w;
+}
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+function withStress(w) { return w.t.map((c, i) => i === w.s ? c + '́' : c).join(''); }
+
+function segCross(a, b, c, d) {
+  const d1 = (d[0] - c[0]) * (a[1] - c[1]) - (d[1] - c[1]) * (a[0] - c[0]);
+  const d2 = (d[0] - c[0]) * (b[1] - c[1]) - (d[1] - c[1]) * (b[0] - c[0]);
+  const d3 = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  const d4 = (b[0] - a[0]) * (d[1] - a[1]) - (b[1] - a[1]) * (d[0] - a[0]);
+  return (d1 > 0) !== (d2 > 0) && (d3 > 0) !== (d4 > 0);
+}
+function barrier(a, b) { // {sea, mount, river} вдоль отрезка
+  let sea = 0, mount = 0;
+  for (let k = 1; k < 12; k++) { const t = k / 12, hh = world.h(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t); if (hh < SEA) sea++; if (hh > MOUNT) mount++; }
+  let river = 0;
+  for (const r of world.rivers) for (let i = 1; i < r.length; i += 1) if (segCross([a.x, a.y], [b.x, b.y], r[i - 1], r[i])) { river++; break; }
+  return { sea, mount, river };
+}
+const brCache = new Map(); // препятствия между парами сёл считаем один раз
+function edgeFor(i, j) {
+  const a = villages[i], b = villages[j], d = Math.hypot(a.x - b.x, a.y - b.y);
+  if (d > 115) return null;
+  const key = i * 4096 + j;
+  let br = brCache.get(key); if (!br) { br = barrier(a, b); brCache.set(key, br); }
+  let w = Math.exp(-d / 55);
+  if (br.sea) w *= d < 60 ? 0.3 : 0;
+  if (br.mount) w *= 1 - params.mnt * 0.94;
+  if (br.river) w *= 0.6;
+  return w > 0.01 ? { a: i, b: j, w, br } : null;
+}
+function rebuildEdges() {
+  edges = [];
+  for (let i = 0; i < villages.length; i++) for (let j = i + 1; j < villages.length; j++) { const e = edgeFor(i, j); if (e) edges.push(e); }
+}
+function addEdgesFor(k) { for (let i = 0; i < k; i++) { const e = edgeFor(i, k); if (e) edges.push(e); } }
+function applyRule(v, r) {
+  const changed = [];
+  v.words.forEach((w, gi) => {
+    const before = show(w); r.ap(w);
+    if (show(w) !== before) changed.push({ g: LEX[gi][0], before, after: show(w) });
+  });
+  const example = changed.length ? changed[Math.floor(rng() * changed.length)] : null;
+  v.wkeys = v.words.map(show);
+  const nb = show(v.name); r.ap(v.name);
+  if (v.name.t.length < 3) v.name = parse(nb); // название не должно вырождаться
+  return example;
+}
+function adopt(v, ev) {
+  if (v.ev.has(ev.id)) return null;
+  v.ev.add(ev.id);
+  let ex = null;
+  if (ev.type === 'lex') { const w = v.words[ev.g]; const before = show(w); v.words[ev.g] = clone(ev.form); v.wkeys = v.words.map(show); ex = { g: LEX[ev.g][0], before, after: show(ev.form) }; }
+  else ex = applyRule(v, RULE[ev.rule]);
+  v.hist.push({ year, ev: ev.id, ex });
+  return ex;
+}
+function newVillage(x, y, parent) {
+  const v = { id: villages.length, x, y, parent: parent ? parent.id : null, founded: year,
+    words: parent ? parent.words.map(clone) : PROTO.map(clone), ev: new Set(parent ? parent.ev : []),
+    hist: parent ? parent.hist.slice() : [], proto: protoName() };
+  v.wkeys = v.words.map(show);
+  v.name = clone(v.proto);
+  // название, данное позже, проходит только те законы, что случились после основания
+  villages.push(v);
+  return v;
+}
+function initSim(sd) {
+  seed = sd; world = buildWorld(sd); rng = mulberry32(sd * 31 + 5);
+  villages = []; edges = []; events = []; chronicle = []; year = 0; stepN = 0; ruleCount = {}; brCache.clear();
+  // прародина: низина недалеко от центра
+  let best = null;
+  for (let k = 0; k < 400; k++) {
+    const x = 200 + rng() * 600, y = 160 + rng() * 440, hh = world.h(x, y);
+    if (hh > SEA + 0.04 && hh < 0.58) { const sc = -Math.hypot(x - 500, y - 380) * 0.002 - Math.abs(hh - 0.48); if (!best || sc > best.sc) best = { x, y, sc }; }
+  }
+  const home = newVillage(best.x, best.y, null);
+  home.proto = parse('гора́д'); home.name = clone(home.proto); home.home = true;
+  chronicle.unshift({ year: 0, html: `Праязык звучит в одном селе — <em>${cap(show(home.name))}</em>.` });
+  rebuildEdges(); drawStatic(); clusterize(); renderAll(); mapDirty = true;
+}
+
+function step() {
+  stepN++; year = stepN * 10;
+  // расселение: основание новых сёл (первые века)
+  if (villages.length < 74) {
+    const n0 = villages.length;
+    for (let i = 0; i < n0; i++) {
+      const p = villages[i];
+      if (rng() > 0.2 * (year < 500 ? 1 : 0.3)) continue;
+      for (let tries = 0; tries < 8; tries++) {
+        const a = rng() * 6.283, d = 42 + rng() * 52, x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
+        if (x < 30 || y < 30 || x > MW - 30 || y > MH - 30) continue;
+        if ((x < 300 && y < 140) || (x > MW - 160 && y > MH - 175) || (x < 200 && y > MH - 95)) continue; // картуш, роза ветров, масштаб
+        const hh = world.h(x, y); if (hh < SEA + 0.015 || hh > MOUNT + 0.02) continue;
+        if (villages.some(v => Math.hypot(v.x - x, v.y - y) < 36)) continue;
+        const br = barrier(p, { x, y });
+        if (br.sea) continue;
+        if (br.mount && rng() < 0.8 * params.mnt + 0.1) continue;
+        const nv = newVillage(x, y, p);
+        if (villages.length <= 4 || rng() < 0.12) chronicle.unshift({ year, html: `Выходцы из села <em>${cap(show(p.name))}</em> основали <em>${cap(show(nv.name))}</em>.` });
+        break;
+      }
+      if (villages.length >= 74) break;
+    }
+    for (let k = n0; k < villages.length; k++) addEdgesFor(k);
+  }
+  // новшества
+  for (const v of villages) {
+    if (rng() < 0.0105 * params.inn) {
+      if (rng() < 0.12) { // новое слово вместо старого
+        const g = Math.floor(rng() * LEX.length), form = protoName(); form.t = form.t.slice(0, 5);
+        if (form.s >= form.t.length) form.s = form.t.findIndex(isV);
+        const ev = { id: events.length, type: 'lex', g, form, year, origin: v.id };
+        events.push(ev); const ex = adopt(v, ev);
+        chronicle.unshift({ year, html: `<em>${cap(show(v.name))}</em>: вместо слова «${LEX[g][0]}» — новое <em>${show(form)}</em>${ex ? ` (было <em>${ex.before}</em>)` : ''}.` });
+      } else {
+        // закон, который уже возникал много раз, реже рождается заново
+        const wts = RULES.map(x => x.w / (1 + 1.6 * (ruleCount[x.id] || 0)) * (v.ev.size && [...v.ev].some(id => events[id].rule === x.id) ? 0.15 : 1));
+        let r = rng() * wts.reduce((a, b) => a + b, 0), rule = RULES[0];
+        for (let q = 0; q < RULES.length; q++) { r -= wts[q]; if (r <= 0) { rule = RULES[q]; break; } }
+        ruleCount[rule.id] = (ruleCount[rule.id] || 0) + 1;
+        const ev = { id: events.length, type: 'rule', rule: rule.id, year, origin: v.id };
+        events.push(ev);
+        const ex = adopt(v, ev);
+        if (ex) chronicle.unshift({ year, html: `<em>${cap(show(v.name))}</em>: ${rule.name} — «${ex.g}»: <em>${ex.before}</em> → <em>${ex.after}</em>.`, ev: ev.id });
+      }
+    }
+  }
+  // волны: соседи перенимают новшества
+  for (const e of edges) {
+    if (rng() > e.w * 0.16 * params.con) continue;
+    const [src, dst] = rng() < 0.5 ? [villages[e.a], villages[e.b]] : [villages[e.b], villages[e.a]];
+    const cand = [...src.ev].filter(id => !dst.ev.has(id));
+    if (!cand.length) continue;
+    adopt(dst, events[cand[Math.floor(rng() * cand.length)]]);
+  }
+  if (chronicle.length > 60) chronicle.length = 60;
+  if (stepN % 5 === 0 && !warming) clusterize();
+}
+
+/* ——— расстояния, группы говоров, древо ——— */
+function lev(a, b) {
+  const m = a.length, n = b.length, d = Array.from({ length: m + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d;
+}
+const LBUF = new Uint16Array(48 * 48);
+function levTok(a, b) { // быстрый Левенштейн на повторно используемом буфере
+  const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
+  const W = n + 1;
+  for (let j = 0; j <= n; j++) LBUF[j] = j;
+  for (let i = 1; i <= m; i++) { LBUF[i * W] = i; for (let j = 1; j <= n; j++) { const c = a[i - 1] === b[j - 1] ? 0 : 1; LBUF[i * W + j] = Math.min(LBUF[(i - 1) * W + j] + 1, LBUF[i * W + j - 1] + 1, LBUF[(i - 1) * W + j - 1] + c); } }
+  return LBUF[m * W + n];
+}
+const wdist = (a, b) => levTok(a.t, b.t) / Math.max(a.t.length, b.t.length);
+const PROTO_KEYS = PROTO.map(w => w.t.join(''));
+function vdist(A, B) {
+  const ka = A.wkeys || PROTO_KEYS, kb = B.wkeys || PROTO_KEYS; let s = 0;
+  for (let g = 0; g < LEX.length; g++) if (ka[g] !== kb[g]) s += wdist(A.words[g], B.words[g]);
+  return s / LEX.length;
+}
+const PALETTE = ['#B5452F', '#2F7485', '#7F8F2E', '#6A4488', '#C9862B', '#34548F', '#8A5436'];
+let clusters = [], vcol = [];
+function clusterize() {
+  const n = villages.length;
+  const D = []; for (let i = 0; i < n; i++) { D.push(new Float32Array(n)); for (let j = 0; j < i; j++) { const d = vdist(villages[i], villages[j]); D[i][j] = D[j][i] = d; } }
+  let cl = villages.map((v, i) => [i]);
+  const cd = (a, b) => { let s = 0; for (const i of a) for (const j of b) s += D[i][j]; return s / (a.length * b.length); };
+  while (cl.length > 1) {
+    let best = null;
+    for (let i = 0; i < cl.length; i++) for (let j = i + 1; j < cl.length; j++) { const d = cd(cl[i], cl[j]); if (!best || d < best.d) best = { i, j, d }; }
+    if (best.d > 0.1 && cl.length <= 7) break;
+    cl[best.i] = cl[best.i].concat(cl[best.j]); cl.splice(best.j, 1);
+  }
+  cl = cl.filter(c => c.length >= 2 || cl.length <= 7).sort((a, b) => b.length - a.length).slice(0, 7);
+  // стабильные цвета: группа с прародиной — первая
+  const old = clusters;
+  clusters = cl.map(members => {
+    let med = members[0], bestS = Infinity;
+    for (const i of members) { let s = 0; for (const j of members) s += D[i][j]; if (s < bestS) { bestS = s; med = i; } }
+    return { members, med, color: null, dist: vdist(villages[med], { words: PROTO }) };
+  });
+  const used = new Set();
+  for (const c of clusters) { // наследуем цвет от прежней группы с тем же медоидом или большим пересечением
+    let bestO = null, bestOv = 0;
+    for (const o of old) { const ov = c.members.filter(m => o.members.includes(m)).length; if (ov > bestOv && !used.has(o.color)) { bestOv = ov; bestO = o; } }
+    if (bestO) { c.color = bestO.color; used.add(c.color); }
+  }
+  for (const c of clusters) if (!c.color) { c.color = PALETTE.find(p => !used.has(p)) || PALETTE[0]; used.add(c.color); }
+  vcol = Array(n).fill(null);
+  clusters.forEach(c => c.members.forEach(i => { vcol[i] = c.color; }));
+  // одиночек красим по ближайшей группе
+  villages.forEach((v, i) => { if (!vcol[i]) { let b = clusters[0], bd = Infinity; for (const c of clusters) { const d = D[i][c.med]; if (d < bd) { bd = d; b = c; } } vcol[i] = b ? b.color : PALETTE[0]; } });
+  tableDirty = treeDirty = true; washDirty = true;
+}
+
+/* ============================================================
+   4. Рисование карты
+   ============================================================ */
+// в режиме съёмки (_tools/shot) холсты растеризуются на CPU: те же пиксели без очереди к программному GPU сервера
+const CTX = window.__SHOT__ ? { willReadFrequently: true } : undefined;
+const cv = document.getElementById('map'), ctx = cv.getContext('2d', CTX);
+const stat = document.createElement('canvas'), sctx = stat.getContext('2d', CTX);
+const land = document.createElement('canvas'), lctx = land.getContext('2d', CTX);
+const wash = document.createElement('canvas'), wctx = wash.getContext('2d', CTX);
+let DPR = 1;
+function setupCanvas() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  for (const c of [cv, stat, land, wash]) { c.width = MW * DPR; c.height = MH * DPR; }
+  cv.style.aspectRatio = MW + ' / ' + MH;
+}
+const INK = '#2A1E14', SEPIA = '#6A4C2C', BLUE = '#2F5A78', PARCH = '#F1E6CC', RED = '#A33222';
+
+function contourSegments(level) { // marching squares по сетке высот
+  const segs = [], H = world.H;
+  for (let j = 0; j < GH - 1; j++) for (let i = 0; i < GW - 1; i++) {
+    const a = H[j * GW + i], b = H[j * GW + i + 1], c = H[(j + 1) * GW + i + 1], d = H[(j + 1) * GW + i];
+    const idx = (a > level ? 8 : 0) | (b > level ? 4 : 0) | (c > level ? 2 : 0) | (d > level ? 1 : 0);
+    if (idx === 0 || idx === 15) continue;
+    const x = i * 4, y = j * 4, s = 4;
+    const lerp = (p, q) => (level - p) / (q - p);
+    const T = [x + s * lerp(a, b), y], R = [x + s, y + s * lerp(b, c)], B = [x + s * lerp(d, c), y + s], L = [x, y + s * lerp(a, d)];
+    const M = { 1: [L, B], 2: [B, R], 3: [L, R], 4: [T, R], 5: [L, T, B, R], 6: [T, B], 7: [L, T], 8: [L, T], 9: [T, B], 10: [T, R, L, B], 11: [T, R], 12: [L, R], 13: [B, R], 14: [L, B] }[idx];
+    segs.push([M[0], M[1]]); if (M.length === 4) segs.push([M[2], M[3]]);
+  }
+  return segs;
+}
+function strokeSegs(c, segs) { c.beginPath(); for (const [p, q] of segs) { c.moveTo(p[0], p[1]); c.lineTo(q[0], q[1]); } c.stroke(); }
+
+function drawStatic() {
+  const c = sctx, r = mulberry32(seed * 131 + 7);
+  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // пергамент
+  c.fillStyle = PARCH; c.fillRect(0, 0, MW, MH);
+  // пятна и потемнение краёв считаем на грубой сетке и растягиваем — это быстро
+  const tw = 250, th = 190, tex = document.createElement('canvas'); tex.width = tw; tex.height = th;
+  const tc = tex.getContext('2d', CTX), ti = tc.createImageData(tw, th);
+  for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+    const u = x / tw * MW, v = y / th * MH, k = (y * tw + x) * 4;
+    const n = fbm(u * 0.012, v * 0.012, 99) * 0.7 + fbm(u * 0.06, v * 0.06, 98) * 0.3;
+    const edge = Math.min(u, v, MW - u, MH - v), e = Math.max(0, 1 - edge / 80);
+    const a = Math.max(0, Math.min(1, (n - 0.42) * 0.9 + e * e * 0.85));
+    ti.data[k] = 120; ti.data[k + 1] = 84; ti.data[k + 2] = 40; ti.data[k + 3] = a * 90;
+  }
+  tc.putImageData(ti, 0, 0);
+  c.imageSmoothingEnabled = true; c.drawImage(tex, 0, 0, MW, MH);
+  // мелкое зерно бумаги — повторяющийся узор
+  const gr = document.createElement('canvas'); gr.width = gr.height = 128;
+  const gc = gr.getContext('2d', CTX), gi = gc.createImageData(128, 128);
+  for (let k = 0; k < 128 * 128; k++) { const v = hash2(k & 127, k >> 7, 5); gi.data[k * 4] = 90; gi.data[k * 4 + 1] = 64; gi.data[k * 4 + 2] = 30; gi.data[k * 4 + 3] = v * 26; }
+  gc.putImageData(gi, 0, 0);
+  c.fillStyle = c.createPattern(gr, 'repeat'); c.fillRect(0, 0, MW, MH);
+  // вода: штриховка у берега
+  c.lineWidth = 0.9;
+  for (let k = 1; k <= 5; k++) { c.strokeStyle = `rgba(47,90,120,${0.34 - k * 0.055})`; strokeSegs(c, contourSegments(SEA - k * 0.028)); }
+  // маска суши
+  const lc = lctx; lc.setTransform(DPR, 0, 0, DPR, 0, 0); lc.clearRect(0, 0, MW, MH);
+  const lw = MW / 2, lh = MH / 2, lcv = document.createElement('canvas'); lcv.width = lw; lcv.height = lh;
+  const lcx = lcv.getContext('2d', CTX), li = lcx.createImageData(lw, lh);
+  for (let y = 0; y < lh; y++) for (let x = 0; x < lw; x++) { const hh = world.h(x * 2 + 1, y * 2 + 1); li.data[(y * lw + x) * 4 + 3] = Math.max(0, Math.min(255, (hh - SEA) * 255 * 40 + 128)); }
+  lcx.putImageData(li, 0, 0);
+  lc.imageSmoothingEnabled = true; lc.drawImage(lcv, 0, 0, MW, MH);
+  // берег двойной линией
+  const coast = contourSegments(SEA);
+  c.strokeStyle = INK; c.lineWidth = 1.6; strokeSegs(c, coast);
+  c.strokeStyle = 'rgba(42,30,20,.35)'; c.lineWidth = 0.8; strokeSegs(c, contourSegments(SEA + 0.012));
+  // леса — кружки с тенью
+  for (let k = 0; k < 900; k++) {
+    const x = r() * MW, y = r() * MH, hh = world.h(x, y);
+    if (hh < 0.47 || hh > 0.62 || fbm(x * 0.01, y * 0.01, 55) < 0.53) continue;
+    c.fillStyle = 'rgba(92,110,58,.30)'; c.beginPath(); c.arc(x + 1, y + 1, 2.8, 0, 6.3); c.fill();
+    c.strokeStyle = 'rgba(52,64,32,.55)'; c.lineWidth = 0.7; c.beginPath(); c.arc(x, y, 2.6, 0, 6.3); c.stroke();
+  }
+  // горы — штриховые «шапочки», освещённые с северо-запада
+  const peaks = [];
+  for (let k = 0; k < 4200; k++) { const x = r() * MW, y = r() * MH, hh = world.h(x, y); if (hh > MOUNT && peaks.every(p => Math.abs(p[0] - x) > 9 || Math.abs(p[1] - y) > 7)) peaks.push([x, y, hh]); }
+  peaks.sort((a, b) => a[1] - b[1]);
+  for (const [x, y, hh] of peaks) {
+    const s = 6 + (hh - MOUNT) * 30;
+    c.fillStyle = 'rgba(241,230,204,.9)'; c.beginPath(); c.moveTo(x - s, y); c.lineTo(x, y - s * 1.1); c.lineTo(x + s, y); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(106,76,44,.28)'; c.beginPath(); c.moveTo(x, y - s * 1.1); c.lineTo(x + s, y); c.lineTo(x + s * 0.15, y); c.closePath(); c.fill();
+    c.strokeStyle = SEPIA; c.lineWidth = 1; c.beginPath(); c.moveTo(x - s, y); c.lineTo(x, y - s * 1.1); c.lineTo(x + s, y); c.stroke();
+    c.lineWidth = 0.6; for (let q = 1; q < 4; q++) { c.beginPath(); c.moveTo(x + s * q / 4 * 0.9, y - s * 1.1 * (1 - q / 4) * 0.9); c.lineTo(x + s * q / 4 * 0.9 - 1.5, y); c.stroke(); }
+  }
+  // реки
+  for (const rv of world.rivers) {
+    for (let i = 1; i < rv.length; i++) {
+      c.strokeStyle = BLUE; c.lineWidth = 0.7 + 2.2 * i / rv.length; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(rv[i - 1][0], rv[i - 1][1]); c.lineTo(rv[i][0], rv[i][1]); c.stroke();
+    }
+  }
+  // рамка, картуш, роза ветров, масштаб
+  c.strokeStyle = INK; c.lineWidth = 2; c.strokeRect(14, 14, MW - 28, MH - 28);
+  c.lineWidth = 0.8; c.strokeRect(20, 20, MW - 40, MH - 40);
+  for (let x = 20; x < MW - 20; x += 40) { c.fillStyle = (x / 40) % 2 ? INK : PARCH; c.fillRect(x, 14, 40, 6); c.fillRect(x, MH - 20, 40, 6); }
+  for (let y = 20; y < MH - 20; y += 40) { c.fillStyle = (y / 40) % 2 ? INK : PARCH; c.fillRect(14, y, 6, 40); c.fillRect(MW - 20, y, 6, 40); }
+  // роза ветров
+  const rx = MW - 92, ry = MH - 108;
+  c.save(); c.translate(rx, ry);
+  for (let k = 0; k < 8; k++) { c.rotate(Math.PI / 4); const L = k % 2 ? 22 : 40; c.fillStyle = k % 2 ? 'rgba(106,76,44,.5)' : INK; c.beginPath(); c.moveTo(0, -L); c.lineTo(5, 0); c.lineTo(-5, 0); c.closePath(); c.fill(); }
+  c.fillStyle = PARCH; c.beginPath(); c.arc(0, 0, 4, 0, 6.3); c.fill(); c.strokeStyle = INK; c.stroke();
+  c.fillStyle = INK; c.font = '700 15px "Old Standard TT", serif'; c.textAlign = 'center'; c.fillText('С', 0, -46);
+  c.restore();
+  // масштаб
+  c.fillStyle = INK; c.font = 'italic 13px "Old Standard TT", serif'; c.textAlign = 'left';
+  c.fillText('Масштаб в верстах', 44, MH - 58);
+  for (let k = 0; k < 4; k++) { c.fillStyle = k % 2 ? PARCH : INK; c.fillRect(44 + k * 30, MH - 50, 30, 5); }
+  c.strokeStyle = INK; c.lineWidth = 0.8; c.strokeRect(44, MH - 50, 120, 5);
+  c.fillStyle = INK; c.font = '12px "Old Standard TT", serif'; c.fillText('0', 41, MH - 32); c.fillText('100', 154, MH - 32);
+  // картуш
+  c.save(); c.translate(44, 44);
+  c.fillStyle = 'rgba(241,230,204,.92)'; c.fillRect(0, 0, 232, 74); c.strokeStyle = INK; c.lineWidth = 1.2; c.strokeRect(0, 0, 232, 74); c.strokeRect(4, 4, 224, 66);
+  c.fillStyle = INK; c.font = '700 22px "Old Standard TT", serif'; c.textAlign = 'center'; c.fillText('Карта говоров', 116, 34);
+  c.font = 'italic 14px "Old Standard TT", serif'; c.fillStyle = SEPIA; c.fillText('мир № ' + seed, 116, 56);
+  c.restore();
+}
+
+let washDirty = true, mapDirty = true, selWord = -1, selEv = -1, hoverV = -1;
+function drawWash() {
+  const c = wctx; c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, MW, MH);
+  for (let i = 0; i < villages.length; i++) {
+    const v = villages[i]; let col = vcol[i] || PALETTE[0];
+    if (selWord >= 0) col = formColor(v.words[selWord]);
+    const g = c.createRadialGradient(v.x, v.y, 0, v.x, v.y, 62);
+    g.addColorStop(0, hexA(col, 0.42)); g.addColorStop(0.6, hexA(col, 0.2)); g.addColorStop(1, hexA(col, 0));
+    c.fillStyle = g; c.fillRect(v.x - 62, v.y - 62, 124, 124);
+  }
+  c.globalCompositeOperation = 'destination-in'; c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(land, 0, 0); c.globalCompositeOperation = 'source-over';
+  washDirty = false;
+}
+const hexA = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},${a})`;
+let formColors = new Map();
+function formColor(w) { const k = show(w); if (!formColors.has(k)) formColors.set(k, PALETTE[formColors.size % PALETTE.length]); return formColors.get(k); }
+
+function isogloss(evId) { // граница распространения новшества по сетке «ближайшее село»
+  const S = 8, gw = Math.ceil(MW / S), gh = Math.ceil(MH / S), g = new Int8Array(gw * gh).fill(-1);
+  for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
+    const x = i * S + S / 2, y = j * S + S / 2; if (world.h(x, y) < SEA) continue;
+    let bd = 1e9, bv = null; for (const v of villages) { const d = (v.x - x) ** 2 + (v.y - y) ** 2; if (d < bd) { bd = d; bv = v; } }
+    if (bd < 95 * 95) g[j * gw + i] = bv.ev.has(evId) ? 1 : 0;
+  }
+  const segs = [];
+  for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
+    const a = g[j * gw + i]; if (a < 0) continue;
+    if (i + 1 < gw) { const b = g[j * gw + i + 1]; if (b >= 0 && b !== a) segs.push([[(i + 1) * S, j * S], [(i + 1) * S, (j + 1) * S]]); }
+    if (j + 1 < gh) { const b = g[(j + 1) * gw + i]; if (b >= 0 && b !== a) segs.push([[i * S, (j + 1) * S], [(i + 1) * S, (j + 1) * S]]); }
+  }
+  return segs;
+}
+let isoCache = { ev: -1, stepN: -1, segs: [] };
+
+function drawMap(t) {
+  if (washDirty) drawWash();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(stat, 0, 0);
+  ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(wash, 0, 0); ctx.globalCompositeOperation = 'source-over';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // связи-дороги между сёлами с живым общением
+  ctx.strokeStyle = 'rgba(106,76,44,.28)'; ctx.lineWidth = 0.8; ctx.setLineDash([2, 3]);
+  ctx.beginPath(); for (const e of edges) { if (e.w < 0.12) continue; const a = villages[e.a], b = villages[e.b]; ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); } ctx.stroke();
+  ctx.setLineDash([]);
+  // изоглосса выбранного закона
+  if (selEv >= 0) {
+    if (isoCache.ev !== selEv || isoCache.stepN !== stepN) isoCache = { ev: selEv, stepN, segs: isogloss(selEv) };
+    ctx.strokeStyle = RED; ctx.lineWidth = 2.2; ctx.setLineDash([6, 4]); strokeSegs(ctx, isoCache.segs); ctx.setLineDash([]);
+  }
+  // сёла: сначала значки, подписи — жадно, без наложений (прародина и центры говоров — первыми)
+  ctx.textAlign = 'center';
+  const medoids = new Set(clusters.map(c => c.med));
+  const order = villages.map((v, i) => i).sort((a, b) => prio(b) - prio(a));
+  function prio(i) { const v = villages[i]; return (v.home ? 1e6 : 0) + (medoids.has(i) ? 1e5 : 0) + (hoverV === i ? 1e7 : 0) + (year - v.founded); }
+  const placed = [], labelOf = new Map();
+  // на узком экране карта ужата — подписи крупнее, а лишние просто не помещаются
+  const fs = Math.min(2.6, Math.max(1, MW / (cv.clientWidth || MW) * 0.8));
+  const fontFor = i => (selWord >= 0 ? `italic ${Math.round(15 * fs)}px` : (villages[i].home || medoids.has(i) ? `700 ${Math.round(14 * fs)}px` : `${Math.round(13 * fs)}px`)) + ' "Old Standard TT", serif';
+  for (const i of order) {
+    const v = villages[i];
+    const label = selWord >= 0 ? show(v.words[selWord]) : cap(show(v.name));
+    ctx.font = fontFor(i);
+    const w = ctx.measureText(label).width + 6, h = 15 * fs, x0 = v.x - w / 2, y0 = v.y - (v.home ? 13 : 9) - 12 * fs;
+    if (placed.some(r => x0 < r[2] && x0 + w > r[0] && y0 < r[3] && y0 + h > r[1])) continue;
+    placed.push([x0, y0, x0 + w, y0 + h]); labelOf.set(i, label);
+  }
+  for (let i = 0; i < villages.length; i++) {
+    const v = villages[i], age = year - v.founded;
+    const pop = Math.min(1, age / 40);
+    ctx.globalAlpha = 0.35 + 0.65 * pop;
+    ctx.fillStyle = PARCH; ctx.strokeStyle = INK; ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.arc(v.x, v.y, (v.home ? 6 : 4.2) * Math.sqrt(fs), 0, 6.3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(v.x, v.y, v.home ? 2.6 : 1.7, 0, 6.3); ctx.fill();
+    if (v.home) { ctx.strokeStyle = RED; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(v.x, v.y, 10, 0, 6.3); ctx.stroke(); }
+    if (selEv >= 0 && v.ev.has(selEv)) { ctx.fillStyle = RED; ctx.beginPath(); ctx.arc(v.x, v.y, 2.2, 0, 6.3); ctx.fill(); }
+    const label = labelOf.get(i);
+    if (label == null) { ctx.globalAlpha = 1; continue; }
+    ctx.font = fontFor(i);
+    const ly = v.y - (v.home ? 13 : 9);
+    ctx.lineWidth = 3.2; ctx.strokeStyle = 'rgba(241,230,204,.92)'; ctx.lineJoin = 'round'; ctx.strokeText(label, v.x, ly);
+    ctx.fillStyle = selWord >= 0 ? formColorDark(v.words[selWord]) : (hoverV === i ? RED : INK);
+    ctx.fillText(label, v.x, ly);
+    ctx.globalAlpha = 1;
+  }
+}
+const formColorDark = w => { const c = formColor(w); const r = parseInt(c.slice(1, 3), 16) * 0.6, g = parseInt(c.slice(3, 5), 16) * 0.6, b = parseInt(c.slice(5, 7), 16) * 0.6; return `rgb(${r | 0},${g | 0},${b | 0})`; };
+
+/* ============================================================
+   5. Панель: таблица, древо, летопись
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const NBSP = '\u00a0';
+let tableDirty = true, treeDirty = true, tab = 'words';
+function markDiff(proto, w) { // выравнивание по Левенштейну: изменённые звуки — красным
+  const d = lev(proto.t, w.t); let i = proto.t.length, j = w.t.length; const out = [];
+  while (j > 0) {
+    if (i > 0 && d[i][j] === d[i - 1][j - 1] + (proto.t[i - 1] === w.t[j - 1] ? 0 : 1)) { out.unshift(proto.t[i - 1] === w.t[j - 1] ? w.t[j - 1] : `<b>${w.t[j - 1]}</b>`); i--; j--; }
+    else if (d[i][j] === d[i][j - 1] + 1) { out.unshift(`<b>${w.t[j - 1]}</b>`); j--; }
+    else i--;
+  }
+  return out.join('');
+}
+function renderTable() {
+  // столько говоров, сколько помещается по ширине без обрезки (но не меньше трёх — дальше таблица листается)
+  const wrap = $('tbl').parentElement;
+  for (let n = Math.min(5, clusters.length); n >= 1; n--) {
+    const cols = clusters.slice(0, n);
+    let h = '<thead><tr><th>слово</th><th>праформа</th>' + cols.map(c => `<th><i style="background:${c.color}"></i>${cap(show(villages[c.med].name))}</th>`).join('') + '</tr></thead><tbody>';
+    LEX.forEach(([g], gi) => {
+      h += `<tr data-g="${gi}" class="${gi === selWord ? 'sel' : ''}"><td class="gl">${g}</td><td class="f">*${withStress(PROTO[gi])}</td>` + cols.map(c => `<td class="f">${markDiff(PROTO[gi], villages[c.med].words[gi])}</td>`).join('') + '</tr>';
+    });
+    $('tbl').innerHTML = h + '</tbody>';
+    if (n <= 3 || $('tbl').scrollWidth <= wrap.clientWidth + 1) break;
+  }
+  tableDirty = false;
+}
+$('tbl').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-g]'); if (!tr) return;
+  const g = +tr.dataset.g; selWord = selWord === g ? -1 : g; formColors = new Map(); washDirty = true; tableDirty = true; updateWordMode();
+});
+function updateWordMode() {
+  mapDirty = true;
+  const el = $('wordmode');
+  if (selWord >= 0) {
+    const forms = new Set(villages.map(v => show(v.words[selWord])));
+    el.innerHTML = `<span>На карте — слово «${LEX[selWord][0]}», праформа <b>*${withStress(PROTO[selWord])}</b>: ${forms.size} ${plural(forms.size, 'вариант', 'варианта', 'вариантов')}.</span><button class="linkbtn" id="wmOff">Названия сёл</button>`;
+    $('wmOff').onclick = () => { selWord = -1; washDirty = true; tableDirty = true; updateWordMode(); };
+  } else if (selEv >= 0) {
+    const ev = events[selEv];
+    el.innerHTML = `<span>Красная линия — граница закона «${RULE[ev.rule] ? RULE[ev.rule].name : 'новое слово'}» (${ev.year} г.).</span><button class="linkbtn" id="wmOff">Убрать</button>`;
+    $('wmOff').onclick = () => { selEv = -1; updateWordMode(); };
+  } else el.innerHTML = '<span>На карте — названия сёл. Цвет — группа говоров.</span>';
+}
+const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? b : c; };
+
+function renderTree() {
+  const leaves = clusters.map(c => ({ name: cap(show(villages[c.med].name)), color: c.color, v: villages[c.med], d: c.dist, n: c.members.length }));
+  const W = 460, rowH = 44, H = Math.max(160, leaves.length * rowH + 60);
+  // UPGMA по медоидам
+  let nodes = leaves.map((l, i) => ({ leaf: l, members: [l.v], h: 0, id: i }));
+  const dist = (a, b) => { let s = 0; for (const x of a.members) for (const y of b.members) s += vdist(x, y); return s / (a.members.length * b.members.length); };
+  while (nodes.length > 1) {
+    let best = null;
+    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) { const d = dist(nodes[i], nodes[j]); if (!best || d < best.d) best = { i, j, d }; }
+    const a = nodes[best.i], b = nodes[best.j];
+    const m = { kids: [a, b], members: a.members.concat(b.members), h: best.d / 2 };
+    nodes.splice(best.j, 1); nodes[best.i] = m;
+  }
+  const root = nodes[0]; if (!root) { $('p-tree').innerHTML = ''; return; }
+  const maxD = Math.max(0.05, ...leaves.map(l => l.d));
+  const x0 = 70, x1 = W - 178;
+  const X = h => x1 - (h / Math.max(root.h, maxD * 0.5, 0.02)) * (x1 - x0) * 0.82;
+  let row = 0; const lines = [], labels = [];
+  (function lay(n) {
+    if (n.leaf) { n.y = 40 + row * rowH; row++; n.x = x1; return; }
+    n.kids.forEach(lay); n.x = X(n.h); n.y = (n.kids[0].y + n.kids[1].y) / 2;
+    for (const k of n.kids) lines.push(`<path d="M${n.x} ${n.y}V${k.y}H${k.x}" />`);
+  })(root);
+  lines.push(`<path d="M${x0 - 40} ${root.y}H${root.x}" />`);
+  (function lab(n) { if (n.leaf) labels.push(`<circle cx="${n.x}" cy="${n.y}" r="6" fill="${n.leaf.color}" stroke="#2A1E14"/><text x="${n.x + 14}" y="${n.y + 5}" class="lf">${n.leaf.name}</text><text x="${n.x + 14}" y="${n.y + 21}" class="sm">${n.leaf.n} ${plural(n.leaf.n, 'село', 'села', 'сёл')} · ${Math.round(n.leaf.d * 100)}% от праязыка</text>`); else n.kids.forEach(lab); })(root);
+  $('p-tree').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Родословное древо говоров"><style>path{fill:none;stroke:#2A1E14;stroke-width:1.6}.lf{font:700 16px 'Old Standard TT',serif;fill:#2A1E14}.sm{font:13px 'PT Sans',sans-serif;fill:#6A4C2C}.rt{font:italic 15px 'Old Standard TT',serif;fill:#A33222}</style>${lines.join('')}${labels.join('')}<circle cx="${x0 - 40}" cy="${root.y}" r="4" fill="#A33222"/><text x="${x0 - 44}" y="${root.y - 12}" class="rt">праязык</text></svg>`;
+  treeDirty = false;
+}
+let legendSig = '';
+function renderLegend() {
+  let h;
+  if (selWord >= 0) {
+    const cnt = new Map();
+    for (const v of villages) { const k = show(v.words[selWord]); cnt.set(k, (cnt.get(k) || 0) + 1); }
+    const items = [...cnt.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7);
+    h = `<span class="lh">«${LEX[selWord][0]}»:</span>` + items.map(([f, n]) => `<span><i style="background:${formColor(parse(f))}"></i><em>${f}</em> <small>${n}${NBSP}${plural(n, 'село', 'села', 'сёл')}</small></span>`).join('');
+  } else if (selEv >= 0) {
+    const ev = events[selEv], n = villages.filter(v => v.ev.has(selEv)).length;
+    h = `<span><b class="iso"></b>${RULE[ev.rule] ? RULE[ev.rule].name : 'новое слово'}, ${ev.year}${NBSP}г.: принято в${NBSP}${n}${NBSP}${plural(n, 'селе', 'сёлах', 'сёлах')} из${NBSP}${villages.length}</span>`;
+  } else {
+    h = '<span class="lh">Говоры:</span>' + clusters.map(c => `<span><i style="background:${c.color}"></i>${cap(show(villages[c.med].name))} <small>${c.members.length}${NBSP}${plural(c.members.length, 'село', 'села', 'сёл')}</small></span>`).join('');
+  }
+  if (h !== legendSig) { legendSig = h; $('legend').innerHTML = h; }
+}
+function renderChron() {
+  $('chron').innerHTML = chronicle.slice(0, 40).map(c => `<li${c.ev != null ? ` data-ev="${c.ev}" style="cursor:pointer"` : ''}><time>${c.year}</time><span>${c.html}</span></li>`).join('');
+}
+$('chron').addEventListener('click', e => { const li = e.target.closest('li[data-ev]'); if (!li) return; selEv = +li.dataset.ev; selWord = -1; washDirty = true; updateWordMode(); });
+let chronSig = '';
+function renderAll() {
+  $('year').textContent = year;
+  renderLegend();
+  if (tab === 'words' && tableDirty) renderTable();
+  if (tab === 'tree' && treeDirty) renderTree();
+  if (tab === 'chron') { const s = chronicle.length + ':' + (chronicle[0] ? chronicle[0].year : 0); if (s !== chronSig) { chronSig = s; renderChron(); } }
+}
+for (const b of document.querySelectorAll('.tab')) b.addEventListener('click', () => {
+  tab = b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', String(x === b)); });
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + tab));
+  tableDirty = treeDirty = true; chronSig = ''; renderAll();
+});
+
+/* ——— карточка села ——— */
+function mapXY(e) { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * MW, (e.clientY - r.top) / r.height * MH]; }
+function nearestV(x, y) { let b = -1, bd = 18 * 18; villages.forEach((v, i) => { const d = (v.x - x) ** 2 + (v.y - y) ** 2; if (d < bd) { bd = d; b = i; } }); return b; }
+cv.addEventListener('mousemove', e => { const [x, y] = mapXY(e); const h = nearestV(x, y); if (h !== hoverV) { hoverV = h; mapDirty = true; } cv.style.cursor = hoverV >= 0 ? 'pointer' : 'default'; });
+cv.addEventListener('mouseleave', () => { if (hoverV >= 0) { hoverV = -1; mapDirty = true; } });
+cv.addEventListener('click', e => {
+  const [x, y] = mapXY(e), i = nearestV(x, y);
+  if (i < 0) { $('card').classList.remove('show'); return; }
+  openCard(i, e);
+});
+function openCard(i, e) {
+  const v = villages[i];
+  const par = v.parent != null ? cap(show(villages[v.parent].name)) : null;
+  const items = v.hist.filter(h => h.ex).slice(-10).reverse().map(h => { const ev = events[h.ev]; return `<li><span>${h.year}${NBSP}г.</span><div>${ev.type === 'lex' ? 'новое слово' : RULE[ev.rule].name}: «${h.ex.g}» <i>${h.ex.before}${NBSP}→ ${h.ex.after}</i></div></li>`; }).join('');
+  $('cardBody').innerHTML = `<h2>${cap(show(v.name))}</h2><div class="ety">от праформы *${withStress(v.proto)}${v.home ? ' · прародина' : ''}</div>
+    <div>Основано в${NBSP}${v.founded}${NBSP}г.${par ? ` выходцами из${NBSP}села ${par}` : ''}. Законов и${NBSP}новшеств: ${v.hist.length}.</div>${items ? `<ul>${items}</ul>` : '<div style="margin-top:6px;color:#6A4C2C">Пока говорит на${NBSP}праязыке.</div>'}`;
+  const card = $('card'), wrap = card.parentElement.getBoundingClientRect();
+  card.classList.add('show');
+  const r = cv.getBoundingClientRect();
+  let left = r.left - wrap.left + v.x / MW * r.width + 16, top = r.top - wrap.top + v.y / MH * r.height - 20;
+  if (left + 330 > wrap.width) left -= 360;
+  card.style.left = Math.max(8, left) + 'px'; card.style.top = Math.max(8, Math.min(top, wrap.height - card.offsetHeight - 8)) + 'px';
+}
+$('cardX').addEventListener('click', () => $('card').classList.remove('show'));
+
+/* ——— управление временем и параметрами ——— */
+let playing = true, speed = 1, acc = 0;
+function setPlaying(p) {
+  playing = p; $('playLbl').textContent = p ? 'Пауза' : 'Дальше';
+  $('playIco').innerHTML = p ? '<path d="M3 2h3v10H3zM8 2h3v10H8z"/>' : '<path d="M3 1.5v11l9-5.5z"/>';
+  $('playBtn').setAttribute('aria-label', p ? 'Пауза' : 'Дальше');
+}
+$('playBtn').addEventListener('click', () => { if (year >= 1500) { initSim(seed); prewarm(0); } setPlaying(!playing); });
+for (const b of document.querySelectorAll('.seg button')) b.addEventListener('click', () => { speed = +b.dataset.s; document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b)); });
+$('restartBtn').addEventListener('click', () => { initSim(seed); selWord = -1; selEv = -1; updateWordMode(); setPlaying(true); });
+$('newBtn').addEventListener('click', () => { initSim(Math.floor(Math.random() * 900) + 10); prewarm(300); selWord = -1; selEv = -1; updateWordMode(); setPlaying(true); });
+const fmt1 = v => '×' + v.toFixed(1).replace('.', ',');
+$('sInn').addEventListener('input', e => { params.inn = +e.target.value; $('oInn').textContent = fmt1(params.inn); });
+$('sCon').addEventListener('input', e => { params.con = +e.target.value; $('oCon').textContent = fmt1(params.con); });
+$('sMnt').addEventListener('input', e => { params.mnt = +e.target.value; $('oMnt').textContent = Math.round(params.mnt * 100) + '%'; rebuildEdges(); mapDirty = true; });
+
+let warming = false;
+function prewarm(toYear) { warming = true; while (year < toYear) step(); warming = false; clusterize(); tableDirty = treeDirty = true; washDirty = true; renderAll(); }
+
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (playing && year < 1500) {
+    acc += dt * speed * 4; // 4 шага (40 лет) в секунду на ×1
+    let n = 0;
+    while (acc >= 1 && n < 20 && year < 1500) { step(); acc -= 1; n++; }
+    if (n) { washDirty = true; mapDirty = true; }
+    if (year >= 1500) { setPlaying(false); $('playLbl').textContent = 'Заново'; clusterize(); chronicle.unshift({ year, html: 'Прошло полторы тысячи лет. Сравните говоры во вкладке «Древо».' }); }
+  }
+  if (mapDirty || washDirty) { mapDirty = false; drawMap(now); }
+  renderAll();
+}
+
+setupCanvas();
+// картуш и подписи статичного слоя — шрифтом Old Standard, как только он загрузится
+if (document.fonts) document.fonts.ready.then(() => { drawStatic(); mapDirty = true; });
+initSim(seed);
+prewarm(820);
+updateWordMode();
+requestAnimationFrame(frame);
+addEventListener('resize', () => { mapDirty = true; const d = Math.min(window.devicePixelRatio || 1, 2); if (d !== DPR) { setupCanvas(); drawStatic(); washDirty = true; } });
+})();
+</script>
+</body>
+</html>

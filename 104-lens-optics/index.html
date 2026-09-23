@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Оптика объектива — фокус, диафрагма, боке</title>
+<meta name="description" content="Интерактивная камера: кольца фокуса, диафрагмы и фокусного, живое боке формы лепестков и лучевая схема тонкой линзы.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500&family=Manrope:wght@400;500;600;700&family=Tektur:wght@500;700&display=swap">
+<style>
+:root {
+  --bg: #0D0D0F;
+  --body: #151518;
+  --metal: #1C1C20;
+  --ink: #ECE7DD;
+  --muted: #A8A39A;
+  --line: rgba(236, 231, 221, .12);
+  --orange: #F07A3A;
+  --lcd: #8DF59B;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font: 400 15px/1.5 "Manrope", system-ui, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; overflow-x: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; padding: 0; }
+:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
+
+.top { display: flex; align-items: baseline; gap: 22px; padding: 22px 36px 14px; flex-wrap: wrap; }
+h1 { margin: 0; font: 700 24px/1 "Tektur", sans-serif; letter-spacing: .02em; }
+h1 span { color: var(--orange); }
+.top p { margin: 0; color: var(--muted); font-size: 15px; }
+.badge { margin-left: auto; font: 500 12px/1 "Tektur", sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); padding: 7px 10px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 430px; gap: 26px; padding: 0 36px 30px; align-items: start; }
+
+/* ---------- Корпус камеры и видоискатель ---------- */
+.camera { width: min(100%, calc((100vh - 330px) * 1.5 + 30px)); justify-self: center; background: linear-gradient(180deg, #19191D, #111114); border: 1px solid var(--line); padding: 14px; box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .8); }
+.viewfinder { position: relative; aspect-ratio: 3 / 2; background: #000; overflow: hidden; }
+#vf { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+.vf-ui { position: absolute; inset: 0; pointer-events: none; }
+.corner { position: absolute; width: 26px; height: 26px; border: 2px solid rgba(255, 255, 255, .5); }
+.corner.tl { top: 16px; left: 16px; border-right: 0; border-bottom: 0; }
+.corner.tr { top: 16px; right: 16px; border-left: 0; border-bottom: 0; }
+.corner.bl { bottom: 16px; left: 16px; border-right: 0; border-top: 0; }
+.corner.br { bottom: 16px; right: 16px; border-left: 0; border-top: 0; }
+.center-pt { position: absolute; left: 50%; top: 50%; width: 30px; height: 20px; margin: -10px 0 0 -15px; border: 1.5px solid rgba(255, 255, 255, .38); }
+#af { position: absolute; left: 0; top: 0; width: 46px; height: 34px; margin: -17px 0 0 -23px; border: 2px solid var(--lcd); opacity: 0; transition: opacity .3s; }
+#af.on { opacity: 1; }
+.vf-hint { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); font-size: 13px; color: rgba(255, 255, 255, .85); background: rgba(0, 0, 0, .6); padding: 5px 10px; white-space: nowrap; transition: opacity .6s; }
+.vf-hint.gone { opacity: 0; }
+.exif { display: flex; gap: 22px; align-items: baseline; padding: 9px 12px 8px; background: #050506; border-top: 1px solid #000; font: 500 14px/1 "Tektur", sans-serif; color: var(--lcd); letter-spacing: .04em; white-space: nowrap; overflow: hidden; }
+.exif b { font-weight: 700; }
+.exif span:last-child { margin-left: auto; color: #5FA86A; }
+
+/* ---------- Кольца объектива ---------- */
+.barrel { margin-top: 12px; display: grid; gap: 8px; }
+.ring {
+  position: relative; height: 54px; overflow: hidden; cursor: grab; touch-action: none; user-select: none;
+  background: linear-gradient(180deg, #2A2A2F 0%, #1A1A1E 22%, #111114 70%, #08080A 100%);
+  border: 1px solid #000; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+.ring.grab { cursor: grabbing; }
+.knurl { position: absolute; left: 0; right: 0; top: 0; height: 16px; background: repeating-linear-gradient(90deg, #0A0A0C 0 3px, #2E2E34 3px 5px, #17171A 5px 7px); opacity: .95; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .8); }
+.ring-track { position: absolute; left: 0; right: 0; top: 16px; bottom: 0; }
+.tk { position: absolute; left: 0; top: 0; height: 100%; width: 0; }
+.tk::before { content: ""; position: absolute; left: -1px; top: 4px; width: 2px; height: 8px; background: rgba(236, 231, 221, .75); }
+.tk b { position: absolute; top: 15px; left: 0; transform: translateX(-50%); font: 500 14px/1 "Tektur", sans-serif; color: var(--ink); white-space: nowrap; }
+.tk.near b { color: var(--orange); }
+.ring::after { content: ""; position: absolute; left: 50%; top: 14px; margin-left: -6px; border: 6px solid transparent; border-top: 7px solid var(--orange); }
+.ring-row { display: grid; gap: 5px; }
+.ring-name { font: 600 12px/1 "Manrope", sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ring-name em { font-style: normal; letter-spacing: .02em; text-transform: none; color: #C98A63; margin-left: 8px; }
+.dof-bar { position: absolute; left: 0; top: 17px; height: 5px; width: 1px; background: var(--orange); opacity: .8; transform-origin: 0 50%; }
+
+/* ---------- Объяснение ---------- */
+.explain { display: grid; gap: 14px; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
+.tabs button { padding: 11px 6px; font-weight: 600; font-size: 14px; color: var(--muted); transition: color .2s, background-color .2s; }
+.tabs button + button { border-left: 1px solid var(--line); }
+.tabs button[aria-selected="true"] { color: #0D0D0F; background: var(--ink); }
+.tabs button:hover:not([aria-selected="true"]) { color: var(--ink); }
+.diagram { background: #0A0A0C; border: 1px solid var(--line); padding: 8px; }
+#rays { width: 100%; height: 190px; display: block; }
+.scale-note { margin: 4px 2px 0; font-size: 12px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 2px 0; font-size: 13px; color: #D8D3C9; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+#tabText p { margin: 0 0 10px; color: #D8D3C9; font-size: 15px; }
+#tabText b { color: var(--ink); }
+#tabText .tip { color: var(--lcd); font-size: 14px; }
+.stats { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.stats div { background: var(--body); padding: 10px 12px; }
+.stats dt { font-size: 12px; letter-spacing: .06em; color: var(--muted); }
+.stats dd { margin: 3px 0 0; font: 500 16px/1.25 "Tektur", sans-serif; color: var(--ink); }
+.stats .wide { grid-column: 1 / -1; }
+.opts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.opts .lbl { font-size: 13px; color: var(--muted); margin-right: 2px; }
+.seg { display: flex; border: 1px solid var(--line); }
+.seg button { min-width: 42px; height: 40px; font: 500 14px "Tektur", sans-serif; color: var(--muted); transition: color .2s, background-color .2s; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: #0D0D0F; }
+.toggle { display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border: 1px solid var(--line); font-weight: 600; font-size: 14px; transition: border-color .2s; }
+.toggle:hover { border-color: rgba(236, 231, 221, .4); }
+.toggle i { width: 30px; height: 16px; border-radius: 9px; background: #2B2B31; position: relative; transition: background-color .2s; }
+.toggle i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); transition: transform .25s cubic-bezier(.2, .8, .2, 1); }
+.toggle[aria-pressed="true"] i { background: var(--orange); }
+.toggle[aria-pressed="true"] i::after { transform: translateX(14px); }
+
+@media (max-width: 1180px) {
+  .grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .top { padding: 16px 16px 10px; gap: 8px; }
+  h1 { font-size: 21px; }
+  .top p { font-size: 14px; }
+  .badge { display: none; }
+  .grid { padding: 0 12px 24px; gap: 16px; }
+  .camera { padding: 8px; width: 100%; }
+  .corner { width: 16px; height: 16px; }
+  .corner.tl, .corner.tr { top: 8px; } .corner.bl, .corner.br { bottom: 8px; }
+  .corner.tl, .corner.bl { left: 8px; } .corner.tr, .corner.br { right: 8px; }
+  .vf-hint { font-size: 12px; top: 10px; white-space: nowrap; }
+  .exif { gap: 12px; font-size: 12.5px; }
+  .exif span:last-child { display: none; }
+  .ring { height: 52px; }
+  .ring-name em { display: none; }
+  #rays { height: 170px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Оптика <span>объектива</span></h1>
+  <p>Как фокус, диафрагма и&nbsp;фокусное расстояние рисуют снимок — на&nbsp;живой ночной улице.</p>
+  <span class="badge">тонкая линза · кружок 0,03 мм</span>
+</header>
+
+<main class="grid">
+  <section class="camera" aria-label="Камера">
+    <div class="viewfinder">
+      <canvas id="vf" aria-label="Видоискатель: ночная улица"></canvas>
+      <div class="vf-ui" aria-hidden="true">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <i class="center-pt"></i><i id="af"></i>
+        <span class="vf-hint">Нажмите на&nbsp;огонь — фокус переедет на&nbsp;него</span>
+      </div>
+    </div>
+    <div class="exif" id="exif"></div>
+    <div class="barrel">
+      <div class="ring-row"><span class="ring-name">Фокус, м <em>оранжевым — глубина резкости</em></span><div class="ring" id="ringFocus" tabindex="0" role="slider" aria-label="Кольцо фокусировки, стрелки влево и вправо"><div class="knurl"></div><div class="ring-track"></div><div class="dof-bar" id="dofBar"></div></div></div>
+      <div class="ring-row"><span class="ring-name">Диафрагма, f/</span><div class="ring" id="ringAp" tabindex="0" role="slider" aria-label="Кольцо диафрагмы"><div class="knurl"></div><div class="ring-track"></div></div></div>
+      <div class="ring-row"><span class="ring-name">Фокусное, мм</span><div class="ring" id="ringFocal" tabindex="0" role="slider" aria-label="Кольцо фокусного расстояния"><div class="knurl"></div><div class="ring-track"></div></div></div>
+    </div>
+  </section>
+
+  <aside class="explain">
+    <div class="tabs" id="tabs" role="tablist">
+      <button type="button" role="tab" data-t="focus" aria-selected="true">Резкость</button>
+      <button type="button" role="tab" data-t="bokeh" aria-selected="false">Диафрагма и боке</button>
+      <button type="button" role="tab" data-t="persp" aria-selected="false">Перспектива</button>
+    </div>
+    <div class="diagram"><canvas id="rays" aria-label="Лучевая схема"></canvas><div class="legend" id="legend"></div><p class="scale-note">Схема не в масштабе. Толстая черта у матрицы — пятно, которое точка оставляет вместо себя.</p></div>
+    <div id="tabText"></div>
+    <dl class="stats">
+      <div class="wide"><dt>Глубина резкости</dt><dd><span id="dofNear">—</span> — <span id="dofFar">—</span> · <span id="dofLen">—</span></dd></div>
+      <div><dt>Гиперфокальное расстояние</dt><dd id="hyper">—</dd></div>
+      <div><dt>Угол обзора по горизонтали</dt><dd id="fov">—</dd></div>
+      <div class="wide"><dt>Кружок нерезкости для бесконечности</dt><dd id="cinf">—</dd></div>
+    </dl>
+    <div class="opts">
+      <span class="lbl">Лепестки диафрагмы</span>
+      <div class="seg" id="blades"><button type="button" data-b="5" aria-pressed="false">5</button><button type="button" data-b="6" aria-pressed="false">6</button><button type="button" data-b="7" aria-pressed="true">7</button><button type="button" data-b="9" aria-pressed="false">9</button><button type="button" data-b="0" aria-pressed="false" aria-label="Круглая">○</button></div>
+      <button type="button" class="toggle" id="keep" aria-pressed="false"><i></i>Держать размер вывески</button>
+    </div>
+  </aside>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

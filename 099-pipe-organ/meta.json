@@ -1,0 +1,19 @@
+{
+  "n": 99,
+  "slug": "099-pipe-organ",
+  "title": "Орган",
+  "tagline": "Десять регистров, синтез каждой трубы и пятисекундное эхо собора",
+  "category": "Звук и музыка",
+  "tech": [
+    "Web Audio",
+    "PeriodicWave",
+    "ConvolverNode",
+    "Canvas 2D"
+  ],
+  "strength": "Знание устройства органа плюс синтез звука без сэмплов",
+  "controls": "Клавиши Z…M и Q…P, рукоятки регистров, табличка «Токката»",
+  "accent": "#C9A24E",
+  "bg": "#120C08",
+  "needsNetwork": false,
+  "cat": 5
+}

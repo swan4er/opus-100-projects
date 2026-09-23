@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Трассировщик путей — физически корректный рендер в браузере</title>
+<meta name="description" content="Трассировка путей на процессоре в нескольких Web Worker: BVH, выборка по значимости, MIS, каустики.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Martian+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <section class="stage" aria-label="Рендер">
+    <div class="frame" id="frame">
+      <canvas id="render" aria-label="Изображение, которое рендерится"></canvas>
+      <canvas id="overlay" aria-hidden="true"></canvas>
+      <span class="crop c1"></span><span class="crop c2"></span><span class="crop c3"></span><span class="crop c4"></span>
+      <div class="tag t-tl"><span id="scene-no">01</span> · <span id="res">—</span></div>
+      <div class="tag t-tr"><b id="spp-badge">0</b> сэмплов/пикс.</div>
+      <div class="tag t-bl" id="hint-line">Клик по&nbsp;шару — выбрать и&nbsp;перетащить</div>
+      <div class="tag t-br"><i class="dot" id="state-dot"></i><span id="state">запуск</span></div>
+      <div class="pick" id="pick" hidden></div>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <header class="head">
+      <h1>Трассировщик путей</h1>
+      <p>Физически корректный рендер прямо на&nbsp;процессоре: каждый пиксель — среднее сотен случайных путей света. Картинка проявляется из&nbsp;шума, как фотография.</p>
+    </header>
+
+    <section class="block">
+      <h2 class="label">Сцена</h2>
+      <div class="scenes" id="scenes" role="group" aria-label="Выбор сцены"></div>
+    </section>
+
+    <section class="block stats" aria-live="off">
+      <h2 class="label">Ферма</h2>
+      <div class="big">
+        <div><b id="spp">0</b><span>сэмплов на&nbsp;пиксель</span></div>
+        <div><b id="rps">0</b><span>млн лучей в&nbsp;секунду</span></div>
+      </div>
+      <canvas id="spark" aria-hidden="true"></canvas>
+      <div class="row-meta"><span id="elapsed">00:00,0</span><span id="threads">— потоков</span></div>
+      <div class="workers" id="workers" aria-hidden="true"></div>
+    </section>
+
+    <section class="block object" id="object">
+      <h2 class="label">Объект <span id="obj-name" class="obj-name">не выбран</span></h2>
+      <div class="mats" id="mats" role="group" aria-label="Материал"></div>
+      <label class="slider" id="rough-row"><span>Шероховатость</span><input id="rough" type="range" min="0" max="1" step="0.01" value="0.2"><output id="rough-out">0,20</output></label>
+      <label class="slider" id="ior-row"><span>Преломление, n</span><input id="ior" type="range" min="1" max="2.4" step="0.01" value="1.5"><output id="ior-out">1,50</output></label>
+    </section>
+
+    <section class="block">
+      <h2 class="label">Камера</h2>
+      <label class="slider"><span>Экспозиция</span><input id="exposure" type="range" min="-2" max="2" step="0.05" value="0"><output id="exp-out">0,0</output></label>
+      <label class="slider" id="dof-row"><span>Диафрагма</span><input id="aperture" type="range" min="0" max="1" step="0.01" value="0.3"><output id="ap-out">0,30</output></label>
+      <div class="switch-row"><span>Шумодав <small>à-trous по нормалям, альбедо и глубине</small></span><button type="button" class="switch" id="denoise" aria-pressed="true" aria-label="Шумодав"><i></i></button></div>
+      <div class="buttons">
+        <button type="button" class="btn" id="pause" aria-pressed="false">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path class="i-pause" d="M4 3h3v10H4zM9 3h3v10H9z" fill="currentColor"/><path class="i-play" d="M4 2.5l9 5.5-9 5.5z" fill="currentColor"/></svg>
+          <span>Пауза</span>
+        </button>
+        <button type="button" class="btn" id="restart">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Заново</span>
+        </button>
+        <button type="button" class="btn" id="save">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 2v8M4.5 6.8L8 10.3l3.5-3.5M3 13.5h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>PNG</span>
+        </button>
+      </div>
+    </section>
+
+    <p class="foot">BVH с&nbsp;разбиением по&nbsp;SAH, выборка по&nbsp;значимости, MIS для прямого света, GGX-металлы, стекло с&nbsp;поглощением, шумодав à-trous. Потоков столько, сколько ядер у&nbsp;процессора.</p>
+  </aside>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

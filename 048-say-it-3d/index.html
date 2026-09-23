@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Сказал — появилось · 3D-диорама из слов</title>
+<meta name="description" content="Опишите сцену словами — нейросеть напишет её граф, а движок соберёт живую 3D-диораму. Дальше лепите мир словами.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Prata&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage" aria-label="3D-диорама"></div>
+
+<!-- верх: логотип, метка демо, счётчик и кнопки -->
+<header class="top">
+  <div class="brand">
+    <h1 class="brand__name">Сказал — появилось</h1>
+    <span class="brand__sub">диорама из слов</span>
+    <span class="scene-title" id="sceneTitle"></span>
+  </div>
+  <div class="demo-badge" id="demoBadge" hidden>демо-режим — нейросеть не подключена</div>
+  <div class="top__tools">
+    <span class="cost" id="cost" title="Сколько потрачено на нейросеть в этой сессии">$0.0000</span>
+    <button class="icon-btn" id="btnSound" aria-label="Звук" title="Звук">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor"/><path class="snd-on" d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.6 7.6 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path class="snd-off" d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+    <button class="icon-btn" id="btnUndo" aria-label="Отменить" title="Отменить (Ctrl+Z)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7 4.5 11.5 9 16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 11.5h9.5a5 5 0 0 1 0 10H11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+    </button>
+    <button class="icon-btn" id="btnRedo" aria-label="Вернуть" title="Вернуть (Ctrl+Shift+Z)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 7l4.5 4.5L15 16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 11.5H9.5a5 5 0 0 0 0 10H13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+    </button>
+    <button class="text-btn" id="btnDrawer" aria-expanded="false" aria-controls="drawer">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="3" rx="1.2" fill="currentColor"/><rect x="4" y="10.5" width="16" height="3" rx="1.2" fill="currentColor"/><rect x="4" y="16" width="10" height="3" rx="1.2" fill="currentColor"/></svg>
+      <span>Сцены</span>
+    </button>
+  </div>
+</header>
+
+<!-- журнал стройки -->
+<ol class="buildlog" id="buildlog" aria-live="polite"></ol>
+
+<!-- низ: реплика мастера, подсказки, строка ввода -->
+<section class="composer" id="composer">
+  <div class="reply" id="reply">
+    <div class="reply__who">Мастер</div>
+    <div class="reply__text" id="replyText">Опишите сцену — соберу её из слов.</div>
+    <div class="reply__timer" id="replyTimer" hidden></div>
+  </div>
+  <div class="chips" id="chips" role="list"></div>
+  <form class="prompt" id="promptForm" autocomplete="off">
+    <button type="button" class="prompt__new" id="btnNew" title="Новая сцена с нуля" aria-label="Новая сцена с нуля" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <span class="prompt__tag" id="promptTag">правка</span>
+    <label class="visually-hidden" for="promptInput">Что построить</label>
+    <input id="promptInput" type="text" maxlength="400" spellcheck="true" placeholder="Например: маяк на скале, шторм, ночь">
+    <button type="button" class="prompt__mic" id="btnMic" title="Сказать голосом" aria-label="Сказать голосом" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3.5" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11.5a6 6 0 0 0 12 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+    <button type="submit" class="prompt__go" id="btnGo" aria-label="Построить">
+      <span class="prompt__go-label">Построить</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6.5 18.5 12 13 17.5" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </form>
+</section>
+
+<!-- боковая панель: история, галерея, чертёж -->
+<aside class="drawer" id="drawer" aria-label="Сцены" aria-hidden="true">
+  <div class="drawer__head">
+    <div class="tabs" role="tablist">
+      <button role="tab" class="tab is-on" data-tab="history" aria-selected="true">История</button>
+      <button role="tab" class="tab" data-tab="gallery" aria-selected="false">Галерея</button>
+      <button role="tab" class="tab" data-tab="code" aria-selected="false">Чертёж</button>
+    </div>
+    <button class="icon-btn icon-btn--flat" id="btnDrawerClose" aria-label="Закрыть панель">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="pane is-on" data-pane="history">
+    <ol class="history" id="history"></ol>
+  </div>
+  <div class="pane" data-pane="gallery">
+    <button class="save-btn" id="btnSave">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.8l2.5 5.2 5.6.7-4.1 3.9 1 5.6L12 16.5l-5 2.7 1-5.6-4.1-3.9 5.6-.7z" fill="currentColor"/></svg>
+      Сохранить эту сцену
+    </button>
+    <div class="gallery" id="gallery"></div>
+  </div>
+  <div class="pane" data-pane="code">
+    <p class="code-note">Так нейросеть описывает мир: граф сцены на строгом языке. Движок проверяет его и собирает диораму.</p>
+    <pre class="code" id="code"></pre>
+  </div>
+</aside>
+
+<div class="hint" id="hint">Тяните — облёт камеры, колесо — ближе</div>
+<div class="scrim" id="scrim"></div>
+
+<div class="fatal" id="fatal" hidden>
+  <div class="fatal__card">
+    <h2>Мастерская не открылась</h2>
+    <p>Для 3D нужен интернет: движок three.js загружается из сети. Проверьте подключение и обновите страницу.</p>
+  </div>
+</div>
+
+<script src="../_ai/ai.js"></script>
+
+<!-- three.js из CDN; классические скрипты ниже выполняются после него (defer идёт в том же порядке, что и модули) -->
+<script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+  import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+  import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+  import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+  import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+  window.THREE = THREE;
+  window.THREE_ADDONS = { OrbitControls, EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, OutputPass, mergeGeometries };
+</script>
+<script defer src="lang.js"></script>
+<script defer src="recipes.js"></script>
+<script defer src="props.js"></script>
+<script defer src="beings.js"></script>
+<script defer src="world.js"></script>
+<script defer src="engine.js"></script>
+<script defer src="demo.js"></script>
+<script defer src="brain.js"></script>
+<script defer src="sound.js"></script>
+<script defer src="app.js"></script>
+</body>
+</html>

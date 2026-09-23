@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Кремниевое сердце — восьмибитный процессор КС-8</title>
+<meta name="description" content="Восьмибитный процессор с собственной системой команд, ассемблером и светодиодной матрицей 32×32. Шины светятся на каждом такте.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Tektur:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pcb: #0c1210;
+    --pcb-2: #111a17;
+    --panel: #0a0f0d;
+    --ink: #ece5d1;
+    --muted: #9ba596;
+    --line: rgba(236, 229, 209, 0.12);
+    --copper: #c7803f;
+    --amber: #ffb23f;
+    --amber-2: #ffd48a;
+    --teal: #7fd6bf;
+    --red: #ff5a4a;
+    --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --tech: 'Tektur', 'IBM Plex Mono', system-ui, sans-serif;
+    --ease: cubic-bezier(.2, .7, .1, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--pcb); color: var(--ink); }
+  body { font-family: var(--mono); -webkit-font-smoothing: antialiased; overflow: hidden; }
+  button { font: inherit; color: inherit; }
+
+  .app { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+
+  /* ── Шапка ──────────────────────────────────────── */
+  .top { display: flex; align-items: center; gap: 22px; padding: 14px 22px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #0e1613, #0b110f); position: relative; z-index: 2; }
+  .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .brand svg { flex: none; }
+  .brand h1 { margin: 0; font: 800 22px/1 var(--tech); letter-spacing: .01em; white-space: nowrap; }
+  .brand h1 span { color: var(--amber); }
+  .brand p { margin: 5px 0 0; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .progs { display: flex; gap: 4px; margin-left: auto; padding: 4px; border: 1px solid var(--line); border-radius: 6px; background: rgba(0,0,0,.25); }
+  .progs button { appearance: none; border: 0; background: transparent; padding: 0 14px; height: 36px; border-radius: 4px; font: 500 13px/1 var(--tech); letter-spacing: .02em; color: #c9c3b0; cursor: pointer; transition: background .2s var(--ease), color .2s var(--ease); }
+  .progs button:hover { background: rgba(255, 178, 63, .09); color: var(--ink); }
+  .progs button[aria-selected="true"] { background: var(--amber); color: #1b1004; }
+  .progs button:focus-visible, .ctl:focus-visible, .seg button:focus-visible, .pad button:focus-visible { outline: 2px solid var(--amber-2); outline-offset: 2px; }
+  .run { display: flex; gap: 6px; }
+  .ctl { appearance: none; display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 5px; border: 1px solid var(--line); background: transparent; font: 500 13px/1 var(--mono); cursor: pointer; transition: background .2s var(--ease), border-color .2s var(--ease); white-space: nowrap; }
+  .ctl:hover { background: rgba(236, 229, 209, .06); border-color: rgba(236, 229, 209, .25); }
+  .ctl.primary { background: var(--amber); color: #1b1004; border-color: var(--amber); font-weight: 600; min-width: 108px; justify-content: center; }
+  .ctl.primary:hover { background: var(--amber-2); }
+  .ctl svg { width: 14px; height: 14px; }
+
+  /* ── Основная сетка ────────────────────────────── */
+  .main { display: grid; grid-template-columns: minmax(360px, 30%) 1fr; min-height: 0; }
+
+  .editor { display: grid; grid-template-rows: auto 1fr auto; border-right: 1px solid var(--line); background: var(--panel); min-height: 0; }
+  .ed-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .ed-head h2 { margin: 0; font: 700 14px/1 var(--tech); letter-spacing: .03em; }
+  .ed-head .st { font-size: 12px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+  .ed-head .st.err { color: var(--red); }
+  .ed-head .st.dirty { color: var(--amber-2); }
+  .build { height: 32px; padding: 0 12px; font-size: 12px; }
+
+  .code { position: relative; min-height: 0; overflow: hidden; font: 400 13px/20px var(--mono); }
+  .code pre, .code textarea { margin: 0; position: absolute; inset: 0; padding: 12px 16px 60px 62px; font: inherit; white-space: pre; tab-size: 8; }
+  .code pre { overflow: hidden; pointer-events: none; color: #cfc9b6; }
+  .code textarea { resize: none; border: 0; outline: none; background: transparent; color: transparent; caret-color: var(--amber); overflow: auto; scrollbar-width: thin; scrollbar-color: #2a3530 transparent; }
+  .code textarea::selection { background: rgba(255, 178, 63, .28); color: transparent; }
+  .l { position: relative; height: 20px; }
+  .l .no { position: absolute; left: -48px; width: 28px; text-align: right; color: #5f6d66; font-size: 11.5px; }
+  .l .heat { position: absolute; left: -17px; top: 5px; width: 13px; height: 10px; border-radius: 1px; background: var(--amber); transform-origin: left center; transform: scaleX(0); opacity: 0; transition: opacity .3s linear; }
+  .l.pc::before { content: ''; position: absolute; left: -62px; right: -400px; top: 0; bottom: 0; background: rgba(255, 178, 63, .13); border-top: 1px solid rgba(255, 178, 63, .35); border-bottom: 1px solid rgba(255, 178, 63, .35); }
+  .l.pc .no { color: var(--amber); }
+  .l.bad::before { content: ''; position: absolute; left: -62px; right: -400px; top: 0; bottom: 0; background: rgba(255, 90, 74, .16); }
+  .t-op { color: var(--amber); }
+  .t-reg { color: var(--teal); }
+  .t-num { color: #f0a6d8; }
+  .t-lab { color: var(--amber-2); font-weight: 600; }
+  .t-ref { color: #e7d9a8; }
+  .t-dir { color: #9bb8ff; }
+  .t-str { color: #b9e28c; }
+  .t-com { color: #75847c; font-style: italic; }
+
+  .about { padding: 12px 16px 14px; border-top: 1px solid var(--line); font-size: 12.5px; line-height: 1.55; color: #bdb6a3; }
+  .about b { color: var(--ink); font-weight: 600; }
+  .keys { margin-top: 6px; color: var(--muted); font-size: 12px; }
+  kbd { font: 500 11.5px/1 var(--mono); color: var(--ink); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 2px 5px; }
+
+  /* ── Плата ─────────────────────────────────────── */
+  .boardwrap { position: relative; min-height: 0; min-width: 0; overflow: hidden; }
+  #board { position: absolute; inset: 0; width: 100%; height: calc(100% - 64px); display: block; }
+  .dock { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: flex; align-items: center; gap: 18px; padding: 0 20px; border-top: 1px solid var(--line); background: rgba(8, 12, 11, .92); }
+  .now { min-width: 0; flex: 1; display: grid; gap: 4px; }
+  .now .ins { font: 600 15px/1 var(--mono); color: var(--amber-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .now .ins span { color: var(--muted); font-weight: 400; margin-right: 10px; }
+  .now .why { font-size: 12.5px; color: #c4bda9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .speed { display: flex; align-items: center; gap: 10px; }
+  .speed .lbl { font-size: 12px; color: var(--muted); }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+  .seg button { appearance: none; border: 0; border-left: 1px solid var(--line); background: transparent; height: 34px; padding: 0 10px; font: 500 12px/1 var(--mono); color: #c9c3b0; cursor: pointer; white-space: nowrap; }
+  .seg button:first-child { border-left: 0; }
+  .seg button:hover { background: rgba(236,229,209,.06); }
+  .seg button[aria-pressed="true"] { background: rgba(255, 178, 63, .16); color: var(--amber-2); box-shadow: inset 0 -2px 0 var(--amber); }
+  .snd { height: 34px; }
+  .snd[aria-pressed="true"] { color: var(--amber-2); border-color: rgba(255,178,63,.45); }
+
+  .pad { position: absolute; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 4px; }
+  .pad button { appearance: none; border: 1px solid rgba(236,229,209,.18); background: #171c1a; border-radius: 6px; cursor: pointer; display: grid; place-items: center; color: #d8d2bf; transition: background .12s, transform .12s var(--ease); touch-action: none; min-width: 40px; min-height: 40px; box-shadow: 0 2px 0 #050706; }
+  .pad button:active, .pad button.on { background: var(--amber); color: #1b1004; transform: translateY(2px); box-shadow: none; }
+  .pad .up { grid-area: 1 / 2; } .pad .left { grid-area: 2 / 1; } .pad .fire { grid-area: 2 / 2; font: 600 10.5px/1 var(--mono); letter-spacing: .04em; } .pad .right { grid-area: 2 / 3; } .pad .down { grid-area: 3 / 2; }
+  .pad svg { width: 14px; height: 14px; }
+
+  .toast { position: absolute; left: 50%; top: 14px; transform: translate(-50%, -8px); opacity: 0; background: #1d1511; border: 1px solid rgba(255, 90, 74, .5); color: #ffc9c2; padding: 10px 14px; border-radius: 5px; font-size: 12.5px; transition: opacity .3s var(--ease), transform .3s var(--ease); pointer-events: none; max-width: 80%; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ── Мобильная раскладка ───────────────────────── */
+  @media (max-width: 860px) {
+    body { overflow: auto; }
+    .app { display: block; height: auto; }
+    .top { flex-wrap: wrap; gap: 12px; padding: 12px 14px; }
+    .brand h1 { font-size: 19px; }
+    .brand p { display: none; }
+    .run { margin-left: auto; }
+    .run .ctl:not(.primary) { padding: 0 11px; }
+    .run .ctl .t { display: none; }
+    .progs { order: 3; width: 100%; margin: 0; overflow-x: auto; scrollbar-width: none; }
+    .progs button { flex: 1 0 auto; padding: 0 12px; }
+    .main { display: flex; flex-direction: column-reverse; }
+    .editor { border-right: 0; border-top: 1px solid var(--line); }
+    .code { height: 360px; }
+    .boardwrap { height: auto; }
+    #board { position: relative; height: auto; aspect-ratio: 400 / 820; }
+    .dock { position: relative; height: auto; flex-direction: column; align-items: stretch; padding: 12px 14px; gap: 12px; }
+    .speed { flex-wrap: wrap; }
+    .seg { flex: 1; }
+    .seg button { flex: 1; padding: 0 4px; }
+    .now .why { white-space: normal; }
+    .pad { position: relative; width: 200px; height: 200px; margin: 14px auto 4px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+        <rect x="9" y="9" width="22" height="22" rx="2" fill="#141a18" stroke="#c7803f" stroke-width="1.2"/>
+        <g stroke="#c7803f" stroke-width="1.6" stroke-linecap="round">
+          <path d="M14 9V4M20 9V4M26 9V4M14 31v5M20 31v5M26 31v5M9 14H4M9 20H4M9 26H4M31 14h5M31 20h5M31 26h5"/>
+        </g>
+        <path d="M20 26.5c-4.2-2.9-6.3-5.2-6.3-7.6 0-1.8 1.4-3.2 3.1-3.2 1.3 0 2.3.7 3.2 1.9.9-1.2 1.9-1.9 3.2-1.9 1.7 0 3.1 1.4 3.1 3.2 0 2.4-2.1 4.7-6.3 7.6z" fill="#ff5a4a"/>
+      </svg>
+      <div>
+        <h1>Кремниевое <span>сердце</span></h1>
+        <p>КС-8: восьмибитный процессор, ассемблер и&nbsp;экран&nbsp;32×32</p>
+      </div>
+    </div>
+    <nav class="progs" id="progs" role="tablist" aria-label="Программы"></nav>
+    <div class="run">
+      <button type="button" class="ctl primary" id="run" aria-label="Пауза"></button>
+      <button type="button" class="ctl" id="step" title="Выполнить одну команду (S)">
+        <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 2l6 5-6 5z" fill="currentColor"/><rect x="10" y="2" width="2" height="10" fill="currentColor"/></svg><span class="t">Шаг</span>
+      </button>
+      <button type="button" class="ctl" id="reset" title="Перезапустить программу (R)">
+        <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M11.5 7A4.5 4.5 0 1 1 7 2.5h2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 0l3 2.5L8 5z" fill="currentColor"/></svg><span class="t">Сброс</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="editor" aria-label="Исходный код">
+      <div class="ed-head">
+        <h2 id="progTitle">Жизнь</h2>
+        <span class="st" id="asmStatus"></span>
+        <button type="button" class="ctl build" id="build" title="Собрать и запустить (Ctrl+Enter)">Собрать</button>
+      </div>
+      <div class="code">
+        <pre id="hl" aria-hidden="true"></pre>
+        <textarea id="src" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Программа на ассемблере КС-8"></textarea>
+      </div>
+      <div class="about"><div id="about"></div><div class="keys"><kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> и&nbsp;<kbd>пробел</kbd> — порт&nbsp;0 · <kbd>S</kbd> шаг · <kbd>R</kbd> сброс · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> собрать</div></div>
+    </section>
+
+    <section class="boardwrap" id="boardwrap" aria-label="Плата процессора">
+      <canvas id="board" aria-label="Печатная плата: процессор, память, шины и светодиодная матрица"></canvas>
+      <div class="pad" id="pad" aria-label="Клавиши порта 0">
+        <button type="button" class="up" data-k="1" aria-label="Вверх"><svg viewBox="0 0 14 14"><path d="M7 3l5 7H2z" fill="currentColor"/></svg></button>
+        <button type="button" class="left" data-k="4" aria-label="Влево"><svg viewBox="0 0 14 14"><path d="M3 7l7-5v10z" fill="currentColor"/></svg></button>
+        <button type="button" class="fire" data-k="5" aria-label="Пробел">ОГОНЬ</button>
+        <button type="button" class="right" data-k="2" aria-label="Вправо"><svg viewBox="0 0 14 14"><path d="M11 7L4 2v10z" fill="currentColor"/></svg></button>
+        <button type="button" class="down" data-k="3" aria-label="Вниз"><svg viewBox="0 0 14 14"><path d="M7 11L2 4h10z" fill="currentColor"/></svg></button>
+      </div>
+      <div class="toast" id="toast" role="status"></div>
+      <div class="dock">
+        <div class="now" aria-live="off">
+          <div class="ins" id="nowIns"></div>
+          <div class="why" id="nowWhy"></div>
+        </div>
+        <div class="speed">
+          <span class="lbl">Частота</span>
+          <div class="seg" id="speedSeg"></div>
+          <button type="button" class="ctl snd" id="sound" aria-pressed="false" title="Звук порта 3">
+            <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 5h2.5L8 2v10L4.5 9H2z" fill="currentColor"/><path d="M10 4.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>Звук
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="core.js"></script>
+<script src="programs.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

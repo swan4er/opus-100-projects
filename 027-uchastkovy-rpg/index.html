@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Участковый — ПГТ Тридевятое</title>
+<meta name="description" content="Ролевая игра с нейросетью: новый участковый в посёлке, где Кощей держит автосалон, а у него украли смерть.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=PT+Mono&family=Ruslan+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="sky" aria-hidden="true"></canvas>
+<canvas id="scene" aria-label="Посёлок Тридевятое: изометрическая карта"></canvas>
+<div id="labels" aria-hidden="false"></div>
+<div id="diceCap" class="dice-cap" aria-live="polite"></div>
+<div id="noThree" class="no-three" hidden>
+  <b>Посёлок не проявился</b>
+  <span>Трёхмерная карта грузит three.js с cdn.jsdelivr.net, а связи нет. Играть можно и так: все разговоры и дело — в папке справа.</span>
+</div>
+
+<header class="hud">
+  <div class="brand">
+    <h1>Участковый</h1>
+    <span class="sub">ПГТ Тридевятое · дело о Кощеевой смерти</span>
+  </div>
+  <div class="clock" id="clock" title="Игровое время">
+    <svg viewBox="0 0 24 24" class="ico" id="clockIco" aria-hidden="true"></svg>
+    <span id="clockText">понедельник, 08:40</span>
+    <span class="deadline" id="deadline">до четверга 9:00</span>
+  </div>
+  <div class="demo-badge" id="demoBadge" hidden>демо-режим — нейросеть не подключена</div>
+  <div class="stats">
+    <div class="stat" title="Авторитет участкового в посёлке">
+      <span class="k">авторитет</span><b id="authVal">40</b>
+      <i class="bar"><i id="authBar"></i></i>
+    </div>
+    <div class="stat" title="Деньги"><span class="k">кошелёк</span><b id="moneyVal">500 ₽</b></div>
+    <div class="stat cost" id="costBox" title="Сколько потрачено на нейросеть за эту сессию"><span class="k">нейросеть</span><b id="costVal">$0.000</b></div>
+    <button class="icon-btn" id="soundBtn" type="button" aria-label="Звук" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="mute" d="M16 9l5 6M21 9l-5 6"/></svg>
+    </button>
+    <button class="icon-btn" id="menuBtn" type="button" aria-label="Меню" aria-expanded="false">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+  <div class="menu" id="menu" hidden>
+    <button type="button" data-act="overview">Весь посёлок</button>
+    <button type="button" data-act="help">Как играть</button>
+    <button type="button" data-act="new">Новое дело</button>
+    <button type="button" data-act="demo">Играть без нейросети</button>
+    <div class="menu-cost" id="menuCost">нейросеть: $0.0000</div>
+  </div>
+</header>
+
+<aside class="folder" id="folder">
+  <div class="grip" id="grip" aria-hidden="true"><i></i></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" type="button" class="on" data-tab="talk">Разговор</button>
+    <button role="tab" type="button" data-tab="case">Дело <em id="clueCount">0</em></button>
+    <button role="tab" type="button" data-tab="quests">Заявления <em id="questCount">0</em></button>
+    <button role="tab" type="button" data-tab="items">Вещи</button>
+  </nav>
+
+  <section class="pane on" id="pane-talk" role="tabpanel">
+    <div class="where">
+      <div class="place"><b id="placeName">Площадь</b><span id="placeHint">Кого спросить?</span></div>
+      <div class="who" id="who"></div>
+    </div>
+    <div class="log" id="log" aria-live="polite"></div>
+    <div class="quick" id="quick"></div>
+    <form class="say" id="sayForm" autocomplete="off">
+      <textarea id="input" rows="2" maxlength="400" placeholder="Что делаете или говорите? Например: «Спросить, где был ночью»" aria-label="Ваше действие или реплика"></textarea>
+      <button type="submit" id="sendBtn" aria-label="Отправить">
+        <svg viewBox="0 0 24 24"><path d="M4 12h13M12 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+  </section>
+
+  <section class="pane" id="pane-case" role="tabpanel">
+    <div class="case-head">
+      <div class="stamp">Дело № 1</div>
+      <h2>Кощеева смерть</h2>
+      <p class="brief">В ночь на понедельник из сейфа в автосалоне пропало яйцо Кощея. В яйце — игла, на конце иглы — его смерть. Срок — до четверга, 9:00.</p>
+    </div>
+    <h3>Улики</h3>
+    <ul class="clues" id="clueList"></ul>
+    <h3>Зацепки</h3>
+    <ul class="leads" id="leadList"></ul>
+    <h3>Что говорят в посёлке</h3>
+    <ul class="leads rumors" id="rumorList"></ul>
+    <h3>Предъявить обвинение</h3>
+    <p class="note">Выберите подозреваемого и до трёх улик против него. Нужно минимум две настоящие. Права на ошибку — одна.</p>
+    <div class="suspects" id="suspects"></div>
+    <button type="button" class="big-btn" id="accuseBtn" disabled>Предъявить</button>
+    <p class="note" id="accuseNote"></p>
+  </section>
+
+  <section class="pane" id="pane-quests" role="tabpanel">
+    <p class="note">Жители несут участковому свои беды. Разберётесь — вырастет авторитет, а кто-то станет разговорчивее.</p>
+    <ul class="quests" id="questList"></ul>
+    <button type="button" class="big-btn ghost" id="newQuestBtn">Проверить журнал заявлений</button>
+    <p class="note" id="questNote"></p>
+  </section>
+
+  <section class="pane" id="pane-items" role="tabpanel">
+    <ul class="items" id="itemList"></ul>
+    <div class="shop" id="shop"></div>
+  </section>
+</aside>
+
+<div class="phone" id="phone" hidden>
+  <div class="ph-ring"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></div>
+  <div class="ph-text"><b>Полковник Полкан</b><span id="phoneSub">звонит из района</span></div>
+  <button type="button" class="ph-yes" id="phoneYes">Ответить</button>
+  <button type="button" class="ph-no" id="phoneNo">Сбросить</button>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="sheet" id="modalSheet" role="dialog" aria-modal="true"></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="../_ai/ai.js"></script>
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="town.js"></script>
+<script src="scene.js"></script>
+<script src="master.js"></script>
+<script src="ui.js"></script>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import * as BGU from 'three/addons/utils/BufferGeometryUtils.js';
+window.THREE = THREE;
+window.THREE_UTILS = BGU;
+// сцену строим после загрузки страницы: интерфейс появляется сразу, 3D — следом
+const go = () => setTimeout(() => window.dispatchEvent(new Event('three-ready')), 30);
+if (document.readyState === 'complete') go(); else window.addEventListener('load', go, { once: true });
+</script>
+</body>
+</html>

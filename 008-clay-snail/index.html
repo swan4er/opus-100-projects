@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Улитка идёт на концерт — пластилиновый мультфильм</title>
+<meta name="description" content="Пластилиновый мультфильм на 2 минуты: улитка спешит через сад на вечерний концерт сверчков. Всё нарисовано и сыграно кодом.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Neucha&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <p class="kicker"><span class="no">008</span> пластилиновый мультфильм</p>
+    <h1>Улитка идёт на&nbsp;концерт</h1>
+    <p class="meta"><span id="sceneName">Утро</span><span class="dot" aria-hidden="true"></span>2&nbsp;минуты · 12&nbsp;кадров в&nbsp;секунду</p>
+  </header>
+
+  <main id="stage" class="stage">
+    <div id="film" class="film" role="img" aria-label="Кадр мультфильма">
+      <canvas id="gl"></canvas>
+      <div id="loading" class="loading" aria-live="polite">
+        <span class="blob" aria-hidden="true"></span><span>Лепим сцену…</span>
+      </div>
+      <div class="nogl-msg">
+        <p class="nogl-t">Нужен WebGL2</p>
+        <p>Этот мультфильм лепится прямо в&nbsp;видеокарте. Откройте его в&nbsp;свежем Chrome, Safari или Firefox.</p>
+      </div>
+    </div>
+
+    <div id="bar" class="bar">
+      <button id="soundStart" class="btn-sound" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z" fill="currentColor"/><path d="M15.2 8.6a4.6 4.6 0 0 1 0 6.8M17.8 6a8.2 8.2 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span>Смотреть со&nbsp;звуком</span>
+      </button>
+      <button id="play" class="btn" type="button" aria-label="Пауза">
+        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="3.6" height="14" rx="1.4" fill="currentColor"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.4" fill="currentColor"/></svg>
+        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.9l10.4-6.8a1 1 0 0 0 0-1.7L9.5 4.3A1 1 0 0 0 8 5.2z" fill="currentColor"/></svg>
+      </button>
+      <div class="time"><span id="cur">0:00</span><span class="sep">/</span><span id="dur">2:00</span></div>
+      <div id="track" class="track" role="slider" tabindex="0" aria-label="Время фильма" aria-valuemin="0" aria-valuemax="120" aria-valuenow="0">
+        <div class="rail"><div id="fill" class="fill"></div></div>
+        <div id="marks" class="marks"></div>
+        <div id="knob" class="knob"></div>
+        <div id="tip" class="tip">0:00</div>
+      </div>
+      <button id="sound" class="btn" type="button" aria-label="Выключить звук">
+        <svg class="i-snd" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z" fill="currentColor"/><path d="M15.2 8.6a4.6 4.6 0 0 1 0 6.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg class="i-mute" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z" fill="currentColor"/><path d="M15.5 9.5l5 5m0-5l-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button id="replay" class="btn" type="button" aria-label="Смотреть сначала">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12a6.5 6.5 0 1 0 2-4.7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M4.6 4.4v4.4H9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="fs" class="btn" type="button" aria-label="Во весь экран">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <section class="notes" aria-label="О фильме">
+    <ol id="chapters" class="chapters"></ol>
+    <p class="about">Сад, свет и&nbsp;пластилин вылеплены кодом: объёмы — поля расстояний в&nbsp;шейдере, отпечатки пальцев — тоже. Музыка и&nbsp;шорохи синтезируются в&nbsp;браузере. Пробел — пауза, стрелки — ±5&nbsp;секунд, F&nbsp;— во&nbsp;весь экран, M&nbsp;— звук.</p>
+  </section>
+</div>
+
+<script src="film.js"></script>
+<script src="film-shots.js"></script>
+<script src="shader-scene.js"></script>
+<script src="shader-shade.js"></script>
+<script src="shader-post.js"></script>
+<script src="audio.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

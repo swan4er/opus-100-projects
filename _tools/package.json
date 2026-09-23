@@ -1,0 +1,10 @@
+{
+  "name": "100-projects-tools",
+  "private": true,
+  "type": "module",
+  "description": "Скриншоты и проверка консоли для 100 проектов",
+  "dependencies": {
+    "playwright": "^1.63.0",
+    "sharp": "^0.35.4"
+  }
+}

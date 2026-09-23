@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Кот-фонарщик — 085</title>
+<meta name="description" content="Мультфильм-перекладка: кот зажигает фонари маленького города, а за огнём для последнего идёт к Луне. Бумага, шарниры, многоплановая камера и вальс — всё кодом.">
+<meta name="theme-color" content="#121019">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kurale&family=Yeseva+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page" id="page">
+  <header class="head" id="head">
+    <h1>Кот-фонарщик</h1>
+    <p class="sub">Мультфильм-перекладка о&nbsp;коте, фонарях и&nbsp;Луне <span class="nw"><span class="dot">· </span>1&nbsp;мин 58&nbsp;с</span></p>
+  </header>
+
+  <section class="player" id="player" aria-label="Плеер мультфильма">
+    <div class="screen" id="screen">
+      <canvas id="film" role="img" aria-label="Мультфильм «Кот-фонарщик»: кот зажигает фонари городка у моря, последний фонарь на пристани не горит, и кот идёт за огнём к Луне по лунной дорожке."></canvas>
+      <div class="curtain" id="curtain" aria-hidden="true"><span>Бумага сохнет…</span></div>
+      <button class="cta" id="cta" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.6L12.5 5v14l-4.9-4.5H4z"/><path class="w" d="M15.6 8.8a4.6 4.6 0 0 1 0 6.4"/><path class="w" d="M18.2 6.3a8.2 8.2 0 0 1 0 11.4"/></svg>
+        <span>Смотреть со&nbsp;звуком</span>
+      </button>
+      <div class="end" id="end" hidden>
+        <button class="cta again" id="again" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M5 4.5V9h4.5"/></svg>
+          <span>Смотреть ещё раз</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="bar" id="bar">
+      <button class="play" id="play" type="button" aria-label="Пауза">
+        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13M16 5.5v13"/></svg>
+        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>
+      </button>
+      <span class="play-label" id="playLabel">Пауза</span>
+      <div class="track" id="track" role="slider" tabindex="0" aria-label="Время фильма" aria-valuemin="0" aria-valuemax="118" aria-valuenow="0" aria-valuetext="0:00, Сумерки">
+        <div class="rail"><div class="fill" id="fill"></div></div>
+        <ol class="marks" id="marks"></ol>
+        <div class="knob" id="knob"></div>
+      </div>
+      <span class="time"><span id="cur">0:00</span><span class="slash"> / </span><span id="dur">1:58</span></span>
+      <span class="scene" id="sceneName" aria-hidden="true">Сумерки</span>
+      <div class="tools">
+        <button class="ib" id="replay" type="button" aria-label="Смотреть сначала" title="Сначала">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M5 4.5V9h4.5"/></svg>
+        </button>
+        <button class="ib" id="mute" type="button" aria-label="Включить звук" aria-pressed="false" title="Звук (M)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.6L12.5 5v14l-4.9-4.5H4z"/><path class="w" d="M15.6 8.8a4.6 4.6 0 0 1 0 6.4"/><path class="w" d="M18.2 6.3a8.2 8.2 0 0 1 0 11.4"/><path class="x" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+        </button>
+        <button class="ib" id="fs" type="button" aria-label="Во весь экран" title="Во весь экран (F)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot" id="foot">
+    <span>Пробел — пауза</span><span>← → — на&nbsp;5&nbsp;секунд</span><span>F — во&nbsp;весь экран</span><span>M — звук</span>
+  </footer>
+</div>
+
+<script src="paper.js"></script>
+<script src="art-town.js"></script>
+<script src="art-cat.js"></script>
+<script src="art-more.js"></script>
+<script src="rigs.js"></script>
+<script src="world.js"></script>
+<script src="film.js"></script>
+<script src="film2.js"></script>
+<script src="render.js"></script>
+<script src="audio.js"></script>
+<script src="player.js"></script>
+</body>
+</html>

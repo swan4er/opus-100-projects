@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Мыльные пузыри — интерференция в тонкой плёнке</title>
+<meta name="description" content="Цвета мыльной плёнки, посчитанные по спектру: формула Эйри для тонкого слоя и функции цветового соответствия CIE.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Manrope:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="mode-bubbles">
+
+<canvas id="gl" aria-label="Мыльные пузыри: сцена"></canvas>
+<div class="scrim" aria-hidden="true"></div>
+
+<!-- Рамка для выдувания: следует за курсором -->
+<svg class="wand" id="wand" width="140" height="140" viewBox="-70 -70 140 140" aria-hidden="true">
+  <defs>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbe9b7"/>
+      <stop offset=".42" stop-color="#c49a4c"/>
+      <stop offset="1" stop-color="#5a3d15"/>
+    </linearGradient>
+  </defs>
+  <path d="M18 18 L60 60" stroke="url(#brass)" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="62" cy="62" r="4.2" fill="url(#brass)"/>
+  <circle cx="0" cy="0" r="24" fill="none" stroke="#1a130a" stroke-opacity=".55" stroke-width="5.5"/>
+  <circle cx="0" cy="0" r="24" fill="none" stroke="url(#brass)" stroke-width="3.4"/>
+  <circle cx="0" cy="0" r="24" fill="none" stroke="#4a3210" stroke-opacity=".75" stroke-width="3.4" stroke-dasharray="1.4 2.6"/>
+  <path d="M-19.5 -14 A24 24 0 0 1 -4 -23.7" fill="none" stroke="#fff8e4" stroke-opacity=".75" stroke-width="1.1" stroke-linecap="round"/>
+</svg>
+<svg class="wand ghost" id="ghost" width="140" height="140" viewBox="-70 -70 140 140" aria-hidden="true">
+  <path d="M18 18 L60 60" stroke="url(#brass)" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="62" cy="62" r="4.2" fill="url(#brass)"/>
+  <circle cx="0" cy="0" r="24" fill="none" stroke="#1a130a" stroke-opacity=".55" stroke-width="5.5"/>
+  <circle cx="0" cy="0" r="24" fill="none" stroke="url(#brass)" stroke-width="3.4"/>
+  <circle cx="0" cy="0" r="24" fill="none" stroke="#4a3210" stroke-opacity=".75" stroke-width="3.4" stroke-dasharray="1.4 2.6"/>
+  <path d="M-19.5 -14 A24 24 0 0 1 -4 -23.7" fill="none" stroke="#fff8e4" stroke-opacity=".75" stroke-width="1.1" stroke-linecap="round"/>
+</svg>
+
+<header class="title">
+  <h1>Мыльные <em>пузыри</em></h1>
+  <p>Каждый цвет — интерференция двух отражений: от&nbsp;внешней и&nbsp;внутренней стороны плёнки толщиной в&nbsp;сотни нанометров. Спектр 380–780&nbsp;нм посчитан честно.</p>
+</header>
+
+<aside class="legend" aria-label="Шкала: толщина плёнки и её цвет">
+  <div class="legend-head">толщина<br>плёнки</div>
+  <div class="legend-body">
+    <canvas id="legend" width="14" height="320"></canvas>
+    <div class="ticks" id="ticks"></div>
+    <div class="orders" id="orders"></div>
+    <div class="marker" id="marker"><span id="marker-label"></span></div>
+  </div>
+  <div class="legend-foot">цвета Ньютона</div>
+</aside>
+
+<div class="bubble-tag" id="tag" aria-hidden="true"></div>
+<div class="probe" id="probe" aria-hidden="true"></div>
+
+<p class="macro-note">Плёнка стекает вниз под собственным весом. Где она тоньше ~30&nbsp;нм, два отражения гасят друг друга — появляется «чёрная плёнка», и&nbsp;пузырь скоро лопнет.</p>
+
+<nav class="panel" aria-label="Управление">
+  <div class="seg" role="group" aria-label="Режим">
+    <button type="button" data-mode="bubbles" aria-pressed="true">Пузыри</button>
+    <button type="button" data-mode="macro" aria-pressed="false">Макро</button>
+  </div>
+  <label class="slider only-bubbles">
+    <span>Ветер</span>
+    <input id="wind" type="range" min="0" max="1" step="0.01" value="0.35">
+  </label>
+  <label class="slider">
+    <span>Стекание</span>
+    <input id="drain" type="range" min="0.4" max="3" step="0.01" value="1">
+  </label>
+  <button type="button" class="text-btn only-macro" id="redip">Обмакнуть заново</button>
+  <button type="button" class="icon-btn" id="sound" aria-label="Звук включён" aria-pressed="true">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor"/>
+      <path class="waves" d="M15.5 9a4.2 4.2 0 0 1 0 6M17.8 6.6a7.6 7.6 0 0 1 0 10.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <path class="mute" d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  </button>
+</nav>
+
+<p class="hint" id="hint">
+  <span class="only-bubbles"><span class="desk">Зажмите и&nbsp;ведите — выдувается пузырь <i>·</i> клик — лопнуть <i>·</i> <kbd>M</kbd> — макро</span><span class="touch-only">Ведите пальцем — выдуть пузырь <i>·</i> касание — лопнуть</span></span>
+  <span class="only-macro">Ведите с&nbsp;зажатой кнопкой — подуйте на&nbsp;плёнку <i>·</i> наведите — толщина в&nbsp;точке</span>
+</p>
+
+<div class="fallback" id="fallback" hidden>
+  <h2>Нужен WebGL2</h2>
+  <p>Эта сцена считает цвет плёнки на&nbsp;видеокарте. Откройте страницу в&nbsp;свежем Chrome, Safari или Firefox.</p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

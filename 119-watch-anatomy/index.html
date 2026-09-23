@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Анатомия часов</title>
+<meta name="description" content="Как пружина, колёса и балансир отмеряют секунды: интерактивный разбор механических часов.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prata&family=Lora:ital,wght@0,400;0,500;1,400&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3eee3;
+    --paper2:#ebe4d5;
+    --ink:#1c2433;
+    --ink2:#4a5263;
+    --blue:#15315e;
+    --gold:#9a7424;
+    --gold2:#c9a24a;
+    --goldt:#7a5914;
+    --line:rgba(28,36,51,.16);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  html,body{margin:0;background:var(--paper);color:var(--ink)}
+  body{font:400 17px/1.68 "Lora",Georgia,serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{display:grid;grid-template-columns:minmax(360px,44%) 1fr;min-height:100vh}
+
+  /* ---------- текст ---------- */
+  .text{padding:0 clamp(28px,4.6vw,76px) 18vh;border-right:1px solid var(--line)}
+  .intro{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:10vh 0}
+  .kicker{font:700 12px/1.3 "Manrope",sans-serif;letter-spacing:.22em;text-transform:uppercase;color:var(--goldt)}
+  h1{margin:18px 0 0;font:400 clamp(48px,5.6vw,86px)/.98 "Prata",Georgia,serif;letter-spacing:-.01em;color:var(--blue)}
+  .lead{margin:26px 0 0;font-size:19px;line-height:1.62;color:var(--ink2);max-width:34em}
+  .scroll-cue{margin-top:36px;display:flex;align-items:center;gap:12px;font:600 13px "Manrope",sans-serif;color:var(--ink2)}
+  .scroll-cue span{display:block;width:1px;height:42px;background:linear-gradient(var(--gold),transparent)}
+  .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:40px;padding-top:24px;border-top:1px solid var(--line)}
+  .facts b{display:block;font:400 34px/1 "Prata",serif;color:var(--blue)}
+  .facts small{display:block;margin-top:8px;font:600 12.5px/1.4 "Manrope",sans-serif;color:var(--ink2)}
+
+  .ch{min-height:92vh;padding:14vh 0 6vh;display:flex;flex-direction:column;justify-content:center}
+  .num{font:400 64px/1 "Prata",serif;color:var(--gold)}
+  .ch h2{margin:6px 0 0;font:400 clamp(32px,3vw,44px)/1.12 "Prata",serif;color:var(--blue)}
+  .ch h3{margin:4px 0 18px;font:600 13px/1.4 "Manrope",sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--goldt)}
+  .ch p{margin:0 0 16px;max-width:34em}
+  .ch p.small{font-size:15.5px;color:var(--ink2)}
+  .formula{margin:6px 0 20px;padding:16px 20px;background:var(--paper2);border-radius:2px;font:500 16px/1.6 "Manrope",sans-serif;color:var(--blue);font-variant-numeric:tabular-nums}
+  .formula em{font-style:normal;color:var(--goldt)}
+  .coda{padding:10vh 0 0;font:400 26px/1.45 "Prata",serif;color:var(--blue);max-width:22em}
+
+  /* ---------- механизм ---------- */
+  .fig{position:sticky;top:0;height:100vh;height:100dvh;display:flex;flex-direction:column}
+  .stage{position:relative;flex:1;min-height:0}
+  svg#mv{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .cap{position:absolute;left:28px;top:24px;font:600 12.5px/1.4 "Manrope",sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2)}
+  .cap b{display:block;margin-top:6px;font:400 22px/1.2 "Prata",serif;letter-spacing:0;text-transform:none;color:var(--blue)}
+  .gauge{position:absolute;right:28px;top:24px;text-align:right;font:600 12.5px/1.4 "Manrope",sans-serif;color:var(--ink2)}
+  .gauge .bar{width:170px;height:6px;margin:8px 0 6px auto;background:rgba(28,36,51,.1);border-radius:3px;overflow:hidden}
+  .gauge .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));transform-origin:left;transition:transform .25s ease}
+  .gauge b{font:400 20px "Prata",serif;color:var(--blue)}
+
+  .dock{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between;padding:16px 28px calc(18px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:rgba(243,238,227,.94)}
+  .group{display:flex;align-items:center;gap:10px;font:600 13px "Manrope",sans-serif;color:var(--ink2)}
+  .seg{display:inline-flex;border:1px solid rgba(28,36,51,.28);border-radius:22px;overflow:hidden}
+  .seg button{height:38px;min-width:48px;padding:0 13px;border:0;background:none;font:600 13px "Manrope",sans-serif;color:var(--ink);cursor:pointer;transition:background .2s,color .2s}
+  .seg button+button{border-left:1px solid rgba(28,36,51,.18)}
+  .seg button[aria-pressed="true"]{background:var(--blue);color:#f3eee3}
+  .seg button:focus-visible,.btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .btn{height:40px;padding:0 18px;border-radius:20px;border:1px solid var(--blue);background:var(--blue);color:#f3eee3;font:700 13px "Manrope",sans-serif;cursor:pointer;
+       display:inline-flex;align-items:center;gap:8px;transition:transform .15s ease,background .2s}
+  .btn.ghost{background:none;color:var(--blue)}
+  .btn:active{transform:scale(.97)}
+  .extra{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .extra[hidden]{display:none}
+
+  .tip{position:absolute;pointer-events:none;padding:9px 12px;background:var(--blue);color:#f3eee3;border-radius:3px;font:600 13px/1.4 "Manrope",sans-serif;
+       transform:translate(-50%,-120%);white-space:nowrap;opacity:0;transition:opacity .15s}
+  .tip.on{opacity:1}
+  .tip small{display:block;font-weight:500;opacity:.8}
+
+  @media (max-width:900px){
+    .wrap{display:flex;flex-direction:column-reverse}
+    .fig{position:sticky;top:0;height:52vh;height:52svh;z-index:2;background:var(--paper);border-bottom:1px solid var(--line)}
+    .text{border-right:0;padding:0 22px 16vh}
+    .intro{min-height:auto;padding:36px 0 20px}
+    .ch{min-height:auto;padding:56px 0 24px}
+    .cap{left:16px;top:12px}
+    .cap b{font-size:18px}
+    .gauge{right:16px;top:12px}
+    .gauge .bar{width:110px}
+    .dock{padding:8px 12px 10px;gap:8px}
+    .dock .group>span{display:none}
+    .seg button{height:36px;min-width:40px;padding:0 9px}
+    .facts b{font-size:26px}
+  }
+  @media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <article class="text">
+    <section class="intro" data-ch="0">
+      <div class="kicker">Интерактивный разбор механизма</div>
+      <h1>Анатомия часов</h1>
+      <p class="lead">Механические часы обходятся без батарейки и&nbsp;электроники. Пружина отдаёт энергию, колёса делят её на&nbsp;минуты и&nbsp;секунды, а&nbsp;маленький маятник-балансир держит ритм&nbsp;— восемь ударов в&nbsp;секунду. Справа работает настоящая кинематика: все передаточные числа честные.</p>
+      <div class="facts">
+        <div><b>4 Гц</b><small>частота балансира</small></div>
+        <div><b>8</b><small>«тиков» в&nbsp;секунду</small></div>
+        <div><b>17</b><small>рубиновых камней</small></div>
+      </div>
+      <div class="scroll-cue"><span></span>Прокрутите вниз</div>
+    </section>
+
+    <section class="ch" data-ch="1">
+      <div class="num">I</div>
+      <h2>Заводная пружина</h2>
+      <h3>Источник энергии</h3>
+      <p>Всё начинается с&nbsp;плоской стальной ленты, свёрнутой в&nbsp;барабане. Когда вы вращаете заводную головку, лента туго наматывается на&nbsp;вал. Раскручиваясь, она медленно поворачивает барабан и&nbsp;толкает весь механизм.</p>
+      <p>Полного завода обычному калибру хватает примерно на&nbsp;сорок часов. Храповое колесо с&nbsp;собачкой не&nbsp;даёт пружине раскрутиться назад&nbsp;— отсюда знакомое потрескивание при заводе.</p>
+      <p class="small">Тяните заводную головку справа вверх-вниз или нажмите «Завести». Кнопка «Спустить» отпустит пружину — и&nbsp;балансир затихнет.</p>
+    </section>
+
+    <section class="ch" data-ch="2">
+      <div class="num">II</div>
+      <h2>Колёсная система</h2>
+      <h3>Редуктор для времени</h3>
+      <p>Барабан вращается медленно&nbsp;— оборот за&nbsp;шесть часов. Цепочка колёс ускоряет вращение. Центральное колесо делает оборот за&nbsp;час: на&nbsp;его ось надета минутная стрелка. Секундное колесо&nbsp;— оборот за&nbsp;минуту.</p>
+      <p>Каждое колесо сцеплено с&nbsp;маленькой шестерёнкой следующего&nbsp;— трибом. Перемножьте отношения зубьев:</p>
+      <div class="formula">80⁄10 × 75⁄10 = 8 × 7,5 = <em>60</em><br>центральное → промежуточное → секундное</div>
+      <p class="small">Наведите курсор на&nbsp;колесо, чтобы увидеть его период.</p>
+    </section>
+
+    <section class="ch" data-ch="3">
+      <div class="num">III</div>
+      <h2>Спуск</h2>
+      <h3>Сердцебиение механизма</h3>
+      <p>Без тормоза пружина раскрутилась&nbsp;бы за&nbsp;секунды. Спусковой механизм выпускает энергию порциями. Анкерное колесо упирается зубом в&nbsp;рубиновую палету анкерной вилки и&nbsp;стоит.</p>
+      <p>Балансир, качнувшись, задевает вилку импульсным камнем. Вилка перекидывается, колесо проворачивается на&nbsp;полшага и&nbsp;снова стопорится о&nbsp;вторую палету. Проворачиваясь, зуб толкает палету, а&nbsp;вилка&nbsp;— балансир: маятник получает крошечный пинок и&nbsp;не&nbsp;затухает. Это и&nbsp;есть «тик».</p>
+      <p class="small">Замедлите время до&nbsp;1⁄64, чтобы разглядеть все фазы: запирание, освобождение, импульс, падение.</p>
+    </section>
+
+    <section class="ch" data-ch="4">
+      <div class="num">IV</div>
+      <h2>Баланс и&nbsp;спираль</h2>
+      <h3>Маятник, который помещается на&nbsp;запястье</h3>
+      <p>Балансир&nbsp;— колесо на&nbsp;тонкой спиральной пружине, волоске. Он качается туда и&nbsp;обратно с&nbsp;постоянным периодом: чем жёстче волосок и&nbsp;легче обод, тем чаще колебания.</p>
+      <p>Частоту считают в&nbsp;полуколебаниях в&nbsp;час. 28&nbsp;800&nbsp;пк/ч&nbsp;— это 8&nbsp;полуколебаний в&nbsp;секунду, то&nbsp;есть 4&nbsp;Гц. Амплитуда около 270–300°: балансир поворачивается почти на&nbsp;три четверти оборота в&nbsp;каждую сторону.</p>
+      <p class="small">Переключите частоту: секундная стрелка пойдёт шагами по&nbsp;5, 6, 8 или 10 в&nbsp;секунду.</p>
+    </section>
+
+    <section class="ch" data-ch="5">
+      <div class="num">V</div>
+      <h2>Камни</h2>
+      <h3>Рубины вместо подшипников</h3>
+      <p>Оси колёс вращаются в&nbsp;отверстиях из&nbsp;синтетического рубина: он твёрже стали, почти не&nbsp;изнашивается, а&nbsp;полированная цапфа скользит в&nbsp;нём с&nbsp;малым трением.</p>
+      <p>Классический набор&nbsp;— 17&nbsp;камней: по&nbsp;два на&nbsp;центральное, промежуточное, секундное и&nbsp;анкерное колёса, два на&nbsp;ось вилки, две палеты, два на&nbsp;ось балансира и&nbsp;два накладных, плюс импульсный камень.</p>
+      <p class="small">На&nbsp;схеме видны камни верхнего моста; нижние скрыты под ними.</p>
+    </section>
+
+    <section class="ch" data-ch="6">
+      <div class="num">VI</div>
+      <h2>Автоподзавод</h2>
+      <h3>Энергия от движения руки</h3>
+      <p>Полукруглый ротор свободно вращается на&nbsp;центральной оси. Когда рука движется, он качается и&nbsp;через реверсивные колёса подкручивает пружину&nbsp;— в&nbsp;любую сторону.</p>
+      <p>Поэтому часы, которые носят каждый день, почти не&nbsp;нужно заводить вручную.</p>
+      <p class="small">Потяните механизм мышью или нажмите «Встряхнуть»&nbsp;— шкала запаса хода поползёт вверх.</p>
+    </section>
+
+    <section class="ch" data-ch="7">
+      <div class="num">VII</div>
+      <h2>Точность</h2>
+      <h3>Сколько врёт механика</h3>
+      <p>Ход механизма зависит от&nbsp;положения, температуры и&nbsp;степени завода. Хронометры проходят сертификацию: средний суточный ход должен укладываться в&nbsp;−4…+6&nbsp;секунд в&nbsp;сутки (критерий COSC). Кварцевые часы точнее&nbsp;— типичная погрешность около ±15&nbsp;секунд в&nbsp;месяц.</p>
+      <p>Часовщики проверяют ход на&nbsp;приборе-«таймграфере»: он слушает тиканье и&nbsp;рисует точки. Наклон дорожки показывает, спешат часы или отстают.</p>
+      <p class="small">Меняйте положение часов&nbsp;— дорожка на&nbsp;схеме изменит наклон. Цифры здесь иллюстративные.</p>
+    </section>
+
+    <p class="coda">Каждая секунда на&nbsp;механических часах&nbsp;— восемь крошечных толчков пружины, пропущенных через сталь и&nbsp;рубины.</p>
+  </article>
+
+  <aside class="fig" aria-label="Механизм часов">
+    <div class="stage" id="stage">
+      <svg id="mv" viewBox="-205 -205 410 410" role="img" aria-label="Схема механического часового механизма, вид со стороны мостов"></svg>
+      <div class="cap" id="cap">Калибр · вид со стороны мостов<b id="capTitle">Механизм целиком</b></div>
+      <div class="gauge"><span>Запас хода</span><div class="bar"><i id="pw"></i></div><b id="pwv">30 ч</b></div>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="dock">
+      <div class="group"><span>Время</span>
+        <div class="seg" id="speed">
+          <button data-s="1" aria-pressed="true">1×</button><button data-s="0.25" aria-pressed="false">¼</button><button data-s="0.0625" aria-pressed="false">1⁄16</button><button data-s="0.015625" aria-pressed="false">1⁄64</button>
+        </div>
+      </div>
+      <div class="extra" id="x1" hidden><button class="btn" id="wind">Завести</button><button class="btn ghost" id="unwind">Спустить</button></div>
+      <div class="extra" id="x4" hidden>
+        <div class="seg" id="freq"><button data-f="2.5" aria-pressed="false">18 000</button><button data-f="3" aria-pressed="false">21 600</button><button data-f="4" aria-pressed="true">28 800</button><button data-f="5" aria-pressed="false">36 000</button></div>
+      </div>
+      <div class="extra" id="x6" hidden><button class="btn" id="shake">Встряхнуть</button></div>
+      <div class="extra" id="x7" hidden>
+        <div class="seg" id="pos"><button data-p="0" aria-pressed="true">Циферблат вверх</button><button data-p="1" aria-pressed="false">Вниз</button><button data-p="2" aria-pressed="false">Головка вверх</button></div>
+      </div>
+      <button class="btn ghost" id="snd" aria-pressed="false">
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.2v5.6h3.6L12.5 19V5L7.6 9.2H4z" fill="currentColor"/><path d="M16 9c1 .9 1.5 1.9 1.5 3s-.5 2.1-1.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span id="sndL">Тиканье</span>
+      </button>
+    </div>
+  </aside>
+</div>
+
+<script>
+(() => {
+'use strict';
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('mv');
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || svg).appendChild(e); return e; };
+const P = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
+const f2 = v => v.toFixed(2);
+const TAU = Math.PI * 2;
+
+/* =====================================================================
+   Геометрия калибра. Колесо i сцеплено с трибом колеса i+1 одного модуля.
+   Числа зубьев: барабан 72 → триб 12 (×6), центральное 80 → триб 10 (×8),
+   промежуточное 75 → триб 10 (×7,5), секундное 96 → анкерный триб 6 (×16).
+   Центральное — 1 об/ч, секундное — 1 об/мин, анкерное — 16 об/мин при 4 Гц.
+   ===================================================================== */
+const deg = d => d * Math.PI / 180;
+const A = {};
+A.center = { x: 0, y: 0, z: 80, m: 1.1, pz: 12, pm: 1.5 };
+A.barrel = { z: 72, m: 1.5 };
+A.third = { z: 75, m: 0.9, pz: 10, pm: 1.1 };
+A.fourth = { z: 96, m: 0.6, pz: 10, pm: 0.9 };
+A.escape = { pz: 6, pm: 0.6 };
+const R = (a) => a.m * a.z / 2, Rp = (a) => a.pm * a.pz / 2;
+function place(a, from, dist, ang) { a.x = from.x + dist * Math.cos(deg(ang)); a.y = from.y + dist * Math.sin(deg(ang)); }
+place(A.barrel, A.center, R(A.barrel) + Rp(A.center), -38);
+place(A.third, A.center, R(A.center) + Rp(A.third), 158);
+place(A.fourth, A.third, R(A.third) + Rp(A.fourth), 78);
+place(A.escape, A.fourth, R(A.fourth) + Rp(A.escape), 162);
+const ESC_R = 15.5;
+A.pallet = {}; place(A.pallet, A.escape, ESC_R * 1.38, 142);
+A.balance = {}; place(A.balance, A.pallet, 29, 142);
+const BAL_R = 31;
+
+/* ---------- defs: градиенты и узоры ---------- */
+const defs = el('defs', {});
+defs.innerHTML = `
+  <radialGradient id="gPlate" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#ece5d4"/><stop offset="1" stop-color="#d9d0bb"/></radialGradient>
+  <pattern id="perlage" width="14" height="12" patternUnits="userSpaceOnUse">
+    <circle cx="7" cy="6" r="6.6" fill="none" stroke="rgba(120,100,60,.13)" stroke-width="1"/>
+    <circle cx="0" cy="0" r="6.6" fill="none" stroke="rgba(120,100,60,.1)" stroke-width="1"/>
+    <circle cx="14" cy="0" r="6.6" fill="none" stroke="rgba(120,100,60,.1)" stroke-width="1"/>
+  </pattern>
+  <linearGradient id="gGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e9cf8a"/><stop offset=".5" stop-color="#c79d45"/><stop offset="1" stop-color="#a47a2c"/></linearGradient>
+  <linearGradient id="gSteel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e6ebf0"/><stop offset=".55" stop-color="#aeb7c2"/><stop offset="1" stop-color="#8a94a1"/></linearGradient>
+  <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f73c4"/><stop offset="1" stop-color="#16316f"/></linearGradient>
+  <radialGradient id="gRuby" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#ff8fa1"/><stop offset=".45" stop-color="#d0203f"/><stop offset="1" stop-color="#7a0b22"/></radialGradient>
+  <pattern id="cotes" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(-32)">
+    <rect width="12" height="12" fill="#e2e6ea"/><rect width="12" height="5" y="0" fill="#f3f5f7"/><rect width="12" height="1" y="5.5" fill="#c8cfd6"/>
+  </pattern>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1.2" dy="1.6" stdDeviation="1.3" flood-color="#3a2d10" flood-opacity=".28"/></filter>
+`;
+
+/* ---------- пластина ---------- */
+const plate = el('g', {});
+el('circle', { r: 186, fill: 'url(#gPlate)', stroke: '#b9ac8c', 'stroke-width': 1.2 }, plate);
+el('circle', { r: 186, fill: 'url(#perlage)' }, plate);
+el('circle', { r: 178, fill: 'none', stroke: 'rgba(120,100,60,.25)', 'stroke-width': 0.8 }, plate);
+// гравировка по кругу, как на настоящих калибрах
+el('path', { id: 'rim', d: 'M -170,0 A 170,170 0 1 1 170,0 A 170,170 0 1 1 -170,0', fill: 'none' }, plate);
+const eng = el('text', { 'font-family': 'Prata, serif', 'font-size': 6.4, 'letter-spacing': 2.4, fill: 'rgba(110,86,40,.5)' }, plate);
+const tp = el('textPath', { href: '#rim', startOffset: '1%' }, eng);
+tp.textContent = 'КАЛИБР О·55 · СЕМНАДЦАТЬ КАМНЕЙ · 28 800 ПОЛУКОЛЕБАНИЙ В ЧАС · ЗАПАС ХОДА 42 ЧАСА · РЕГУЛИРОВАН В ШЕСТИ ПОЛОЖЕНИЯХ ·';
+// декоративные мосты вдоль кромки пластины в пустых секторах (рисуются ниже, когда готов arcBridge)
+const decoLater = [];
+decoLater.push(() => {
+  const g = el('g', {}, plate);
+  const band = (pts, w) => el('path', { d: arcBridge(pts.map(([a, r]) => ({ x: r * Math.cos(deg(a)), y: r * Math.sin(deg(a)) })), w), fill: 'url(#cotes)', 'fill-opacity': 0.55, stroke: '#8f98a3', 'stroke-width': 0.7 }, g);
+  const arcPts = (a0, a1, r) => { const out = []; for (let a = a0; a <= a1 + 0.01; a += (a1 - a0) / 8) out.push([a, r]); return out; };
+  band(arcPts(186, 262, 142), 13);
+  band(arcPts(8, 76, 140), 13);
+  [[186, 142], [262, 142], [8, 140], [76, 140]].forEach(([a, r]) => screw(g, r * Math.cos(deg(a)), r * Math.sin(deg(a)), 3.4));
+  const t = el('text', { 'font-family': 'Prata, serif', 'font-size': 6.2, 'letter-spacing': 1.6, fill: 'rgba(40,52,70,.6)', 'text-anchor': 'middle' }, g);
+  el('path', { id: 'decoArc', d: 'M ' + (140 * Math.cos(deg(70))).toFixed(1) + ',' + (140 * Math.sin(deg(70))).toFixed(1) + ' A 140,140 0 0 0 ' + (140 * Math.cos(deg(14))).toFixed(1) + ',' + (140 * Math.sin(deg(14))).toFixed(1), fill: 'none' }, g);
+  const tp2 = el('textPath', { href: '#decoArc', startOffset: '50%' }, t);
+  tp2.setAttribute('dominant-baseline', 'middle');
+  tp2.textContent = 'СЕМНАДЦАТЬ КАМНЕЙ';
+});
+
+/* ---------- генераторы деталей ---------- */
+function gearOutline(z, r, add, ded) {
+  const pts = [], step = TAU / z;
+  for (let i = 0; i < z; i++) {
+    const a = i * step;
+    [[r - ded, a - step * 0.27], [r + add, a - step * 0.13], [r + add, a + step * 0.13], [r - ded, a + step * 0.27]].forEach(([rr, aa]) => pts.push(P(rr, aa)));
+  }
+  return 'M' + pts.map(p => f2(p[0]) + ',' + f2(p[1])).join('L') + 'Z';
+}
+function circ(r, ccw) {
+  const n = 64, pts = [];
+  for (let i = 0; i < n; i++) { const a = (ccw ? -1 : 1) * i / n * TAU; pts.push(P(r, a)); }
+  return 'M' + pts.map(p => f2(p[0]) + ',' + f2(p[1])).join('L') + 'Z';
+}
+function wheel(parent, z, m, opts = {}) {
+  const r = m * z / 2, g = el('g', {}, parent);
+  const ring = gearOutline(z, r, m * 0.9, m * 1.05) + circ(r - m * 1.05 - Math.max(2.2, r * 0.13), true);
+  el('path', { d: ring, fill: opts.fill || 'url(#gGold)', stroke: opts.stroke || '#8a6620', 'stroke-width': 0.35 }, g);
+  const inner = r - m * 1.05 - Math.max(2.2, r * 0.13) + 0.5, spokes = opts.spokes || 4, sw = Math.max(1.6, r * 0.09);
+  let d = '';
+  for (let i = 0; i < spokes; i++) {
+    const a = i / spokes * TAU + 0.3;
+    const p1 = P(inner, a - sw / inner / 2), p2 = P(inner, a + sw / inner / 2), p3 = P(r * 0.2, a + sw / (r * 0.2) / 2), p4 = P(r * 0.2, a - sw / (r * 0.2) / 2);
+    d += `M${f2(p1[0])},${f2(p1[1])}L${f2(p2[0])},${f2(p2[1])}L${f2(p3[0])},${f2(p3[1])}L${f2(p4[0])},${f2(p4[1])}Z`;
+  }
+  d += circ(Math.max(3, r * 0.22));
+  el('path', { d, fill: opts.fill || 'url(#gGold)', stroke: opts.stroke || '#8a6620', 'stroke-width': 0.3 }, g);
+  return g;
+}
+function pinion(parent, z, m) {
+  const r = m * z / 2;
+  el('path', { d: gearOutline(z, r, m * 0.8, m * 0.9), fill: 'url(#gSteel)', stroke: '#6b7480', 'stroke-width': 0.3 }, parent);
+  el('circle', { r: Math.max(1.2, r * 0.35), fill: '#c9d0d8', stroke: '#6b7480', 'stroke-width': 0.3 }, parent);
+}
+const jewels = [];
+function jewel(parent, x, y, r = 3.2) {
+  const g = el('g', { transform: `translate(${f2(x)},${f2(y)})`, class: 'jewel' }, parent);
+  el('circle', { r: r + 1.6, fill: 'url(#gGold)', stroke: '#8a6620', 'stroke-width': 0.3 }, g);
+  el('circle', { r, fill: 'url(#gRuby)' }, g);
+  el('circle', { r: r * 0.28, fill: '#3b0612', opacity: 0.8 }, g);
+  el('ellipse', { cx: -r * 0.35, cy: -r * 0.4, rx: r * 0.35, ry: r * 0.2, fill: 'rgba(255,255,255,.55)' }, g);
+  const halo = el('circle', { r: r + 5, fill: 'none', stroke: '#d0203f', 'stroke-width': 1.2, opacity: 0 }, g);
+  jewels.push(halo);
+  return g;
+}
+function screw(parent, x, y, r = 3.4) {
+  const g = el('g', { transform: `translate(${f2(x)},${f2(y)})` }, parent);
+  el('circle', { r, fill: 'url(#gBlue)', stroke: '#0b1d45', 'stroke-width': 0.3 }, g);
+  el('rect', { x: -r * 0.85, y: -0.45, width: r * 1.7, height: 0.9, fill: '#07122e', transform: `rotate(${(x * 7 + y * 3) % 180})` }, g);
+}
+
+/* ---------- слои механизма ---------- */
+// мягкие неподвижные тени под колёсами: дешевле SVG-фильтра на вращающихся деталях
+const shadowsG = el('g', {});
+el('radialGradient', { id: 'gShadow' }, defs).innerHTML = '<stop offset=".72" stop-color="#3a2d10" stop-opacity=".22"/><stop offset="1" stop-color="#3a2d10" stop-opacity="0"/>';
+function softShadow(x, y, r) { el('circle', { cx: f2(x + 1.4), cy: f2(y + 1.9), r: f2(r * 1.08), fill: 'url(#gShadow)' }, shadowsG); }
+const L = {};
+['barrel', 'train', 'escape', 'balance', 'bridges', 'jewels', 'rotor', 'labels', 'hot'].forEach(k => L[k] = el('g', { class: 'layer-' + k }));
+
+// барабан: зубчатый венец, внутри видна пружина, сверху храповик
+const barrelG = el('g', { transform: `translate(${f2(A.barrel.x)},${f2(A.barrel.y)})` }, L.barrel);
+const barrelRot = el('g', {}, barrelG);
+wheel(barrelRot, A.barrel.z, A.barrel.m, { spokes: 0 });
+el('circle', { r: R(A.barrel) - 6, fill: '#efe7d2', stroke: '#8a6620', 'stroke-width': 0.4 }, barrelRot);
+const spring = el('path', { fill: 'none', stroke: '#3c4a66', 'stroke-width': 1.1, 'stroke-linecap': 'round' }, barrelG);
+const arbor = el('g', {}, barrelG);
+el('circle', { r: 7, fill: 'url(#gSteel)', stroke: '#6b7480', 'stroke-width': 0.4 }, arbor);
+el('rect', { x: -1, y: -7, width: 2, height: 7, fill: '#6b7480' }, arbor);
+// храповое колесо и собачка (над барабаном, полупрозрачно)
+const ratchet = el('g', { opacity: 0.92 }, barrelG);
+el('path', { d: (() => { const z = 36, r = 21, pts = []; for (let i = 0; i < z; i++) { const a = i / z * TAU; pts.push(P(r - 2.2, a), P(r + 1.4, a + TAU / z * 0.8)); } return 'M' + pts.map(p => f2(p[0]) + ',' + f2(p[1])).join('L') + 'Z'; })() + circ(9, true), fill: 'url(#gSteel)', stroke: '#6b7480', 'stroke-width': 0.35 }, ratchet);
+screw(ratchet, 0, 0, 4.2);
+const clickG = el('g', { transform: `translate(${f2(A.barrel.x + 23)},${f2(A.barrel.y - 17)})` }, L.barrel);
+const click = el('path', { d: 'M0,0 L-9,6 L-12,4 Z', fill: 'url(#gSteel)', stroke: '#6b7480', 'stroke-width': 0.4 }, clickG);
+
+// заводной вал и головка на 3 часах
+const crownG = el('g', {}, L.barrel);
+el('rect', { x: 120, y: -2.4, width: 64, height: 4.8, fill: 'url(#gSteel)', stroke: '#6b7480', 'stroke-width': 0.3 }, crownG);
+const crown = el('g', { transform: 'translate(196,0)', style: 'cursor:ns-resize' }, crownG);
+el('rect', { x: -9, y: -15, width: 18, height: 30, rx: 3, fill: 'url(#gGold)', stroke: '#8a6620', 'stroke-width': 0.5 }, crown);
+const crownTeeth = el('g', {}, crown);
+for (let i = 0; i < 9; i++) el('rect', { x: -9, y: -14 + i * 3.4, width: 18, height: 1.2, fill: 'rgba(90,60,10,.45)', class: 'ct' }, crownTeeth);
+const crownWheel = el('g', { transform: `translate(${f2(A.barrel.x + 46)},${f2(A.barrel.y + 22)})` }, crownG);
+const crownWheelRot = el('g', {}, crownWheel);
+wheel(crownWheelRot, 22, 0.8, { spokes: 0, fill: 'url(#gSteel)', stroke: '#6b7480' });
+
+// тени
+softShadow(A.barrel.x, A.barrel.y, R(A.barrel) + 1.5);
+softShadow(A.center.x, A.center.y, R(A.center) + 1);
+softShadow(A.third.x, A.third.y, R(A.third) + 1);
+softShadow(A.fourth.x, A.fourth.y, R(A.fourth) + 1);
+softShadow(A.escape.x, A.escape.y, ESC_R + 1);
+softShadow(A.balance.x, A.balance.y, BAL_R + 2);
+// колёсная система
+function arborGroup(a, parent) { return el('g', { transform: `translate(${f2(a.x)},${f2(a.y)})` }, parent); }
+const centerG = arborGroup(A.center, L.train), centerRot = el('g', {}, centerG);
+wheel(centerRot, A.center.z, A.center.m, { spokes: 4 }); pinion(centerRot, A.center.pz, A.center.pm);
+const thirdG = arborGroup(A.third, L.train), thirdRot = el('g', {}, thirdG);
+wheel(thirdRot, A.third.z, A.third.m, { spokes: 4 }); pinion(thirdRot, A.third.pz, A.third.pm);
+const fourthG = arborGroup(A.fourth, L.train), fourthRot = el('g', {}, fourthG);
+wheel(fourthRot, A.fourth.z, A.fourth.m, { spokes: 4 }); pinion(fourthRot, A.fourth.pz, A.fourth.pm);
+// секундная стрелка на оси секундного колеса
+const secHand = el('g', {}, fourthG);
+el('path', { d: 'M-1.1,6 L-0.5,-44 L0.5,-44 L1.1,6 Z', fill: '#15315e' }, secHand);
+el('circle', { r: 2.6, fill: '#15315e' }, secHand);
+
+// анкерное колесо: 15 зубьев «клюшкой»
+const escG = arborGroup(A.escape, L.escape), escRot = el('g', {}, escG);
+(() => {
+  let d = '';
+  const z = 15, rt = ESC_R, rr = ESC_R - 4.2;
+  for (let i = 0; i < z; i++) {
+    const a = i / z * TAU;
+    const p0 = P(rr, a - 0.1), p1 = P(rt, a + 0.02), p2 = P(rt + 0.2, a + 0.1), p3 = P(rr + 0.6, a + 0.17);
+    d += (i ? 'L' : 'M') + [p0, p1, p2, p3].map(p => f2(p[0]) + ',' + f2(p[1])).join('L');
+  }
+  d += 'Z' + circ(rr - 3.2, true);
+  el('path', { d, fill: 'url(#gSteel)', stroke: '#5f6a78', 'stroke-width': 0.35 }, escRot);
+  for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; const p = P((rr - 3.2) / 2 + 1.2, a); el('rect', { x: -0.9, y: 2.2, width: 1.8, height: rr - 5.6, fill: 'url(#gSteel)', transform: `rotate(${i * 72})` }, escRot); }
+  el('circle', { r: 3, fill: 'url(#gSteel)', stroke: '#5f6a78', 'stroke-width': 0.3 }, escRot);
+})();
+pinion(escRot, A.escape.pz, A.escape.pm);
+
+// анкерная вилка
+const palG = arborGroup(A.pallet, L.escape), palRot = el('g', {}, palG);
+(() => {
+  const toEsc = Math.atan2(A.escape.y - A.pallet.y, A.escape.x - A.pallet.x);
+  const toBal = toEsc + Math.PI;
+  const arm = (a, len) => P(len, a);
+  const e1 = arm(toEsc - 0.62, 13.5), e2 = arm(toEsc + 0.62, 13.5), f = arm(toBal, 21);
+  const w = 1.5;
+  const bar = (p, q, wd) => { const dx = q[0] - p[0], dy = q[1] - p[1], L2 = Math.hypot(dx, dy), nx = -dy / L2 * wd, ny = dx / L2 * wd; return `M${f2(p[0] + nx)},${f2(p[1] + ny)}L${f2(q[0] + nx)},${f2(q[1] + ny)}L${f2(q[0] - nx)},${f2(q[1] - ny)}L${f2(p[0] - nx)},${f2(p[1] - ny)}Z`; };
+  el('path', { d: bar([0, 0], e1, w) + bar([0, 0], e2, w) + bar([0, 0], f, w * 0.8), fill: 'url(#gSteel)', stroke: '#5f6a78', 'stroke-width': 0.3 }, palRot);
+  // рожки вилки
+  const h1 = arm(toBal - 0.14, 24), h2 = arm(toBal + 0.14, 24);
+  el('path', { d: bar(f, h1, 0.9) + bar(f, h2, 0.9), fill: 'url(#gSteel)', stroke: '#5f6a78', 'stroke-width': 0.3 }, palRot);
+  // палеты — рубины
+  [e1, e2].forEach((p, i) => { const a = (i ? toEsc + 0.62 : toEsc - 0.62) * 180 / Math.PI; el('rect', { x: -1.2, y: -2.6, width: 2.4, height: 5.2, fill: 'url(#gRuby)', transform: `translate(${f2(p[0])},${f2(p[1])}) rotate(${f2(a + 90)})` }, palRot); });
+  el('circle', { r: 2.2, fill: 'url(#gSteel)', stroke: '#5f6a78', 'stroke-width': 0.3 }, palRot);
+})();
+
+// балансир с волоском
+const balG = arborGroup(A.balance, L.balance);
+const hair = el('path', { fill: 'none', stroke: '#2f4f93', 'stroke-width': 0.55 }, balG);
+const balRot = el('g', {}, balG);
+(() => {
+  const ring = circ(BAL_R) + circ(BAL_R - 3.4, true);
+  el('path', { d: ring, fill: 'url(#gGold)', stroke: '#8a6620', 'stroke-width': 0.35 }, balRot);
+  for (let i = 0; i < 3; i++) el('rect', { x: -1.3, y: 3, width: 2.6, height: BAL_R - 5, fill: 'url(#gGold)', stroke: '#8a6620', 'stroke-width': 0.25, transform: `rotate(${i * 120 + 90})` }, balRot);
+  for (let i = 0; i < 12; i++) { const p = P(BAL_R + 1.4, i / 12 * TAU); el('circle', { cx: f2(p[0]), cy: f2(p[1]), r: 1.5, fill: 'url(#gGold)', stroke: '#8a6620', 'stroke-width': 0.3 }, balRot); }
+  el('circle', { r: 5.2, fill: 'url(#gSteel)', stroke: '#5f6a78', 'stroke-width': 0.3 }, balRot);
+  const toPal = Math.atan2(A.pallet.y - A.balance.y, A.pallet.x - A.balance.x);
+  const ip = P(4.6, toPal);
+  el('circle', { cx: f2(ip[0]), cy: f2(ip[1]), r: 1.1, fill: 'url(#gRuby)' }, balRot);
+})();
+
+// мосты: полупрозрачные, с «женевскими волнами», винтами и камнями
+function bridge(d, parent) { el('path', { d, fill: 'url(#cotes)', 'fill-opacity': 0.5, stroke: '#8f98a3', 'stroke-width': 0.7 }, parent); el('path', { d, fill: 'none', stroke: 'rgba(255,255,255,.7)', 'stroke-width': 0.4, transform: 'translate(-0.6,-0.6)' }, parent); }
+const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+function arcBridge(pts, w) {
+  // «колбаса» вдоль ломаной: обводим точки полосой ширины w
+  const left = [], right = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[Math.min(i + 1, pts.length - 1)], o = pts[Math.max(i - 1, 0)];
+    const dx = q.x - o.x, dy = q.y - o.y, l = Math.hypot(dx, dy) || 1;
+    left.push([p.x - dy / l * w, p.y + dx / l * w]); right.push([p.x + dy / l * w, p.y - dx / l * w]);
+  }
+  const a = pts[0], b = pts[pts.length - 1];
+  return 'M' + left.map(p => f2(p[0]) + ',' + f2(p[1])).join('L') + `A${w},${w} 0 0 1 ${f2(right[right.length - 1][0])},${f2(right[right.length - 1][1])}L` + right.reverse().map(p => f2(p[0]) + ',' + f2(p[1])).join('L') + `A${w},${w} 0 0 1 ${f2(left[0][0])},${f2(left[0][1])}Z`;
+}
+decoLater.forEach(f => f());
+bridge(arcBridge([{ x: A.center.x, y: A.center.y }, lerp(A.center, A.third, 0.5), A.third, lerp(A.third, A.fourth, 0.5), A.fourth], 9), L.bridges);
+bridge(arcBridge([A.escape, A.pallet], 6.5), L.bridges);
+bridge(arcBridge([{ x: A.balance.x - 4, y: A.balance.y - 40 }, { x: A.balance.x, y: A.balance.y }], 6.2), L.bridges);
+screw(L.bridges, lerp(A.center, A.third, 0.5).x, lerp(A.center, A.third, 0.5).y);
+screw(L.bridges, lerp(A.third, A.fourth, 0.5).x + 3, lerp(A.third, A.fourth, 0.5).y);
+screw(L.bridges, A.balance.x - 4, A.balance.y - 38);
+screw(L.bridges, A.barrel.x + 40, A.barrel.y - 32, 4);
+// камни верхнего моста
+const JEWEL_POS = [A.center, A.third, A.fourth, A.escape, A.pallet, A.balance];
+JEWEL_POS.forEach((a, i) => jewel(L.jewels, a.x, a.y, i === 5 ? 3.6 : 2.8));
+
+// ротор автоподзавода
+const rotorG = el('g', { opacity: 0, style: 'transition:opacity .6s ease' }, L.rotor);
+const rotorRot = el('g', {}, rotorG);
+(() => {
+  const r = 170;
+  el('path', { d: `M${-r},0 A${r},${r} 0 0 0 ${r},0 L${r - 34},0 A${r - 34},${r - 34} 0 0 1 ${-(r - 34)},0 Z`, fill: 'url(#gGold)', 'fill-opacity': 0.82, stroke: '#8a6620', 'stroke-width': 0.8 }, rotorRot);
+  el('path', { d: `M-18,0 L${-(r - 34)},0 A${r - 34},${r - 34} 0 0 0 -18,${r - 60} Z M18,0 L${r - 34},0 A${r - 34},${r - 34} 0 0 1 18,${r - 60} Z`, fill: 'url(#cotes)', 'fill-opacity': 0.42, stroke: '#8f98a3', 'stroke-width': 0.6 }, rotorRot);
+  el('circle', { r: 16, fill: 'url(#gSteel)', stroke: '#6b7480', 'stroke-width': 0.5 }, rotorRot);
+  screw(rotorRot, 0, 0, 5);
+})();
+
+// таймграфер (глава VII)
+const tgG = el('g', { opacity: 0, style: 'transition:opacity .6s ease' }, L.labels);
+el('rect', { x: -170, y: -196, width: 340, height: 118, rx: 4, fill: '#10213f' }, tgG);
+const tgText = el('text', { x: -158, y: -178, fill: '#bcd0ee', 'font-family': 'Manrope, sans-serif', 'font-size': 10, 'font-weight': 600 }, tgG);
+const tgDots = el('g', {}, tgG);
+
+// подписи-выноски
+const CALLOUTS = {
+  1: [[A.barrel, 'барабан с пружиной', -40, -70], [{ x: 196, y: 0 }, 'заводная головка', -40, -54], [{ x: A.barrel.x + 22, y: A.barrel.y - 17 }, 'собачка храповика', 40, -40]],
+  2: [[A.center, 'центральное · 1 об/ч', -20, -95], [A.third, 'промежуточное', -80, -60], [A.fourth, 'секундное · 1 об/мин', -70, 70]],
+  3: [[A.escape, 'анкерное колесо', 40, 64], [A.pallet, 'анкерная вилка', 60, 18], [A.balance, 'балансир', -30, 70]],
+  4: [[A.balance, 'балансир', 50, 58], [{ x: A.balance.x + 12, y: A.balance.y - 12 }, 'волосок', 60, -30]],
+  5: [[A.pallet, 'палеты — тоже рубины', 60, 30]],
+  6: [[{ x: 0, y: 100 }, 'ротор', 60, 60]]
+};
+function drawCallouts(ch) {
+  L.labels.querySelectorAll('.co').forEach(n => n.remove());
+  (CALLOUTS[ch] || []).forEach(([a, txt, dx, dy]) => {
+    const g = el('g', { class: 'co', opacity: 0 }, L.labels);
+    const x2 = a.x + dx, y2 = a.y + dy;
+    el('path', { d: `M${f2(a.x)},${f2(a.y)} L${f2(x2)},${f2(y2)} L${f2(x2 + (dx < 0 ? -12 : 12))},${f2(y2)}`, fill: 'none', stroke: '#15315e', 'stroke-width': 0.6 }, g);
+    el('circle', { cx: f2(a.x), cy: f2(a.y), r: 1.6, fill: '#15315e' }, g);
+    const t = el('text', { x: f2(x2 + (dx < 0 ? -15 : 15)), y: f2(y2 + 3.3), 'text-anchor': dx < 0 ? 'end' : 'start', fill: '#15315e', 'font-family': 'Manrope, sans-serif', 'font-size': labelSize(), 'font-weight': 700 }, g);
+    t.textContent = txt;
+    requestAnimationFrame(() => { g.style.transition = 'opacity .5s ease'; g.setAttribute('opacity', 1); });
+  });
+}
+// подписи должны оставаться ≥ 12 px на экране при любом масштабе
+function labelSize() {
+  const vb = cam.cur, rect = svg.getBoundingClientRect();
+  const k = Math.min(rect.width / vb[2], rect.height / vb[3]) || 1;
+  return f2(Math.max(8, 13 / k));
+}
+
+/* =====================================================================
+   Камера: у каждой главы свой viewBox
+   ===================================================================== */
+const VIEWS = {
+  0: [-205, -205, 410, 410],
+  1: [-40, -150, 260, 230],
+  2: [-150, -110, 240, 230],
+  3: [-150, 18, 110, 105],
+  4: [-162, 40, 110, 105],
+  5: [-205, -205, 410, 410],
+  6: [-205, -205, 410, 410],
+  7: [-205, -205, 410, 410]
+};
+const TITLES = ['Механизм целиком', 'Заводная пружина', 'Колёсная система', 'Спуск', 'Баланс и спираль', 'Камни', 'Автоподзавод', 'Точность'];
+const cam = { cur: VIEWS[0].slice(), from: VIEWS[0].slice(), to: VIEWS[0].slice(), t: 1 };
+function fitAspect(v) {
+  const rect = svg.getBoundingClientRect(), ar = rect.width / Math.max(1, rect.height);
+  let [x, y, w, h] = v;
+  if (w / h < ar) { const nw = h * ar; x -= (nw - w) / 2; w = nw; } else { const nh = w / ar; y -= (nh - h) / 2; h = nh; }
+  return [x, y, w, h];
+}
+const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+/* =====================================================================
+   Состояние и физика хода
+   ===================================================================== */
+const S = {
+  ch: 0, speed: 1, freq: 4, t: 0, amp: deg(285), power: 30, escAngle: 0, beats: 0,
+  rotor: 0, rotorV: 0, pos: 0, sound: false, windAnim: 0, lastBeatPhase: 0
+};
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// кинематика одного «тика»: в окне вокруг нуля балансира колесо проворачивается на полшага
+function kin(t) {
+  const f = S.freq, beatT = 1 / (2 * f);
+  const theta = S.amp * Math.sin(TAU * f * t);
+  const k = Math.floor(t / beatT + 0.5);            // номер ближайшего пересечения нуля
+  const dtB = t - k * beatT, win = beatT * 0.16;
+  let ph = (dtB + win / 2) / win;                   // 0..1 внутри окна импульса
+  ph = Math.min(1, Math.max(0, ph));
+  const done = k - 1 + ease(ph);
+  const side = (k % 2 === 0) ? 1 : -1;
+  const fork = deg(9) * (side * (1 - 2 * ease(ph))) * -1;
+  return { theta, done, fork };
+}
+
+function springPath(wind) {
+  // спираль Архимеда: заведена — плотно у вала, спущена — у стенки барабана
+  const rIn = 8.5, rOut = R(A.barrel) - 8, turns = 9, pts = [];
+  const r0 = rIn, r1 = rIn + (rOut - rIn) * (0.32 + 0.68 * (1 - wind)) , r2 = rOut;
+  for (let i = 0; i <= 360; i++) {
+    const u = i / 360, a = u * turns * TAU + wind * 6;
+    const r = u < 0.85 ? r0 + (r1 - r0) * (u / 0.85) : r1 + (r2 - r1) * ((u - 0.85) / 0.15);
+    pts.push(P(r, a));
+  }
+  return 'M' + pts.map(p => f2(p[0]) + ',' + f2(p[1])).join('L');
+}
+function hairPath(theta) {
+  const turns = 11, rIn = 5.8, rOut = 22, pts = [];
+  for (let i = 0; i <= 330; i++) {
+    const u = i / 330, r = rIn + (rOut - rIn) * u, a = u * turns * TAU + theta * (1 - u) * 0.9 + 1.2;
+    pts.push(P(r * (1 + 0.012 * Math.sin(theta) * (1 - u)), a));
+  }
+  return 'M' + pts.map(p => f2(p[0]) + ',' + f2(p[1])).join('L');
+}
+
+/* ---------- звук тиканья ---------- */
+let ac = null;
+function tick(strong) {
+  if (!S.sound || !ac) return;
+  const t = ac.currentTime, len = 0.018;
+  const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * len), ac.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ac.sampleRate * 0.0025));
+  const src = ac.createBufferSource(); src.buffer = buf;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = strong ? 3200 : 4300; bp.Q.value = 3;
+  const g = ac.createGain(); g.gain.value = 0.55;
+  src.connect(bp).connect(g).connect(ac.destination); src.start(t);
+}
+function ratchetClick() {
+  if (!S.sound || !ac) return;
+  const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+  o.type = 'square'; o.frequency.value = 1800 + Math.random() * 300;
+  g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.02);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 0.03);
+}
+
+/* =====================================================================
+   Отрисовка кадра
+   ===================================================================== */
+const pw = document.getElementById('pw'), pwv = document.getElementById('pwv');
+let lastBeatCount = 0;
+function frame(dtReal) {
+  const dt = dtReal * S.speed;
+  // запас хода: пружина тратится только при работающем балансе
+  const running = S.power > 0.02;
+  if (running) S.power = Math.max(0, S.power - dt / 3600);
+  const targetAmp = running ? deg(220 + 80 * Math.min(1, S.power / 8)) : 0;
+  S.amp += (targetAmp - S.amp) * Math.min(1, dtReal * (running ? 1.2 : 0.9));
+  if (S.amp > deg(40)) S.t += dt;
+
+  const k = kin(S.t);
+  const escA = k.done * (TAU / 30);                  // полшага зуба за удар
+  const fourthA = -escA / 16, thirdA = -fourthA / 7.5, centerA = -thirdA / 8, barrelA = -centerA / 6;
+  escRot.setAttribute('transform', `rotate(${f2(escA * 180 / Math.PI)})`);
+  fourthRot.setAttribute('transform', `rotate(${f2(fourthA * 180 / Math.PI)})`);
+  secHand.setAttribute('transform', `rotate(${f2(fourthA * 180 / Math.PI)})`);
+  thirdRot.setAttribute('transform', `rotate(${f2(thirdA * 180 / Math.PI)})`);
+  centerRot.setAttribute('transform', `rotate(${f2(centerA * 180 / Math.PI)})`);
+  barrelRot.setAttribute('transform', `rotate(${f2(barrelA * 180 / Math.PI)})`);
+  const amp = S.amp / deg(285);
+  const theta = S.amp * Math.sin(TAU * S.freq * S.t);
+  balRot.setAttribute('transform', `rotate(${f2(theta * 180 / Math.PI)})`);
+  palRot.setAttribute('transform', `rotate(${f2((S.amp > deg(40) ? k.fork : 0) * 180 / Math.PI)})`);
+  hair.setAttribute('d', hairPath(theta));
+
+  // звук: по одному щелчку на удар
+  const beatCount = Math.floor(k.done + 0.5);
+  if (beatCount !== lastBeatCount && S.amp > deg(40)) { if (S.speed >= 0.06) tick(beatCount % 2 === 0); lastBeatCount = beatCount; }
+
+  // завод и пружина
+  S.windAnim *= Math.exp(-dtReal * 6);
+  arbor.setAttribute('transform', `rotate(${f2(S.power * 40 + S.windAnim * 30)})`);
+  ratchet.setAttribute('transform', `rotate(${f2(S.power * 40)})`);
+  crownWheelRot.setAttribute('transform', `rotate(${f2(-S.power * 90)})`);
+  click.setAttribute('transform', `rotate(${f2(Math.sin(S.power * 40 * 36 * Math.PI / 180) * 6)})`);
+  spring.setAttribute('d', springPath(Math.min(1, S.power / 42)));
+  pw.style.transform = `scaleX(${Math.min(1, S.power / 42).toFixed(3)})`;
+  pwv.textContent = Math.round(S.power) + ' ч';
+
+  // ротор: маятник с затуханием
+  if (S.ch === 6) {
+    const g = -Math.sin(S.rotor) * 4.2;
+    S.rotorV += g * dtReal; S.rotorV *= Math.exp(-dtReal * 0.5);
+    S.rotor += S.rotorV * dtReal;
+    S.power = Math.min(42, S.power + Math.abs(S.rotorV) * dtReal * 0.9);
+    rotorRot.setAttribute('transform', `rotate(${f2(S.rotor * 180 / Math.PI)})`);
+  }
+  // таймграфер
+  if (S.ch === 7) timegrapher(dtReal);
+
+  // камера
+  if (cam.t < 1) {
+    cam.t = Math.min(1, cam.t + dtReal / (reduced ? 0.01 : 1.1));
+    const e = ease(cam.t);
+    cam.cur = cam.from.map((v, i) => v + (cam.to[i] - v) * e);
+    svg.setAttribute('viewBox', cam.cur.map(f2).join(' '));
+  }
+}
+
+/* ---------- таймграфер: точки ударов, наклон = суточный ход ---------- */
+const RATES = [+4, -7, +12];      // с/сут для трёх положений — иллюстрация
+let tgT = 0, tgList = [];
+function timegrapher(dt) {
+  tgT += dt;
+  const rate = RATES[S.pos];
+  if (tgList.length === 0 || tgT - tgList[tgList.length - 1].t > 0.05) {
+    const x = (tgT * 60) % 320;
+    const y = -140 - ((tgT * rate * 1.6) % 52 + 52) % 52 + 26 + (Math.random() - 0.5) * 1.2;
+    tgList.push({ t: tgT, x, y });
+    const c = el('circle', { cx: f2(-160 + x), cy: f2(y), r: 1.1, fill: '#7fd0ff' }, tgDots);
+    c.dataset.t = tgT;
+    if (tgDots.childNodes.length > 320) tgDots.removeChild(tgDots.firstChild);
+  }
+  tgText.textContent = `Суточный ход: ${rate > 0 ? '+' : '−'}${Math.abs(rate)} с · 28 800 пк/ч · амплитуда ${Math.round(S.amp * 180 / Math.PI)}°`;
+}
+
+/* =====================================================================
+   Главы: смена фокуса, подсветки, дополнительных кнопок
+   ===================================================================== */
+const layersOf = { 0: [], 1: ['barrel'], 2: ['train'], 3: ['escape', 'balance'], 4: ['balance'], 5: ['jewels'], 6: ['rotor'], 7: [] };
+function setChapter(ch) {
+  if (ch === S.ch && cam.t >= 1) return;
+  S.ch = ch;
+  document.getElementById('capTitle').textContent = TITLES[ch];
+  cam.from = cam.cur.slice(); cam.to = fitAspect(VIEWS[ch]); cam.t = 0;
+  const focus = layersOf[ch];
+  ['barrel', 'train', 'escape', 'balance'].forEach(k => {
+    L[k].style.transition = 'opacity .6s ease';
+    L[k].style.opacity = focus.length && !focus.includes(k) && ch !== 5 ? 0.38 : 1;
+  });
+  L.bridges.style.transition = 'opacity .6s ease';
+  L.bridges.style.opacity = ch === 2 || ch === 3 || ch === 4 ? 0.25 : 1;
+  jewels.forEach((h, i) => { h.style.transition = 'opacity .5s ease ' + (i * 0.08) + 's'; h.setAttribute('opacity', ch === 5 ? 1 : 0); });
+  rotorG.setAttribute('opacity', ch === 6 ? 1 : 0);
+  tgG.setAttribute('opacity', ch === 7 ? 1 : 0);
+  ['x1', 'x4', 'x6', 'x7'].forEach(id => document.getElementById(id).hidden = id !== 'x' + ch);
+  setTimeout(() => drawCallouts(ch), 350);
+  if (ch === 3) setSpeed(0.015625);
+  else if (ch === 4) setSpeed(0.25);
+  else if (S.speed < 0.2 && ch !== 3) setSpeed(1);
+}
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) setChapter(+e.target.dataset.ch); });
+}, { rootMargin: '-45% 0px -45% 0px' });
+document.querySelectorAll('[data-ch]').forEach(s => io.observe(s));
+
+function setSpeed(v) {
+  S.speed = v;
+  document.querySelectorAll('#speed button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.s === v)));
+}
+document.querySelectorAll('#speed button').forEach(b => b.addEventListener('click', () => setSpeed(+b.dataset.s)));
+document.querySelectorAll('#freq button').forEach(b => b.addEventListener('click', () => {
+  // сохраняем фазу: пересчитываем время так, чтобы число ударов не прыгало
+  const beats = S.t * 2 * S.freq;
+  S.freq = +b.dataset.f; S.t = beats / (2 * S.freq);
+  document.querySelectorAll('#freq button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+}));
+document.querySelectorAll('#pos button').forEach(b => b.addEventListener('click', () => {
+  S.pos = +b.dataset.p; tgT = 0; tgList = []; tgDots.innerHTML = '';
+  document.querySelectorAll('#pos button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+}));
+function wind(amount) {
+  const before = S.power;
+  S.power = Math.max(0, Math.min(42, S.power + amount));
+  if (S.power > before) { S.windAnim = 1; ratchetClick(); }
+}
+document.getElementById('wind').addEventListener('click', () => { let n = 0; const iv = setInterval(() => { wind(1.2); if (++n > 9) clearInterval(iv); }, 70); });
+document.getElementById('unwind').addEventListener('click', () => { S.power = 0; });
+document.getElementById('shake').addEventListener('click', () => { S.rotorV += (Math.random() < 0.5 ? -1 : 1) * (5 + Math.random() * 3); });
+document.getElementById('snd').addEventListener('click', e => {
+  if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+  ac.resume();
+  S.sound = !S.sound;
+  e.currentTarget.setAttribute('aria-pressed', String(S.sound));
+  document.getElementById('sndL').textContent = S.sound ? 'Тиканье вкл.' : 'Тиканье';
+});
+
+// заводная головка: тянуть вверх-вниз
+let crownDrag = null;
+crown.addEventListener('pointerdown', e => { crownDrag = e.clientY; crown.setPointerCapture(e.pointerId); e.preventDefault(); });
+crown.addEventListener('pointermove', e => { if (crownDrag === null) return; const d = crownDrag - e.clientY; if (Math.abs(d) > 6) { wind(Math.abs(d) * 0.06); crownDrag = e.clientY; } });
+crown.addEventListener('pointerup', () => { crownDrag = null; });
+// ротор: тянуть весь механизм
+let rotorDrag = null;
+svg.addEventListener('pointerdown', e => { if (S.ch === 6) { rotorDrag = e.clientX; svg.setPointerCapture(e.pointerId); } });
+svg.addEventListener('pointermove', e => {
+  if (rotorDrag !== null) { S.rotorV += (e.clientX - rotorDrag) * 0.05; rotorDrag = e.clientX; }
+  hover(e);
+});
+svg.addEventListener('pointerup', () => { rotorDrag = null; });
+
+// подсказка с периодом колеса
+const tip = document.getElementById('tip'), stage = document.getElementById('stage');
+const HOT = [
+  [A.barrel, R(A.barrel), 'Барабан', 'оборот за 6 часов'],
+  [A.center, R(A.center), 'Центральное колесо', 'оборот за час · минутная стрелка'],
+  [A.third, R(A.third), 'Промежуточное колесо', 'оборот за 7,5 минуты'],
+  [A.fourth, R(A.fourth), 'Секундное колесо', 'оборот за минуту'],
+  [A.escape, ESC_R, 'Анкерное колесо', () => 'оборот за ' + (60 / (S.freq * 4)).toFixed(2).replace('.', ',') + ' с · 15 зубьев'],
+  [A.balance, BAL_R, 'Балансир', () => (S.freq * 7200).toLocaleString('ru-RU') + ' пк/ч · ' + String(S.freq).replace('.', ',') + ' Гц']
+];
+function hover(e) {
+  if (S.ch !== 2 && S.ch !== 0 && S.ch !== 3 && S.ch !== 4) { tip.classList.remove('on'); return; }
+  const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+  const hit = HOT.slice().reverse().find(([a, r]) => Math.hypot(p.x - a.x, p.y - a.y) < r);
+  if (!hit) { tip.classList.remove('on'); return; }
+  const rect = stage.getBoundingClientRect();
+  tip.innerHTML = hit[2] + '<small>' + (typeof hit[3] === 'function' ? hit[3]() : hit[3]) + '</small>';
+  tip.style.left = (e.clientX - rect.left) + 'px'; tip.style.top = (e.clientY - rect.top) + 'px';
+  tip.classList.add('on');
+}
+svg.addEventListener('pointerleave', () => tip.classList.remove('on'));
+
+/* ---------- цикл ---------- */
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!document.hidden) frame(dt);
+  requestAnimationFrame(loop);
+}
+addEventListener('resize', () => { cam.to = fitAspect(VIEWS[S.ch]); cam.from = cam.cur.slice(); cam.t = 0; });
+cam.cur = fitAspect(VIEWS[0]); cam.to = cam.cur.slice();
+svg.setAttribute('viewBox', cam.cur.map(f2).join(' '));
+S.t = 3.37;
+frame(0);
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

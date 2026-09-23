@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Кубик — кубик Рубика и решатель Коцембы</title>
+<meta name="description" content="Кубик Рубика в 3D: слои поворачиваются мышью, двухфазный алгоритм Коцембы собирает 3×3 примерно за 20 ходов и объясняет фазы.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#f3eee6; --dim:#b3aba0; --faint:#8d857a; --line:rgba(243,238,230,.14); --panel:rgba(22,19,17,.72);
+  --p1:#ffb547; --p2:#45d3c8; --hot:#ff6a3d;
+  --sans:'Onest','Helvetica Neue',Arial,sans-serif; --disp:'Dela Gothic One','Arial Black',sans-serif;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+body{background:radial-gradient(120% 90% at 50% 38%,#3a342e 0%,#221e1b 42%,#0f0d0c 100%)}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--p1);outline-offset:2px}
+
+.brand{position:fixed;left:40px;top:34px;max-width:360px;pointer-events:none}
+.brand h1{font:400 64px/.95 var(--disp);margin:0;letter-spacing:-.01em}
+.brand h1 span{color:var(--p1)}
+.brand p{font:400 15px/1.45 var(--sans);color:var(--dim);margin:12px 0 0}
+.brand .short{display:none}
+
+.ctrl{position:fixed;left:40px;bottom:34px;width:340px;display:grid;gap:14px}
+.sizes{display:flex;gap:6px}
+.sizes button{flex:1;height:40px;border:1px solid var(--line);background:rgba(20,17,15,.5);border-radius:10px;font:600 15px/1 var(--sans);color:var(--dim);transition:background .2s,color .2s,border-color .2s}
+.sizes button:hover{color:var(--ink);border-color:rgba(243,238,230,.3)}
+.sizes button.on{background:var(--ink);color:#15120f;border-color:var(--ink)}
+.acts{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px}
+.btn{height:50px;border:0;border-radius:12px;font:600 16px/1 var(--sans);display:inline-flex;align-items:center;justify-content:center;gap:9px;transition:transform .15s var(--ease),background .2s,opacity .2s}
+.btn:active{transform:scale(.97)}
+.btn.main{background:var(--p1);color:#1a1208}
+.btn.main:hover{background:#ffc26a}
+.btn.sec{background:rgba(243,238,230,.1);color:var(--ink);border:1px solid var(--line)}
+.btn.sec:hover{background:rgba(243,238,230,.16)}
+.btn:disabled{opacity:.45;cursor:default}
+.speed{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;font:500 13px/1 var(--sans);color:var(--dim)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:rgba(243,238,230,.22)}
+input[type=range]::-moz-range-track{height:3px;border-radius:2px;background:rgba(243,238,230,.22)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--ink);margin-top:-6.5px}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--ink);border:0}
+.hint{font:400 13px/1.5 var(--sans);color:#a39a8e}
+.hint kbd{font:600 12px/1 var(--sans);color:var(--dim);border:1px solid var(--line);border-radius:4px;padding:2px 5px}
+
+.explain{position:fixed;right:36px;top:34px;width:340px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 20px 16px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.explain h2{font:600 18px/1.2 var(--sans);margin:0}
+.explain .sub{font:400 13.5px/1.45 var(--sans);color:var(--dim);margin:6px 0 14px}
+.phase{border-top:1px solid var(--line);padding:12px 0 10px;transition:opacity .4s}
+.phase.idle{opacity:.75}
+.phase .ph{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.phase b{font:600 14.5px/1.2 var(--sans)}
+.phase .tag{font:600 12px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase}
+.phase p{font:400 13px/1.45 var(--sans);color:var(--dim);margin:6px 0 10px}
+.bar{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;font:500 12.5px/1 var(--sans);color:var(--dim);margin-bottom:8px}
+.bar .t{grid-column:1/-1;height:5px;border-radius:3px;background:rgba(243,238,230,.1);overflow:hidden}
+.bar .t i{display:block;height:100%;width:100%;border-radius:3px;transform-origin:left;transition:transform .45s var(--ease)}
+.bar em{font-style:normal;color:var(--ink);font-variant-numeric:tabular-nums}
+.stat{font:400 12.5px/1.5 var(--sans);color:#a39a8e;border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
+.offnote{display:none;font:400 13.5px/1.5 var(--sans);color:var(--ink);border-top:1px solid var(--line);padding:12px 0;margin:0}
+.explain.off .phase{display:none}
+.explain.off .offnote{display:block}
+.stat b{color:var(--dim);font-weight:600}
+
+.tape{position:fixed;left:410px;right:410px;bottom:34px;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none}
+.tape .lab{font:600 12px/1.3 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:#a39a8e;text-align:center}
+.tlegend{display:flex;gap:16px;font:500 12.5px/1 var(--sans);color:var(--dim)}
+.tlegend[hidden]{display:none}
+.tlegend span{display:inline-flex;align-items:center;gap:6px}
+.tlegend i{width:8px;height:8px;border-radius:2px}
+.moves{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;max-width:640px}
+.mv{min-width:38px;height:32px;padding:0 8px;border-radius:8px;display:inline-grid;place-items:center;font:600 14px/1 var(--sans);background:rgba(243,238,230,.07);color:var(--dim);border:1px solid transparent;transition:background .25s,color .25s,border-color .25s,transform .25s var(--ease)}
+.mv.p1{color:var(--p1)} .mv.p2{color:var(--p2)}
+.mv.done{opacity:.4}
+.mv.now{background:var(--ink);color:#15120f;transform:translateY(-3px)}
+.toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);font:400 52px/1 var(--disp);color:var(--ink);opacity:0;pointer-events:none;transition:opacity .5s,transform .7s var(--ease);text-shadow:0 4px 24px rgba(0,0,0,.45)}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.nonet{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:30px;font:500 18px/1.5 var(--sans);color:var(--dim)}
+
+@media (max-width:1180px){
+  .tape{left:40px;right:400px;bottom:auto;top:150px}
+}
+@media (max-width:760px){
+  .brand{left:18px;top:18px;right:18px}
+  .brand h1{font-size:40px}
+  .brand p{font-size:14px;margin-top:8px}
+  .brand .long{display:none}
+  .brand .short{display:inline}
+  .explain{display:none}
+  .ctrl{left:14px;right:14px;bottom:14px;width:auto;gap:10px;background:rgba(18,15,13,.72);border:1px solid var(--line);border-radius:18px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .hint{display:none}
+  .tape{left:12px;right:12px;top:auto;bottom:210px;gap:8px}
+  .moves{gap:4px}
+  .mv{min-width:34px;height:28px;font-size:13px}
+}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Кубик Рубика"></canvas>
+<header class="brand">
+  <h1>Куб<span>ик</span></h1>
+  <p><span class="long">Кубик Рубика и&nbsp;настоящий решатель: двухфазный алгоритм Коцембы находит сборку примерно за&nbsp;20&nbsp;ходов.</span><span class="short">Алгоритм Коцембы собирает 3×3 примерно за&nbsp;20&nbsp;ходов.</span></p>
+</header>
+
+<aside class="explain" aria-label="Как решает машина">
+  <h2>Как решает машина</h2>
+  <p class="sub">Человек по слоям тратит около сотни ходов. Алгоритм Коцембы делит задачу на две фазы и ищет короткий путь в каждой.</p>
+  <div class="phase idle" id="ph1">
+    <div class="ph"><b>Фаза 1 · в подгруппу</b><span class="tag" style="color:var(--p1)" id="ph1n"></span></div>
+    <p>Развернуть все детали «правильной стороной» и загнать четыре ребра среднего пояса в пояс. После этого хватит ходов U, D и полуповоротов боков.</p>
+    <div class="bar"><span>Углы ориентированы</span><em id="bco">8/8</em><div class="t"><i id="tco" style="background:var(--p1)"></i></div></div>
+    <div class="bar"><span>Рёбра ориентированы</span><em id="beo">12/12</em><div class="t"><i id="teo" style="background:var(--p1)"></i></div></div>
+    <div class="bar"><span>Рёбра пояса в поясе</span><em id="bsl">4/4</em><div class="t"><i id="tsl" style="background:var(--p1)"></i></div></div>
+  </div>
+  <div class="phase idle" id="ph2">
+    <div class="ph"><b>Фаза 2 · дособрать</b><span class="tag" style="color:var(--p2)" id="ph2n"></span></div>
+    <p>Расставить детали по местам, не ломая ориентацию: разрешены только U, D, R2, L2, F2, B2.</p>
+    <div class="bar"><span>Углы на своих местах</span><em id="bcp">8/8</em><div class="t"><i id="tcp" style="background:var(--p2)"></i></div></div>
+    <div class="bar"><span>Рёбра на своих местах</span><em id="bep">12/12</em><div class="t"><i id="tep" style="background:var(--p2)"></i></div></div>
+  </div>
+  <p class="offnote">Двухфазный решатель работает для&nbsp;3×3. У&nbsp;кубиков 2×2, 4×4 и&nbsp;5×5 другие группы перестановок, поэтому здесь «Собрать» честно откатывает историю ходов.</p>
+  <div class="stat" id="stat">Таблицы отсечений строятся в фоне…</div>
+</aside>
+
+<section class="ctrl" aria-label="Управление">
+  <div class="sizes" id="sizes"><button data-n="2">2×2</button><button data-n="3" class="on">3×3</button><button data-n="4">4×4</button><button data-n="5">5×5</button></div>
+  <div class="acts">
+    <button class="btn sec" id="bScr"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2 5h3.5c3 0 4 8 7 8H16M13 10.5 16 13l-3 2.5M2 13h3.5c1 0 1.8-.8 2.4-1.8M10.5 6.2C11 5.4 11.7 5 12.5 5H16M13 2.5 16 5l-3 2.5"/></svg>Перемешать</button>
+    <button class="btn main" id="bSolve"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 7 13l8-8.5"/></svg>Собрать</button>
+    <button class="btn sec" id="bReset" aria-label="Сбросить" title="Сбросить в собранное состояние"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8a5 5 0 1 0 1.6-3.7"/><path d="M3 2.5V5h2.5"/></svg></button>
+  </div>
+  <label class="speed">Скорость<input type="range" id="spd" min="0" max="100" value="55" aria-label="Скорость поворотов"><span id="spdv"></span></label>
+  <div class="hint">Тяните наклейку — повернётся слой, тяните фон — камера. <kbd>U</kbd> <kbd>D</kbd> <kbd>L</kbd> <kbd>R</kbd> <kbd>F</kbd> <kbd>B</kbd>, с <kbd>Shift</kbd> — против часовой.</div>
+</section>
+
+<section class="tape" aria-live="polite"><div class="lab" id="tapelab"></div><div class="tlegend" id="tlegend" hidden><span><i style="background:var(--p1)"></i>фаза 1: ориентация и&nbsp;пояс</span><span><i style="background:var(--p2)"></i>фаза 2: расстановка</span></div><div class="moves" id="moves"></div></section>
+<div class="toast" id="toast">Собран!</div>
+<div class="nonet" id="nonet">Для трёхмерной сцены нужен интернет: three.js загружается с CDN.<br>Проверьте подключение и обновите страницу.</div>
+
+<script id="solver-src">
+// Двухфазный алгоритм Коцембы: кубиковая модель, координаты, таблицы переходов и отсечений, IDA*.
+// Этот же код встраивается в Web Worker проекта 043.
+function makeSolver() {
+  const N_TWIST = 2187, N_FLIP = 2048, N_SLICE = 495, N_PERM8 = 40320, N_PERM4 = 24, N_MOVE = 18;
+  const MOVE_NAMES = ['U', 'U2', "U'", 'R', 'R2', "R'", 'F', 'F2', "F'", 'D', 'D2', "D'", 'L', 'L2', "L'", 'B', 'B2', "B'"];
+  const P2 = [0, 1, 2, 4, 7, 9, 10, 11, 13, 16];
+  // базовые повороты граней (по часовой): U R F D L B
+  const BASIC = [
+    { cp: [3, 0, 1, 2, 4, 5, 6, 7], co: [0, 0, 0, 0, 0, 0, 0, 0], ep: [3, 0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11], eo: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { cp: [4, 1, 2, 0, 7, 5, 6, 3], co: [2, 0, 0, 1, 1, 0, 0, 2], ep: [8, 1, 2, 3, 11, 5, 6, 7, 4, 9, 10, 0], eo: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { cp: [1, 5, 2, 3, 0, 4, 6, 7], co: [1, 2, 0, 0, 2, 1, 0, 0], ep: [0, 9, 2, 3, 4, 8, 6, 7, 1, 5, 10, 11], eo: [0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0] },
+    { cp: [0, 1, 2, 3, 5, 6, 7, 4], co: [0, 0, 0, 0, 0, 0, 0, 0], ep: [0, 1, 2, 3, 5, 6, 7, 4, 8, 9, 10, 11], eo: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { cp: [0, 2, 6, 3, 4, 1, 5, 7], co: [0, 1, 2, 0, 0, 2, 1, 0], ep: [0, 1, 10, 3, 4, 5, 9, 7, 8, 2, 6, 11], eo: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { cp: [0, 1, 3, 7, 4, 5, 2, 6], co: [0, 0, 1, 2, 0, 0, 2, 1], ep: [0, 1, 2, 11, 4, 5, 6, 10, 8, 9, 3, 7], eo: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1] }
+  ];
+  const solvedCube = () => ({ cp: [0, 1, 2, 3, 4, 5, 6, 7], co: [0, 0, 0, 0, 0, 0, 0, 0], ep: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], eo: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] });
+  function mul(a, b) {
+    const r = { cp: new Array(8), co: new Array(8), ep: new Array(12), eo: new Array(12) };
+    for (let i = 0; i < 8; i++) { r.cp[i] = a.cp[b.cp[i]]; r.co[i] = (a.co[b.cp[i]] + b.co[i]) % 3; }
+    for (let i = 0; i < 12; i++) { r.ep[i] = a.ep[b.ep[i]]; r.eo[i] = (a.eo[b.ep[i]] + b.eo[i]) % 2; }
+    return r;
+  }
+  // все 18 ходов как кубиковые перестановки
+  const MOVES = [];
+  for (let f = 0; f < 6; f++) { let c = BASIC[f]; for (let k = 0; k < 3; k++) { MOVES.push(c); c = mul(c, BASIC[f]); } }
+  const applyMove = (c, m) => mul(c, MOVES[m]);
+
+  const Cnk = (n, k) => { if (k > n || k < 0) return 0; let r = 1; for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1); return Math.round(r); };
+  const getTwist = c => { let r = 0; for (let i = 0; i < 7; i++) r = 3 * r + c.co[i]; return r; };
+  const setTwist = (c, t) => { let p = 0; for (let i = 6; i >= 0; i--) { c.co[i] = t % 3; p += c.co[i]; t = Math.floor(t / 3); } c.co[7] = (3 - p % 3) % 3; };
+  const getFlip = c => { let r = 0; for (let i = 0; i < 11; i++) r = 2 * r + c.eo[i]; return r; };
+  const setFlip = (c, f) => { let p = 0; for (let i = 10; i >= 0; i--) { c.eo[i] = f % 2; p += c.eo[i]; f = Math.floor(f / 2); } c.eo[11] = (2 - p % 2) % 2; };
+  const getSlice = c => { let a = 0, x = 0; for (let j = 11; j >= 0; j--) if (c.ep[j] >= 8) { a += Cnk(11 - j, x + 1); x++; } return a; };
+  const setSlice = (c, idx) => {
+    const slice = [8, 9, 10, 11], other = [0, 1, 2, 3, 4, 5, 6, 7];
+    let a = idx, x = 4; c.ep.fill(-1);
+    for (let j = 0; j < 12; j++) if (x > 0 && a - Cnk(11 - j, x) >= 0) { c.ep[j] = slice[4 - x]; a -= Cnk(11 - j, x); x--; }
+    x = 0; for (let j = 0; j < 12; j++) if (c.ep[j] === -1) c.ep[j] = other[x++];
+  };
+  const FACT = [1, 1, 2, 6, 24, 120, 720, 5040, 40320];
+  function permIdx(p, off, n, base) { let idx = 0; for (let i = 0; i < n; i++) { let cnt = 0; for (let j = i + 1; j < n; j++) if (p[off + j] < p[off + i]) cnt++; idx += cnt * FACT[n - 1 - i]; } return idx; }
+  function idxPerm(idx, n, base) { const out = [], used = new Array(n).fill(false); for (let i = 0; i < n; i++) { const f = FACT[n - 1 - i], c = Math.floor(idx / f); idx %= f; let k = -1; for (let j = 0, s = 0; j < n; j++) if (!used[j]) { if (s === c) { k = j; break; } s++; } used[k] = true; out.push(base + k); } return out; }
+  const getCorn = c => permIdx(c.cp, 0, 8);
+  const setCorn = (c, i) => { c.cp = idxPerm(i, 8, 0); };
+  const getUD = c => permIdx(c.ep, 0, 8);
+  const setUD = (c, i) => { const p = idxPerm(i, 8, 0); for (let k = 0; k < 8; k++) c.ep[k] = p[k]; for (let k = 8; k < 12; k++) c.ep[k] = k; };
+  const getSP = c => permIdx(c.ep, 8, 4);
+  const setSP = (c, i) => { const p = idxPerm(i, 4, 8); for (let k = 0; k < 8; k++) c.ep[k] = k; for (let k = 0; k < 4; k++) c.ep[8 + k] = p[k]; };
+
+  let T = null;
+  function build(progress) {
+    const t0 = Date.now();
+    const twistMove = new Uint16Array(N_TWIST * N_MOVE), flipMove = new Uint16Array(N_FLIP * N_MOVE), sliceMove = new Uint16Array(N_SLICE * N_MOVE);
+    for (let i = 0; i < N_TWIST; i++) { const c = solvedCube(); setTwist(c, i); for (let m = 0; m < N_MOVE; m++) twistMove[i * N_MOVE + m] = getTwist(applyMove(c, m)); }
+    for (let i = 0; i < N_FLIP; i++) { const c = solvedCube(); setFlip(c, i); for (let m = 0; m < N_MOVE; m++) flipMove[i * N_MOVE + m] = getFlip(applyMove(c, m)); }
+    for (let i = 0; i < N_SLICE; i++) { const c = solvedCube(); setSlice(c, i); for (let m = 0; m < N_MOVE; m++) sliceMove[i * N_MOVE + m] = getSlice(applyMove(c, m)); }
+    progress && progress(0.15);
+    const cornMove = new Uint16Array(N_PERM8 * N_MOVE), udMove = new Uint16Array(N_PERM8 * N_MOVE), spMove = new Uint16Array(N_PERM4 * N_MOVE);
+    for (let i = 0; i < N_PERM8; i++) {
+      const c = solvedCube(); setCorn(c, i);
+      for (let m = 0; m < N_MOVE; m++) cornMove[i * N_MOVE + m] = getCorn(applyMove(c, m));
+      const e = solvedCube(); setUD(e, i);
+      for (const m of P2) udMove[i * N_MOVE + m] = getUD(applyMove(e, m));
+    }
+    for (let i = 0; i < N_PERM4; i++) { const c = solvedCube(); setSP(c, i); for (const m of P2) spMove[i * N_MOVE + m] = getSP(applyMove(c, m)); }
+    progress && progress(0.35);
+    function bfs(n1, n2, mv1, mv2, moves) {
+      const t = new Int8Array(n1 * n2).fill(-1);
+      t[0] = 0; let depth = 0, done = 1, total = n1 * n2;
+      while (done < total) {
+        let found = 0;
+        for (let i = 0; i < total; i++) {
+          if (t[i] !== depth) continue;
+          const a = Math.floor(i / n2), b = i % n2;
+          for (const m of moves) {
+            const j = mv1[a * N_MOVE + m] * n2 + mv2[b * N_MOVE + m];
+            if (t[j] === -1) { t[j] = depth + 1; found++; }
+          }
+        }
+        done += found; depth++;
+        if (!found) break;
+      }
+      return t;
+    }
+    const ALL = [...Array(18).keys()];
+    const pSliceTwist = bfs(N_SLICE, N_TWIST, sliceMove, twistMove, ALL); progress && progress(0.55);
+    const pSliceFlip = bfs(N_SLICE, N_FLIP, sliceMove, flipMove, ALL); progress && progress(0.72);
+    const pSPCorn = bfs(N_PERM4, N_PERM8, spMove, cornMove, P2); progress && progress(0.86);
+    const pSPUD = bfs(N_PERM4, N_PERM8, spMove, udMove, P2); progress && progress(1);
+    T = { twistMove, flipMove, sliceMove, cornMove, udMove, spMove, pSliceTwist, pSliceFlip, pSPCorn, pSPUD, ms: Date.now() - t0 };
+    return T.ms;
+  }
+  const sameAxis = (a, b) => a % 3 === b % 3; // U/D, R/L, F/B → грани 0/3, 1/4, 2/5
+  // собираемо ли состояние вообще: чётности перестановок совпадают, закрутка и переворот сходятся
+  function parity(p) { let s = 0; for (let i = 0; i < p.length; i++) for (let j = i + 1; j < p.length; j++) if (p[j] < p[i]) s++; return s & 1; }
+  function legal(c) {
+    return parity(c.cp) === parity(c.ep) && c.co.reduce((a, b) => a + b, 0) % 3 === 0 && c.eo.reduce((a, b) => a + b, 0) % 2 === 0
+      && new Set(c.cp).size === 8 && new Set(c.ep).size === 12;
+  }
+  function solve(cube, opts = {}) {
+    if (!T) build();
+    if (!legal(cube)) return null;
+    const maxLen = opts.maxLen || 23, timeLimit = opts.timeMs || 400;
+    const hardLimit = opts.hardMs || 3000;   // страховка: даже без найденного решения поиск не длится вечно
+    const t0 = Date.now();
+    let nodes = 0;
+    let best = null;
+    const tw0 = getTwist(cube), fl0 = getFlip(cube), sl0 = getSlice(cube);
+    const path1 = [], path2 = [];
+    let limit1, stop = false;
+    function h1(tw, fl, sl) { return Math.max(T.pSliceTwist[sl * N_TWIST + tw], T.pSliceFlip[sl * N_FLIP + fl]); }
+    function h2(co, ud, sp) { return Math.max(T.pSPCorn[sp * N_PERM8 + co], T.pSPUD[sp * N_PERM8 + ud]); }
+    function phase2(co, ud, sp, depth, lim, lastFace) {
+      if (co === 0 && ud === 0 && sp === 0) return true;
+      if ((++nodes & 4095) === 0 && Date.now() - t0 > hardLimit) stop = true;
+      if (stop) return false;
+      if (depth + h2(co, ud, sp) > lim) return false;
+      for (const m of P2) {
+        const f = Math.floor(m / 3);
+        if (lastFace >= 0 && (f === lastFace || (sameAxis(f, lastFace) && f < lastFace))) continue;
+        path2.push(m);
+        if (phase2(T.cornMove[co * N_MOVE + m], T.udMove[ud * N_MOVE + m], T.spMove[sp * N_MOVE + m], depth + 1, lim, f)) return true;
+        path2.pop();
+      }
+      return false;
+    }
+    function startPhase2() {
+      let c = cube;
+      for (const m of path1) c = applyMove(c, m);
+      const co = getCorn(c), ud = getUD(c), sp = getSP(c);
+      const room = (best ? best.length - 1 : maxLen) - path1.length;
+      if (room < 0) return;
+      const last = path1.length ? Math.floor(path1[path1.length - 1] / 3) : -1;
+      for (let lim = h2(co, ud, sp); lim <= Math.min(room, 18); lim++) {
+        path2.length = 0;
+        if (phase2(co, ud, sp, 0, lim, last)) {
+          best = { p1: path1.slice(), p2: path2.slice(), length: path1.length + path2.length };
+          return;
+        }
+      }
+    }
+    function phase1(tw, fl, sl, depth, lastFace) {
+      if (stop) return;
+      if ((++nodes & 4095) === 0 && Date.now() - t0 > hardLimit) { stop = true; return; }
+      const h = h1(tw, fl, sl);
+      if (h === 0 && depth === limit1) {
+        // последний ход фазы 1 не должен принадлежать группе фазы 2
+        const lm = path1.length ? path1[path1.length - 1] : -1;
+        if (lm < 0 || !P2.includes(lm)) startPhase2();
+        if (Date.now() - t0 > timeLimit && best) stop = true;
+        return;
+      }
+      if (depth + h > limit1) return;
+      for (let m = 0; m < N_MOVE; m++) {
+        const f = Math.floor(m / 3);
+        if (lastFace >= 0 && (f === lastFace || (sameAxis(f, lastFace) && f < lastFace))) continue;
+        path1.push(m);
+        phase1(T.twistMove[tw * N_MOVE + m], T.flipMove[fl * N_MOVE + m], T.sliceMove[sl * N_MOVE + m], depth + 1, f);
+        path1.pop();
+        if (stop) return;
+      }
+    }
+    for (limit1 = h1(tw0, fl0, sl0); limit1 <= 12 && !stop; limit1++) {
+      if (best && limit1 >= best.length) break;
+      phase1(tw0, fl0, sl0, 0, -1);
+      if (best && Date.now() - t0 > timeLimit) break;
+    }
+    if (!best) return null;
+    return { p1: best.p1, p2: best.p2, moves: best.p1.concat(best.p2).map(m => MOVE_NAMES[m]), ms: Date.now() - t0 };
+  }
+  // фасетки → кубики (порядок URFDLB, по 9 на грань)
+  const CF = [[8, 9, 20], [6, 18, 38], [0, 36, 47], [2, 45, 11], [29, 26, 15], [27, 44, 24], [33, 53, 42], [35, 17, 51]];
+  const EF = [[5, 10], [7, 19], [3, 37], [1, 46], [32, 16], [28, 25], [30, 43], [34, 52], [23, 12], [21, 41], [50, 39], [48, 14]];
+  const CC = [[0, 1, 2], [0, 2, 4], [0, 4, 5], [0, 5, 1], [3, 2, 1], [3, 4, 2], [3, 5, 4], [3, 1, 5]];
+  const EC = [[0, 1], [0, 2], [0, 4], [0, 5], [3, 1], [3, 2], [3, 4], [3, 5], [2, 1], [2, 4], [5, 4], [5, 1]];
+  function fromFacelets(f) { // f — массив 54 чисел 0..5 (U R F D L B)
+    const c = solvedCube();
+    for (let i = 0; i < 8; i++) {
+      let ori = 0; for (; ori < 3; ori++) if (f[CF[i][ori]] === 0 || f[CF[i][ori]] === 3) break;
+      if (ori === 3) return null;
+      const c1 = f[CF[i][(ori + 1) % 3]], c2 = f[CF[i][(ori + 2) % 3]];
+      let found = -1; for (let j = 0; j < 8; j++) if (CC[j][1] === c1 && CC[j][2] === c2) found = j;
+      if (found < 0) return null;
+      c.cp[i] = found; c.co[i] = ori % 3;
+    }
+    for (let i = 0; i < 12; i++) {
+      let found = -1;
+      for (let j = 0; j < 12; j++) {
+        if (f[EF[i][0]] === EC[j][0] && f[EF[i][1]] === EC[j][1]) { c.ep[i] = j; c.eo[i] = 0; found = j; break; }
+        if (f[EF[i][0]] === EC[j][1] && f[EF[i][1]] === EC[j][0]) { c.ep[i] = j; c.eo[i] = 1; found = j; break; }
+      }
+      if (found < 0) return null;
+    }
+    return c;
+  }
+  // прогресс для объяснения фаз
+  function stats(c) {
+    let co = 0, eo = 0, sl = 0, cpOk = 0, epOk = 0;
+    for (let i = 0; i < 8; i++) { if (c.co[i] === 0) co++; if (c.cp[i] === i && c.co[i] === 0) cpOk++; }
+    for (let i = 0; i < 12; i++) { if (c.eo[i] === 0) eo++; if (c.ep[i] === i && c.eo[i] === 0) epOk++; }
+    for (let i = 8; i < 12; i++) if (c.ep[i] >= 8) sl++;
+    return { co, eo, sl, cpOk, epOk };
+  }
+  return { build, solve, fromFacelets, applyMove, solvedCube, stats, MOVE_NAMES, isBuilt: () => !!T };
+}
+
+</script>
+<script>
+  // если three.js не загрузился — честное сообщение вместо пустого экрана
+  setTimeout(() => { if (!window.__cubeReady) document.getElementById('nonet').style.display = 'grid'; }, 9000);
+</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+window.__cubeReady = true;
+
+/* ═══════════════════════════════════════════
+   1. Сцена и студийный свет
+   ═══════════════════════════════════════════ */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false;
+controls.autoRotate = true; controls.autoRotateSpeed = 0.55;
+
+const key = new THREE.DirectionalLight(0xfff1dc, 2.4);
+key.position.set(5, 11, 7); key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024); key.shadow.camera.left = -6; key.shadow.camera.right = 6; key.shadow.camera.top = 6; key.shadow.camera.bottom = -6;
+key.shadow.radius = 6; key.shadow.bias = -0.0005;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x9fc4ff, 0.9); rim.position.set(-7, 3, -6); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xfff4e6, 0x1a1512, 0.35));
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: 0.32 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+// мягкая контактная тень прямо под кубиком — радиальный градиент, нарисованный на холсте
+const blobTex = (() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const g = cv.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gr.addColorStop(0, 'rgba(0,0,0,0.85)'); gr.addColorStop(0.45, 'rgba(0,0,0,0.45)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(cv);
+})();
+const blob = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false }));
+blob.rotation.x = -Math.PI / 2; blob.position.y = 0.005; scene.add(blob);
+
+/* ═══════════════════════════════════════════
+   2. Кубик N×N
+   ═══════════════════════════════════════════ */
+const FACE_COLOR = { U: 0xf4f3ee, D: 0xffd500, F: 0x009b48, B: 0x0046ad, R: 0xb71234, L: 0xff5800 };
+const stickerMat = {};
+for (const k in FACE_COLOR) stickerMat[k] = new THREE.MeshStandardMaterial({ color: FACE_COLOR[k], roughness: 0.22, metalness: 0, envMapIntensity: 1.1 });
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0c0b0b, roughness: 0.32, metalness: 0.05, envMapIntensity: 0.9 });
+function roundedSquare(s, r) {
+  const sh = new THREE.Shape(), h = s / 2;
+  sh.moveTo(-h + r, -h); sh.lineTo(h - r, -h); sh.quadraticCurveTo(h, -h, h, -h + r); sh.lineTo(h, h - r); sh.quadraticCurveTo(h, h, h - r, h);
+  sh.lineTo(-h + r, h); sh.quadraticCurveTo(-h, h, -h, h - r); sh.lineTo(-h, -h + r); sh.quadraticCurveTo(-h, -h, -h + r, -h);
+  return new THREE.ShapeGeometry(sh, 6);
+}
+const stickerGeo = roundedSquare(0.8, 0.12);
+const bodyGeo = new RoundedBoxGeometry(0.97, 0.97, 0.97, 3, 0.11);
+const cubeGroup = new THREE.Group(); scene.add(cubeGroup);
+const pivot = new THREE.Group(); cubeGroup.add(pivot);
+let N = 3, cubies = [], stickers = [];
+const DIRS = [
+  { f: 'R', n: [1, 0, 0] }, { f: 'L', n: [-1, 0, 0] }, { f: 'U', n: [0, 1, 0] },
+  { f: 'D', n: [0, -1, 0] }, { f: 'F', n: [0, 0, 1] }, { f: 'B', n: [0, 0, -1] }
+];
+function buildCube(n) {
+  for (const c of cubies) cubeGroup.remove(c);
+  cubies = []; stickers = []; N = n;
+  const off = (n - 1) / 2;
+  for (let x = 0; x < n; x++) for (let y = 0; y < n; y++) for (let z = 0; z < n; z++) {
+    if (x > 0 && x < n - 1 && y > 0 && y < n - 1 && z > 0 && z < n - 1) continue;
+    const g = new THREE.Group();
+    g.position.set(x - off, y - off, z - off);
+    const body = new THREE.Mesh(bodyGeo, bodyMat); body.castShadow = true; body.receiveShadow = true; g.add(body);
+    const pos = [x, y, z];
+    for (const d of DIRS) {
+      const ax = d.n.findIndex(v => v !== 0), side = d.n[ax];
+      if ((side > 0 && pos[ax] !== n - 1) || (side < 0 && pos[ax] !== 0)) continue;
+      const s = new THREE.Mesh(stickerGeo, stickerMat[d.f]);
+      const nrm = new THREE.Vector3(...d.n);
+      s.position.copy(nrm).multiplyScalar(0.487);
+      s.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), nrm);
+      s.userData = { sticker: true, color: d.f };
+      g.add(s); stickers.push(s);
+    }
+    cubeGroup.add(g); cubies.push(g);
+  }
+  cubeGroup.position.y = off + 0.55;
+  floor.position.y = 0;
+  blob.scale.setScalar(n * 1.9);
+  fitCamera();
+}
+// Свободная от интерфейса часть экрана: кубик вписывается в неё целиком
+function freeRect() {
+  const W = innerWidth, H = innerHeight;
+  if (W > 1180) return { x0: 410, x1: W - 410, y0: 36, y1: H - 150 };
+  if (W > 760) return { x0: 24, x1: W - 390, y0: 170, y1: H - 250 };
+  return { x0: 14, x1: W - 14, y0: 112, y1: H - 318 };
+}
+let camInit = false;
+function fitCamera() {
+  const W = innerWidth, H = innerHeight, fr = freeRect();
+  // описанная сфера кубика должна занять ~90 % меньшей стороны свободной области
+  const r = (N / 2) * Math.sqrt(3);
+  const pxR = Math.min(fr.x1 - fr.x0, fr.y1 - fr.y0) * 0.48;
+  const k = (pxR / (H / 2)) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const dist = r * Math.sqrt(1 + 1 / (k * k));
+  const dir = camInit ? camera.position.clone().sub(controls.target) : new THREE.Vector3(0.62, 0.58, 0.86);
+  camInit = true;
+  if (dir.lengthSq() < 0.01) dir.set(0.62, 0.58, 0.86);
+  dir.normalize().multiplyScalar(dist);
+  controls.target.set(0, cubeGroup.position.y, 0);
+  controls.minDistance = dist * 0.7; controls.maxDistance = dist * 2;
+  camera.position.copy(controls.target).add(dir);
+  // центр кубика — в центр свободной области
+  camera.setViewOffset(W, H, Math.round(W / 2 - (fr.x0 + fr.x1) / 2), Math.round(H / 2 - (fr.y0 + fr.y1) / 2), W, H);
+  camera.updateProjectionMatrix();
+  controls.update();
+}
+
+/* ═══════════════════════════════════════════
+   3. Повороты слоёв
+   ═══════════════════════════════════════════ */
+const AXES = ['x', 'y', 'z'];
+const queue = [];
+let anim = null, moveMs = 300;
+const history = [];
+function layerOf(c, axis) { return Math.round(c.position.getComponent(axis) + (N - 1) / 2); }
+function snap(c) {
+  c.position.set(Math.round(c.position.x * 2) / 2, Math.round(c.position.y * 2) / 2, Math.round(c.position.z * 2) / 2);
+  const m = new THREE.Matrix4().makeRotationFromQuaternion(c.quaternion);
+  const e = m.elements; for (let i = 0; i < 16; i++) e[i] = Math.round(e[i]);
+  c.quaternion.setFromRotationMatrix(m);
+}
+function enqueue(mv, meta = {}) { queue.push({ ...mv, ...meta }); }
+function startNext() {
+  if (anim || !queue.length) return;
+  const mv = queue.shift();
+  const members = cubies.filter(c => layerOf(c, mv.axis) === mv.layer);
+  pivot.rotation.set(0, 0, 0); pivot.updateMatrixWorld();
+  members.forEach(c => pivot.attach(c));
+  const turns = mv.turns || 1;
+  anim = { mv, members, t0: performance.now(), dur: (mv.fast ? moveMs * 0.55 : moveMs) * (turns === 2 ? 1.35 : 1), angle: mv.dir * turns * Math.PI / 2 };
+}
+function finishAnim() {
+  pivot.rotation.set(0, 0, 0); pivot.rotation[AXES[anim.mv.axis]] = anim.angle; pivot.updateMatrixWorld();
+  anim.members.forEach(c => { cubeGroup.attach(c); snap(c); });
+  pivot.rotation.set(0, 0, 0);
+  const mv = anim.mv; anim = null;
+  if (!mv.noHistory) history.push({ axis: mv.axis, layer: mv.layer, dir: mv.dir, turns: mv.turns || 1 });
+  mv.onDone && mv.onDone();
+  afterMove(mv);
+}
+function applyInstant(mv) {
+  const members = cubies.filter(c => layerOf(c, mv.axis) === mv.layer);
+  pivot.rotation.set(0, 0, 0); pivot.updateMatrixWorld();
+  members.forEach(c => pivot.attach(c));
+  pivot.rotation[AXES[mv.axis]] = mv.dir * (mv.turns || 1) * Math.PI / 2; pivot.updateMatrixWorld();
+  members.forEach(c => { cubeGroup.attach(c); snap(c); });
+  pivot.rotation.set(0, 0, 0);
+}
+const easeIO = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+// нотация для 3×3 и внешних слоёв
+const FACE_MOVE = { U: [1, 'top', -1], D: [1, 'bot', 1], R: [0, 'top', -1], L: [0, 'bot', 1], F: [2, 'top', -1], B: [2, 'bot', 1] };
+function parseMove(s) {
+  const f = s[0], mod = s.slice(1);
+  const [axis, side, d] = FACE_MOVE[f];
+  const layer = side === 'top' ? N - 1 : 0;
+  if (mod === '2') return { axis, layer, dir: d, turns: 2, name: s };
+  return { axis, layer, dir: mod === "'" ? -d : d, turns: 1, name: s };
+}
+// Нотация SiGN: внешний слой — «R», второй от грани R — «2R», третий — «3R»
+function nameOf(mv) {
+  const pair = [['L', 'R'], ['D', 'U'], ['B', 'F']][mv.axis];
+  const hi = mv.layer >= (N - 1) / 2;
+  const f = hi ? pair[1] : pair[0];
+  const depth = hi ? N - 1 - mv.layer : mv.layer;
+  const cw = FACE_MOVE[f][2];
+  return (depth ? depth + 1 : '') + f + (mv.turns === 2 ? '2' : mv.dir === cw ? '' : "'");
+}
+
+/* ═══════════════════════════════════════════
+   4. Состояние 3×3 из сцены → решатель
+   ═══════════════════════════════════════════ */
+const solverLocal = makeSolver();
+function facelets() {
+  const f = new Array(54).fill(-1);
+  scene.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(cubeGroup.matrixWorld).invert();
+  const info = stickers.map(s => {
+    const n = new THREE.Vector3(), p = new THREE.Vector3();
+    s.getWorldDirection(n); n.transformDirection(inv).round();
+    s.parent.getWorldPosition(p); p.applyMatrix4(inv).round();
+    return { s, n, p };
+  });
+  const faceOf = n => n.y === 1 ? 0 : n.x === 1 ? 1 : n.z === 1 ? 2 : n.y === -1 ? 3 : n.x === -1 ? 4 : 5;
+  // Какой цвет какой грани — решают центры, а не фиксированная схема: средние слои
+  // (центральная наклейка тоже тянется) сдвигают центры, и без этого чётность ломалась бы.
+  const colorToFace = {};
+  for (const { s, n, p } of info) if (Math.abs(p.x) + Math.abs(p.y) + Math.abs(p.z) === 1) colorToFace[s.userData.color] = faceOf(n);
+  for (const { s, n, p } of info) {
+    const x = p.x, y = p.y, z = p.z, face = faceOf(n);
+    let r, c;
+    if (face === 0) { r = z + 1; c = x + 1; }
+    else if (face === 1) { r = 1 - y; c = 1 - z; }
+    else if (face === 2) { r = 1 - y; c = x + 1; }
+    else if (face === 3) { r = 1 - z; c = x + 1; }
+    else if (face === 4) { r = 1 - y; c = z + 1; }
+    else { r = 1 - y; c = 1 - x; }
+    f[face * 9 + r * 3 + c] = colorToFace[s.userData.color];
+  }
+  return f;
+}
+function isSolved() {
+  const tmp = new THREE.Vector3(), inv = new THREE.Matrix4().copy(cubeGroup.matrixWorld).invert();
+  const byFace = {};
+  for (const s of stickers) {
+    s.getWorldDirection(tmp); tmp.transformDirection(inv).round();
+    const key = `${tmp.x},${tmp.y},${tmp.z}`;
+    if (!byFace[key]) byFace[key] = s.userData.color; else if (byFace[key] !== s.userData.color) return false;
+  }
+  return true;
+}
+
+/* ═══════════════════════════════════════════
+   5. Решатель в фоновом потоке
+   ═══════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+let solverReady = false, buildMs = 0, pendingSolve = null, solveSeq = 0;
+const worker = new Worker(URL.createObjectURL(new Blob([document.getElementById('solver-src').textContent + `
+  const S = makeSolver();
+  onmessage = e => {
+    const d = e.data;
+    if (d.type === 'build') { const ms = S.build(p => postMessage({ type: 'progress', p })); postMessage({ type: 'ready', ms }); }
+    else if (d.type === 'solve') {
+      const c = S.fromFacelets(d.f);
+      if (!c) { postMessage({ type: 'solved', error: true, seq: d.seq }); return; }
+      const r = S.solve(c, { timeMs: 350 });
+      postMessage({ type: 'solved', r, seq: d.seq });
+    }
+  };`], { type: 'text/javascript' })));
+worker.onmessage = e => {
+  const d = e.data;
+  if (d.type === 'progress') $('stat').textContent = `Таблицы отсечений строятся в фоне… ${Math.round(d.p * 100)} %`;
+  else if (d.type === 'ready') {
+    solverReady = true; buildMs = d.ms;
+    $('stat').innerHTML = `Таблицы: <b>4 млн позиций</b> построены за <b>${(d.ms / 1000).toFixed(1).replace('.', ',')} с</b>.`;
+    if (pendingSolve) { const p = pendingSolve; pendingSolve = null; p(); }
+  } else if (d.type === 'solved') onSolved(d);
+};
+worker.postMessage({ type: 'build' });
+
+/* ═══════════════════════════════════════════
+   6. Лента ходов, фазы, прогресс
+   ═══════════════════════════════════════════ */
+let plan = null; // { moves:[{name,phase}], idx }
+function showTape(label, moves) {
+  $('tapelab').textContent = label;
+  $('tlegend').hidden = !moves.some(m => m.phase);
+  $('moves').innerHTML = moves.map((m, i) => `<span class="mv ${m.phase ? 'p' + m.phase : ''}" data-i="${i}">${m.name}</span>`).join('');
+}
+function markTape(i) {
+  document.querySelectorAll('#moves .mv').forEach((el, k) => { el.classList.toggle('now', k === i); el.classList.toggle('done', k < i); });
+}
+function setBar(id, v, max) { $('b' + id).textContent = `${v}/${max}`; $('t' + id).style.transform = `scaleX(${v / max})`; }
+function updatePhases(activePhase) {
+  if (N !== 3) return;
+  const c = solverLocal.fromFacelets(facelets());
+  if (!c) return;
+  const s = solverLocal.stats(c);
+  setBar('co', s.co, 8); setBar('eo', s.eo, 12); setBar('sl', s.sl, 4); setBar('cp', s.cpOk, 8); setBar('ep', s.epOk, 12);
+  $('ph1').classList.toggle('idle', activePhase !== 1);
+  $('ph2').classList.toggle('idle', activePhase !== 2);
+}
+function afterMove(mv) {
+  if (plan && mv.planIdx !== undefined) {
+    markTape(mv.planIdx + 1 >= plan.moves.length ? plan.moves.length : mv.planIdx + 1);
+    const nxt = plan.moves[mv.planIdx + 1];
+    updatePhases(nxt ? nxt.phase : 0);
+    if (mv.planIdx === plan.moves.length - 1) planFinished();
+  } else if (N === 3 && !mv.fast) updatePhases(0);
+}
+function planFinished() {
+  const kind = plan.kind; plan = null;
+  if (isSolved()) { const t = $('toast'); t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1400); }
+  if (kind === 'solve' && demo.on) demo.timer = setTimeout(demoLoop, 2600);
+}
+
+/* ═══════════════════════════════════════════
+   7. Действия: перемешать, собрать, сбросить
+   ═══════════════════════════════════════════ */
+function randomScramble(len) {
+  const out = []; let lastAxis = -1, lastLayer = -1;
+  const names = ['U', 'D', 'R', 'L', 'F', 'B'];
+  while (out.length < len) {
+    if (N === 3) {
+      const f = names[Math.floor(Math.random() * 6)], ax = FACE_MOVE[f][0];
+      if (ax === lastAxis) continue;
+      lastAxis = ax;
+      out.push(parseMove(f + ['', "'", '2'][Math.floor(Math.random() * 3)]));
+    } else {
+      const axis = Math.floor(Math.random() * 3), layer = Math.floor(Math.random() * N);
+      if (axis === lastAxis && layer === lastLayer) continue;
+      lastAxis = axis; lastLayer = layer;
+      const mv = { axis, layer, dir: Math.random() < 0.5 ? 1 : -1, turns: 1 };
+      mv.name = nameOf(mv);
+      out.push(mv);
+    }
+  }
+  return out;
+}
+// действие человека прерывает текущий план: текущий поворот доигрывает, остальное отменяется
+function interrupt(then) {
+  queue.length = 0; plan = null; pendingSolve = null; solveSeq++;
+  if (anim) waitIdle(then); else then();
+}
+function scramble(auto) {
+  if (anim || queue.length) return;
+  const seq = randomScramble(N === 3 ? 20 : 12 + N * 3);
+  plan = { kind: 'scramble', moves: seq.map(m => ({ name: m.name, phase: 0 })) };
+  showTape('Перемешивание', plan.moves);
+  seq.forEach((m, i) => enqueue(m, { fast: true, planIdx: i }));
+}
+function solve() {
+  if (anim || queue.length) return;
+  if (isSolved()) { const t = $('toast'); t.textContent = 'Уже собран'; t.classList.add('show'); setTimeout(() => { t.classList.remove('show'); t.textContent = 'Собран!'; }, 1100); return; }
+  if (N !== 3) {
+    // для 2×2, 4×4 и 5×5 — честный откат истории
+    const inv = history.slice().reverse().map(m => ({ axis: m.axis, layer: m.layer, dir: -m.dir, turns: m.turns }));
+    inv.forEach(m => m.name = nameOf(m));
+    plan = { kind: 'undo', moves: inv.map(m => ({ name: m.name, phase: 0 })) };
+    showTape(`Откат истории: ${inv.length} ${plural(inv.length, 'ход', 'хода', 'ходов')} · решатель есть только для 3×3`, plan.moves);
+    inv.forEach((m, i) => enqueue(m, { planIdx: i, noHistory: true }));
+    history.length = 0;
+    return;
+  }
+  const seq = ++solveSeq;
+  const go = () => { if (seq !== solveSeq) return; $('tapelab').textContent = 'Ищу решение…'; worker.postMessage({ type: 'solve', f: facelets(), seq }); };
+  if (solverReady) go(); else { pendingSolve = go; $('tapelab').textContent = 'Строю таблицы, секунду…'; }
+}
+function onSolved(d) {
+  if (d.seq !== solveSeq) return;   // пока решатель думал, человек уже покрутил кубик
+  if (d.error || !d.r) { $('tapelab').textContent = 'Не удалось прочитать состояние'; return; }
+  const r = d.r;
+  const moves = r.moves.map((name, i) => ({ name, phase: i < r.p1.length ? 1 : 2 }));
+  plan = { kind: 'solve', moves };
+  showTape(`Решение: ${moves.length} ${plural(moves.length, 'ход', 'хода', 'ходов')} · найдено за ${r.ms} мс`, moves);
+  $('ph1n').textContent = `${r.p1.length} ${plural(r.p1.length, 'ход', 'хода', 'ходов')}`;
+  $('ph2n').textContent = `${r.p2.length} ${plural(r.p2.length, 'ход', 'хода', 'ходов')}`;
+  $('stat').innerHTML = `Таблицы: <b>4 млн позиций</b> за <b>${(buildMs / 1000).toFixed(1).replace('.', ',')} с</b>. Решение: <b>${moves.length}</b> ${plural(moves.length, 'ход', 'хода', 'ходов')} за <b>${r.ms} мс</b>.`;
+  updatePhases(1);
+  moves.forEach((m, i) => enqueue(parseMove(m.name), { planIdx: i }));
+  history.length = 0;
+}
+function plural(n, a, b, c) { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? b : c; }
+function reset(n) {
+  queue.length = 0; if (anim) { anim.members.forEach(c => cubeGroup.attach(c)); anim = null; }
+  history.length = 0; plan = null; pendingSolve = null; solveSeq++;
+  buildCube(n || N);
+  showTape('', []); updatePhases(0);
+  document.querySelectorAll('#sizes button').forEach(b => b.classList.toggle('on', +b.dataset.n === N));
+  document.querySelector('.explain').classList.toggle('off', N !== 3);
+  $('ph1n').textContent = ''; $('ph2n').textContent = '';
+}
+
+/* ═══════════════════════════════════════════
+   8. Ввод: перетаскивание наклейки, клавиши
+   ═══════════════════════════════════════════ */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let drag = null;
+function pick(e) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(cubies, true)[0];
+  return hit || null;
+}
+canvas.addEventListener('pointerdown', e => {
+  stopDemo();
+  const hit = pick(e);
+  if (!hit) return;
+  const cubie = hit.object.userData.sticker ? hit.object.parent : hit.object.parent;
+  const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+  n.applyMatrix4(new THREE.Matrix4().extractRotation(new THREE.Matrix4().copy(cubeGroup.matrixWorld).invert())).round();
+  if (Math.abs(n.x) + Math.abs(n.y) + Math.abs(n.z) !== 1) return;
+  drag = { x: e.clientX, y: e.clientY, n, cubie };
+  controls.enabled = false;
+});
+addEventListener('pointermove', e => {
+  if (!drag || drag.done) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.hypot(dx, dy) < 12) return;
+  const n = drag.n, p = new THREE.Vector3(); drag.cubie.getWorldPosition(p);
+  const toScreen = v => { const q = v.clone().project(camera); return new THREE.Vector2(q.x * innerWidth / 2, -q.y * innerHeight / 2); };
+  const s0 = toScreen(p);
+  let best = null;
+  for (const a of [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)]) {
+    if (Math.abs(a.dot(n)) > 0.5) continue;
+    const s = toScreen(p.clone().add(a.clone().multiplyScalar(0.5))).sub(s0);
+    const len = s.length(); if (len < 1e-3) continue;
+    const dot = (s.x * dx + s.y * dy) / (len * Math.hypot(dx, dy));
+    if (!best || Math.abs(dot) > Math.abs(best.dot)) best = { a, dot };
+  }
+  if (best) {
+    const v = best.a.clone().multiplyScalar(Math.sign(best.dot));
+    const r = new THREE.Vector3().crossVectors(n, v);
+    const axis = [Math.abs(r.x), Math.abs(r.y), Math.abs(r.z)].indexOf(1);
+    const dir = Math.sign(r.getComponent(axis));
+    const mv = { axis, layer: layerOf(drag.cubie, axis), dir, turns: 1 };
+    mv.name = nameOf(mv);
+    if (plan || pendingSolve) { queue.length = 0; plan = null; pendingSolve = null; solveSeq++; }
+    if (!queue.length) showTape('', []);
+    enqueue(mv);
+  }
+  // жест уже превратился в поворот слоя: до отпускания пальца камера не двигается
+  drag.done = true;
+});
+const endDrag = () => { drag = null; controls.enabled = true; };
+addEventListener('pointerup', endDrag);
+addEventListener('pointercancel', endDrag);
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toUpperCase();
+  const map = { U: 'U', D: 'D', L: 'L', R: 'R', F: 'F', B: 'B', 'Г': 'U', 'В': 'D', 'Д': 'L', 'К': 'R', 'А': 'F', 'И': 'B' };
+  if (map[k] && e.code && /Key[UDLRFB]/.test(e.code)) {
+    stopDemo();
+    const f = e.code.slice(3);
+    const mv = parseMove(f + (e.shiftKey ? "'" : ''));
+    if (plan || pendingSolve) { queue.length = 0; plan = null; pendingSolve = null; solveSeq++; }
+    if (!queue.length) showTape('', []);
+    enqueue(mv);
+  } else if (e.key === ' ') { e.preventDefault(); stopDemo(); if (!(plan && plan.kind === 'solve')) interrupt(solve); }
+});
+$('bScr').addEventListener('click', () => { stopDemo(); interrupt(scramble); });
+$('bSolve').addEventListener('click', () => {
+  stopDemo();
+  if (plan && plan.kind === 'solve') return;   // уже собирается
+  interrupt(solve);
+});
+$('bReset').addEventListener('click', () => { stopDemo(); reset(); });
+document.querySelectorAll('#sizes button').forEach(b => b.addEventListener('click', () => { stopDemo(); reset(+b.dataset.n); }));
+const spd = $('spd');
+function applySpeed() { moveMs = Math.round(620 - spd.value * 5.2); $('spdv').textContent = `${moveMs} мс`; }
+spd.addEventListener('input', applySpeed); applySpeed();
+
+/* ═══════════════════════════════════════════
+   9. Демонстрация: перемешать → собрать → пауза
+   ═══════════════════════════════════════════ */
+const demo = { on: true, timer: 0 };
+function stopDemo() { if (!demo.on) return; demo.on = false; clearTimeout(demo.timer); controls.autoRotate = false; }
+function demoLoop() {
+  if (!demo.on) return;
+  if (N !== 3) return;
+  if (isSolved()) { scramble(true); waitIdle(() => demo.on && (demo.timer = setTimeout(() => demo.on && solve(), 900))); }
+  else solve();
+}
+function waitIdle(fn) { const t = setInterval(() => { if (!anim && !queue.length) { clearInterval(t); fn(); } }, 120); }
+
+/* ═══════════════════════════════════════════
+   10. Кадр
+   ═══════════════════════════════════════════ */
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', () => { resize(); fitCamera(); });
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (anim) {
+    const t = Math.min(1, (performance.now() - anim.t0) / anim.dur);
+    pivot.rotation.set(0, 0, 0);
+    pivot.rotation[AXES[anim.mv.axis]] = anim.angle * easeIO(t);
+    if (t >= 1) finishAnim();
+  }
+  if (!anim) startNext();
+  controls.update();
+  renderer.render(scene, camera);
+}
+resize();
+buildCube(3);
+// кубик открывается уже перемешанным: первое, что видит человек, — как машина его собирает
+const firstScramble = randomScramble(20);
+firstScramble.forEach(applyInstant);
+showTape('Строю таблицы, секунду…', []);
+updatePhases(0);
+requestAnimationFrame(frame);
+demo.timer = setTimeout(demoLoop, 300);
+</script>
+</body>
+</html>

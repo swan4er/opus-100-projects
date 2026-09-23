@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Штурман · ралли с живым штурманом</title>
+<meta name="description" content="3D-ралли по лесному спецучастку. Стенограмму читает движок по геометрии трассы, а штурман — персонаж на нейросети — видит, как вы едете, и реагирует с характером.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Caveat:wght@500;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="view" aria-label="Ралли: вид из-за машины"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<!-- стенограмма: блокнот штурмана -->
+<section class="notes" id="notes" aria-label="Стенограмма" aria-live="off">
+  <div class="notes__now" id="notesNow"></div>
+  <div class="notes__next" id="notesNext"></div>
+</section>
+
+<!-- время и график -->
+<section class="clock" aria-label="Время заезда">
+  <div class="clock__label">СУ «Тёмный бор» · <span id="kmDone">0,0</span> из 4,1&nbsp;км</div>
+  <div class="clock__time" id="time">0:00.0</div>
+  <div class="clock__row">
+    <span class="delta" id="delta" hidden>−0,0</span>
+    <span class="cp" id="cpInfo">КП 0/3</span>
+  </div>
+</section>
+
+<!-- кнопки и счётчик -->
+<div class="topbar">
+  <div class="topbar__badges">
+    <div class="badge badge--demo" id="demoBadge" hidden>демо-режим — нейросеть не подключена</div>
+    <div class="badge badge--cost" id="cost" title="Потрачено на нейросеть за сессию">DeepSeek · $0.0000</div>
+  </div>
+  <button class="ibtn" id="btnVoice" aria-label="Голос штурмана" title="Голос штурмана (V)"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+  <button class="ibtn" id="btnSound" aria-label="Звук мотора" title="Звук (M)"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg></button>
+  <button class="ibtn" id="btnCam" aria-label="Сменить камеру" title="Камера (C)"><svg viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+  <button class="ibtn" id="btnMenu" aria-label="Меню" title="Меню (Esc)"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+</div>
+
+<!-- штурман -->
+<section class="nav" id="nav" aria-label="Штурман" aria-live="polite">
+  <div class="nav__face" id="navFace" aria-hidden="true"></div>
+  <div class="nav__body">
+    <div class="nav__who"><span class="nav__name" id="navName">Палыч</span><span class="nav__role" id="navRole">штурман</span><span class="nav__think" id="navThink" hidden><i></i><i></i><i></i></span></div>
+    <div class="nav__lines" id="navLines"></div>
+  </div>
+</section>
+
+<!-- приборы -->
+<section class="dash" aria-label="Приборы">
+  <div class="dash__speed"><span id="speed">0</span><small>км/ч</small></div>
+  <div class="dash__row"><span class="dash__gear" id="gear">1</span><div class="dash__rpm"><i id="rpm"></i></div></div>
+  <div class="dash__dmg"><span>Кузов</span><div class="dash__bar"><i id="dmg"></i></div></div>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+<button class="recover" id="btnRecover" hidden>На дорогу <span>R · +5 с</span></button>
+<div class="countdown" id="countdown" hidden></div>
+
+<!-- меню -->
+<section class="menu" id="menu" aria-label="Меню">
+  <div class="menu__card">
+    <p class="menu__kicker">Ралли · лесной спецучасток</p>
+    <h1 class="menu__title">Штурман</h1>
+    <p class="menu__lead">Стенограмму читает движок по&nbsp;геометрии трассы. А&nbsp;штурман&nbsp;— живой: видит вашу телеметрию и&nbsp;реагирует с&nbsp;характером.</p>
+    <h2 class="menu__h2">Кто сядет справа</h2>
+    <div class="crew" id="crew" role="radiogroup" aria-label="Выбор штурмана"></div>
+    <button class="btn btn--go" id="btnStart">На старт</button>
+    <p class="menu__keys"><b>WASD</b> или стрелки — руль, газ, тормоз · <b>Пробел</b> — ручник · <b>R</b> — на дорогу · <b>C</b> — камера</p>
+    <p class="menu__ai" id="aiState"></p>
+  </div>
+</section>
+
+<!-- финиш -->
+<section class="result" id="result" hidden aria-label="Итоги заезда">
+  <div class="result__card">
+    <p class="menu__kicker">Финиш · СУ «Тёмный бор»</p>
+    <h2 class="result__time" id="resTime">0:00.0</h2>
+    <p class="result__delta" id="resDelta"></p>
+    <div class="result__grid" id="resStats"></div>
+    <div class="debrief">
+      <div class="debrief__who"><span class="nav__face nav__face--sm" id="resFace" aria-hidden="true"></span><span id="resName">Штурман</span><span class="nav__think" id="resThink" hidden><i></i><i></i><i></i></span></div>
+      <p class="debrief__text" id="resText"></p>
+      <p class="debrief__grade" id="resGrade" hidden></p>
+    </div>
+    <div class="result__btns">
+      <button class="btn btn--go" id="btnAgain">Ещё заезд</button>
+      <button class="btn btn--ghost" id="btnCrew">Сменить штурмана</button>
+    </div>
+  </div>
+</section>
+
+<!-- сенсорное управление -->
+<div class="touch" id="touch" hidden>
+  <div class="touch__steer" id="padSteer"><div class="touch__knob" id="knob"></div><span>руль</span></div>
+  <div class="touch__right">
+    <button class="tbtn tbtn--hb" id="tHand" aria-label="Ручник">РУЧНИК</button>
+    <button class="tbtn tbtn--brake" id="tBrake" aria-label="Тормоз">ТОРМОЗ</button>
+    <button class="tbtn tbtn--gas" id="tGas" aria-label="Газ">ГАЗ</button>
+  </div>
+</div>
+
+<div class="fail" id="fail" hidden>
+  <h2>Лес не загрузился</h2>
+  <p>Для 3D нужна библиотека three.js из интернета. Проверьте соединение и обновите страницу.</p>
+</div>
+
+<script src="../_ai/ai.js"></script>
+<script src="track.js"></script>
+<script src="physics.js"></script>
+<script src="world.js"></script>
+<script src="crew.js"></script>
+<script src="navigator.js"></script>
+<script src="audio.js"></script>
+<script src="game.js"></script>
+<script type="module">
+  // three.js с CDN; нет сети — понятное сообщение вместо пустого экрана
+  import('three').then((THREE) => { window.THREE = THREE; setTimeout(() => window.R.boot(), 0); },
+    () => { document.getElementById('fail').hidden = false; });
+</script>
+</body>
+</html>

@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Колесо гармонии — квинтовый круг как инструмент</title>
+<meta name="description" content="Квинтовый круг, функции Т, S, D, голосоведение на нотном стане и клавиатуре, прогрессии со звуком.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=Noto+Music&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#eeebe3; --paper2:#e4e0d6; --ink:#131313; --ink2:#3a3a38; --muted:#5f5d57; --line:#c9c4b8; --line2:#d9d5ca;
+  --T:#131313; --S:#2340b8; --D:#dc2f1c;
+  --sans:'Golos Text','Helvetica Neue',Arial,sans-serif;
+  --music:'Noto Music','Bravura','Apple Symbols','Segoe UI Symbol',serif;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink)}
+body{font-family:var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+:focus-visible{outline:2px solid var(--S);outline-offset:2px}
+
+.page{display:grid;grid-template-columns:600px 1fr;grid-template-rows:auto auto 1fr auto;gap:0 44px;padding:26px 36px 22px;max-width:1500px;margin:0 auto;min-height:100vh}
+header{grid-column:1/-1;display:grid;grid-template-columns:600px 1fr auto;gap:44px;align-items:end;border-bottom:2px solid var(--ink);padding-bottom:14px}
+h1{font:800 64px/.9 var(--sans);letter-spacing:-.035em;margin:0}
+.sub{font:500 15px/1.35 var(--sans);margin:0;max-width:430px}
+.sub span{color:var(--muted);font-weight:400}
+.transport{display:flex;align-items:center;gap:14px}
+.play{height:46px;padding:0 20px 0 16px;background:var(--ink);color:var(--paper);display:inline-flex;align-items:center;gap:10px;font:600 15px/1 var(--sans);transition:background .2s,transform .15s var(--ease)}
+.play:hover{background:#2c2c2c}
+.play:active{transform:scale(.97)}
+.play svg{flex:none}
+.play.live{background:var(--D)}
+.tempo{display:grid;gap:5px;font:500 12px/1 var(--sans);color:var(--muted);min-width:150px}
+.tempo b{color:var(--ink);font-weight:600}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:20px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--ink)}
+input[type=range]::-moz-range-track{height:2px;background:var(--ink)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--D);border-radius:50%;margin-top:-6px;border:0}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--D);border-radius:50%;border:0}
+
+/* ─── Круг ─── */
+.wheel{grid-row:2/4;position:relative;align-self:start;margin-top:18px}
+.wheel svg{display:block;width:600px;height:600px;overflow:visible}
+.sector{cursor:pointer}
+.sector path{transition:fill .5s var(--ease),stroke .5s}
+.sector text{transition:fill .5s var(--ease);pointer-events:none}
+.sector:hover path.face{filter:brightness(.94)}
+.hl-ring{transition:transform .9s var(--ease);transform-origin:300px 300px}
+.pulse{transform-origin:300px 300px;animation:pulse .9s var(--ease)}
+@keyframes pulse{0%{transform:scale(1);opacity:1}100%{transform:scale(1.06);opacity:0}}
+.legendf{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:6px;font:500 13px/1 var(--sans);color:var(--ink2)}
+.legendf span{white-space:nowrap}
+.legendf i{display:inline-block;width:12px;height:12px;margin-right:7px;vertical-align:-2px}
+
+/* ─── Правая часть ─── */
+.right{grid-row:2/4;display:grid;grid-template-rows:auto 1fr;gap:18px;margin-top:18px;min-width:0}
+.cap{font:600 12px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;display:flex;justify-content:space-between;gap:12px}
+.cap em{font-style:normal;letter-spacing:0;text-transform:none;font-weight:500;color:var(--ink2)}
+.staff{border-top:1px solid var(--ink);padding-top:12px;min-width:0}
+.staff svg{display:block;width:100%;height:262px;overflow:visible}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:26px;border-top:1px solid var(--ink);padding-top:12px;align-content:start}
+.keyname{font:700 30px/1 var(--sans);letter-spacing:-.02em;margin:2px 0 4px}
+.keymeta{font:400 13px/1.3 var(--sans);color:var(--muted);margin-bottom:12px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{min-width:36px;height:34px;padding:0 9px;border:1px solid var(--line);font:600 13px/1 var(--sans);display:inline-grid;place-items:center;transition:background .2s,color .2s,border-color .2s}
+.chip:hover{border-color:var(--ink)}
+.chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip.sm{font-weight:500;font-size:13px}
+.modes{margin-top:10px}
+.dia{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:4px}
+.dchord{height:66px;border:1px solid var(--line);display:grid;align-content:center;justify-items:center;gap:5px;transition:transform .15s var(--ease),background-color .2s,border-color .2s;position:relative}
+.dchord b,.dchord span{transition:color .2s}
+.dchord:hover{border-color:var(--ink)}
+.dchord:active{transform:scale(.96)}
+.dchord b{font:700 16px/1 var(--sans)}
+.dchord span{font:500 12px/1 var(--sans);color:var(--muted)}
+.dchord.T b{color:var(--T)} .dchord.S b{color:var(--S)} .dchord.D b{color:var(--D)}
+.dchord.now{background:var(--ink);border-color:var(--ink)} .dchord.now b,.dchord.now span{color:var(--paper)}
+.toggle{display:inline-flex;border:1px solid var(--ink);margin-top:10px}
+.toggle button{height:32px;padding:0 12px;font:500 13px/1 var(--sans)}
+.toggle button.on{background:var(--ink);color:var(--paper)}
+.progs{display:grid;gap:2px}
+.prog{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid transparent;text-align:left;transition:background .2s,border-color .2s}
+.prog:hover{border-color:var(--line)}
+.prog b{font:600 14px/1.2 var(--sans)}
+.prog span{font:500 12.5px/1.2 var(--sans);color:var(--muted);white-space:nowrap}
+.prog.on{background:var(--ink);color:var(--paper)}
+.prog.on span{color:#bdbab2}
+.inv{margin-top:14px}
+.warn{font:500 13px/1.35 var(--sans);color:var(--D);min-height:18px;margin-top:8px}
+
+/* ─── Клавиатура ─── */
+.keys{grid-column:1/-1;margin-top:18px;border-top:2px solid var(--ink);padding-top:8px;position:relative}
+.keys svg{display:block;width:100%;height:190px;overflow:visible}
+.hint{font:400 13px/1.4 var(--sans);color:var(--muted);margin-top:8px}
+.hint kbd{font:600 12px/1 var(--sans);border:1px solid var(--line);padding:2px 5px;color:var(--ink2)}
+
+@media (max-width:1320px){
+  .page{grid-template-columns:520px 1fr;gap:0 32px}
+  header{grid-template-columns:520px 1fr auto;gap:32px}
+  .wheel svg{width:520px;height:520px}
+  .controls{grid-template-columns:1fr}
+}
+@media (max-width:980px){
+  .page{grid-template-columns:1fr;padding:18px 16px}
+  header{grid-template-columns:1fr;gap:12px}
+  h1{font-size:46px}
+  .wheel,.right{grid-row:auto}
+  .wheel svg{width:100%;height:auto;max-width:560px;margin:0 auto}
+  .transport{flex-wrap:wrap}
+  .controls{grid-template-columns:1fr}
+  .staff{overflow-x:auto}
+  .staff svg{min-width:640px}
+  .keys{overflow-x:auto}
+  .keys svg{min-width:760px}
+  .chip{min-width:40px;height:40px}
+  .dchord{height:70px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Колесо<br>гармонии</h1>
+    <p class="sub">Квинтовый круг как инструмент: аккорды, функции, голосоведение.<br><span>Щёлкните сектор — прозвучит аккорд. Цвет — функция в тональности.</span></p>
+    <div class="transport">
+      <button class="play" id="play" aria-label="Звук и воспроизведение">
+        <svg width="16" height="16" viewBox="0 0 16 16" id="playico"><path d="M3 2l11 6-11 6z" fill="currentColor"/></svg>
+        <span id="playtxt">Включить звук</span>
+      </button>
+      <label class="tempo">Темп <b id="bpmv">76</b><input type="range" id="bpm" min="48" max="144" value="76" aria-label="Темп, ударов в минуту"></label>
+    </div>
+  </header>
+
+  <section class="wheel" aria-label="Квинтовый круг">
+    <svg id="wheel" viewBox="0 0 600 600"></svg>
+    <div class="legendf"><span><i style="background:var(--T)"></i>Т — тоника</span><span><i style="background:var(--S)"></i>S — субдоминанта</span><span><i style="background:var(--D)"></i>D — доминанта</span></div>
+  </section>
+
+  <section class="right">
+    <div class="staff">
+      <div class="cap"><span>Голосоведение</span><em id="progname"></em></div>
+      <svg id="staff" viewBox="0 0 760 262" preserveAspectRatio="xMinYMin meet"></svg>
+      <div class="warn" id="warn"></div>
+    </div>
+    <div class="controls">
+      <div>
+        <div class="cap"><span>Тональность</span></div>
+        <div class="keyname" id="keyname">До мажор</div>
+        <div class="keymeta" id="keymeta"></div>
+        <div class="chips" id="keys"></div>
+        <div class="chips modes" id="modes"></div>
+        <div class="cap" style="margin-top:18px"><span>Аккорды тональности</span><em>клавиши 1–7</em></div>
+        <div class="dia" id="dia"></div>
+        <div class="toggle" id="sevt"><button data-v="0" class="on">Трезвучия</button><button data-v="1">Септаккорды</button></div>
+      </div>
+      <div>
+        <div class="cap"><span>Прогрессии</span><em>пробел — старт/стоп</em></div>
+        <div class="progs" id="progs"></div>
+        <div class="cap inv"><span>Обращение для щелчков</span></div>
+        <div class="chips" id="invs"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="keys" aria-label="Клавиатура">
+    <svg id="kbd" viewBox="0 0 1400 190"></svg>
+    <div class="hint">Клавиатура компьютера играет ноты: <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> <kbd>G</kbd> <kbd>H</kbd> <kbd>J</kbd> <kbd>K</kbd> — белые, <kbd>W</kbd> <kbd>E</kbd> <kbd>T</kbd> <kbd>Y</kbd> <kbd>U</kbd> — чёрные. Цвет клавиши — голос: <span style="color:var(--D)">сопрано</span>, альт, тенор, <span style="color:var(--S)">бас</span>.</div>
+  </section>
+</div>
+
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════════
+   1. Теория: ноты, лады, аккорды
+   ═══════════════════════════════════════════════════════════ */
+const LET = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const NAT = [0, 2, 4, 5, 7, 9, 11];
+const RU = ['до', 'ре', 'ми', 'фа', 'соль', 'ля', 'си'];
+const pcOf = n => ((NAT[n.l] + n.a) % 12 + 12) % 12;
+const spell = (l, pc) => { let a = ((pc - NAT[l]) % 12 + 12) % 12; if (a > 6) a -= 12; return { l, a }; };
+const ACC = { '-2': '𝄫', '-1': '♭', '0': '', '1': '♯', '2': '𝄪' };
+const nm = n => LET[n.l] + ACC[n.a];
+const ruNm = n => RU[n.l] + (n.a === 1 ? '-диез' : n.a === -1 ? '-бемоль' : n.a === 2 ? '-дубль-диез' : n.a === -2 ? '-дубль-бемоль' : '');
+const ruShort = n => RU[n.l] + ACC[n.a];
+
+// квинтовый круг: мажорные тоники по часовой стрелке от «до»
+const MAJ = [[0, 0], [4, 0], [1, 0], [5, 0], [2, 0], [6, 0], [3, 1], [1, -1], [5, -1], [2, -1], [6, -1], [3, 0]].map(([l, a]) => ({ l, a }));
+const SIG = ['0', '1♯', '2♯', '3♯', '4♯', '5♯', '6♯/6♭', '5♭', '4♭', '3♭', '2♭', '1♭'];
+const minorOf = t => spell((t.l + 5) % 7, (pcOf(t) + 9) % 12);
+
+const MODES = [
+  { name: 'ионийский', ru: 'мажор', off: 0, minor: false },
+  { name: 'дорийский', off: 1, minor: true },
+  { name: 'фригийский', off: 2, minor: true },
+  { name: 'лидийский', off: 3, minor: false },
+  { name: 'миксолидийский', off: 4, minor: false },
+  { name: 'эолийский', ru: 'минор', off: 5, minor: true },
+  { name: 'локрийский', off: 6, minor: true }
+];
+const MAJSTEPS = [0, 2, 4, 5, 7, 9, 11];
+function scaleOf(tonic, mode) {
+  const off = MODES[mode].off;
+  const steps = MAJSTEPS.map((_, i) => (MAJSTEPS[(off + i) % 7] - MAJSTEPS[off] + 12) % 12);
+  return steps.map((s, i) => spell((tonic.l + i) % 7, (pcOf(tonic) + s) % 12));
+}
+// родительская мажорная тональность лада (для ключевых знаков и круга)
+function parentMajorIndex(tonic, mode) {
+  const pc = (pcOf(tonic) - MAJSTEPS[MODES[mode].off] + 12) % 12;
+  return MAJ.findIndex(t => pcOf(t) === pc);
+}
+const Q = {
+  maj: { iv: [0, 4, 7], lt: [0, 2, 4], sym: '' }, min: { iv: [0, 3, 7], lt: [0, 2, 4], sym: 'm' },
+  dim: { iv: [0, 3, 6], lt: [0, 2, 4], sym: '°' }, aug: { iv: [0, 4, 8], lt: [0, 2, 4], sym: '+' },
+  '7': { iv: [0, 4, 7, 10], lt: [0, 2, 4, 6], sym: '7' }, maj7: { iv: [0, 4, 7, 11], lt: [0, 2, 4, 6], sym: 'maj7' },
+  m7: { iv: [0, 3, 7, 10], lt: [0, 2, 4, 6], sym: 'm7' }, m7b5: { iv: [0, 3, 6, 10], lt: [0, 2, 4, 6], sym: 'm7♭5' },
+  dim7: { iv: [0, 3, 6, 9], lt: [0, 2, 4, 6], sym: '°7' }, sus2: { iv: [0, 2, 7], lt: [0, 1, 4], sym: 'sus2' },
+  sus4: { iv: [0, 5, 7], lt: [0, 3, 4], sym: 'sus4' }
+};
+function qualityOf(notes) {
+  const r = pcOf(notes[0]);
+  const iv = notes.map(n => (pcOf(n) - r + 12) % 12).join(',');
+  for (const [k, q] of Object.entries(Q)) if (q.iv.join(',') === iv) return k;
+  return 'maj';
+}
+function buildChord(root, q) { const d = Q[q]; return d.iv.map((iv, i) => spell((root.l + d.lt[i]) % 7, (pcOf(root) + iv) % 12)); }
+function diatonic(scale, deg, sev) { const k = sev ? 4 : 3; return Array.from({ length: k }, (_, i) => scale[(deg + 2 * i) % 7]); }
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+function romanOf(deg, q, alt) {
+  const lower = ['min', 'dim', 'm7', 'm7b5', 'dim7'].includes(q);
+  let s = (alt < 0 ? '♭' : alt > 0 ? '♯' : '') + (lower ? ROMAN[deg].toLowerCase() : ROMAN[deg]);
+  return s + ({ dim: '°', aug: '+', '7': '⁷', maj7: 'maj⁷', m7: '⁷', m7b5: 'ø⁷', dim7: '°⁷', sus2: 'sus2', sus4: 'sus4' }[q] || '');
+}
+function funcOf(deg, minor) {
+  if (minor) return [0, 2].includes(deg) ? 'T' : [1, 3, 5].includes(deg) ? 'S' : 'D';
+  return [0, 2, 5].includes(deg) ? 'T' : [1, 3].includes(deg) ? 'S' : 'D';
+}
+const FUNC_RU = { T: 'тоника', S: 'субдоминанта', D: 'доминанта' };
+
+/* ═══════════════════════════════════════════════════════════
+   2. Голосоведение: бас + три верхних голоса, минимум движения
+   ═══════════════════════════════════════════════════════════ */
+function parallels(P, N) {
+  const out = [];
+  const names = ['бас', 'тенор', 'альт', 'сопрано'];
+  for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) {
+    const ip = ((P[j] - P[i]) % 12 + 12) % 12, inn = ((N[j] - N[i]) % 12 + 12) % 12;
+    const mi = N[i] - P[i], mj = N[j] - P[j];
+    if (ip === inn && (ip === 7 || ip === 0) && mi !== 0 && mj !== 0 && Math.sign(mi) === Math.sign(mj))
+      out.push(`${ip === 7 ? 'параллельные квинты' : 'параллельные октавы'}: ${names[i]} и ${names[j]}`);
+  }
+  return out;
+}
+function voice(chord, inv, prev) {
+  const pcs = chord.map(pcOf);
+  const bassPc = pcs[Math.min(inv, pcs.length - 1)];
+  const pb = prev ? prev[0] : 48;
+  let bass = 0, bd = 99;
+  for (let m = 38; m <= 57; m++) if (m % 12 === bassPc && Math.abs(m - pb) < bd) { bd = Math.abs(m - pb); bass = m; }
+  const essential = pcs.length >= 4 ? [pcs[0], pcs[1], pcs[3]] : pcs.slice();
+  const cand = []; for (let m = 52; m <= 81; m++) if (pcs.includes(m % 12)) cand.push(m);
+  let best = null, bc = Infinity;
+  for (const t of cand) for (const a of cand) { if (a <= t || a - t > 12) continue; for (const s of cand) {
+    if (s <= a || s - a > 12 || t < bass + 3 || t - bass > 24) continue;
+    const have = new Set([bass % 12, t % 12, a % 12, s % 12]);
+    if (!essential.every(p => have.has(p))) continue;
+    let cost;
+    const N = [bass, t, a, s];
+    if (prev) {
+      cost = Math.abs(t - prev[1]) + Math.abs(a - prev[2]) + Math.abs(s - prev[3]) * 1.1;
+      cost += parallels(prev, N).length * 14;
+      if (Math.abs(s - prev[3]) > 7) cost += 4;
+    } else cost = Math.abs((t + a + s) / 3 - 67) * 0.6 + (s - t) * 0.08;
+    // для трезвучия лучше удваивать основной тон, а не терцию
+    if (pcs.length === 3) { const dbl = [bass, t, a, s].filter(m => m % 12 === pcs[1]).length; if (dbl > 1) cost += 3; }
+    if (cost < bc) { bc = cost; best = N; }
+  } }
+  return best || [bass, 60, 64, 67];
+}
+
+/* ═══════════════════════════════════════════════════════════
+   3. Прогрессии
+   ═══════════════════════════════════════════════════════════ */
+const PROGS = [
+  { name: 'Квинтовый круг', mode: 0, beats: 2, note: 'каждый корень на квинту ниже', seq: [[0], [3], [6], [2], [5], [1], [4], [0]] },
+  { name: 'Поп-петля', mode: 0, beats: 2, seq: [[0], [4], [5], [3]] },
+  { name: 'Джаз: II–V–I', mode: 0, beats: 2, sev: true, seq: [[1], [4], [0], [0]] },
+  { name: 'Пятидесятые', mode: 0, beats: 2, seq: [[0], [5], [3], [4]] },
+  { name: 'Канон Пахельбеля', mode: 0, beats: 2, seq: [[0], [4], [5], [2], [3], [0], [3], [4]] },
+  { name: 'Андалузская каденция', mode: 5, beats: 2, note: 'V — мажор из гармонического минора', seq: [[0], [6], [5], [4, 'maj']] },
+  { name: 'Блюз, 12 тактов', mode: 0, beats: 4, seq: [[0, '7'], [0, '7'], [0, '7'], [0, '7'], [3, '7'], [3, '7'], [0, '7'], [0, '7'], [4, '7'], [3, '7'], [0, '7'], [4, '7']] },
+  { name: 'Дорийский вамп', mode: 1, beats: 4, seq: [[0, 'm7'], [3, '7'], [0, 'm7'], [3, '7']] }
+];
+
+/* ═══════════════════════════════════════════════════════════
+   4. Звук: «фортепиано» из синусов, удар молоточка, зал
+   ═══════════════════════════════════════════════════════════ */
+let AC = null, master = null;
+function audio() {
+  if (!AC) {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    master = AC.createGain(); master.gain.value = 0.55;
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7000;
+    const comp = AC.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = 0.005; comp.release.value = 0.2;
+    const verb = AC.createConvolver(); verb.buffer = impulse(2.6);
+    const wet = AC.createGain(); wet.gain.value = 0.26;
+    master.connect(lp); lp.connect(comp); lp.connect(verb); verb.connect(wet); wet.connect(comp); comp.connect(AC.destination);
+  }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function impulse(sec) {
+  const rate = AC.sampleRate, len = Math.floor(rate * sec), buf = AC.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) { const t = i / len; d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3.2) * (i < rate * 0.012 ? i / (rate * 0.012) : 1); }
+  }
+  return buf;
+}
+function note(midi, t, dur, vel) {
+  const f = 440 * Math.pow(2, (midi - 69) / 12);
+  const out = AC.createGain(); out.connect(master);
+  out.gain.setValueAtTime(1, t);
+  out.gain.setTargetAtTime(0, t + dur, 0.28);
+  const decay = 2.2 * Math.pow(261.6 / f, 0.45);
+  const parts = [[1, 1], [2, 0.42], [3, 0.2], [4, 0.1], [5, 0.05], [6, 0.03]];
+  for (const [h, a] of parts) {
+    const o = AC.createOscillator(); o.type = 'sine';
+    o.frequency.value = f * h * (1 + 0.00035 * h * h);
+    o.detune.value = (Math.random() - 0.5) * 3;
+    const gg = AC.createGain();
+    const amp = a * vel * 0.16;
+    gg.gain.setValueAtTime(0.0001, t);
+    gg.gain.linearRampToValueAtTime(amp, t + 0.004 + 0.002 * h);
+    gg.gain.exponentialRampToValueAtTime(Math.max(0.00001, amp * 0.002), t + Math.max(0.3, decay * 3 / Math.pow(h, 0.7)));
+    o.connect(gg); gg.connect(out);
+    o.start(t); o.stop(t + dur + 2.5);
+  }
+  // удар молоточка
+  const nb = AC.createBuffer(1, Math.floor(AC.sampleRate * 0.03), AC.sampleRate), nd = nb.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / nd.length, 4);
+  const ns = AC.createBufferSource(); ns.buffer = nb;
+  const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = Math.min(6000, f * 4); bp.Q.value = 1.2;
+  const ng = AC.createGain(); ng.gain.value = 0.05 * vel;
+  ns.connect(bp); bp.connect(ng); ng.connect(out); ns.start(t);
+}
+function playVoicing(v, t, dur) {
+  if (!AC) return;
+  v.forEach((m, i) => note(m, t + i * 0.012, dur, i === 3 ? 0.8 : i === 0 ? 0.7 : 0.55));
+}
+
+/* ═══════════════════════════════════════════════════════════
+   5. Состояние
+   ═══════════════════════════════════════════════════════════ */
+const S = {
+  key: 0, mode: 0, sev: false, inv: 0,
+  prog: 0, step: -1, playing: true, sound: false,
+  chords: [], voicings: [], warn: [],
+  cur: null, trail: [], bpm: 76,
+  lastVoicing: null
+};
+const $ = id => document.getElementById(id);
+const tonic = () => { const parent = MAJ[S.key]; return scaleOf(parent, 0)[MODES[S.mode].off]; };
+function keyTitle() {
+  const t = tonic(), m = MODES[S.mode];
+  const name = ruNm(t);
+  const cap = name[0].toUpperCase() + name.slice(1);
+  if (S.mode === 0) return `${cap} мажор`;
+  if (S.mode === 5) return `${name} минор`;
+  return `${cap} ${m.name}`;
+}
+
+// аккорды выбранной прогрессии в текущей тональности
+function realize() {
+  const P = PROGS[S.prog];
+  const sc = scaleOf(tonic(), S.mode);
+  const minor = MODES[S.mode].minor;
+  S.chords = P.seq.map(([deg, q]) => {
+    const root = sc[deg];
+    const notes = q ? buildChord(root, q) : diatonic(sc, deg, P.sev || S.sev);
+    const qq = q || qualityOf(notes);
+    return { notes, q: qq, deg, sym: nm(root) + Q[qq].sym, roman: romanOf(deg, qq, 0), fn: funcOf(deg, minor), inv: 0 };
+  });
+  S.voicings = []; S.warn = [];
+  let prev = null;
+  S.chords.forEach((c, i) => {
+    const v = voice(c.notes, 0, prev);
+    S.voicings.push(v);
+    S.warn.push(prev ? parallels(prev, v) : []);
+    prev = v;
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   6. Круг (SVG)
+   ═══════════════════════════════════════════════════════════ */
+const SVGNS = 'http://www.w3.org/2000/svg';
+const W = 600, CX = 300, CY = 300;
+const R = { sigIn: 262, sigOut: 292, majIn: 184, majOut: 262, minIn: 124, minOut: 184, core: 118 };
+const ang = i => (i * 30 - 90) * Math.PI / 180;
+function wedge(r0, r1, a0, a1) {
+  const p = (r, a) => `${(CX + r * Math.cos(a)).toFixed(2)} ${(CY + r * Math.sin(a)).toFixed(2)}`;
+  return `M${p(r1, a0)} A${r1} ${r1} 0 0 1 ${p(r1, a1)} L${p(r0, a1)} A${r0} ${r0} 0 0 0 ${p(r0, a0)} Z`;
+}
+function buildWheel() {
+  const svg = $('wheel');
+  let s = `<circle cx="${CX}" cy="${CY}" r="${R.sigOut}" fill="none" stroke="#131313" stroke-width="1"/>`;
+  for (let i = 0; i < 12; i++) {
+    const a0 = ang(i) - Math.PI / 12, a1 = ang(i) + Math.PI / 12, am = ang(i);
+    const mj = MAJ[i], mn = minorOf(mj);
+    const lab = i === 6 ? 'F♯' : nm(mj);
+    const labm = i === 6 ? 'd♯' : nm(mn).toLowerCase().replace('♯', '♯');
+    s += `<g class="sector" data-i="${i}" data-ring="maj"><path class="face" d="${wedge(R.majIn, R.majOut, a0, a1)}" fill="#eeebe3" stroke="#131313" stroke-width="1"/>
+      <text x="${CX + 223 * Math.cos(am)}" y="${CY + 223 * Math.sin(am) + 10}" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="700" font-size="28" fill="#131313">${lab}</text>
+      ${i === 6 ? `<text x="${CX + 223 * Math.cos(am)}" y="${CY + 223 * Math.sin(am) + 27}" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="500" font-size="12" fill="#5f5d57">G♭</text>` : ''}</g>`;
+    s += `<g class="sector" data-i="${i}" data-ring="min"><path class="face" d="${wedge(R.minIn, R.minOut, a0, a1)}" fill="#e4e0d6" stroke="#131313" stroke-width="1"/>
+      <text x="${CX + 154 * Math.cos(am)}" y="${CY + 154 * Math.sin(am) + 7}" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="600" font-size="19" fill="#131313">${labm}</text></g>`;
+    s += `<text x="${CX + 277 * Math.cos(am)}" y="${CY + 277 * Math.sin(am) + 4.5}" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="500" font-size="12" fill="#5f5d57">${SIG[i]}</text>`;
+  }
+  s += `<g id="trail"></g><g id="pulse"></g>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="${R.core}" fill="#eeebe3" stroke="#131313" stroke-width="1"/><g id="marks"></g>`;
+  s += `<text id="csym" x="${CX}" y="${CY + 6}" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="800" font-size="50" letter-spacing="-1.5" fill="#131313">C</text>`;
+  s += `<text id="crom" x="${CX}" y="${CY + 36}" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="600" font-size="17" fill="#131313"></text>`;
+  s += `<text id="cnotes" x="${CX}" y="${CY + 60}" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="500" font-size="14" fill="#5f5d57"></text>`;
+  s += `<text id="ckey" x="${CX}" y="${CY - 58}" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="600" font-size="12" letter-spacing="1.2" fill="#5f5d57"></text>`;
+  svg.innerHTML = s;
+  svg.querySelectorAll('.sector').forEach(g => g.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const i = +g.dataset.i, minor = g.dataset.ring === 'min';
+    if (e.shiftKey) { setKey(i, minor ? 5 : 0); return; }
+    const root = minor ? minorOf(MAJ[i]) : MAJ[i];
+    playManual(buildChord(root, minor ? 'min' : 'maj'), root, minor ? 'min' : 'maj');
+  }));
+}
+// раскраска секторов по функциям текущей тональности
+function paintWheel() {
+  const pi = parentMajorIndex(tonic(), S.mode);
+  const minor = MODES[S.mode].minor;
+  const sc = scaleOf(tonic(), S.mode);
+  const fillOf = f => f === 'T' ? '#131313' : f === 'S' ? '#2340b8' : '#dc2f1c';
+  $('wheel').querySelectorAll('.sector').forEach(g => {
+    const i = +g.dataset.i, ring = g.dataset.ring;
+    const root = ring === 'maj' ? MAJ[i] : minorOf(MAJ[i]);
+    const pc = pcOf(root);
+    let deg = -1;
+    sc.forEach((n, d) => { if (pcOf(n) === pc) { const tri = diatonic(sc, d, false); const q = qualityOf(tri); if ((ring === 'maj' && q === 'maj') || (ring === 'min' && q === 'min')) deg = d; } });
+    const path = g.querySelector('path'), txts = g.querySelectorAll('text');
+    if (deg >= 0) {
+      const f = funcOf(deg, minor);
+      path.setAttribute('fill', fillOf(f));
+      txts.forEach(t => t.setAttribute('fill', '#eeebe3'));
+      g.dataset.deg = deg;
+    } else {
+      path.setAttribute('fill', ring === 'maj' ? '#eeebe3' : '#e4e0d6');
+      txts.forEach((t, k) => t.setAttribute('fill', k === 0 ? '#131313' : '#5f5d57'));
+      delete g.dataset.deg;
+    }
+  });
+  // уменьшённое трезвучие VII ступени — маркер внутри круга
+  const marks = $('marks');
+  const dimDeg = sc.findIndex((n, d) => qualityOf(diatonic(sc, d, false)) === 'dim');
+  if (dimDeg >= 0) {
+    const root = sc[dimDeg];
+    const i = MAJ.findIndex(t => pcOf(t) === pcOf(root));
+    const a = ang(i);
+    const x = CX + 104 * Math.cos(a), y = CY + 104 * Math.sin(a);
+    const f = funcOf(dimDeg, minor);
+    marks.innerHTML = `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><rect x="-20" y="-11" width="40" height="22" fill="${fillOf(f)}"/><text y="4.5" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="700" font-size="13" fill="#eeebe3">${nm(root)}°</text></g>`;
+  }
+  $('ckey').textContent = keyTitle().toUpperCase();
+}
+function sectorCenter(root, q) {
+  const minorRing = ['min', 'm7', 'dim', 'm7b5', 'dim7'].includes(q);
+  const pc = pcOf(root);
+  let i = minorRing ? MAJ.findIndex(t => pcOf(minorOf(t)) === pc) : MAJ.findIndex(t => pcOf(t) === pc);
+  if (i < 0) i = 0;
+  const r = minorRing ? (q.startsWith('dim') || q === 'm7b5' ? 104 : 154) : 223;
+  return { x: CX + r * Math.cos(ang(i)), y: CY + r * Math.sin(ang(i)), i, ring: minorRing ? 'min' : 'maj' };
+}
+function showChordOnWheel(c) {
+  const root = c.notes[0];
+  $('csym').textContent = c.sym;
+  $('crom').textContent = c.roman ? `${c.roman} · ${c.fn} — ${FUNC_RU[c.fn]}` : '';
+  $('crom').setAttribute('fill', c.fn === 'S' ? '#2340b8' : c.fn === 'D' ? '#dc2f1c' : '#131313');
+  $('cnotes').textContent = c.notes.map(ruShort).join(' · ');
+  const p = sectorCenter(root, c.q);
+  // пульс сектора
+  const g = $('wheel').querySelector(`.sector[data-i="${p.i}"][data-ring="${p.ring}"] path`);
+  if (g) {
+    const cl = g.cloneNode(); cl.setAttribute('fill', 'none'); cl.setAttribute('stroke', '#dc2f1c'); cl.setAttribute('stroke-width', '4');
+    cl.classList.add('pulse'); $('pulse').appendChild(cl); setTimeout(() => cl.remove(), 950);
+  }
+  // след движения по кругу
+  S.trail.push(p); if (S.trail.length > 6) S.trail.shift();
+  drawTrail();
+}
+function drawTrail() {
+  let s = '';
+  for (let k = 1; k < S.trail.length; k++) {
+    const a = S.trail[k - 1], b = S.trail[k];
+    if (a.x === b.x && a.y === b.y) continue;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const cx = CX + (mx - CX) * 0.35, cy = CY + (my - CY) * 0.35;
+    const op = (k / (S.trail.length - 1)) * 0.85;
+    const last = k === S.trail.length - 1;
+    s += `<path d="M${a.x.toFixed(1)} ${a.y.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}" fill="none" stroke="#dc2f1c" stroke-width="${last ? 3 : 2}" stroke-opacity="${op.toFixed(2)}"${last ? '' : ' stroke-dasharray="1 5"'} stroke-linecap="round"/>`;
+    if (last) s += `<circle cx="${b.x.toFixed(1)}" cy="${b.y.toFixed(1)}" r="6" fill="#dc2f1c" stroke="#eeebe3" stroke-width="2"/>`;
+  }
+  $('trail').innerHTML = s;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   7. Нотный стан
+   ═══════════════════════════════════════════════════════════ */
+const STEP = 5.5; // полшага между линейкой и промежутком
+const stepOf = m => { const n = S._spell.get(m); return n ? n.l + 7 * (Math.floor(m / 12) - 1) + (n.l === 6 && pcOf(n) === 0 ? -7 : 0) + (n.l === 0 && pcOf(n) === 11 ? 7 : 0) : 0; };
+const yTreble = s => 96 - (s - 30) * STEP;   // E4 = нижняя линейка скрипичного ключа
+const yBass = s => 196 - (s - 18) * STEP;    // G2 = нижняя линейка басового ключа
+const VOICE_COL = ['#2340b8', '#3a3a38', '#131313', '#dc2f1c'];
+function keySigAcc(sc) { const m = {}; scaleOf(MAJ[parentMajorIndex(tonic(), S.mode)], 0).forEach(n => m[n.l] = n.a); return m; }
+function drawStaff() {
+  const svg = $('staff');
+  const sc = scaleOf(tonic(), S.mode);
+  const sig = keySigAcc(sc);
+  const n = S.chords.length;
+  const X0 = 118, X1 = 752, mw = (X1 - X0) / n;
+  // написание нот аккорда в регистре: сопоставляем midi → буква
+  S._spell = new Map();
+  let s = '';
+  // линейки
+  for (let k = 0; k < 5; k++) { s += `<line x1="8" x2="${X1}" y1="${52 + k * 11}" y2="${52 + k * 11}" stroke="#131313" stroke-width="1"/>`; s += `<line x1="8" x2="${X1}" y1="${152 + k * 11}" y2="${152 + k * 11}" stroke="#131313" stroke-width="1"/>`; }
+  s += `<line x1="8" x2="8" y1="52" y2="196" stroke="#131313" stroke-width="1.5"/><line x1="${X1}" x2="${X1}" y1="52" y2="196" stroke="#131313" stroke-width="1.5"/>`;
+  s += `<text x="12" y="96" font-family="Noto Music, serif" font-size="46" fill="#131313">𝄞</text>`;
+  s += `<text x="13" y="174" font-family="Noto Music, serif" font-size="40" fill="#131313">𝄢</text>`;
+  // ключевые знаки
+  const sharpsOrder = [3, 0, 4, 1, 5, 2, 6], flatsOrder = [6, 2, 5, 1, 4, 0, 3];
+  const tSharp = [46, 38, 44, 36, 42, 34, 40].map((s, i) => s), tFlat = [34, 38, 32, 36, 30, 34, 28];
+  // шаги для знаков в скрипичном (F5 C5 G5 D5 A4 E5 B4) и басовом (на 14 ступеней ниже)
+  const shStepsT = [38, 35, 39, 36, 33, 37, 34], flStepsT = [34, 37, 33, 36, 32, 35, 31];
+  const nSharp = Object.values(sig).filter(a => a > 0).length, nFlat = Object.values(sig).filter(a => a < 0).length;
+  for (let k = 0; k < nSharp; k++) { const st = shStepsT[k]; s += `<text x="${48 + k * 9}" y="${yTreble(st) + 5}" font-family="Noto Music, serif" font-size="19" fill="#131313">♯</text><text x="${48 + k * 9}" y="${yBass(st - 14) + 5}" font-family="Noto Music, serif" font-size="19" fill="#131313">♯</text>`; }
+  for (let k = 0; k < nFlat; k++) { const st = flStepsT[k]; s += `<text x="${48 + k * 9}" y="${yTreble(st) + 4}" font-family="Noto Music, serif" font-size="19" fill="#131313">♭</text><text x="${48 + k * 9}" y="${yBass(st - 14) + 4}" font-family="Noto Music, serif" font-size="19" fill="#131313">♭</text>`; }
+  // такты
+  const cur = S.step;
+  const heads = []; // [voice][chord] = {x,y}
+  for (let v = 0; v < 4; v++) heads.push([]);
+  S.chords.forEach((c, ci) => {
+    const x = X0 + ci * mw;
+    if (ci > 0) s += `<line x1="${x}" x2="${x}" y1="52" y2="196" stroke="#131313" stroke-width="1"/>`;
+    if (ci === cur) s += `<rect x="${x + 1}" y="36" width="${mw - 2}" height="178" fill="#dc2f1c" fill-opacity=".08"/><rect x="${x + 1}" y="32" width="${mw - 2}" height="3" fill="#dc2f1c"/>`;
+    s += `<text x="${x + mw / 2}" y="24" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="700" font-size="${n > 8 ? 13 : 15}" fill="#131313">${c.sym}</text>`;
+    s += `<text x="${x + mw / 2}" y="232" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="600" font-size="${n > 8 ? 12 : 14}" fill="${c.fn === 'S' ? '#2340b8' : c.fn === 'D' ? '#dc2f1c' : '#131313'}">${c.roman}</text>`;
+    s += `<text x="${x + mw / 2}" y="250" text-anchor="middle" font-family="Golos Text, sans-serif" font-weight="500" font-size="12" fill="#5f5d57">${c.fn}</text>`;
+    const v4 = S.voicings[ci];
+    // привязываем высоты к буквам аккорда
+    const pcToNote = new Map(c.notes.map(nn => [pcOf(nn), nn]));
+    const placed = [];
+    v4.forEach((m, vi) => {
+      const nn = pcToNote.get(m % 12) || spell(0, m % 12);
+      const oct = Math.floor(m / 12) - 1 + (nn.l === 6 && m % 12 === 0 ? -1 : 0) + (nn.l === 0 && m % 12 === 11 ? 1 : 0);
+      const stp = nn.l + 7 * oct;
+      const onTreble = vi >= 2 || (vi === 1 && m >= 60);
+      const y = onTreble ? yTreble(stp) : yBass(stp);
+      placed.push({ vi, stp, y, onTreble, nn, x: x + mw / 2 });
+    });
+    // секунды на одном стане — сдвигаем верхнюю ноту
+    placed.forEach(p => { const o = placed.find(q => q !== p && q.onTreble === p.onTreble && q.stp === p.stp - 1 && !q.shift); if (o) p.shift = 12; });
+    for (const p of placed) {
+      const hx = p.x + (p.shift || 0);
+      // добавочные линейки
+      const [lo, hi] = p.onTreble ? [30, 38] : [18, 26];
+      const fy = p.onTreble ? yTreble : yBass;
+      for (let st = lo - 2; st >= p.stp; st -= 2) s += `<line x1="${hx - 11}" x2="${hx + 11}" y1="${fy(st)}" y2="${fy(st)}" stroke="#131313"/>`;
+      for (let st = hi + 2; st <= p.stp; st += 2) s += `<line x1="${hx - 11}" x2="${hx + 11}" y1="${fy(st)}" y2="${fy(st)}" stroke="#131313"/>`;
+      if ((sig[p.nn.l] || 0) !== p.nn.a) {
+        const sym = p.nn.a === 0 ? '♮' : ACC[p.nn.a];
+        s += `<text x="${hx - 20}" y="${p.y + 5}" text-anchor="middle" font-family="Noto Music, serif" font-size="17" fill="${VOICE_COL[p.vi]}">${sym}</text>`;
+      }
+      s += `<ellipse cx="${hx}" cy="${p.y}" rx="6.8" ry="4.6" transform="rotate(-18 ${hx} ${p.y})" fill="none" stroke="${VOICE_COL[p.vi]}" stroke-width="2.2"/>`;
+      heads[p.vi][ci] = { x: hx, y: p.y };
+    }
+  });
+  // линии голосоведения
+  let lines = '';
+  for (let v = 0; v < 4; v++) for (let ci = 1; ci < n; ci++) {
+    const a = heads[v][ci - 1], b = heads[v][ci];
+    if (!a || !b) continue;
+    lines += `<line x1="${a.x + 9}" y1="${a.y}" x2="${b.x - 9}" y2="${b.y}" stroke="${VOICE_COL[v]}" stroke-width="${v === 3 || v === 0 ? 1.4 : 1}" stroke-opacity="${ci <= cur || cur < 0 ? .6 : .22}" stroke-dasharray="${a.y === b.y ? '0' : '3 3'}"/>`;
+  }
+  svg.innerHTML = s + lines;
+  const P = PROGS[S.prog];
+  $('progname').textContent = `${P.name} · ${keyTitle()}`;
+  const w = cur >= 0 ? S.warn[cur] : [];
+  $('warn').textContent = w && w.length ? '⚠ ' + w.join('; ') : (P.note ? P.note : '');
+  $('warn').style.color = w && w.length ? '' : '#5f5d57';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   8. Клавиатура
+   ═══════════════════════════════════════════════════════════ */
+const K0 = 36, K1 = 84; // C2..C6
+const isBlack = m => [1, 3, 6, 8, 10].includes(m % 12);
+let keyGeo = new Map();
+function buildKeys() {
+  const svg = $('kbd');
+  let whites = 0; for (let m = K0; m <= K1; m++) if (!isBlack(m)) whites++;
+  const KW = Math.max(600, Math.round(svg.getBoundingClientRect().width || 1400));
+  svg.setAttribute('viewBox', `0 0 ${KW} 190`);
+  const kw = KW / whites, top = 40, h = 146;
+  let s = `<g id="arcs"></g>`, bl = '';
+  let x = 0;
+  keyGeo = new Map();
+  for (let m = K0; m <= K1; m++) {
+    if (isBlack(m)) continue;
+    keyGeo.set(m, { x, w: kw, black: false });
+    s += `<rect data-m="${m}" x="${x.toFixed(2)}" y="${top}" width="${(kw - 1).toFixed(2)}" height="${h}" fill="#f7f5ef" stroke="#131313" stroke-width="1"/>`;
+    if (m % 12 === 0) s += `<text x="${(x + kw / 2).toFixed(1)}" y="${top + h - 10}" text-anchor="middle" font-family="Golos Text, sans-serif" font-size="12" font-weight="500" fill="#5f5d57">C${Math.floor(m / 12) - 1}</text>`;
+    x += kw;
+  }
+  for (let m = K0; m <= K1; m++) {
+    if (!isBlack(m)) continue;
+    const left = keyGeo.get(m - 1);
+    const bw = kw * 0.6, bx = left.x + kw - bw / 2;
+    keyGeo.set(m, { x: bx, w: bw, black: true });
+    bl += `<rect data-m="${m}" x="${bx.toFixed(2)}" y="${top}" width="${bw.toFixed(2)}" height="${h * 0.62}" fill="#131313"/>`;
+  }
+  svg.innerHTML = s + bl + `<g id="klabels"></g>`;
+  svg.querySelectorAll('rect[data-m]').forEach(r => r.addEventListener('pointerdown', e => { e.preventDefault(); const m = +r.dataset.m; ensureSound(); playNoteNow(m); }));
+}
+let prevKeys = null;
+function showKeys(v, animateFrom) {
+  const svg = $('kbd');
+  svg.querySelectorAll('rect[data-m]').forEach(r => { const m = +r.dataset.m; r.setAttribute('fill', isBlack(m) ? '#131313' : '#f7f5ef'); });
+  let lab = '';
+  v.forEach((m, vi) => {
+    const r = svg.querySelector(`rect[data-m="${m}"]`); if (!r) return;
+    r.setAttribute('fill', VOICE_COL[vi]);
+    const g = keyGeo.get(m);
+    const y = g.black ? 40 + 146 * 0.62 - 14 : 40 + 146 - 34;
+    const nn = S._spellMap ? S._spellMap.get(m % 12) : null;
+    lab += `<text x="${(g.x + g.w / 2).toFixed(1)}" y="${y}" text-anchor="middle" font-family="Golos Text, sans-serif" font-size="12" font-weight="600" fill="#f7f5ef">${nn ? ruShort(nn) : ''}</text>`;
+  });
+  $('klabels').innerHTML = lab;
+  // дуги перехода голосов
+  let arcs = '';
+  if (animateFrom) {
+    animateFrom.forEach((m0, vi) => {
+      const m1 = v[vi]; const a = keyGeo.get(m0), b = keyGeo.get(m1); if (!a || !b) return;
+      const x0 = a.x + a.w / 2, x1 = b.x + b.w / 2;
+      if (m0 === m1) { arcs += `<circle cx="${x0.toFixed(1)}" cy="30" r="3.5" fill="${VOICE_COL[vi]}"/>`; return; }
+      const hgt = 10 + Math.min(26, Math.abs(x1 - x0) * 0.25);
+      arcs += `<path d="M${x0.toFixed(1)} 36 Q${((x0 + x1) / 2).toFixed(1)} ${(36 - hgt * 1.6).toFixed(1)} ${x1.toFixed(1)} 36" fill="none" stroke="${VOICE_COL[vi]}" stroke-width="2" stroke-linecap="round"/>
+        <path d="M${x1 - 4} 30 L${x1} 37 L${x1 + 4} 30" fill="none" stroke="${VOICE_COL[vi]}" stroke-width="2"/>`;
+    });
+  }
+  $('arcs').innerHTML = arcs;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   9. Панель управления
+   ═══════════════════════════════════════════════════════════ */
+function buildControls() {
+  const keys = $('keys');
+  keys.innerHTML = MAJ.map((t, i) => `<button class="chip" data-i="${i}">${i === 6 ? 'F♯' : nm(t)}</button>`).join('');
+  keys.querySelectorAll('button').forEach(b => b.addEventListener('click', () => setKey(+b.dataset.i, S.mode)));
+  const modes = $('modes');
+  modes.innerHTML = MODES.map((m, i) => `<button class="chip sm" data-i="${i}">${m.ru ? m.ru : m.name}</button>`).join('');
+  modes.querySelectorAll('button').forEach(b => b.addEventListener('click', () => setKey(S.key, +b.dataset.i)));
+  const progs = $('progs');
+  progs.innerHTML = PROGS.map((p, i) => {
+    const r = p.seq.slice(0, 8).map(([d, q]) => romanOf(d, q || (p.mode === 5 || p.mode === 1 ? ['min', 'dim', 'maj', 'min', 'min', 'maj', 'maj'][d] : ['maj', 'min', 'min', 'maj', 'maj', 'min', 'dim'][d]), 0)).join('–');
+    return `<button class="prog" data-i="${i}"><b>${p.name}</b><span>${p.seq.length > 8 ? '12 тактов' : r}</span></button>`;
+  }).join('');
+  progs.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { ensureSound(); loadProg(+b.dataset.i, true); }));
+  const invs = $('invs');
+  invs.innerHTML = ['основное', '1-е', '2-е', '3-е'].map((t, i) => `<button class="chip sm" data-i="${i}">${t}</button>`).join('');
+  invs.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { S.inv = +b.dataset.i; syncControls(); }));
+  $('sevt').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { S.sev = b.dataset.v === '1'; realize(); syncControls(); drawStaff(); }));
+}
+function syncControls() {
+  $('keys').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.i === S.key));
+  $('modes').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.i === S.mode));
+  $('progs').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.i === S.prog));
+  $('invs').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.i === S.inv));
+  $('sevt').querySelectorAll('button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === S.sev));
+  $('keyname').textContent = keyTitle();
+  const pi = parentMajorIndex(tonic(), S.mode);
+  $('keymeta').textContent = `${nm(tonic())} · ${MODES[S.mode].name} · ключевые знаки: ${SIG[pi] === '0' ? 'нет' : SIG[pi]}`;
+  // диатонические аккорды
+  const sc = scaleOf(tonic(), S.mode), minor = MODES[S.mode].minor;
+  const dia = $('dia');
+  dia.innerHTML = sc.map((root, d) => {
+    const notes = diatonic(sc, d, S.sev), q = qualityOf(notes), f = funcOf(d, minor);
+    return `<button class="dchord ${f}" data-d="${d}" title="${FUNC_RU[f]}"><b>${romanOf(d, q, 0)}</b><span>${nm(root) + Q[q].sym}</span></button>`;
+  }).join('');
+  dia.querySelectorAll('button').forEach(b => b.addEventListener('click', () => playDegree(+b.dataset.d)));
+}
+
+/* ═══════════════════════════════════════════════════════════
+   10. Воспроизведение
+   ═══════════════════════════════════════════════════════════ */
+let timer = 0, nextAt = 0;
+function chordDur() { return PROGS[S.prog].beats * 60 / S.bpm; }
+function setSpellMap(c) { S._spellMap = new Map(c.notes.map(n => [pcOf(n), n])); }
+function stepTo(i, when) {
+  const prevV = S.step >= 0 ? S.voicings[S.step] : S.lastVoicing;
+  S.step = i;
+  const c = S.chords[i], v = S.voicings[i];
+  setSpellMap(c);
+  if (S.sound) playVoicing(v, when ?? AC.currentTime + 0.02, chordDur() * 0.96);
+  showChordOnWheel(c);
+  showKeys(v, prevV);
+  S.lastVoicing = v;
+  drawStaff();
+  $('dia').querySelectorAll('.dchord').forEach(b => b.classList.toggle('now', +b.dataset.d === c.deg && !['7'].includes(c.q) || false));
+}
+function schedule() {
+  clearTimeout(timer);
+  if (!S.playing) return;
+  const now = performance.now();
+  if (now >= nextAt - 30) {
+    const i = (S.step + 1) % S.chords.length;
+    stepTo(i, S.sound ? AC.currentTime + 0.03 : undefined);
+    nextAt = Math.max(now, nextAt) + chordDur() * 1000;
+  }
+  timer = setTimeout(schedule, Math.max(10, Math.min(60, nextAt - performance.now() - 20)));
+}
+function setPlaying(on) {
+  S.playing = on;
+  updatePlayBtn();
+  if (on) { nextAt = performance.now(); schedule(); } else clearTimeout(timer);
+}
+function updatePlayBtn() {
+  const b = $('play'), t = $('playtxt'), ico = $('playico');
+  if (!S.sound) { t.textContent = 'Включить звук'; b.classList.remove('live'); ico.innerHTML = '<path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path d="M11 5.5c1 .8 1 4.2 0 5M12.8 3.8c2 1.8 2 6.6 0 8.4" fill="none" stroke="currentColor" stroke-width="1.4"/>'; return; }
+  if (S.playing) { t.textContent = 'Стоп'; b.classList.add('live'); ico.innerHTML = '<rect x="3" y="3" width="10" height="10" fill="currentColor"/>'; }
+  else { t.textContent = 'Играть'; b.classList.remove('live'); ico.innerHTML = '<path d="M3 2l11 6-11 6z" fill="currentColor"/>'; }
+}
+function ensureSound() { if (!S.sound) { audio(); S.sound = true; updatePlayBtn(); } }
+$('play').addEventListener('click', () => {
+  if (!S.sound) { ensureSound(); if (!S.playing) setPlaying(true); updatePlayBtn(); return; }
+  setPlaying(!S.playing);
+});
+$('bpm').addEventListener('input', e => { S.bpm = +e.target.value; $('bpmv').textContent = S.bpm; });
+function loadProg(i, play) {
+  S.prog = i;
+  const P = PROGS[i];
+  if (P.mode !== undefined && P.mode !== S.mode) { S.mode = P.mode; paintWheel(); }
+  S.step = -1; S.trail = [];
+  realize(); syncControls(); drawStaff();
+  if (play) { setPlaying(true); }
+}
+function setKey(i, mode) {
+  S.key = i; S.mode = mode;
+  realize(); paintWheel(); syncControls();
+  S.trail = []; drawTrail();
+  if (S.step >= S.chords.length) S.step = -1;
+  drawStaff();
+}
+function playManual(notes, root, q) {
+  ensureSound();
+  if (S.playing) setPlaying(false);
+  const sc = scaleOf(tonic(), S.mode), minor = MODES[S.mode].minor;
+  const d = sc.findIndex(n => pcOf(n) === pcOf(root));
+  const qq = q || qualityOf(notes);
+  const c = { notes, q: qq, deg: d, sym: nm(root) + Q[qq].sym + (S.inv > 0 && notes[S.inv] ? '/' + nm(notes[Math.min(S.inv, notes.length - 1)]) : ''),
+    roman: d >= 0 ? romanOf(d, qq, 0) : '', fn: d >= 0 ? funcOf(d, minor) : 'T' };
+  const v = voice(notes, Math.min(S.inv, notes.length - 1), S.lastVoicing);
+  setSpellMap(c);
+  playVoicing(v, AC.currentTime + 0.01, 1.8);
+  showChordOnWheel(c);
+  showKeys(v, S.lastVoicing);
+  S.lastVoicing = v;
+  const w = S.lastVoicing ? [] : [];
+  $('warn').textContent = '';
+}
+function playDegree(d) {
+  const sc = scaleOf(tonic(), S.mode);
+  const notes = diatonic(sc, d, S.sev);
+  playManual(notes, sc[d], qualityOf(notes));
+}
+function playNoteNow(m) { if (!AC) return; note(m, AC.currentTime + 0.005, 0.9, 0.7); }
+
+// клавиатура компьютера
+const KEYMAP = { a: 60, w: 61, s: 62, e: 63, d: 64, f: 65, t: 66, g: 67, y: 68, h: 69, u: 70, j: 71, k: 72,
+  ф: 60, ц: 61, ы: 62, у: 63, в: 64, а: 65, е: 66, п: 67, н: 68, р: 69, г: 70, о: 71, л: 72 };
+addEventListener('keydown', e => {
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if (k === ' ') { e.preventDefault(); ensureSound(); setPlaying(!S.playing); return; }
+  if (k >= '1' && k <= '7') { playDegree(+k - 1); return; }
+  if (KEYMAP[k] !== undefined) {
+    ensureSound(); playNoteNow(KEYMAP[k]);
+    const r = $('kbd').querySelector(`rect[data-m="${KEYMAP[k]}"]`);
+    if (r) { const f = r.getAttribute('fill'); r.setAttribute('fill', '#dc2f1c'); setTimeout(() => r.setAttribute('fill', f), 180); }
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   11. Старт: тихая демонстрация, пока человек не включит звук
+   ═══════════════════════════════════════════════════════════ */
+buildWheel(); buildKeys(); buildControls();
+realize(); paintWheel(); syncControls(); drawStaff();
+S.playing = true; updatePlayBtn();
+nextAt = performance.now() + 250;
+schedule();
+let rzT = 0;
+addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { buildKeys(); if (S.lastVoicing) showKeys(S.lastVoicing, null); }, 150); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearTimeout(timer); else if (S.playing) { nextAt = performance.now(); schedule(); } });
+</script>
+</body>
+</html>

@@ -1,0 +1,326 @@
+/* «Девочка и ветер» — кинозал для силуэтного фильма */
+
+:root {
+  --bg: #0e0b0a;
+  --cream: #efe4c9;
+  --cream-2: rgba(239, 228, 201, 0.72);
+  --cream-3: rgba(239, 228, 201, 0.5);
+  --line: rgba(239, 228, 201, 0.16);
+  --teal: #3fb0a6;
+  --flame: #f08a4b;
+  --display: 'Cormorant', 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --text: 'Brygada 1918', Georgia, 'Times New Roman', serif;
+  --gutter: 24px;
+  --head: 76px;
+  --bar: 78px;
+  --ease: cubic-bezier(0.22, 0.8, 0.26, 1);
+  /* ширина кадра: по высоте окна (кадр, афиша и плеер помещаются на экран), но не шире контейнера */
+  --fh: max(360px, calc((100vh - var(--head) - var(--bar) - 30px) * 16 / 9));
+  --fw: min(100%, var(--fh));
+}
+@supports (height: 100dvh) {
+  :root { --fh: max(360px, calc((100dvh - var(--head) - var(--bar) - 30px) * 16 / 9)); }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--cream); }
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Свет экрана на стенах зала: пять тонов, меняется только прозрачность */
+.ambient { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.amb {
+  position: absolute; inset: -10%;
+  opacity: 0;
+  transition: opacity 1.6s var(--ease);
+}
+.amb-dawn { background: radial-gradient(60% 55% at 50% 46%, rgba(43, 134, 135, 0.34), transparent 70%); }
+.amb-gold { background: radial-gradient(60% 55% at 50% 46%, rgba(214, 190, 110, 0.26), transparent 70%); }
+.amb-flame { background: radial-gradient(60% 55% at 50% 46%, rgba(223, 92, 57, 0.3), transparent 70%); }
+.amb-ash { background: radial-gradient(60% 55% at 50% 46%, rgba(103, 84, 75, 0.2), transparent 70%); }
+.amb-night { background: radial-gradient(60% 55% at 50% 46%, rgba(20, 109, 117, 0.3), transparent 70%); }
+
+.cinema {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 14px var(--gutter) 28px;
+}
+
+/* Афиша */
+.bill {
+  width: var(--fw);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  min-height: calc(var(--head) - 14px);
+  padding-bottom: 10px;
+}
+h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1.05;
+  letter-spacing: 0.005em;
+  color: var(--cream);
+}
+.sub {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--cream-2);
+  white-space: nowrap;
+}
+.dot { display: inline-block; width: 4px; height: 4px; margin: 0 10px 2px; border-radius: 50%; background: var(--cream-3); vertical-align: middle; }
+
+/* Экран: кадр 16:9 вписывается с полями */
+.stage { width: var(--fw); }
+.frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #0b0707;
+  overflow: hidden;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(239, 228, 201, 0.08), 0 30px 80px -30px rgba(0, 0, 0, 0.9);
+}
+.frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.center-play {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 24px 12px 16px;
+  border: 1px solid rgba(239, 228, 201, 0.4);
+  border-radius: 999px;
+  background: rgba(11, 7, 7, 0.62);
+  color: var(--cream);
+  font: 500 16px/1 var(--text);
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease), background-color 0.25s var(--ease), opacity 0.25s var(--ease);
+}
+.center-play svg { width: 30px; height: 30px; fill: var(--cream); }
+.center-play:hover { background: rgba(11, 7, 7, 0.8); transform: translate(-50%, -50%) scale(1.04); }
+.center-play:active { transform: translate(-50%, -50%) scale(0.98); }
+.center-play[hidden] { display: none; }
+
+/* Плеер */
+.player {
+  display: flex; align-items: center; gap: 10px;
+  height: var(--bar);
+  padding: 0 2px;
+}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-width: 44px; height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cream);
+  cursor: pointer;
+  font: 500 14px/1 var(--text);
+  transition: background-color 0.2s var(--ease), color 0.2s var(--ease), transform 0.15s var(--ease);
+}
+.btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.btn.icon { border-radius: 10px; }
+.btn.icon:hover { background: rgba(239, 228, 201, 0.1); }
+.btn:active { transform: scale(0.94); }
+.btn:focus-visible, .timeline:focus-visible, .center-play:focus-visible, .chap:focus-visible {
+  outline: 2px solid var(--cream);
+  outline-offset: 2px;
+}
+#play .i-play { display: none; }
+#play.paused .i-play { display: block; fill: currentColor; }
+#play.paused .i-pause { display: none; }
+#fs .i-fsx { display: none; }
+.is-fs #fs .i-fs { display: none; }
+.is-fs #fs .i-fsx { display: block; }
+
+.sound {
+  padding: 0 14px;
+  border-radius: 999px;
+}
+.sound.off {
+  background: var(--cream);
+  color: #1a1210;
+  padding: 0 18px 0 14px;
+}
+.sound.off:hover { background: #fff6e3; }
+.sound.off svg { stroke-width: 1.9; }
+.sound:not(.off) .lbl { display: none; }
+.sound:not(.off) { padding: 0; min-width: 44px; border-radius: 10px; }
+.sound:not(.off):hover { background: rgba(239, 228, 201, 0.1); }
+.sound.muted .wave { opacity: 0; }
+.sound .i-snd path:first-child { fill: currentColor; }
+
+.time {
+  min-width: 92px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--cream-2);
+  text-align: center;
+}
+
+/* Шкала времени со сценами */
+.timeline {
+  position: relative;
+  flex: 1;
+  height: 48px;
+  cursor: pointer;
+  touch-action: none;
+  border-radius: 6px;
+}
+.track {
+  position: absolute; left: 0; right: 0; top: 13px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.played {
+  position: absolute; inset: 0;
+  overflow: hidden;
+  border-radius: 2px;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+.played i {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, var(--teal), #d9b566 34%, var(--flame) 52%, #8a7a70 66%, #6b6560 80%, var(--teal) 86%, var(--flame));
+  transform-origin: 0 50%;
+}
+.marks i {
+  position: absolute; top: -3px;
+  width: 2px; height: 10px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: rgba(239, 228, 201, 0.4);
+}
+.knob {
+  position: absolute; top: -6px; left: 0;
+  width: 16px; height: 16px;
+  margin-left: -8px;
+  transform: translateX(0);
+}
+.knob::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: var(--cream);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  transform: scale(0.82);
+  transition: transform 0.15s var(--ease);
+}
+.timeline:hover .knob::after, .timeline.drag .knob::after { transform: scale(1); }
+.chapters { position: absolute; left: 0; right: 0; top: 24px; height: 20px; }
+.chap {
+  position: absolute; top: 0;
+  padding: 1px 4px;
+  border: 0; background: none;
+  font: 400 12px/18px var(--text);
+  letter-spacing: 0.03em;
+  color: var(--cream-3);
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: 4px;
+  transition: color 0.2s var(--ease);
+}
+.chap:hover { color: var(--cream); }
+.chap.cur { color: var(--cream); }
+
+.peek {
+  position: absolute; bottom: 42px; left: 0;
+  width: 212px;
+  padding: 2px 2px 6px;
+  border-radius: 6px;
+  background: rgba(14, 11, 10, 0.94);
+  box-shadow: 0 0 0 1px rgba(239, 228, 201, 0.14), 0 10px 30px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(0) translateY(6px);
+  transition: opacity 0.18s var(--ease);
+}
+.peek.on { opacity: 1; }
+.peek canvas { display: block; width: 208px; height: 117px; border-radius: 4px; }
+.peek span { display: block; padding: 5px 6px 0; font-size: 12.5px; color: var(--cream); text-align: center; font-variant-numeric: tabular-nums; }
+
+/* Программка */
+.playbill {
+  width: var(--fw);
+  max-width: 820px;
+  margin-top: 36px; /* когда кадр вписан по высоте, программка начинается ровно за краем экрана */
+  display: grid; gap: 8px;
+  color: var(--cream-2);
+}
+.playbill p { margin: 0; }
+.logline { font-family: var(--display); font-size: 21px; line-height: 1.35; color: var(--cream); font-style: italic; }
+.credits { font-size: 14px; }
+.keys { font-size: 13px; color: var(--cream-3); }
+kbd {
+  display: inline-block;
+  min-width: 22px;
+  margin: 0 3px 0 10px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font: 500 12px/18px var(--text);
+  color: var(--cream-2);
+  text-align: center;
+}
+kbd:first-child { margin-left: 0; }
+kbd + kbd { margin-left: 0; }
+
+.nojs { position: fixed; inset: auto 0 20px; text-align: center; }
+
+/* Полноэкранный режим: кадр во весь экран, плеер поверх и прячется */
+.stage:fullscreen, .stage.pseudo-fs {
+  width: 100vw; height: 100vh;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+}
+.stage.pseudo-fs { position: fixed; inset: 0; z-index: 50; height: 100dvh; }
+.stage:fullscreen .frame, .stage.pseudo-fs .frame {
+  width: min(100vw, calc(100vh * 16 / 9));
+  border-radius: 0;
+  box-shadow: none;
+}
+.stage.pseudo-fs .frame { width: min(100vw, calc(100dvh * 16 / 9)); }
+.stage:fullscreen .player, .stage.pseudo-fs .player {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 0 max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
+  height: 96px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));
+  transition: opacity 0.35s var(--ease);
+}
+.stage.idle .player { opacity: 0; }
+.stage.idle { cursor: none; }
+
+/* Телефон */
+@media (max-width: 720px) {
+  :root { --gutter: 14px; --fw: 100%; }
+  .cinema { padding-top: 18px; }
+  .bill { flex-direction: column; align-items: flex-start; gap: 4px; min-height: 0; padding-bottom: 14px; }
+  h1 { font-size: 30px; }
+  .sub { font-size: 12.5px; white-space: normal; }
+  .dot { margin: 0 7px 2px; }
+  .player { flex-wrap: wrap; height: auto; padding-top: 6px; gap: 6px 4px; }
+  .timeline { order: -1; flex: 1 0 100%; height: 50px; }
+  .time { min-width: 0; margin-right: auto; text-align: left; }
+  /* пока звук не включён, «Смотреть со звуком» — отдельной строкой во всю ширину */
+  .sound.off { order: 5; flex: 1 0 100%; margin-top: 6px; }
+  .peek { display: none; }
+  .playbill { margin-top: 26px; gap: 12px; }
+  .logline { font-size: 20px; }
+  .keys { display: none; }
+}
+@media (max-width: 380px) {
+  .sound.off { padding: 0 12px 0 10px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .amb, .peek, .btn, .knob::after { transition: none; }
+}

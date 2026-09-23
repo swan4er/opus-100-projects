@@ -1,0 +1,1155 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Дальняя дорога</title>
+<meta name="description" content="Псевдо-3D гонка по России четырёх сезонов: на развилках выбираешь маршрут, и времена года меняются прямо на ходу.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yeseva+One&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#fff8ec; --dim:rgba(255,248,236,.78); --shade:rgba(20,14,10,.42); }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#1a1410;color:var(--ink);font:600 14px/1.4 "Manrope",system-ui,sans-serif;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+  h1,h2{font-weight:400;margin:0}
+
+  /* HUD */
+  .hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;padding:26px 32px;pointer-events:none;
+       text-shadow:0 1px 3px rgba(0,0,0,.6),0 0 22px rgba(0,0,0,.45)}
+  .hud{transition:opacity .8s ease}
+  body.intro .hud{opacity:0}
+  .stage-name{font:400 34px/1 "Yeseva One",Georgia,serif;letter-spacing:.005em;transition:opacity .8s ease}
+  .stage-sub{margin-top:9px;font-size:13px;font-weight:600;color:var(--ink);letter-spacing:.02em}
+  .route{display:flex;gap:6px;align-items:center;margin-top:14px}
+  .route i{display:block;width:26px;height:4px;border-radius:2px;background:rgba(255,248,236,.28)}
+  .route i.done{background:var(--ink)}
+  .route i.now{background:var(--ink);animation:pulse 1.4s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  .speedo{text-align:right}
+  .speed{font:800 54px/0.9 "Manrope",sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+  .speed small{font-size:15px;font-weight:700;letter-spacing:0;margin-left:5px;opacity:.85}
+  .odo{margin-top:8px;font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .fork-hint{position:fixed;left:50%;top:22%;transform:translate(-50%,-10px);font:400 30px/1.2 "Yeseva One",serif;text-align:center;opacity:0;
+             transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1);pointer-events:none;text-shadow:0 2px 14px rgba(0,0,0,.5)}
+  .fork-hint.on{opacity:1;transform:translate(-50%,0)}
+  .fork-hint small{display:block;margin-top:8px;font:600 14px "Manrope",sans-serif;color:var(--dim)}
+
+  /* заставка и финиш */
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;padding:0 7vw 12vh;
+           background:linear-gradient(90deg,rgba(22,12,6,.8) 0%,rgba(22,12,6,.52) 36%,rgba(22,12,6,0) 64%),linear-gradient(to top,rgba(22,12,6,.6),rgba(22,12,6,0) 55%);transition:opacity .9s ease}
+  .overlay.hide{opacity:0;pointer-events:none}
+  .kicker{font-size:13px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+  .title{margin-top:14px;font:400 clamp(58px,9vw,132px)/.92 "Yeseva One",Georgia,serif;letter-spacing:-.01em;text-shadow:0 3px 24px rgba(0,0,0,.28)}
+  .lead{max-width:560px;margin:22px 0 0;font:500 17px/1.55 "Manrope",sans-serif;color:rgba(255,248,236,.92)}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:30px}
+  .btn{height:56px;padding:0 30px;border:0;border-radius:28px;background:var(--ink);color:#22150c;font:800 16px "Manrope",sans-serif;cursor:pointer;
+       display:inline-flex;align-items:center;gap:10px;transition:transform .2s cubic-bezier(.2,.8,.2,1),background .2s;box-shadow:0 10px 30px rgba(20,10,0,.3)}
+  .btn:hover{transform:translateY(-2px)}
+  .btn:active{transform:translateY(0) scale(.98)}
+  .btn:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+  .keys{font-size:14px;color:var(--dim);font-weight:600}
+  kbd{display:inline-block;min-width:26px;padding:3px 7px;margin:0 2px;border:1px solid rgba(255,248,236,.45);border-radius:6px;font:700 12px "Manrope",sans-serif;text-align:center}
+  .summary{margin-top:22px;font:500 17px/1.6 "Manrope",sans-serif;color:var(--dim)}
+  .summary b{color:var(--ink)}
+
+  .snd{position:fixed;right:28px;bottom:26px;width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,248,236,.5);background:rgba(20,12,6,.25);
+       color:var(--ink);display:grid;place-items:center;cursor:pointer;transition:background .2s}
+  .snd:hover{background:rgba(20,12,6,.45)}
+  .snd:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+  .snd .w{display:none}
+  .snd[aria-pressed="true"] .w{display:inline}
+  .snd[aria-pressed="true"] .x{display:none}
+
+  .touch{position:fixed;left:0;right:0;bottom:0;display:none;justify-content:space-between;padding:0 18px calc(18px + env(safe-area-inset-bottom));pointer-events:none}
+  .touch button{pointer-events:auto;width:76px;height:76px;border-radius:50%;border:1px solid rgba(255,248,236,.55);background:rgba(20,12,6,.28);color:var(--ink);
+                font:700 26px "Manrope",sans-serif;touch-action:none}
+  .touch .mid{display:flex;gap:14px}
+  @media (hover:none) and (pointer:coarse){ .touch.on{display:flex} .snd{bottom:auto;top:128px;right:18px} }
+  @media (max-width:700px){
+    .hud{padding:18px 18px}
+    .stage-name{font-size:25px}
+    .speed{font-size:40px}
+    .odo{font-size:12px}
+    .overlay{padding:0 22px 16vh}
+    .lead{font-size:15px}
+    .btn{height:52px;padding:0 24px}
+    .keys{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){ .route i.now{animation:none} }
+</style>
+</head>
+<body class="intro">
+<canvas id="c" aria-label="Дорога сквозь времена года"></canvas>
+
+<div class="hud" id="hud">
+  <div>
+    <div class="stage-name" id="stageName">Золотая осень</div>
+    <div class="stage-sub" id="stageSub">берёзовые рощи · этап 1 из 3</div>
+    <div class="route" id="route"><i class="now"></i><i></i><i></i></div>
+  </div>
+  <div class="speedo">
+    <div class="speed"><span id="spd">0</span><small>км/ч</small></div>
+    <div class="odo" id="odo">0,0 км · до развилки 0,0 км</div>
+  </div>
+</div>
+
+<div class="fork-hint" id="forkHint"></div>
+
+<section class="overlay" id="intro">
+  <div class="kicker">Псевдо-3D · четыре времени года</div>
+  <h1 class="title">Дальняя<br>дорога</h1>
+  <p class="lead">Из&nbsp;золотой осени — в&nbsp;ночную тайгу или в&nbsp;степь на&nbsp;закате, а&nbsp;в&nbsp;конце пути — море. На&nbsp;развилках маршрут выбираете вы: просто держитесь левой или правой дороги.</p>
+  <div class="row">
+    <button class="btn" id="go">Поехали
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 9h11M10 4.5L14.5 9 10 13.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span class="keys"><kbd>↑</kbd> газ <kbd>↓</kbd> тормоз <kbd>←</kbd><kbd>→</kbd> руль · или <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>
+  </div>
+</section>
+
+<section class="overlay hide" id="finish" aria-live="polite">
+  <div class="kicker">Приехали</div>
+  <h2 class="title">Море</h2>
+  <p class="summary" id="summary"></p>
+  <div class="row"><button class="btn" id="again">Ещё раз</button></div>
+</section>
+
+<button class="snd" id="snd" aria-pressed="false" aria-label="Звук и музыка">
+  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+    <path d="M4 9.2v5.6h3.6L12.5 19V5L7.6 9.2H4z" fill="currentColor"/>
+    <path class="w" d="M15.6 8.8c1 .9 1.6 2 1.6 3.2s-.6 2.3-1.6 3.2M18.2 6.3c1.8 1.5 2.8 3.5 2.8 5.7s-1 4.2-2.8 5.7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    <path class="x" d="M16 9.5l5 5m0-5l-5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+  </svg>
+</button>
+
+<div class="touch" id="touch">
+  <button id="tl" aria-label="Влево">‹</button>
+  <div class="mid"><button id="tb" aria-label="Тормоз">■</button></div>
+  <button id="tr" aria-label="Вправо">›</button>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   Константы мира (классический псевдо-3D: сегменты дороги + проекция)
+   ===================================================================== */
+const SEG = 200;              // длина сегмента
+const ROAD = 2000;            // половина ширины дороги
+const LANES = 3;
+const CAM_H = 1100;
+const DRAW = 230;             // дальность прорисовки, сегментов
+const FOV = 100;
+const DEPTH = 1 / Math.tan((FOV / 2) * Math.PI / 180);
+const PLAYER_Z = CAM_H * DEPTH;
+const MAX_SPEED = SEG * 55;   // ≈ 180 км/ч на спидометре
+const ACCEL = MAX_SPEED / 4.5, BRAKE = -MAX_SPEED / 1.4, DECEL = -MAX_SPEED / 6;
+const OFF_DECEL = -MAX_SPEED / 1.6, OFF_LIMIT = MAX_SPEED / 3.2;
+const CENTRIFUGAL = 0.3;
+const FORK_LEN = 320;         // развилка длиннее дальности прорисовки: продолжение успевает построиться
+const FORK_D = 1.7;           // смещение центров веток, в полуширинах дороги
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d', { alpha: false });
+let W = 0, H = 0, DPR = 1;
+
+/* =====================================================================
+   Цвета и биомы
+   ===================================================================== */
+const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const rgb = c => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+
+const BIOMES = {
+  autumn: {
+    name: 'Золотая осень', sub: 'берёзовые рощи', night: false,
+    sky: ['#6fa3d6', '#a9cbe6', '#f3e7cf'], fog: '#e9dcc0', sun: { x: 0.72, y: 0.2, r: 34, c: '#fff4d6', glow: 'rgba(255,238,190,.45)' },
+    grass: ['#b08d2e', '#a4832a'], road: ['#77716a', '#716b64'], rumble: ['#f1ece2', '#b8412f'], lane: '#f4efe6',
+    far: '#8ea3b6', near: '#b7892c', nearDark: '#8e6a22'
+  },
+  taiga: {
+    name: 'Ночная тайга', sub: 'снег, ели и звёзды', night: true,
+    sky: ['#070b1c', '#101a37', '#23345c'], fog: '#18233f', moon: { x: 0.26, y: 0.17, r: 26 },
+    grass: ['#c7d1e4', '#bcc6da'], road: ['#474d5d', '#434858'], rumble: ['#e3e8f1', '#8b96ae'], lane: '#d8deea',
+    far: '#1c2744', near: '#0e1528', nearDark: '#0a1020'
+  },
+  steppe: {
+    name: 'Степь на закате', sub: 'подсолнухи и провода', night: false,
+    sky: ['#2c1d44', '#b24a52', '#ffb56b'], fog: '#f19a62', sun: { x: 0.36, y: 0.46, r: 58, c: '#ffe0a6', glow: 'rgba(255,170,90,.55)' },
+    grass: ['#b67f3b', '#aa7536'], road: ['#5f4a47', '#594541'], rumble: ['#f6d9a4', '#7a3f35'], lane: '#f3dcb0',
+    far: '#7a3b4b', near: '#4b2635', nearDark: '#3a1d2a'
+  },
+  sea: {
+    name: 'Море на рассвете', sub: 'кипарисы и цветущий миндаль', night: false,
+    sky: ['#86b4de', '#c6d8ea', '#ffd6c1'], fog: '#f2d9cf', sun: { x: 0.18, y: 0.4, r: 40, c: '#fff1e4', glow: 'rgba(255,214,190,.55)' },
+    grass: ['#7ba05a', '#739853'], road: ['#817c7a', '#7a7574'], rumble: ['#fbf6ef', '#4d7fa6'], lane: '#fbf6ef',
+    far: '#6f8fae', near: '#5b7f4b', nearDark: '#46663a', sea: ['#3f86b3', '#3a7eaa']
+  }
+};
+Object.values(BIOMES).forEach(b => {
+  b.rgb = { grass: b.grass.map(hex), road: b.road.map(hex), rumble: b.rumble.map(hex), lane: hex(b.lane), fog: hex(b.fog), sea: b.sea ? b.sea.map(hex) : null };
+});
+
+/* =====================================================================
+   Спрайты: всё рисуется процедурно в offscreen-холсты
+   ===================================================================== */
+function rnd(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function sprite(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return c; }
+const SPR = {};
+
+function blob(g, x, y, r, col) { g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+
+function makeSprites() {
+  // берёза: белый ствол с чёрными чечевичками, золотая крона
+  SPR.birch = [0, 1, 2].map(v => sprite(220, 520, (g, w, h) => {
+    const R = rnd(11 + v * 7);
+    const tx = w / 2 + (R() - 0.5) * 20;
+    g.fillStyle = '#efeae0'; g.beginPath(); g.moveTo(tx - 9, h); g.lineTo(tx - 5, 90); g.lineTo(tx + 5, 90); g.lineTo(tx + 9, h); g.fill();
+    for (let i = 0; i < 18; i++) { g.fillStyle = '#2b2622'; const y = 120 + R() * (h - 140); g.fillRect(tx - 8 + R() * 6, y, 5 + R() * 9, 2 + R() * 2); }
+    g.strokeStyle = '#d9d2c4'; g.lineWidth = 3;
+    for (let i = 0; i < 5; i++) { const y = 140 + i * 50; g.beginPath(); g.moveTo(tx, y); g.lineTo(tx + (i % 2 ? 1 : -1) * (40 + R() * 30), y - 40); g.stroke(); }
+    const golds = ['#f2c14e', '#e8a93a', '#f7d774', '#d88c2a', '#c9a13b'];
+    for (let i = 0; i < 70; i++) {
+      const a = R() * Math.PI * 2, rr = Math.sqrt(R());
+      blob(g, tx + Math.cos(a) * rr * 80, 150 + Math.sin(a) * rr * 120 - R() * 40, 12 + R() * 16, golds[(R() * golds.length) | 0]);
+    }
+    for (let i = 0; i < 26; i++) blob(g, tx + (R() - 0.5) * 150, 160 + R() * 150, 5 + R() * 6, 'rgba(255,240,190,.7)');
+  }));
+  // ель (для тайги — со снежными шапками)
+  const fir = (snow, v) => sprite(240, 560, (g, w, h) => {
+    const R = rnd(71 + v * 13 + (snow ? 100 : 0));
+    g.fillStyle = '#2a1d16'; g.fillRect(w / 2 - 8, h - 70, 16, 70);
+    const tiers = 7;
+    for (let i = 0; i < tiers; i++) {
+      const t = i / (tiers - 1), y = 40 + t * (h - 130), half = 22 + t * 92 + R() * 10;
+      g.fillStyle = snow ? (i % 2 ? '#10251f' : '#14302a') : (i % 2 ? '#1f3d2c' : '#274a34');
+      g.beginPath(); g.moveTo(w / 2, y - 30); g.lineTo(w / 2 - half, y + 60); g.lineTo(w / 2 + half, y + 60); g.fill();
+      if (snow) {
+        g.fillStyle = '#e8eef8';
+        g.beginPath(); g.moveTo(w / 2, y - 26);
+        g.lineTo(w / 2 - half * 0.82, y + 44); g.quadraticCurveTo(w / 2 - half * 0.3, y + 36 + R() * 6, w / 2, y + 44);
+        g.quadraticCurveTo(w / 2 + half * 0.3, y + 36 + R() * 6, w / 2 + half * 0.82, y + 44); g.fill();
+      }
+    }
+  });
+  SPR.fir = [0, 1].map(v => fir(false, v));
+  SPR.snowfir = [0, 1, 2].map(v => fir(true, v));
+  // подсолнух
+  SPR.sunflower = [0, 1].map(v => sprite(120, 300, (g, w, h) => {
+    const R = rnd(301 + v);
+    g.strokeStyle = '#4b6b2a'; g.lineWidth = 7; g.beginPath(); g.moveTo(w / 2, h); g.quadraticCurveTo(w / 2 + 10, h * 0.5, w / 2 - 4 + v * 8, 70); g.stroke();
+    g.fillStyle = '#557a2e';
+    for (let i = 0; i < 3; i++) { g.save(); g.translate(w / 2 + 4, 140 + i * 50); g.rotate(i % 2 ? 0.9 : -0.9); g.beginPath(); g.ellipse(18, 0, 24, 11, 0, 0, Math.PI * 2); g.fill(); g.restore(); }
+    const cx = w / 2 - 4 + v * 8, cy = 64;
+    for (let i = 0; i < 22; i++) {
+      const a = i / 22 * Math.PI * 2 + R() * 0.1;
+      g.fillStyle = i % 2 ? '#f6b21c' : '#ffc93a';
+      g.save(); g.translate(cx, cy); g.rotate(a); g.beginPath(); g.ellipse(34, 0, 18, 7, 0, 0, Math.PI * 2); g.fill(); g.restore();
+    }
+    blob(g, cx, cy, 24, '#4a2a14'); blob(g, cx - 5, cy - 5, 13, '#5d3a1d');
+  }));
+  // телеграфный столб
+  SPR.pole = [sprite(90, 640, (g, w, h) => {
+    g.fillStyle = '#3b2a20'; g.fillRect(w / 2 - 6, 20, 12, h - 20);
+    g.fillRect(w / 2 - 38, 60, 76, 8); g.fillRect(w / 2 - 30, 110, 60, 7);
+    g.fillStyle = '#d9e2e8'; [-34, -12, 12, 34].forEach(x => { g.fillRect(w / 2 + x - 3, 50, 6, 10); });
+  })];
+  // кипарис и цветущий миндаль
+  SPR.cypress = [0, 1].map(v => sprite(110, 560, (g, w, h) => {
+    const R = rnd(501 + v);
+    g.fillStyle = '#233b27';
+    g.beginPath(); g.moveTo(w / 2, 6);
+    g.bezierCurveTo(w / 2 + 58, 170, w / 2 + 46, 420, w / 2 + 10, h - 14);
+    g.lineTo(w / 2 - 10, h - 14); g.bezierCurveTo(w / 2 - 46, 420, w / 2 - 58, 170, w / 2, 6); g.fill();
+    for (let i = 0; i < 40; i++) blob(g, w / 2 + (R() - 0.5) * 60, 60 + R() * 420, 6 + R() * 8, i % 3 ? '#2d4a30' : '#1b2f1e');
+    g.fillStyle = '#3b2a1e'; g.fillRect(w / 2 - 4, h - 20, 8, 20);
+  }));
+  SPR.almond = [0, 1].map(v => sprite(300, 380, (g, w, h) => {
+    const R = rnd(601 + v);
+    g.strokeStyle = '#4a342a'; g.lineCap = 'round';
+    const branch = (x, y, a, len, wd, d) => {
+      const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len;
+      g.lineWidth = wd; g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke();
+      if (d > 0) { branch(x2, y2, a - 0.45 - R() * 0.3, len * 0.72, wd * 0.68, d - 1); branch(x2, y2, a + 0.4 + R() * 0.3, len * 0.72, wd * 0.68, d - 1); }
+      else for (let i = 0; i < 9; i++) blob(g, x2 + (R() - 0.5) * 34, y2 + (R() - 0.5) * 30, 5 + R() * 7, R() < 0.5 ? '#f8d7df' : (R() < 0.5 ? '#fff4f4' : '#efb6c4'));
+    };
+    branch(w / 2, h, -Math.PI / 2, 110, 16, 4);
+  }));
+  // изба с резными наличниками
+  SPR.izba = [0, 1].map(v => sprite(420, 340, (g, w, h) => {
+    const body = v ? '#6b4a2e' : '#7a5433';
+    g.fillStyle = body; g.fillRect(40, 130, 340, 200);
+    g.strokeStyle = 'rgba(40,24,14,.55)'; g.lineWidth = 3;
+    for (let y = 145; y < 330; y += 22) { g.beginPath(); g.moveTo(40, y); g.lineTo(380, y); g.stroke(); }
+    g.fillStyle = v ? '#3d2a1e' : '#5a3a26';
+    g.beginPath(); g.moveTo(20, 136); g.lineTo(w / 2, 20); g.lineTo(w - 20, 136); g.fill();
+    g.fillStyle = '#f3ead8'; g.beginPath(); g.moveTo(w / 2 - 36, 118); g.lineTo(w / 2, 70); g.lineTo(w / 2 + 36, 118); g.fill();
+    [[110, 190], [270, 190]].forEach(([x, y]) => {
+      g.fillStyle = '#f3ead8'; g.fillRect(x - 36, y - 40, 72, 92);
+      g.fillStyle = v ? '#ffd27a' : '#3f5f74'; g.fillRect(x - 24, y - 26, 48, 64);
+      g.fillStyle = '#f3ead8'; g.fillRect(x - 2, y - 26, 4, 64); g.fillRect(x - 24, y + 4, 48, 4);
+      g.fillStyle = '#e46a3a'; g.beginPath(); g.moveTo(x - 42, y - 40); g.lineTo(x, y - 64); g.lineTo(x + 42, y - 40); g.fill();
+    });
+  }));
+  // избушка в снегу со светящимся окном
+  SPR.cabin = [sprite(380, 320, (g, w, h) => {
+    g.fillStyle = '#2d2018'; g.fillRect(40, 140, 300, 170);
+    g.fillStyle = '#ffcf7a'; g.fillRect(150, 190, 70, 60); g.fillStyle = '#2d2018'; g.fillRect(183, 190, 5, 60); g.fillRect(150, 218, 70, 4);
+    const grd = g.createRadialGradient(185, 220, 10, 185, 220, 120); grd.addColorStop(0, 'rgba(255,200,110,.35)'); grd.addColorStop(1, 'rgba(255,200,110,0)');
+    g.fillStyle = grd; g.fillRect(40, 120, 300, 200);
+    g.fillStyle = '#1c140f'; g.beginPath(); g.moveTo(20, 150); g.lineTo(w / 2, 40); g.lineTo(w - 20, 150); g.fill();
+    g.fillStyle = '#e8eef8'; g.beginPath(); g.moveTo(14, 152); g.lineTo(w / 2, 34); g.lineTo(w - 14, 152); g.lineTo(w - 50, 140); g.lineTo(w / 2, 62); g.lineTo(50, 140); g.fill();
+    g.fillStyle = '#dfe6f2'; g.fillRect(20, 300, 340, 20);
+  })];
+  // стог сена
+  SPR.hay = [sprite(260, 220, (g, w, h) => {
+    g.fillStyle = '#c99a42'; g.beginPath(); g.moveTo(20, h); g.quadraticCurveTo(w / 2, -40, w - 20, h); g.fill();
+    g.strokeStyle = 'rgba(120,80,20,.45)'; g.lineWidth = 3;
+    for (let i = 0; i < 16; i++) { g.beginPath(); g.moveTo(40 + i * 12, h); g.quadraticCurveTo(w / 2, 20 + i * 3, w - 40 - i * 4, h - 30 - i * 3); g.stroke(); }
+  })];
+  // морской маяк
+  SPR.lighthouse = [sprite(200, 640, (g, w, h) => {
+    g.fillStyle = '#f7f1e8'; g.beginPath(); g.moveTo(60, h); g.lineTo(80, 120); g.lineTo(120, 120); g.lineTo(140, h); g.fill();
+    g.fillStyle = '#c8433a'; [180, 320, 460].forEach(y => { g.beginPath(); g.moveTo(71 - (h - y) * -0.02, y); g.lineTo(129 + (h - y) * -0.02, y); g.lineTo(131, y + 60); g.lineTo(69, y + 60); g.fill(); });
+    g.fillStyle = '#2f2f36'; g.fillRect(74, 96, 52, 26);
+    g.fillStyle = '#fff1b8'; g.fillRect(82, 70, 36, 28);
+    g.fillStyle = '#2f2f36'; g.beginPath(); g.moveTo(74, 72); g.lineTo(w / 2, 40); g.lineTo(126, 72); g.fill();
+  })];
+  // верстовой столб
+  SPR.post = [sprite(60, 200, (g, w, h) => {
+    g.fillStyle = '#f4efe6'; g.fillRect(18, 20, 24, h - 20);
+    g.fillStyle = '#1f1f24'; for (let y = 30; y < h; y += 34) g.fillRect(18, y, 24, 16);
+  })];
+  // куст
+  SPR.bush = [0, 1].map(v => sprite(200, 120, (g, w, h) => {
+    const R = rnd(801 + v);
+    for (let i = 0; i < 26; i++) blob(g, 40 + R() * 120, 60 + R() * 50, 14 + R() * 18, v ? '#7a6a2a' : '#5c6b2c');
+  }));
+  // машины: вид сзади
+  const car = (body, roof, seed) => sprite(260, 170, (g, w, h) => {
+    g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(w / 2, h - 8, 118, 12, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#16161a'; g.fillRect(30, h - 44, 36, 36); g.fillRect(w - 66, h - 44, 36, 36);
+    g.fillStyle = body;
+    g.beginPath(); g.moveTo(18, h - 26); g.lineTo(22, 78); g.quadraticCurveTo(w / 2, 62, w - 22, 78); g.lineTo(w - 18, h - 26); g.closePath(); g.fill();
+    g.fillStyle = roof;
+    g.beginPath(); g.moveTo(52, 80); g.lineTo(72, 22); g.quadraticCurveTo(w / 2, 12, w - 72, 22); g.lineTo(w - 52, 80); g.fill();
+    g.fillStyle = '#2b3440'; g.beginPath(); g.moveTo(62, 76); g.lineTo(78, 32); g.quadraticCurveTo(w / 2, 24, w - 78, 32); g.lineTo(w - 62, 76); g.fill();
+    g.fillStyle = '#c9ced6'; g.fillRect(18, h - 36, w - 36, 9);
+    g.fillStyle = '#d7412f'; g.fillRect(24, 92, 34, 16); g.fillRect(w - 58, 92, 34, 16);
+    g.fillStyle = '#f3efe6'; g.fillRect(w / 2 - 26, 112, 52, 16);
+  });
+  SPR.cars = [car('#c8b89a', '#b7a888'), car('#6d8fb0', '#5c7ea0'), car('#a4453a', '#8f3a31'), car('#e3dccd', '#cfc7b6'), car('#4f6b4a', '#435d3f')];
+  // грузовик
+  SPR.truck = [sprite(300, 280, (g, w, h) => {
+    g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(w / 2, h - 8, 132, 13, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#16161a'; g.fillRect(30, h - 48, 44, 40); g.fillRect(w - 74, h - 48, 44, 40);
+    g.fillStyle = '#6a7a52'; g.fillRect(14, 20, w - 28, h - 70);
+    g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 4; for (let x = 40; x < w - 20; x += 36) { g.beginPath(); g.moveTo(x, 24); g.lineTo(x, h - 54); g.stroke(); }
+    g.fillStyle = '#c9ced6'; g.fillRect(14, h - 56, w - 28, 10);
+    g.fillStyle = '#d7412f'; g.fillRect(22, h - 80, 30, 14); g.fillRect(w - 52, h - 80, 30, 14);
+  })];
+}
+
+// щит над развилкой: две стрелки и названия
+function forkSign(left, right) {
+  return sprite(1200, 420, (g, w, h) => {
+    g.fillStyle = '#2e3a33'; g.fillRect(60, 120, 18, h - 120); g.fillRect(w - 78, 120, 18, h - 120);
+    g.fillStyle = '#1f5f45'; g.fillRect(40, 20, w - 80, 190);
+    g.strokeStyle = '#f4f1e8'; g.lineWidth = 7; g.strokeRect(54, 34, w - 108, 162);
+    g.fillStyle = '#f4f1e8'; g.font = '400 64px "Yeseva One", Georgia, serif'; g.textBaseline = 'middle';
+    g.textAlign = 'left'; g.fillText(left, 180, 115);
+    g.textAlign = 'right'; g.fillText(right, w - 180, 115);
+    const arrow = (x, dir) => { g.beginPath(); g.moveTo(x, 115); g.lineTo(x + dir * 60, 75); g.lineTo(x + dir * 60, 100); g.lineTo(x + dir * 100, 100); g.lineTo(x + dir * 100, 130); g.lineTo(x + dir * 60, 130); g.lineTo(x + dir * 60, 155); g.closePath(); g.fill(); };
+    arrow(76, 1); arrow(w - 76, -1);
+    g.fillRect(w / 2 - 3, 50, 6, 130);
+  });
+}
+function finishBanner() {
+  return sprite(1200, 460, (g, w, h) => {
+    g.fillStyle = '#f7f1e8'; g.fillRect(60, 60, 16, h - 60); g.fillRect(w - 76, 60, 16, h - 60);
+    const cs = 30;
+    for (let y = 0; y < 3; y++) for (let x = 0; x < (w - 120) / cs; x++) { g.fillStyle = (x + y) % 2 ? '#1c1c20' : '#fbf6ef'; g.fillRect(60 + x * cs, 40 + y * cs, cs, cs); }
+    g.fillStyle = '#fbf6ef'; g.font = '400 70px "Yeseva One", Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('Море', w / 2, 200);
+  });
+}
+
+/* =====================================================================
+   Трасса: сегменты добавляются по этапам
+   ===================================================================== */
+let segs = [];
+const lastY = () => segs.length ? segs[segs.length - 1].p2.world.y : 0;
+function addSegment(curve, y, biome, info) {
+  const n = segs.length;
+  segs.push({
+    index: n,
+    p1: { world: { y: lastY(), z: n * SEG }, camera: {}, screen: {} },
+    p2: { world: { y, z: (n + 1) * SEG }, camera: {}, screen: {} },
+    curve, sprites: [], cars: [], biome: info.biome, prev: info.prev, t: info.t,
+    fork: info.fork || null, stage: info.stage, ox: info.ox || 0
+  });
+}
+const easeIn = (a, b, p) => a + (b - a) * Math.pow(p, 2);
+const easeInOut = (a, b, p) => a + (b - a) * ((-Math.cos(p * Math.PI) / 2) + 0.5);
+
+let buildInfo = null;
+function addRoad(enter, hold, leave, curve, height) {
+  const startY = lastY(), endY = startY + height * SEG, total = enter + hold + leave;
+  for (let n = 0; n < enter; n++) addSegment(easeIn(0, curve, n / enter), easeInOut(startY, endY, n / total), null, nextInfo());
+  for (let n = 0; n < hold; n++) addSegment(curve, easeInOut(startY, endY, (enter + n) / total), null, nextInfo());
+  for (let n = 0; n < leave; n++) addSegment(easeInOut(curve, 0, n / leave), easeInOut(startY, endY, (enter + hold + n) / total), null, nextInfo());
+}
+function nextInfo() {
+  const b = buildInfo;
+  const k = b.count++;
+  return { biome: b.biome, prev: b.prev, t: b.prev ? Math.min(1, k / 180) : 1, stage: b.stage, ox: b.ox };
+}
+
+let stages = [];   // построенные этапы по порядку
+function nextOptions() {
+  const visited = stages.map(st => st.biome);
+  const opts = ['taiga', 'steppe'].filter(b => !visited.includes(b));
+  if (visited.length >= 2) opts.push('sea');
+  return opts.slice(0, 2);
+}
+function buildStage(biome, prev, final, ox) {
+  const stageNo = stages.length;
+  const R = rnd(1000 + stageNo * 97 + biome.length * 13);
+  buildInfo = { biome, prev, count: 0, stage: stageNo, ox };
+  const startIndex = segs.length;
+  const rec = { biome, start: startIndex, end: 0, final };
+  stages.push(rec);
+  // рисунок дороги: повороты и холмы
+  const parts = final ? 7 : 11;
+  addRoad(40, 60, 40, 0, 0);
+  for (let i = 0; i < parts; i++) {
+    const c = (R() < 0.5 ? -1 : 1) * (1 + R() * 4.2), hgt = (R() - 0.5) * (biome === 'steppe' ? 20 : biome === 'taiga' ? 50 : 60);
+    const len = 40 + (R() * 50 | 0);
+    addRoad(len, len + (R() * 60 | 0), len, R() < 0.2 ? 0 : c, hgt);
+  }
+  addRoad(50, 50, 50, 0, -lastY() / SEG * 0.6);
+  const endIndex = segs.length;
+  decorate(startIndex, endIndex, biome, R);
+  addTraffic(startIndex + 60, endIndex - 20, biome, R, final ? 10 : 16);
+  if (final) {
+    addRoad(40, 120, 40, 0, 0);
+    const mid = segs.length - 90;
+    segs[mid].sprites.push({ src: finishBanner(), off: 0, w: 3.6, finish: true });
+    segs[mid + 12].sprites.push({ src: SPR.lighthouse[0], off: -3.4, w: 1.3 });
+    addRoad(0, 420, 0, 0, 0);      // запас дороги за финишем
+    for (let i = mid - 110; i < segs.length; i += 6) segs[i].sprites.push({ src: pick(SPR.cypress, R), off: 1.5 + R() * 0.8, w: 0.55 });
+    rec.finishIndex = mid; rec.end = segs.length;
+    return;
+  }
+  const opts = nextOptions();
+  if (opts.length < 2) {           // все биомы пройдены — дорога сама выводит к морю
+    rec.end = segs.length;
+    buildStage('sea', biome, true, ox);
+    return;
+  }
+  const [L, Rr] = opts;
+  addRoad(20, 30, 0, 0, 0);
+  segs[segs.length - 22].sprites.push({ src: forkSign(shortName(L), shortName(Rr)), off: 0, w: 4.2, sign: [shortName(L), shortName(Rr)] });
+  const forkStart = segs.length;
+  for (let i = 0; i < FORK_LEN; i++) addSegment(0, lastY(), null, { biome, prev: null, t: 1, stage: stageNo, ox, fork: { i, left: L, right: Rr } });
+  // по сторонам веток — пейзаж того биома, куда ведёт ветка
+  for (let i = forkStart + 6; i < forkStart + FORK_LEN - 30; i += 4) {
+    const sg = segs[i];
+    sg.sprites.push(decoSprite(L, R, -1, true));
+    sg.sprites.push(decoSprite(Rr, R, 1, true));
+    if (sg.fork.i > 96 && i % 12 === 0) sg.sprites.push({ src: pick(SPR.bush, R), off: 0, w: 0.7, median: true });
+  }
+  rec.forkStart = forkStart; rec.left = L; rec.right = Rr; rec.end = segs.length;
+}
+const shortName = b => ({ autumn: 'Осень', taiga: 'Тайга', steppe: 'Степь', sea: 'Море' })[b];
+const pick = (arr, R) => arr[(R() * arr.length) | 0];
+
+function decoSprite(biome, R, side, branch) {
+  const off = side * ((branch ? 1.25 : 1.2) + R() * 1.6);
+  switch (biome) {
+    case 'autumn': return R() < 0.08 ? { src: SPR.hay[0], off: side * (1.6 + R()), w: 0.7 } : { src: pick(SPR.birch, R), off, w: 0.8 + R() * 0.3 };
+    case 'taiga': return R() < 0.05 ? { src: SPR.cabin[0], off: side * (2 + R()), w: 1.3 } : { src: pick(SPR.snowfir, R), off, w: 0.85 + R() * 0.35 };
+    case 'steppe': return R() < 0.6 ? { src: pick(SPR.sunflower, R), off: side * (1.15 + R() * 2.4), w: 0.28 + R() * 0.08 } : { src: pick(SPR.bush, R), off, w: 0.6 };
+    default: return R() < 0.55 ? { src: pick(SPR.cypress, R), off: side * (1.3 + R() * 1.2), w: 0.5 } : { src: pick(SPR.almond, R), off: side * (1.5 + R() * 1.6), w: 0.9 };
+  }
+}
+function decorate(a, b, biome, R) {
+  for (let i = a + 10; i < b; i++) {
+    const s = segs[i];
+    if (biome === 'autumn') {
+      if (i % 3 === 0) s.sprites.push(decoSprite(biome, R, R() < 0.5 ? -1 : 1));
+      if (i % 5 === 0) s.sprites.push(decoSprite(biome, R, R() < 0.5 ? -1 : 1));
+      if (i % 170 === 40) s.sprites.push({ src: pick(SPR.izba, R), off: (R() < 0.5 ? -1 : 1) * 2.2, w: 1.6 });
+    } else if (biome === 'taiga') {
+      if (i % 2 === 0) s.sprites.push(decoSprite(biome, R, -1));
+      if (i % 2 === 1) s.sprites.push(decoSprite(biome, R, 1));
+    } else if (biome === 'steppe') {
+      for (let k = 0; k < 2; k++) if (R() < 0.5) s.sprites.push(decoSprite(biome, R, R() < 0.5 ? -1 : 1));
+      if (i % 22 === 0) s.sprites.push({ src: SPR.pole[0], off: -1.3, w: 0.26, pole: true });
+    } else {
+      if (i % 3 === 0) s.sprites.push(decoSprite(biome, R, 1));
+      if (i % 7 === 0) s.sprites.push({ src: pick(SPR.cypress, R), off: -1.35, w: 0.45 });
+    }
+    if (i % 60 === 0) s.sprites.push({ src: SPR.post[0], off: 1.1, w: 0.1 });
+  }
+}
+let cars = [];
+const sweepCars = () => { cars = cars.filter(c => !c.dead); };
+function addTraffic(a, b, biome, R, n) {
+  for (let k = 0; k < n; k++) {
+    const i = a + ((R() * (b - a - 40)) | 0);
+    const truck = R() < 0.2;
+    const c = { off: (R() * 1.6 - 0.8), z: i * SEG, speed: MAX_SPEED * (truck ? 0.28 : 0.38 + R() * 0.2), src: truck ? SPR.truck[0] : pick(SPR.cars, R), w: truck ? 0.62 : 0.5 };
+    segs[i].cars.push(c); cars.push(c);
+  }
+}
+
+/* =====================================================================
+   Состояние игры
+   ===================================================================== */
+const S = {
+  pos: 0, speed: 0, x: 0, keys: {}, mode: 'intro', dist: 0, time: 0,
+  choice: null, overtakes: 0, skyOff: 0, farOff: 0, nearOff: 0, shake: 0
+};
+function reset() {
+  segs = []; cars = []; stages = [];
+  S.pos = 0; S.speed = 0; S.x = 0; S.dist = 0; S.time = 0; S.choice = null; S.overtakes = 0;
+  buildStage('autumn', null, false, 0);
+}
+
+/* =====================================================================
+   Фоновые слои: небо, дальние и ближние холмы — по биомам
+   ===================================================================== */
+const BG = {};
+function makeBackgrounds() {
+  const bw = 2048, bh = 512;
+  for (const [key, b] of Object.entries(BIOMES)) {
+    const R = rnd(key.length * 99);
+    BG[key] = {
+      far: sprite(bw, bh, (g, w, h) => {
+        g.fillStyle = b.far;
+        g.beginPath(); g.moveTo(0, h);
+        for (let x = 0; x <= w; x += 8) {
+          const t = x / w * Math.PI * 2;
+          let y = h * 0.55 - Math.sin(t * 2 + 1) * 40 - Math.sin(t * 5 + 2) * 18 - Math.sin(t * 11) * 6;
+          if (key === 'taiga') y -= Math.abs(Math.sin(t * 7)) * 60;
+          if (key === 'steppe') y = h * 0.72 - Math.sin(t * 3) * 14 - Math.sin(t * 9) * 5;
+          g.lineTo(x, y);
+        }
+        g.lineTo(w, h); g.fill();
+        if (key === 'taiga') {   // снежные шапки
+          g.fillStyle = 'rgba(200,214,238,.35)';
+          for (let x = 0; x <= w; x += 8) { const t = x / w * Math.PI * 2; const y = h * 0.55 - Math.sin(t * 2 + 1) * 40 - Math.sin(t * 5 + 2) * 18 - Math.sin(t * 11) * 6 - Math.abs(Math.sin(t * 7)) * 60; g.fillRect(x, y, 8, 10); }
+        }
+        if (key === 'sea') {    // полоса моря у горизонта
+          g.fillStyle = '#4d8fbd'; g.fillRect(0, h * 0.64, w, h * 0.36);
+          g.fillStyle = 'rgba(255,240,230,.5)'; for (let i = 0; i < 90; i++) g.fillRect(R() * w, h * 0.64 + R() * 60, 20 + R() * 60, 2);
+        }
+      }),
+      near: sprite(bw, bh, (g, w, h) => {
+        g.fillStyle = b.near;
+        g.beginPath(); g.moveTo(0, h);
+        let y = h * 0.78;
+        for (let x = 0; x <= w; x += 4) {
+          if (key === 'autumn' || key === 'taiga') {
+            // лесная кромка: макушки деревьев
+            const top = h * 0.7 - Math.sin(x / w * Math.PI * 6) * 26 - Math.sin(x * 0.05) * 10 - R() * (key === 'taiga' ? 30 : 14);
+            y = y * 0.5 + top * 0.5;
+          } else if (key === 'steppe') {
+            y = h * 0.86 - Math.sin(x / w * Math.PI * 4) * 8;
+          } else {
+            y = h * 0.8 - Math.sin(x / w * Math.PI * 4 + 1) * 34 - Math.sin(x * 0.02) * 6;
+          }
+          g.lineTo(x, y);
+        }
+        g.lineTo(w, h); g.fill();
+        if (key === 'steppe') { // далёкий элеватор и столбы
+          g.fillStyle = b.nearDark; g.fillRect(1500, h * 0.62, 70, h * 0.3); g.fillRect(1570, h * 0.66, 40, h * 0.3); g.fillRect(1480, h * 0.6, 110, 14);
+        }
+        if (key === 'sea') for (let i = 0; i < 26; i++) { const x = R() * w; g.fillStyle = b.nearDark; g.beginPath(); g.ellipse(x, h * 0.74, 7, 34, 0, 0, Math.PI * 2); g.fill(); }
+      })
+    };
+  }
+}
+function drawSky(b, alpha) {
+  ctx.globalAlpha = alpha;
+  const g = ctx.createLinearGradient(0, 0, 0, H * 0.62);
+  g.addColorStop(0, b.sky[0]); g.addColorStop(0.6, b.sky[1]); g.addColorStop(1, b.sky[2]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const sx = ((b.sun || b.moon).x * W - S.skyOff * 0.2 * W) % (W * 1.4);
+  if (b.sun) {
+    const s = b.sun, y = s.y * H, r = s.r * Math.min(W, H) / 700;
+    const glow = ctx.createRadialGradient(sx, y, r * 0.5, sx, y, r * 6);
+    glow.addColorStop(0, s.glow); glow.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glow; ctx.fillRect(sx - r * 6, y - r * 6, r * 12, r * 12);
+    ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(sx, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  if (b.night) {
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < STARS.length; i++) {
+      const st = STARS[i], x = ((st[0] - S.skyOff * 0.05) % 1 + 1) % 1 * W, y = st[1] * H * 0.55;
+      ctx.globalAlpha = alpha * st[2] * (0.7 + 0.3 * Math.sin(S.time * 2 + i));
+      ctx.fillRect(x, y, st[3], st[3]);
+    }
+    ctx.globalAlpha = alpha;
+    const m = b.moon, mx = m.x * W, my = m.y * H, mr = m.r * Math.min(W, H) / 700;
+    const glow = ctx.createRadialGradient(mx, my, mr, mx, my, mr * 7);
+    glow.addColorStop(0, 'rgba(200,215,255,.25)'); glow.addColorStop(1, 'rgba(200,215,255,0)');
+    ctx.fillStyle = glow; ctx.fillRect(mx - mr * 7, my - mr * 7, mr * 14, mr * 14);
+    ctx.fillStyle = '#eef2fb'; ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(180,190,215,.5)'; ctx.beginPath(); ctx.arc(mx - mr * 0.3, my - mr * 0.2, mr * 0.22, 0, Math.PI * 2); ctx.fill();
+  }
+  // облака
+  if (!b.night) {
+    ctx.fillStyle = b === BIOMES.steppe ? 'rgba(255,150,110,.35)' : 'rgba(255,255,255,.55)';
+    CLOUDS.forEach(c => {
+      const x = (((c[0] - S.skyOff * 0.12) % 1.4) + 1.4) % 1.4 * W - 0.2 * W, y = c[1] * H * 0.4;
+      for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.ellipse(x + k * c[2] * 0.5 * W / 900, y - Math.sin(k * 1.3) * 8, c[2] * W / 900, c[2] * 0.36 * W / 900, 0, 0, Math.PI * 2); ctx.fill(); }
+    });
+  }
+  ctx.globalAlpha = 1;
+}
+function drawLayer(img, off, yTop, alpha) {
+  ctx.globalAlpha = alpha;
+  const h = H * 0.5, w = h * img.width / img.height, x0 = -((off % 1 + 1) % 1) * w;
+  for (let x = x0; x < W; x += w) ctx.drawImage(img, x, yTop, w + 1, h);
+  ctx.globalAlpha = 1;
+}
+const STARS = Array.from({ length: 160 }, (_, i) => { const R = rnd(i * 31 + 7); return [R(), R(), 0.3 + R() * 0.7, R() < 0.9 ? 1.2 : 2]; });
+const CLOUDS = Array.from({ length: 6 }, (_, i) => { const R = rnd(i * 17 + 3); return [R() * 1.4, 0.15 + R() * 0.6, 50 + R() * 60]; });
+
+/* =====================================================================
+   Проекция и отрисовка дороги
+   ===================================================================== */
+function project(p, camX, camY, camZ, offX) {
+  p.camera.x = (offX || 0) - camX;
+  p.camera.y = p.world.y - camY;
+  p.camera.z = p.world.z - camZ;
+  p.screen.scale = DEPTH / p.camera.z;
+  p.screen.x = W / 2 + p.screen.scale * p.camera.x * W / 2;
+  p.screen.y = H / 2 - p.screen.scale * p.camera.y * H / 2;
+  p.screen.w = p.screen.scale * ROAD * W / 2;
+}
+function poly(x1, y1, x2, y2, x3, y3, x4, y4, col) {
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.lineTo(x4, y4); ctx.closePath(); ctx.fill();
+}
+function segColors(seg, stripe) {
+  const B = BIOMES[seg.biome].rgb, P = seg.prev ? BIOMES[seg.prev].rgb : B, t = seg.t;
+  const m = (key, k) => rgb(mix(P[key][k], B[key][k], t));
+  return {
+    grass: m('grass', stripe), road: m('road', stripe), rumble: m('rumble', stripe),
+    lane: rgb(mix(P.lane, B.lane, t)), fog: mix(P.fog, B.fog, t),
+    sea: B.sea ? rgb(B.sea[stripe]) : null, seaT: B.sea ? t : 0
+  };
+}
+function fogged(col, fog, f) { return f; }
+function drawRoadPiece(x1, y1, w1, x2, y2, w2, c, stripe) {
+  y1 += 0.7;                                   // перекрываем соседний сегмент: без швов от сглаживания
+  const r1 = w1 / Math.max(6, 2 * LANES), r2 = w2 / Math.max(6, 2 * LANES);
+  poly(x1 - w1 - r1, y1, x1 - w1, y1, x2 - w2, y2, x2 - w2 - r2, y2, c.rumble);
+  poly(x1 + w1 + r1, y1, x1 + w1, y1, x2 + w2, y2, x2 + w2 + r2, y2, c.rumble);
+  poly(x1 - w1, y1, x1 + w1, y1, x2 + w2, y2, x2 - w2, y2, c.road);
+  if (stripe === 0) {
+    const l1 = w1 / 40, l2 = w2 / 40, lw1 = w1 * 2 / LANES, lw2 = w2 * 2 / LANES;
+    let lx1 = x1 - w1 + lw1, lx2 = x2 - w2 + lw2;
+    for (let lane = 1; lane < LANES; lane++, lx1 += lw1, lx2 += lw2) poly(lx1 - l1 / 2, y1, lx1 + l1 / 2, y1, lx2 + l2 / 2, y2, lx2 - l2 / 2, y2, c.lane);
+  }
+}
+
+function render() {
+  const baseIdx = Math.floor(S.pos / SEG), base = segs[baseIdx];
+  const basePct = (S.pos % SEG) / SEG;
+  const pIdx = Math.floor((S.pos + PLAYER_Z) / SEG), pSeg = segs[pIdx];
+  const pPct = ((S.pos + PLAYER_Z) % SEG) / SEG;
+  const playerY = pSeg.p1.world.y + (pSeg.p2.world.y - pSeg.p1.world.y) * pPct;
+
+  // небо и дальние слои: смешиваем текущий и прошлый биом
+  const cur = BIOMES[pSeg.biome], prev = pSeg.prev ? BIOMES[pSeg.prev] : null, t = pSeg.t;
+  if (prev && t < 1) drawSky(prev, 1);
+  drawSky(cur, prev && t < 1 ? t : 1);
+  const layerY = H * 0.5 - H * 0.36 + Math.min(0, playerY / 60000) * H;
+  if (prev && t < 1) { drawLayer(BG[pSeg.prev].far, S.farOff, layerY, 1); }
+  drawLayer(BG[pSeg.biome].far, S.farOff, layerY, prev && t < 1 ? t : 1);
+  if (prev && t < 1) { drawLayer(BG[pSeg.prev].near, S.nearOff, layerY + H * 0.04, 1); }
+  drawLayer(BG[pSeg.biome].near, S.nearOff, layerY + H * 0.04, prev && t < 1 ? t : 1);
+
+  let maxY = H, x = 0, dx = -(base.curve * basePct);
+  const camX = (camCenter(pSeg) + S.x) * ROAD;
+
+  for (let n = 0; n < DRAW; n++) {
+    const seg = segs[baseIdx + n];
+    if (!seg) break;
+    seg.clip = maxY;
+    const fogF = Math.pow(n / DRAW, 1.7);
+    seg.fogF = fogF;
+    const o1 = roadOffset(seg, 0), o2 = roadOffset(seg, 1);
+    project(seg.p1, camX - x, playerY + CAM_H, S.pos, 0);
+    project(seg.p2, camX - x - dx, playerY + CAM_H, S.pos, 0);
+    x += dx; dx += seg.curve;
+    if (seg.p1.camera.z <= DEPTH || seg.p2.screen.y >= seg.p1.screen.y || seg.p2.screen.y >= maxY) continue;
+
+    const stripe = Math.floor(seg.index / 3) % 2;
+    const c = segColors(seg, stripe);
+    const fogCol = rgb(c.fog);
+    const y1 = seg.p1.screen.y, y2 = seg.p2.screen.y, s1 = seg.p1.screen, s2 = seg.p2.screen;
+    // земля
+    ctx.fillStyle = c.grass; ctx.fillRect(0, y2, W, y1 - y2 + 1);
+    if (c.sea) { // море слева от дороги
+      ctx.globalAlpha = c.seaT;
+      const sx1 = s1.x + s1.scale * o1.center * ROAD * W / 2 - s1.w * 1.9, sx2 = s2.x + s2.scale * o2.center * ROAD * W / 2 - s2.w * 1.9;
+      poly(0, y1, sx1, y1, sx2, y2, 0, y2, c.sea);
+      poly(sx1, y1, sx1 + s1.w * 0.25, y1, sx2 + s2.w * 0.25, y2, sx2, y2, stripe ? '#f4eee3' : '#e8e0d0');
+      ctx.globalAlpha = 1;
+    }
+    // дорога (одна или две ветки на развилке)
+    for (const br of o1.branches) {
+      const bx1 = s1.x + s1.scale * br.a * ROAD * W / 2, bx2 = s2.x + s2.scale * (o2.branches.find(b => b.side === br.side) || br).a * ROAD * W / 2;
+      drawRoadPiece(bx1, y1, s1.w, bx2, y2, s2.w, c, stripe);
+    }
+    // туман
+    if (fogF > 0.02) { ctx.globalAlpha = Math.min(1, fogF); ctx.fillStyle = fogCol; ctx.fillRect(0, y2, W, y1 - y2 + 1); ctx.globalAlpha = 1; }
+    maxY = y1;
+  }
+
+  // спрайты и машины: от дальних к ближним
+  for (let n = DRAW - 1; n > 0; n--) {
+    const seg = segs[baseIdx + n];
+    if (!seg || seg.p1.camera.z <= DEPTH) continue;
+    const sc = seg.p1.screen.scale, fogA = 1 - Math.min(1, seg.fogF * 1.05);
+    if (fogA <= 0.02) continue;
+    ctx.globalAlpha = fogA;
+    const o = roadOffset(seg, 0);
+    for (const c of seg.cars) {
+      const cx = seg.p1.screen.x + sc * (o.center + c.off) * ROAD * W / 2;
+      drawSprite(c.src, c.w, sc, cx, seg.p1.screen.y, -0.5, seg.clip);
+    }
+    for (const sp of seg.sprites) {
+      let offc = o.center;
+      if (seg.fork && !sp.median) { const br = o.branches.find(b => Math.sign(b.side) === Math.sign(sp.off)); if (br) offc = br.a; else continue; }
+      if (sp.sign || sp.median || sp.finish) offc = o.center;
+      const sx = seg.p1.screen.x + sc * (offc + sp.off) * ROAD * W / 2;
+      drawSprite(sp.src, sp.w, sc, sx, seg.p1.screen.y, sp.off < 0 ? -1 : sp.off > 0 ? 0 : -0.5, seg.clip);
+      if (sp.pole) poleWire(seg, n, sx, sc);
+    }
+    ctx.globalAlpha = 1;
+  }
+  wires.length = 0;
+  drawPlayer();
+  drawParticles(cur);
+  if (cur.night) nightLights(pSeg.t, prev);
+}
+// смещение веток развилки от её центра (в полуширинах дороги)
+function forkOffset(seg, side) {
+  const f = seg.fork;
+  if (!f) return 0;
+  let d = FORK_D * smooth01(f.i / 70);
+  if (S.choice && side !== S.choice.side && f.i > S.choice.i + 15) d += Math.pow((f.i - S.choice.i - 15) / 30, 2) * 1.2;
+  return d;
+}
+function roadOffset(seg, edge) {
+  const f = seg.fork, c = seg.ox;
+  if (!f) return { center: c, branches: [{ side: 0, a: c }] };
+  const fi = { fork: { ...f, i: f.i + edge } };
+  const dl = forkOffset(fi, -1), dr = forkOffset(fi, 1);
+  const br = [];
+  if (!S.choice || S.choice.side === -1 || dl < 9) br.push({ side: -1, a: c - dl });
+  if (!S.choice || S.choice.side === 1 || dr < 9) br.push({ side: 1, a: c + dr });
+  return { center: c, branches: br };
+}
+// центр дороги под машиной: до выбора — центр развилки, после — выбранная ветка
+function camCenter(seg) {
+  return seg.ox + (seg.fork && S.choice ? S.choice.side * forkOffset(seg, S.choice.side) : 0);
+}
+const smooth01 = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+const wires = [];
+function poleWire(seg, n, sx, sc) {
+  const top = seg.p1.screen.y - sc * 0.26 * ROAD * W / 2 * (640 / 90) * 0.9;
+  const prevW = wires[wires.length - 1];
+  if (prevW && prevW.n > n) {
+    ctx.strokeStyle = 'rgba(40,20,20,.55)'; ctx.lineWidth = Math.max(1, sc * 3000);
+    ctx.beginPath(); ctx.moveTo(prevW.x, prevW.y); ctx.quadraticCurveTo((prevW.x + sx) / 2, Math.max(prevW.y, top) + 10 * sc * 3000, sx, top); ctx.stroke();
+  }
+  wires.push({ n, x: sx, y: top });
+}
+function drawSprite(img, wWorld, scale, x, y, offX, clipY) {
+  const dw = wWorld * scale * ROAD * W / 2, dh = dw * img.height / img.width;
+  const dx = x + dw * offX, dy = y - dh;
+  if (dw < 0.5 || dx > W || dx + dw < 0) return;
+  const clipH = clipY ? Math.max(0, dy + dh - clipY) : 0;
+  if (clipH >= dh) return;
+  ctx.drawImage(img, 0, 0, img.width, img.height - img.height * clipH / dh, dx, dy, dw, dh - clipH);
+}
+
+/* ---------- машина игрока ---------- */
+const PLAYER = { img: null, lights: null };
+function makePlayer() {
+  PLAYER.img = sprite(420, 250, (g, w, h) => {
+    g.fillStyle = 'rgba(0,0,0,.38)'; g.beginPath(); g.ellipse(w / 2, h - 10, 196, 18, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#141418'; g.fillRect(44, h - 62, 62, 52); g.fillRect(w - 106, h - 62, 62, 52);
+    const body = g.createLinearGradient(0, 90, 0, h - 30); body.addColorStop(0, '#f1e3c4'); body.addColorStop(1, '#c9b48a');
+    g.fillStyle = body;
+    g.beginPath(); g.moveTo(26, h - 40); g.lineTo(30, 118); g.quadraticCurveTo(w / 2, 92, w - 30, 118); g.lineTo(w - 26, h - 40); g.quadraticCurveTo(w / 2, h - 26, 26, h - 40); g.fill();
+    g.fillStyle = '#e7d8b6'; g.beginPath(); g.moveTo(84, 122); g.lineTo(112, 36); g.quadraticCurveTo(w / 2, 20, w - 112, 36); g.lineTo(w - 84, 122); g.fill();
+    g.fillStyle = '#26303b'; g.beginPath(); g.moveTo(98, 116); g.lineTo(120, 50); g.quadraticCurveTo(w / 2, 38, w - 120, 50); g.lineTo(w - 98, 116); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.moveTo(130, 56); g.lineTo(170, 50); g.lineTo(140, 110); g.lineTo(108, 112); g.fill();
+    g.fillStyle = '#d6dbe2'; g.fillRect(26, h - 58, w - 52, 12);
+    g.fillStyle = '#b8bec8'; g.fillRect(w / 2 - 40, 172, 80, 22);
+    g.fillStyle = '#26303b'; g.font = '700 16px Manrope, sans-serif'; g.textAlign = 'center'; g.fillText('А 777 ВЕ', w / 2, 189);
+    g.fillStyle = '#8b2a22'; g.fillRect(36, 138, 58, 26); g.fillRect(w - 94, 138, 58, 26);
+  });
+  PLAYER.lights = sprite(420, 250, (g, w, h) => {
+    const glow = (x) => { const r = g.createRadialGradient(x, 151, 4, x, 151, 70); r.addColorStop(0, 'rgba(255,70,50,.95)'); r.addColorStop(1, 'rgba(255,40,30,0)'); g.fillStyle = r; g.fillRect(x - 70, 81, 140, 140); };
+    glow(65); glow(w - 65);
+    g.fillStyle = '#ff5a44'; g.fillRect(36, 138, 58, 26); g.fillRect(w - 94, 138, 58, 26);
+  });
+}
+function drawPlayer() {
+  const w = Math.min(W * 0.36, 420 * (W / 1440) * 1.15), h = w * 250 / 420;
+  const bounce = S.speed > 0 ? Math.sin(S.time * 24) * (S.speed / MAX_SPEED) * 1.5 * (offRoad() ? 3 : 1) : 0;
+  const x = W / 2 - w / 2, y = H - h - H * 0.035 + bounce + S.shake;
+  const steer = (S.keys.left ? -1 : 0) + (S.keys.right ? 1 : 0);
+  ctx.save();
+  ctx.translate(x + w / 2, y + h);
+  ctx.rotate(steer * 0.022 * Math.min(1, S.speed / (MAX_SPEED * 0.3)));
+  ctx.drawImage(PLAYER.img, -w / 2, -h, w, h);
+  if (S.keys.down || BIOMES[segs[Math.floor((S.pos + PLAYER_Z) / SEG)].biome].night) {
+    ctx.globalAlpha = S.keys.down ? 1 : 0.55;
+    ctx.drawImage(PLAYER.lights, -w / 2, -h, w, h);
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+function offRoad() {
+  const seg = segs[Math.floor((S.pos + PLAYER_Z) / SEG)];
+  if (!seg) return false;
+  if (seg.fork && !S.choice) {
+    const o = roadOffset(seg, 0);
+    return !o.branches.some(b => Math.abs(seg.ox + S.x - b.a) <= 1);
+  }
+  return Math.abs(S.x) > 1;
+}
+
+/* ---------- ночь: фары ---------- */
+function nightLights(t, prev) {
+  const k = prev ? t : 1;
+  ctx.globalCompositeOperation = 'lighter';
+  const cx = W / 2, cy = H * 0.66;
+  const g = ctx.createRadialGradient(cx, cy + H * 0.12, 10, cx, cy, W * 0.42);
+  g.addColorStop(0, `rgba(255,236,190,${0.2 * k})`); g.addColorStop(1, 'rgba(255,236,190,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(cx - W * 0.1, H); ctx.lineTo(cx - W * 0.42, H * 0.54); ctx.lineTo(cx + W * 0.42, H * 0.54); ctx.lineTo(cx + W * 0.1, H); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/* ---------- частицы: листья, снег, пух, чайки ---------- */
+const PARTS = Array.from({ length: 90 }, (_, i) => { const R = rnd(i * 13 + 1); return { x: R(), y: R(), s: R(), r: R() * 6.28, v: 0.3 + R() * 0.7 }; });
+function drawParticles(b) {
+  const sp = S.speed / MAX_SPEED;
+  for (const p of PARTS) {
+    let x, y;
+    if (b === BIOMES.autumn) {
+      p.y += 0.0016 * p.v + 0.001 * sp; p.x -= 0.0015 * p.v * (1 + sp * 2); p.r += 0.05 * p.v;
+      x = ((p.x % 1) + 1) % 1 * W; y = (p.y % 1) * H;
+      ctx.fillStyle = p.s < 0.5 ? '#e9a73c' : '#d9772c';
+      ctx.save(); ctx.translate(x, y); ctx.rotate(p.r); ctx.beginPath(); ctx.ellipse(0, 0, 5 + p.s * 4, 2.5 + p.s * 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    } else if (b === BIOMES.taiga) {
+      p.y += 0.0022 * p.v + 0.004 * sp; p.x += Math.sin(S.time + p.r) * 0.0006 - 0.002 * sp * (p.x - 0.5);
+      x = ((p.x % 1) + 1) % 1 * W; y = (p.y % 1) * H;
+      ctx.fillStyle = `rgba(240,245,255,${0.5 + p.s * 0.5})`; ctx.fillRect(x, y, 1.5 + p.s * 2.5, 1.5 + p.s * 2.5);
+    } else if (b === BIOMES.steppe) {
+      p.y -= 0.0004 * p.v; p.x -= 0.0009 * p.v * (1 + sp * 2);
+      x = ((p.x % 1) + 1) % 1 * W; y = ((p.y % 1) + 1) % 1 * H * 0.8;
+      ctx.fillStyle = 'rgba(255,236,200,.55)'; ctx.fillRect(x, y, 2, 2);
+    } else if (p.s < 0.08) {
+      p.x -= 0.0007 * p.v; x = ((p.x % 1) + 1) % 1 * W; y = 0.12 * H + p.y * H * 0.2 + Math.sin(S.time * 2 + p.r) * 6;
+      ctx.strokeStyle = 'rgba(60,60,70,.7)'; ctx.lineWidth = 1.6; const f = Math.sin(S.time * 7 + p.r) * 4;
+      ctx.beginPath(); ctx.moveTo(x - 9, y + f); ctx.quadraticCurveTo(x - 4, y - 4, x, y); ctx.quadraticCurveTo(x + 4, y - 4, x + 9, y + f); ctx.stroke();
+    }
+  }
+}
+
+/* =====================================================================
+   Обновление мира
+   ===================================================================== */
+function update(dt) {
+  const pIdx = Math.floor((S.pos + PLAYER_Z) / SEG), pSeg = segs[pIdx];
+  const speedPct = S.speed / MAX_SPEED;
+  const dx = dt * 2 * speedPct;
+  const auto = S.mode !== 'play';
+
+  // автопилот на заставке: держим полосу и выбираем ветку
+  if (auto) {
+    const side = pSeg.stage % 2 ? 1 : -1;
+    const target = pSeg.fork && !S.choice ? side * forkOffset(pSeg, side) - 0.33 : -0.33;
+    const look = segs[pIdx + 25];
+    const curveAhead = look ? look.curve : 0;
+    S.keys.left = S.x > target + 0.08 + curveAhead * 0.02;
+    S.keys.right = S.x < target - 0.08 + curveAhead * 0.02;
+    S.keys.up = S.mode === 'intro' && S.speed < MAX_SPEED * 0.72; S.keys.down = false;
+  } else if (coarse) S.keys.up = !S.keys.down;
+
+  S.pos += dt * S.speed;
+  if (S.keys.left) S.x -= dx; else if (S.keys.right) S.x += dx;
+  S.x -= dx * speedPct * pSeg.curve * CENTRIFUGAL;
+
+  if (S.keys.up) S.speed += ACCEL * dt;
+  else if (S.keys.down) S.speed += BRAKE * dt;
+  else S.speed += DECEL * dt;
+
+  const off = offRoad();
+  if (off && S.speed > OFF_LIMIT) S.speed += OFF_DECEL * dt;
+  // столкновения со спрайтами за обочиной
+  if (off) {
+    const o = roadOffset(pSeg, 0), px = camCenter(pSeg) + S.x;
+    for (const sp of pSeg.sprites) {
+      if (sp.w < 0.2 || sp.sign) continue;
+      let offc = o.center;
+      if (pSeg.fork && !sp.median) { const br = o.branches.find(b => Math.sign(b.side) === Math.sign(sp.off)); offc = br ? br.a : o.center; }
+      if (Math.abs((offc + sp.off) - px) < sp.w * 0.45) { S.speed = MAX_SPEED / 6; S.shake = 6; S.pos = pSeg.p1.world.z - PLAYER_Z; break; }
+    }
+  }
+  // машины на дороге
+  for (const c of cars) {
+    const oldSeg = Math.floor(c.z / SEG);
+    c.z += c.speed * dt;
+    const ns = Math.floor(c.z / SEG);
+    if (!segs[ns] || segs[ns].fork) { const a = segs[oldSeg] ? segs[oldSeg].cars : null; if (a && a.includes(c)) a.splice(a.indexOf(c), 1); c.dead = true; continue; }
+    if (ns !== oldSeg && segs[oldSeg] && segs[ns]) {
+      const a = segs[oldSeg].cars; a.splice(a.indexOf(c), 1); segs[ns].cars.push(c);
+    }
+    if (ns === pIdx && S.speed > c.speed && Math.abs(S.x - c.off) < 0.75) {
+      S.speed = c.speed * 0.6; S.shake = 8; S.pos = c.z - PLAYER_Z - SEG * 0.8;
+    }
+    if (!c.passed && c.z < S.pos + PLAYER_Z - SEG) { c.passed = true; S.overtakes++; }
+  }
+  S.x = Math.max(-4.5, Math.min(4.5, S.x));
+  S.speed = Math.max(0, Math.min(MAX_SPEED, S.speed));
+  S.shake *= Math.exp(-dt * 10);
+
+  // параллакс фона
+  S.skyOff += 0.0008 * pSeg.curve * speedPct;
+  S.farOff += 0.0016 * pSeg.curve * speedPct;
+  S.nearOff += 0.0032 * pSeg.curve * speedPct;
+  S.time += dt;
+  S.dist += S.speed * dt;
+
+  // развилка: выбор по стороне, где едет машина
+  if (pSeg.fork && !S.choice && pSeg.fork.i > 70) {
+    const side = S.x < 0 ? -1 : 1;
+    const dest = side < 0 ? pSeg.fork.left : pSeg.fork.right;
+    S.choice = { side, i: pSeg.fork.i, dest };
+    S.x = S.x - side * forkOffset(pSeg, side);
+    buildStage(dest, pSeg.biome, dest === 'sea', pSeg.ox + side * FORK_D);
+    sweepCars();
+    forkHint.classList.remove('on');
+  }
+  if (S.choice && !pSeg.fork) S.choice = null;
+
+  // подсказка перед развилкой
+  const st = stages.find(s => pIdx >= s.start && pIdx < s.end);
+  if (st && st.forkStart && S.mode === 'play') {
+    const toFork = st.forkStart - pIdx;
+    if (toFork < 170 && toFork > -60 && !S.choice) {
+      forkHint.innerHTML = `← ${shortName(st.left)} · ${shortName(st.right)} →<small>держитесь левой или правой дороги</small>`;
+      forkHint.classList.add('on');
+    }
+  }
+  // финиш; на заставке у моря — начинаем поездку заново
+  if (st && st.final && pIdx > st.finishIndex && S.mode === 'play') finishRide();
+  if (st && st.final && S.mode === 'intro' && pIdx > st.finishIndex - 120) { reset(); S.speed = MAX_SPEED * 0.6; }
+}
+
+/* =====================================================================
+   HUD, звук, управление
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const forkHint = $('forkHint');
+let hudKey = '';
+const KM_PER_UNIT = 0.05 / (SEG * 55);     // 180 км/ч на спидометре = 0,05 км за секунду
+const kmStr = v => v.toFixed(1).replace('.', ',');
+function hud() {
+  const pIdx = Math.floor((S.pos + PLAYER_Z) / SEG), pSeg = segs[pIdx];
+  $('spd').textContent = Math.round(S.speed / MAX_SPEED * 180);
+  const st = stages.find(s => pIdx >= s.start && pIdx < s.end);
+  let tail = '';
+  if (st && st.forkStart) tail = ' · до развилки ' + kmStr(Math.max(0, (st.forkStart - pIdx) * SEG * KM_PER_UNIT)) + ' км';
+  if (st && st.final) tail = ' · до моря ' + kmStr(Math.max(0, (st.finishIndex - pIdx) * SEG * KM_PER_UNIT)) + ' км';
+  $('odo').textContent = kmStr(S.dist * KM_PER_UNIT) + ' км' + tail;
+  const b = pSeg.t > 0.5 ? pSeg.biome : (pSeg.prev || pSeg.biome);
+  const n = Math.max(1, stages.findIndex(x => x.biome === b) + 1);
+  const total = stages[stages.length - 1].final ? stages.length : stages.length + 1;
+  const key = b + n + '/' + total;
+  if (key !== hudKey) {
+    hudKey = key;
+    $('stageName').textContent = BIOMES[b].name;
+    $('stageSub').textContent = BIOMES[b].sub + ' · этап ' + n;
+    const route = $('route');
+    route.innerHTML = '';
+    for (let i = 0; i < total; i++) { const el = document.createElement('i'); if (i < n - 1) el.className = 'done'; if (i === n - 1) el.className = 'now'; route.appendChild(el); }
+  }
+}
+
+const audio = (() => {
+  let ac = null, master, eng1, eng2, engGain, engLp, noiseGain, on = false, musicTimer = 0, nextNote = 0, step = 0;
+  const SCALES = {
+    autumn: { root: 57, chords: [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]], mode: [0, 2, 3, 5, 7, 8, 10] },
+    taiga: { root: 50, chords: [[0, 3, 7], [-4, -1, 3], [3, 7, 10], [-2, 2, 5]], mode: [0, 2, 3, 5, 7, 8, 10] },
+    steppe: { root: 52, chords: [[0, 3, 7], [-2, 2, 5], [-4, 0, 3], [-2, 2, 5]], mode: [0, 2, 3, 5, 7, 9, 10] },
+    sea: { root: 60, chords: [[0, 4, 7], [7, 11, 14], [9, 12, 16], [5, 9, 12]], mode: [0, 2, 4, 6, 7, 9, 11] }
+  };
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+  function build() {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination);
+    engLp = ac.createBiquadFilter(); engLp.type = 'lowpass'; engLp.frequency.value = 600;
+    engGain = ac.createGain(); engGain.gain.value = 0.0;
+    eng1 = ac.createOscillator(); eng1.type = 'sawtooth'; eng2 = ac.createOscillator(); eng2.type = 'square';
+    const g2 = ac.createGain(); g2.gain.value = 0.35;
+    eng1.connect(engLp); eng2.connect(g2).connect(engLp); engLp.connect(engGain).connect(master);
+    eng1.start(); eng2.start();
+    const len = ac.sampleRate * 2, buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const nz = ac.createBufferSource(); nz.buffer = buf; nz.loop = true;
+    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.5;
+    noiseGain = ac.createGain(); noiseGain.gain.value = 0;
+    nz.connect(bp).connect(noiseGain).connect(master); nz.start();
+  }
+  function note(freq, t, dur, type, vol, attack) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function music() {
+    if (!on) return;
+    const biome = segs[Math.floor((S.pos + PLAYER_Z) / SEG)].biome, sc = SCALES[biome];
+    const beat = 60 / 84;
+    while (nextNote < ac.currentTime + 0.3) {
+      const bar = Math.floor(step / 8) % 4, ch = sc.chords[bar];
+      if (step % 8 === 0) {
+        ch.forEach(iv => { note(mtof(sc.root + iv), nextNote, beat * 8, 'triangle', 0.035, 0.9); note(mtof(sc.root + iv + 12) * 1.003, nextNote, beat * 8, 'sine', 0.02, 1.2); });
+        note(mtof(sc.root - 12 + ch[0]), nextNote, beat * 4, 'sine', 0.09, 0.05);
+      }
+      if (step % 8 === 4) note(mtof(sc.root - 12 + ch[0]), nextNote, beat * 3, 'sine', 0.06, 0.05);
+      if (step % 2 === 0 && Math.random() < 0.8) {
+        const deg = sc.mode[(step * 3 + bar * 2 + ((Math.random() * 3) | 0)) % sc.mode.length];
+        note(mtof(sc.root + 12 + deg), nextNote, beat * 1.6, biome === 'taiga' ? 'sine' : 'triangle', biome === 'taiga' ? 0.05 : 0.035, 0.01);
+      }
+      nextNote += beat / 2; step++;
+    }
+  }
+  function tick() {
+    if (!ac || !on) return;
+    const sp = S.speed / MAX_SPEED, t = ac.currentTime;
+    eng1.frequency.setTargetAtTime(38 + sp * 95 + (offRoad() ? Math.random() * 8 : 0), t, 0.05);
+    eng2.frequency.setTargetAtTime(19 + sp * 48, t, 0.05);
+    engLp.frequency.setTargetAtTime(350 + sp * 900, t, 0.1);
+    engGain.gain.setTargetAtTime(0.05 + sp * 0.07, t, 0.1);
+    noiseGain.gain.setTargetAtTime(sp * sp * 0.05 + (offRoad() ? 0.04 : 0), t, 0.1);
+    music();
+  }
+  function toggle(force) {
+    if (!ac) build();
+    on = force === undefined ? !on : force;
+    if (on) { ac.resume(); master.gain.setTargetAtTime(0.5, ac.currentTime, 0.4); nextNote = ac.currentTime + 0.1; }
+    else master.gain.setTargetAtTime(0, ac.currentTime, 0.2);
+    $('snd').setAttribute('aria-pressed', String(on));
+    return on;
+  }
+  return { toggle, tick, get on() { return on; } };
+})();
+$('snd').addEventListener('click', () => audio.toggle());
+
+const KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down' };
+addEventListener('keydown', e => {
+  if (S.mode === 'intro' && (e.code === 'Space' || e.code === 'Enter')) { start(); e.preventDefault(); return; }
+  const k = KEYMAP[e.code]; if (k && S.mode === 'play') { S.keys[k] = true; e.preventDefault(); }
+});
+addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k && S.mode === 'play') S.keys[k] = false; });
+
+const touchUI = $('touch');
+const hold = (id, key) => {
+  const el = $(id);
+  el.addEventListener('pointerdown', e => { S.keys[key] = true; el.setPointerCapture(e.pointerId); e.preventDefault(); });
+  const up = () => { S.keys[key] = false; };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+};
+hold('tl', 'left'); hold('tr', 'right'); hold('tb', 'down');
+const coarse = matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+function start() {
+  if (S.mode === 'play') return;
+  const wasFinish = S.mode === 'finish';
+  if (wasFinish) reset();
+  S.mode = 'play'; S.keys = {}; S.time = 0; S.dist = 0; S.overtakes = 0;
+  $('intro').classList.add('hide'); $('finish').classList.add('hide');
+  document.body.classList.remove('intro');
+  if (coarse) touchUI.classList.add('on');
+  if (!audio.on) audio.toggle(true);
+}
+$('go').addEventListener('click', start);
+$('again').addEventListener('click', start);
+
+function finishRide() {
+  S.mode = 'finish'; S.keys = {};
+  const names = stages.map(st => shortName(st.biome)).join(' → ');
+  const mins = Math.floor(S.time / 60), secs = Math.floor(S.time % 60);
+  const km = S.dist * KM_PER_UNIT;
+  $('summary').innerHTML = `Маршрут: <b>${names}</b><br>В&nbsp;пути <b>${mins}:${String(secs).padStart(2, '0')}</b> · обгонов <b>${S.overtakes}</b> · пройдено <b>${km.toFixed(1).replace('.', ',')} км</b>`;
+  $('finish').classList.remove('hide');
+  touchUI.classList.remove('on');
+}
+
+/* =====================================================================
+   Цикл
+   ===================================================================== */
+function resize() {
+  DPR = window.__SHOT__ ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener('resize', resize);
+
+let last = performance.now(), running = true;
+document.addEventListener('visibilitychange', () => { running = !document.hidden; if (running) { last = performance.now(); requestAnimationFrame(loop); } });
+function loop(now) {
+  if (!running) return;
+  let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (window.__SHOT__) dt = 1 / 60;
+  const steps = Math.ceil(dt / (1 / 60));
+  for (let i = 0; i < steps; i++) update(dt / steps);
+  if (S.mode === 'finish') S.speed *= 0.97;
+  const t0 = performance.now();
+  render();
+  hud();
+  audio.tick();
+  if (window.__SHOT__) { window.__frames = (window.__frames || 0) + 1; window.__ms = Math.round(performance.now() - t0); }
+  requestAnimationFrame(loop);
+}
+
+makeSprites();
+makePlayer();
+makeBackgrounds();
+resize();
+reset();
+// на заставке машина уже едет: сразу разгоняемся и проезжаем немного вперёд
+S.speed = MAX_SPEED * 0.6;
+for (let i = 0; i < 240; i++) update(1 / 60);
+// отладка только для съёмки обложек: прыжки к развилке и биомам
+if (window.__SHOT__) window.__dev = {
+  toFork() { const st = stages.find(x => x.forkStart); S.pos = (st.forkStart - 40) * SEG; return st.forkStart; },
+  toStage(b) { const st = stages.find(x => x.biome === b); if (st) S.pos = (st.start + 230) * SEG; return !!st; },
+  play() { start(); return S.mode; }
+};
+if (document.fonts) document.fonts.ready.then(() => {
+  segs.forEach(sg => sg.sprites.forEach(sp => { if (sp.sign) sp.src = forkSign(sp.sign[0], sp.sign[1]); if (sp.finish) sp.src = finishBanner(); }));
+});
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Конвейер компилятора</title>
+<meta name="description" content="Игрушечный язык «Ёж»: лексер, парсер Пратта, генератор байткода и стековая машина с черепашьей графикой — всё видно насквозь.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-tab="vm">
+
+<header class="top">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M6 27c0-8.8 6.3-15 14.5-15 5.7 0 10.2 3 12.4 7.6l3.1-.6-1.6 3.4c.4 1.3.6 2.7.6 4.1v.5H6z" fill="none" stroke="#F2B84B" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M11 17.5l-3-3.4M15.2 14.2l-1.6-4.3M20.2 12.9l.2-4.6M25.2 13.6l2-4.1M29.4 16l3.5-2.9" stroke="#F2B84B" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="30.4" cy="21.6" r="1.3" fill="#E6E1D6"/>
+      <path d="M9 31.5h24" stroke="#6CB6FF" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="2.5 3.2"/>
+    </svg>
+    <div class="brand-text">
+      <h1>Конвейер компилятора</h1>
+      <p>Язык «Ёж»: текст → лексемы → дерево → байткод → машина</p>
+    </div>
+  </div>
+
+  <div class="transport">
+    <div class="examples">
+      <button class="btn ex-btn" id="ex-btn" aria-haspopup="listbox" aria-expanded="false">
+        <span class="ex-label">Пример</span><b id="ex-name">Дерево</b>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="ex-menu" id="ex-menu" role="listbox" hidden></div>
+    </div>
+    <button class="btn primary" id="btn-run" title="Пуск / пауза (Ctrl+Enter)">
+      <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6L12.6 8z" fill="currentColor"/></svg>
+      <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 3h2.4v10H4.5zM9.1 3h2.4v10H9.1z" fill="currentColor"/></svg>
+      <span id="run-label">Пауза</span>
+    </button>
+    <button class="btn" id="btn-step" title="Одна команда машины (F10)">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h6.5a3 3 0 0 1 0 6H6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M7.6 8.4L5.5 10.5l2.1 2.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Шаг</span>
+    </button>
+    <button class="btn" id="btn-reset" title="Начать заново">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8a4.5 4.5 0 1 0 1.4-3.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M3.2 2.6v2.6h2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Заново</span>
+    </button>
+    <label class="speed">
+      <span>Скорость</span>
+      <input type="range" id="speed" min="0" max="9" step="1" value="6" aria-label="Скорость машины">
+      <output id="speed-out">150 к/кадр</output>
+    </label>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Этапы">
+  <button role="tab" data-tab="src"><i style="--c:#E6E1D6"></i>Код</button>
+  <button role="tab" data-tab="lex"><i style="--c:#F2B84B"></i>Лексемы</button>
+  <button role="tab" data-tab="parse"><i style="--c:#7EE0B5"></i>Дерево</button>
+  <button role="tab" data-tab="gen"><i style="--c:#6CB6FF"></i>Байткод</button>
+  <button role="tab" data-tab="vm"><i style="--c:#FF8A7A"></i>Машина</button>
+</nav>
+
+<main class="stages">
+  <section class="stage" data-stage="src" style="--c:#E6E1D6">
+    <header class="st-head"><span class="st-num">01</span><h2>Исходник</h2><span class="st-meta" id="meta-src"></span></header>
+    <div class="editor">
+      <div class="gutter" id="gutter" aria-hidden="true"></div>
+      <div class="code-wrap">
+        <pre class="hl" id="hl" aria-hidden="true"></pre>
+        <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="Исходный код на языке «Ёж»"></textarea>
+      </div>
+    </div>
+    <div class="diag" id="diag" role="status"></div>
+  </section>
+
+  <section class="stage" data-stage="lex" style="--c:#F2B84B">
+    <header class="st-head"><span class="st-num">02</span><h2>Лексер</h2><span class="st-meta" id="meta-lex"></span></header>
+    <div class="scroll" id="tokens"></div>
+  </section>
+
+  <section class="stage" data-stage="parse" style="--c:#7EE0B5">
+    <header class="st-head"><span class="st-num">03</span><h2>Парсер</h2><span class="st-meta" id="meta-parse"></span></header>
+    <div class="scroll" id="ast"><svg class="ast-lines" id="ast-lines"></svg><div class="ast-rows" id="ast-rows"></div></div>
+  </section>
+
+  <section class="stage" data-stage="gen" style="--c:#6CB6FF">
+    <header class="st-head"><span class="st-num">04</span><h2>Генератор</h2><span class="st-meta" id="meta-gen"></span></header>
+    <div class="scroll" id="code"><svg class="jumps" id="jumps"></svg><div class="code-rows" id="code-rows"></div></div>
+  </section>
+
+  <section class="stage" data-stage="vm" style="--c:#FF8A7A">
+    <header class="st-head"><span class="st-num">05</span><h2>Машина</h2><span class="st-meta" id="meta-vm"></span></header>
+    <div class="vm">
+      <div class="canvas-wrap"><canvas id="turtle" aria-label="Рисунок черепахи"></canvas></div>
+      <div class="vm-state" id="vm-state"></div>
+      <div class="vm-grid">
+        <div class="panel"><h3>Стек</h3><div class="stack" id="stack"></div></div>
+        <div class="panel"><h3>Вызовы</h3><div class="frames" id="frames"></div></div>
+        <div class="panel"><h3>Глобальные</h3><div class="vars" id="globals"></div></div>
+        <div class="panel"><h3>Печать</h3><div class="console" id="console"></div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Движок вёрстки — HTML и CSS в пиксели с нуля</title>
+<meta name="description" content="Маленький браузерный движок: разбор HTML и CSS, каскад, блочная, строчная и flex-раскладка, отрисовка на Canvas и 3D-разбор страницы на слои.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Unbounded:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Движок вёрстки</h1>
+      <p>HTML и CSS → дерево → коробки → пиксели. Без браузерного DOM: всё с нуля.</p>
+    </div>
+    <ol class="pipe" id="pipe" aria-label="Этапы конвейера">
+      <li><b>Разбор</b><span id="pParse">—</span></li>
+      <li><b>Каскад</b><span id="pStyle">—</span></li>
+      <li><b>Раскладка</b><span id="pLayout">—</span></li>
+      <li><b>Отрисовка</b><span id="pPaint">—</span></li>
+    </ol>
+    <div class="controls">
+      <label class="select">
+        <span class="sr">Пример</span>
+        <select id="preset" aria-label="Пример страницы">
+          <option value="article">Журнал</option>
+          <option value="cascade">Каскад</option>
+          <option value="flex">Флексбокс</option>
+          <option value="wrap">Перенос строк</option>
+          <option value="responsive">Отзывчивость</option>
+        </select>
+        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </label>
+      <div class="seg" role="tablist" aria-label="Вид">
+        <button role="tab" data-view="2d" aria-selected="false">Страница</button>
+        <button role="tab" data-view="3d" aria-selected="true">Слои 3D</button>
+      </div>
+    </div>
+  </header>
+
+  <aside class="left">
+    <div class="tabs" role="tablist" aria-label="Исходники">
+      <button role="tab" data-tab="html" aria-selected="true">HTML</button>
+      <button role="tab" data-tab="css" aria-selected="false">CSS</button>
+      <button role="tab" data-tab="insp" aria-selected="false" class="mobile-only">Инспектор</button>
+      <span class="err" id="err" hidden></span>
+    </div>
+    <div class="editors">
+      <div class="editor" id="edHtml">
+        <pre class="hl" aria-hidden="true"><code id="hlHtml"></code></pre>
+        <textarea id="srcHtml" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Исходный HTML"></textarea>
+      </div>
+      <div class="editor" id="edCss" hidden>
+        <pre class="hl" aria-hidden="true"><code id="hlCss"></code></pre>
+        <textarea id="srcCss" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Исходный CSS"></textarea>
+      </div>
+    </div>
+    <section class="insp" id="insp" aria-label="Инспектор">
+      <div class="insp-head">
+        <h2>Инспектор</h2>
+        <span class="hint">нажмите на блок в окне справа</span>
+      </div>
+      <div id="inspBody"></div>
+    </section>
+  </aside>
+
+  <main class="stage" id="stage">
+    <canvas id="view" aria-label="Результат раскладки"></canvas>
+    <div class="tip" id="tip" hidden></div>
+    <div class="legend" id="legend" aria-hidden="true"></div>
+    <div class="bar">
+      <label class="rng">
+        <span>Ширина окна</span>
+        <input type="range" id="vw" min="300" max="1000" step="10" value="720">
+        <b id="vwVal">720 px</b>
+      </label>
+      <label class="rng" id="spreadWrap">
+        <span>Расслоение</span>
+        <input type="range" id="spread" min="0" max="80" step="1" value="34">
+        <b id="spreadVal">34</b>
+      </label>
+      <button class="ghost" id="resetView" title="Вернуть исходный ракурс">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.8-4.1M12.4 1.5v3.2H9.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Ракурс
+      </button>
+    </div>
+  </main>
+</div>
+<script src="engine.js"></script>
+<script src="presets.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

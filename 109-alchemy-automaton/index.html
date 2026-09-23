@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Алхимический автомат</title>
+<meta name="description" content="Программируйте латунные руки на шестиугольной доске и собирайте молекулы из стихий: восемь головоломок, от переноса соли до золота.">
+<meta name="theme-color" content="#16110d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@500;600;700&family=Alegreya+Sans:wght@400;500;700&family=Alegreya+Sans+SC:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="left" aria-label="Головоломки">
+    <header class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="15"/><path d="M20 5v30M5 20h30M9.4 9.4l21.2 21.2M30.6 9.4L9.4 30.6"/><circle cx="20" cy="20" r="6"/></svg>
+      <h1>Алхимический автомат</h1>
+    </header>
+    <ol class="puzzles" id="puzzles"></ol>
+    <section class="brief" id="brief">
+      <h2 id="pName">—</h2>
+      <p id="pText"></p>
+      <div class="demo" id="demo" hidden>
+        <span class="demo-dot" aria-hidden="true"></span>
+        <p>Работает эталонное решение мастера. Посмотрите и&nbsp;соберите свой автомат.</p>
+        <button class="btn" id="demoBtn">Решить самому</button>
+      </div>
+      <div class="target">
+        <canvas id="targetCv" width="200" height="120" aria-label="Целевая молекула"></canvas>
+        <div class="target-meta">
+          <span>Нужно собрать</span>
+          <b id="pNeed">0 / 4</b>
+        </div>
+      </div>
+    </section>
+  </aside>
+
+  <main class="center">
+    <div class="board-wrap" id="boardWrap">
+      <canvas id="board" aria-label="Доска автомата"></canvas>
+      <div class="banner" id="banner" hidden>
+        <span id="bannerText"></span>
+        <button id="bannerBtn"></button>
+      </div>
+      <div class="result" id="result" hidden>
+        <h2>Автомат работает</h2>
+        <p class="res-sub">Столбики — ваши решения этой задачи, пунктир — эталон мастера. Меньше — лучше.</p>
+        <div class="metrics" id="resMetrics"></div>
+        <div class="result-actions">
+          <button class="btn ghost" id="resImprove">Улучшить</button>
+          <button class="btn" id="resNext">Следующая задача</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="program" aria-label="Программа рук">
+      <div class="prog-top">
+        <div class="instr" id="instr" role="radiogroup" aria-label="Команды"></div>
+        <div class="transport">
+          <button class="tbtn" id="bReset" title="Сброс (Esc)" aria-label="Сброс"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></button>
+          <button class="tbtn" id="bStep" title="Шаг (S)" aria-label="Один цикл"><svg viewBox="0 0 24 24"><path d="M6 5.5v13l9-6.5z"/><path d="M17.5 5.5v13"/></svg></button>
+          <button class="tbtn play" id="bPlay" title="Пуск (пробел)" aria-label="Пуск"><svg class="i-play" viewBox="0 0 24 24"><path d="M7 5v14l12-7z"/></svg><svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg></button>
+          <div class="speed" role="radiogroup" aria-label="Скорость">
+            <button data-s="1" aria-checked="true" role="radio">×1</button>
+            <button data-s="2" role="radio">×2</button>
+            <button data-s="4" role="radio">×4</button>
+            <button data-s="16" role="radio">×16</button>
+          </div>
+          <span class="cycle">цикл <b id="cycleNo">0</b></span>
+        </div>
+      </div>
+      <div class="tracks" id="tracks"></div>
+    </section>
+  </main>
+
+  <aside class="right" aria-label="Детали и показатели">
+    <section class="panel">
+      <h3>Детали</h3>
+      <div class="parts" id="parts"></div>
+      <div class="sel" id="selBox" hidden>
+        <span id="selName">—</span>
+        <button class="btn ghost small" id="selRot" title="R">Повернуть</button>
+        <button class="btn ghost small" id="selDel" title="Delete">Убрать</button>
+      </div>
+      <p class="hint" id="partHint">Выберите деталь и нажмите на клетку доски. Нажатие на поставленную деталь выделяет её.</p>
+    </section>
+    <section class="panel">
+      <h3>Показатели</h3>
+      <dl class="stats">
+        <div><dt>Циклы</dt><dd id="stCycles">—</dd></div>
+        <div><dt>Стоимость</dt><dd id="stCost">0</dd></div>
+        <div><dt>Площадь</dt><dd id="stArea">—</dd></div>
+      </dl>
+      <p class="hint">Эталон мастера: <span id="refLine">—</span></p>
+    </section>
+    <section class="panel legend">
+      <h3>Стихии</h3>
+      <div class="elements" id="elements"></div>
+    </section>
+  </aside>
+</div>
+<script src="sim.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

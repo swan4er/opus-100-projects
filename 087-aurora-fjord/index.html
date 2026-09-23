@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Северное сияние над Териберкой</title>
+<meta name="description" content="Живое полярное сияние над фьордом Кольского полуострова. Цвет выведен из линий излучения кислорода и азота.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;1,500&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#03050a;
+    --ink:#e2f1ea;
+    --dim:rgba(226,241,234,.7);
+    --line:rgba(226,241,234,.26);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);overflow:hidden}
+  body{color:var(--ink);font:400 12px/1.4 "IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.04em;-webkit-font-smoothing:antialiased}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  #sky{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  #sky.drag{cursor:grabbing}
+
+  /* нижняя строка */
+  .bar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:28px;
+       padding:64px 32px calc(22px + env(safe-area-inset-bottom));
+       background:linear-gradient(to top,rgba(1,3,7,.82),rgba(1,3,7,.4) 50%,rgba(1,3,7,0));pointer-events:none}
+  .bar>*{pointer-events:auto}
+  .place{display:flex;gap:16px;align-items:center;color:var(--dim);white-space:nowrap}
+  .place b{font-weight:500;color:var(--ink);letter-spacing:.24em;text-transform:uppercase}
+  .sep{width:1px;height:12px;background:var(--line);display:inline-block}
+  .ctrl{display:flex;align-items:center;gap:22px}
+  .kp{display:flex;align-items:center;gap:12px;color:var(--dim)}
+  .kp label{color:var(--ink)}
+  .kp output{min-width:2.4em;color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+  .g{padding:3px 7px;border:1px solid var(--line);border-radius:2px;color:var(--dim);font-size:12px;letter-spacing:.08em;transition:color .4s,border-color .4s,opacity .4s}
+  .g.hot{color:#ffc2b8;border-color:rgba(255,140,120,.55)}
+  .g.off{opacity:.45}
+
+  input[type=range]{-webkit-appearance:none;appearance:none;width:160px;height:32px;background:transparent;cursor:pointer;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{height:1px;background:linear-gradient(90deg,rgba(150,255,90,.3),rgba(150,255,90,.75) 45%,rgba(255,74,61,.9))}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--ink);margin-top:-6.5px;
+       box-shadow:0 0 0 5px rgba(226,241,234,.09),0 2px 6px rgba(0,0,0,.5);transition:transform .2s}
+  input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2)}
+  input[type=range]::-moz-range-track{height:1px;background:linear-gradient(90deg,rgba(150,255,90,.3),rgba(150,255,90,.75) 45%,rgba(255,74,61,.9))}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:var(--ink);box-shadow:0 0 0 5px rgba(226,241,234,.09)}
+  input[type=range]:focus-visible{outline:1px solid var(--line);outline-offset:6px;border-radius:2px}
+
+  .spec{display:block;width:176px;height:36px;cursor:help}
+  .snd{display:flex;align-items:center;gap:8px;background:none;border:1px solid var(--line);color:var(--dim);border-radius:999px;
+       padding:0 15px 0 12px;height:36px;font:inherit;cursor:pointer;transition:color .3s,border-color .3s,background .3s}
+  .snd:hover{color:var(--ink);border-color:rgba(226,241,234,.55)}
+  .snd:focus-visible{outline:1px solid var(--ink);outline-offset:3px}
+  .snd .w{display:none}
+  .snd[aria-pressed="true"]{color:var(--ink);background:rgba(226,241,234,.08)}
+  .snd[aria-pressed="true"] .w{display:inline}
+  .snd[aria-pressed="true"] .x{display:none}
+
+  /* подпись о состоянии бури */
+  .cap{position:fixed;left:50%;bottom:116px;transform:translate(-50%,8px);width:max-content;max-width:min(88vw,780px);text-align:center;
+       font:italic 400 clamp(21px,2.2vw,29px)/1.25 "Cormorant Garamond",Georgia,serif;color:#f2f8f4;
+       text-shadow:0 1px 18px rgba(0,0,0,.75);opacity:0;transition:opacity 1.2s ease,transform 1.2s cubic-bezier(.2,.7,.2,1);pointer-events:none}
+  .cap.on{opacity:.95;transform:translate(-50%,0)}
+  .cap small{display:block;margin-top:7px;font:400 12px/1.4 "IBM Plex Mono",monospace;font-style:normal;letter-spacing:.06em;color:var(--dim)}
+
+  .hint{position:fixed;top:22px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:12px;color:var(--ink);
+        text-shadow:0 1px 10px rgba(0,0,0,.8);opacity:0;transition:opacity 1.6s ease;pointer-events:none}
+  .hint.on{opacity:.78}
+
+  .fallback{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:32px;
+            font:italic 400 28px/1.35 "Cormorant Garamond",Georgia,serif;color:var(--ink);background:radial-gradient(ellipse at 50% 30%,#0c1a1a,#03050a 70%)}
+  .fallback small{display:block;margin-top:14px;font:400 12px "IBM Plex Mono",monospace;font-style:normal;color:var(--dim)}
+
+  @media (max-width:760px){
+    .bar{flex-direction:column;align-items:stretch;gap:8px;padding:56px 18px calc(14px + env(safe-area-inset-bottom))}
+    .place{gap:8px;font-size:12px;letter-spacing:.01em;justify-content:space-between}
+    .place b{letter-spacing:.16em}
+    .ctrl{justify-content:space-between;gap:10px}
+    .spec{display:none}
+    input[type=range]{width:118px}
+    .kp{gap:8px}
+    .cap{bottom:128px}
+    .hint{top:16px;font-size:12px}
+    .hint .wide{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){ .cap,.hint{transition:none} }
+</style>
+</head>
+<body>
+<h1 class="sr">Северное сияние над Териберкой</h1>
+<canvas id="sky" aria-label="Полярное сияние над фьордом. Потяните, чтобы осмотреться."></canvas>
+
+<div class="hint" id="hint">Потяните, чтобы осмотреться<span class="wide"> · колесо — угол обзора · клавиши 0–9 — сила бури</span></div>
+<div class="cap" id="cap" aria-live="polite"></div>
+
+<div class="bar">
+  <div class="place">
+    <b>Териберка</b><span class="sep"></span>
+    <span>69°10′ с.&nbsp;ш. 35°08′ в.&nbsp;д.</span><span class="sep"></span>
+    <span id="clock">--:-- МСК</span>
+  </div>
+  <div class="ctrl">
+    <div class="kp">
+      <label for="kp">Kp</label>
+      <input id="kp" type="range" min="0" max="9" step="0.333333" value="5.333333" aria-label="Индекс геомагнитной бури Kp">
+      <output id="kpv" for="kp">5+</output>
+      <span class="g" id="gsc" title="Шкала геомагнитных бурь NOAA">G1</span>
+    </div>
+    <canvas class="spec" id="spec" width="176" height="36" aria-label="Спектр: линии излучения азота и кислорода"></canvas>
+    <button class="snd" id="snd" aria-pressed="false" aria-label="Звук">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <path d="M4 9.2v5.6h3.6L12.5 19V5L7.6 9.2H4z" fill="currentColor"/>
+        <path class="w" d="M15.6 8.8c1 .9 1.6 2 1.6 3.2s-.6 2.3-1.6 3.2M18.2 6.3c1.8 1.5 2.8 3.5 2.8 5.7s-1 4.2-2.8 5.7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        <path class="x" d="M16 9.5l5 5m0-5l-5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      <span>звук</span>
+    </button>
+  </div>
+</div>
+
+<div class="fallback" id="fallback">Этому небу нужен WebGL2.<small>Откройте страницу в свежем Chrome, Safari или Firefox</small></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ------------------------------------------------------------------
+   Цвет линий излучения: функции сложения CIE 1931
+   (аппроксимация Wyman–Sloan–Shirley) → линейный sRGB.
+   N₂⁺ 427,8 нм, O I 557,7 нм, O I 630,0 нм.
+------------------------------------------------------------------ */
+const gpart = (x, mu, s1, s2) => { const t = (x - mu) / (x < mu ? s1 : s2); return Math.exp(-0.5 * t * t); };
+function cie(l) {
+  return [
+    1.056 * gpart(l, 599.8, 37.9, 31.0) + 0.362 * gpart(l, 442.0, 16.0, 26.7) - 0.065 * gpart(l, 501.1, 20.4, 26.2),
+    0.821 * gpart(l, 568.8, 46.9, 40.5) + 0.286 * gpart(l, 530.9, 16.3, 31.1),
+    1.217 * gpart(l, 437.0, 11.8, 36.0) + 0.681 * gpart(l, 459.0, 26.0, 13.8)
+  ];
+}
+function lineRGB(l) {
+  const [X, Y, Z] = cie(l);
+  let r = 3.2406 * X - 1.5372 * Y - 0.4986 * Z;
+  let g = -0.9689 * X + 1.8758 * Y + 0.0415 * Z;
+  let b = 0.0557 * X - 0.2040 * Y + 1.0570 * Z;
+  const m = Math.min(r, g, b);
+  if (m < 0) { r -= m; g -= m; b -= m; }          // вне охвата sRGB — добавляем белый
+  const M = Math.max(r, g, b);
+  return [r / M, g / M, b / M];
+}
+const toSRGB = c => c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+const css = rgb => 'rgb(' + rgb.map(v => Math.round(Math.min(1, Math.max(0, toSRGB(v))) * 255)).join(',') + ')';
+
+const C_G = lineRGB(557.7), C_R = lineRGB(630.0), C_B = lineRGB(427.8);
+const C_P = (() => { const a = lineRGB(661), b = lineRGB(427.8); const m = [a[0] + .55 * b[0], a[1] + .55 * b[1], a[2] + .55 * b[2]]; const M = Math.max(...m); return m.map(v => v / M); })();
+
+/* ------------------------------------------------------------------
+   WebGL2: сцена → буфер накопления (TAA) → экран с тонмаппингом
+------------------------------------------------------------------ */
+const canvas = document.getElementById('sky');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance' });
+if (!gl) { document.getElementById('fallback').style.display = 'grid'; return; }
+const floatRT = !!gl.getExtension('EXT_color_buffer_float');
+
+const VS = `#version 300 es
+void main(){ vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
+
+const FS_SCENE = `#version 300 es
+precision highp float;
+uniform vec2  uRes;
+uniform float uTime, uFrame, uFov, uAlpha;
+uniform vec2  uLook;          // рыскание, тангаж
+uniform vec4  uBand;          // центр овала (км к северу), ширина, шаг занавесов, скорость
+uniform vec4  uLines;         // интенсивность: 557,7 / 630,0 / 427,8 / розовая кайма
+uniform vec3  uCG, uCR, uCB, uCP, uAmb;
+uniform vec3  uMetA, uMetB;
+uniform float uMetT;
+uniform int   uSteps;
+uniform sampler2D uNoise, uPrev;
+out vec4 fragColor;
+
+#define PI 3.14159265
+
+float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+float hash13(vec3 p3){ p3 = fract(p3 * .1031); p3 += dot(p3, p3.zyx + 31.32); return fract((p3.x + p3.y) * p3.z); }
+// гладкий value-noise из текстуры (smoothstep внутри текселя)
+float nz(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return textureLod(uNoise, (i + f + 0.5) / 256.0, 0.0).r; }
+float fbm2(vec2 p){ return (nz(p) * .5 + nz(p * 2.03 + vec2(17.1, 9.2)) * .25) / .75; }
+
+/* ---------- сияние: тонкие складчатые стенки вдоль силовых линий ---------- */
+// смещение стенки к северу как функция координаты вдоль неё (x, км)
+float warp(float x, float T){
+  return 150.0 * sin(x * 0.0021 + T * 0.010)
+       + 95.0 * sin(x * 0.0037 - T * 0.013 + 1.3)
+       + 52.0 * sin(x * 0.0056 + T * 0.070 + 2.1)
+       + (nz(vec2(x * 0.038 + T * 0.3, 8.1)) - 0.5) * 18.0;
+}
+vec3 aurora(vec3 d, float jit){
+  if (d.y < 0.003) return vec3(0.0);
+  vec3 acc = vec3(0.0);
+  float T = uTime * uBand.w;
+  float invN = 1.0 / float(uSteps);
+  float dy = max(d.y, 0.07);
+  // зелёное свечение и нижняя кромка: 94–204 км, выборка гуще внизу
+  for (int i = 0; i < 64; i++){
+    if (i >= uSteps) break;
+    float f = (float(i) + jit) * invN;
+    float a = 94.0 + 110.0 * pow(f, 1.5);
+    float da = 165.0 * sqrt(f) * invN + 0.25;
+    float t = a / d.y;
+    if (t > 2400.0) break;
+    vec2 p = d.xz * t;                       // x — восток, y — север, км
+    float zz = p.y + warp(p.x, T);
+    float env = exp(-pow((zz - uBand.x) / uBand.y, 2.0));
+    if (env < 0.02) continue;
+    float s = zz / uBand.z, cell = floor(s + 0.5), dz = (s - cell) * uBand.z;
+    float lane = hash12(vec2(cell, 7.0));
+    float th = 1.8 + 2.6 * lane + t / 95.0;  // дальние стенки шире — меньше алиасинга
+    float sheet = exp(-dz * dz / (th * th));
+    if (sheet < 0.02) continue;
+    // каждая стенка живёт своей жизнью: разгорается и гаснет
+    float life = smoothstep(0.15, 0.85, 0.5 + 0.5 * sin(T * (0.05 + 0.04 * lane) + lane * 40.0));
+    life = 0.08 + 0.92 * life * life;
+    // лучи вдоль силовых линий: две октавы, бегут вдоль стенки
+    float rx = p.x + T * (9.0 + 7.0 * lane) + cell * 131.0;
+    float rays = nz(vec2(rx * 0.19, cell * 3.1)) * (0.35 + 0.65 * nz(vec2(rx * 0.77, cell + 0.5)));
+    rays = 0.1 + 1.9 * rays * rays;
+    float bottom = 97.0 + 7.0 * sin(p.x * 0.021 + T * 0.15 + cell) + 4.0 * sin(p.x * 0.057 - T * 0.2);
+    float h = a - bottom;
+    float g = sheet * rays * smoothstep(-1.2, 0.7, h) * exp(-max(h, 0.0) / 26.0);
+    float b = sheet * rays * exp(-(h - 0.6) * (h - 0.6) / 4.5);
+    acc += (uCG * g * uLines.x + (uCB * uLines.z + uCP * uLines.w) * b) * (env * life * exp(-t / 1400.0) * da / dy);
+  }
+  acc *= 0.052;
+  // красная шапка выше 200 км: диффузная, хватает нескольких выборок
+  if (uLines.y > 0.01){
+    vec3 red = vec3(0.0);
+    for (int j = 0; j < 5; j++){
+      float a = 206.0 + 26.0 * (float(j) + jit);
+      float t = a / d.y;
+      if (t > 2400.0) break;
+      vec2 p = d.xz * t;
+      float zz = p.y + warp(p.x, T) * 0.85;
+      float env = exp(-pow((zz - uBand.x) / (uBand.y * 1.1), 2.0));
+      float s = zz / uBand.z, dz = (s - floor(s + 0.5)) * uBand.z;
+      float sheetR = exp(-dz * dz / (380.0 + t * 0.7));
+      red += uCR * (sheetR * env * exp(-(a - 206.0) / 55.0) * exp(-t / 1600.0) * 26.0 / dy);
+    }
+    acc += red * uLines.y * 0.006;
+  }
+  return acc;
+}
+
+/* ---------- горы: силуэты по азимуту (периодический шум на окружности) ---------- */
+float circN(float az, float fr, float seed){
+  vec2 c = vec2(cos(az), sin(az)) * fr + seed;
+  float s = 0.0, a = 0.55;
+  for (int i = 0; i < 4; i++){ s += a * nz(c); c = c * 2.07 + 11.3; a *= 0.5; }
+  return s;
+}
+float ridged(float az, float fr, float seed){
+  vec2 c = vec2(cos(az), sin(az)) * fr + seed;
+  float s = 0.0, a = 0.62;
+  for (int i = 0; i < 5; i++){ float n = 1.0 - abs(2.0 * nz(c) - 1.0); s += a * n * n; c = c * 2.13 + 7.1; a *= 0.5; }
+  return s;
+}
+const float MOUTH = 0.02;   // выход фьорда в Баренцево море
+float hNear(float az){
+  float o = abs(az - MOUTH);
+  float open = smoothstep(0.21, 0.66, o);
+  float base = 0.03 + 0.15 * smoothstep(0.2, 1.2, o);
+  return open * (base + ridged(az, 3.2, 5.0) * 0.105 + circN(az, 11.0, 21.0) * 0.022) - 0.004;
+}
+float hMid(float az){
+  float o = abs(az - MOUTH);
+  return smoothstep(0.10, 0.36, o) * (0.028 + ridged(az, 5.5, 41.0) * 0.055) - 0.002;
+}
+float hFar(float az){
+  float o = abs(az - MOUTH);
+  return smoothstep(0.035, 0.13, o) * (0.007 + circN(az, 8.0, 61.0) * 0.016) - 0.001;
+}
+vec3 mountain(float layer, float az, float el, float H){
+  float depth = clamp((H - el) / (H + 0.025), 0.0, 1.0);
+  vec2 q = mat2(0.8, -0.6, 0.6, 0.8) * vec2(az * 48.0 + layer * 37.0, el * 70.0 + layer * 11.0);
+  float big = fbm2(q);                                          // скальные выходы и снежные поля
+  float gul = nz(vec2(az * 540.0 + layer * 13.0, el * 16.0));   // узкие кулуары вдоль склона
+  float rock = smoothstep(0.56, 0.86, big * 0.62 + gul * 0.38 + depth * 0.12) * 0.8;
+  vec3 snow = vec3(0.62, 0.68, 0.80) * (0.86 + 0.14 * nz(q * 2.3));
+  vec3 alb = mix(snow, vec3(0.05, 0.055, 0.07), rock);
+  vec3 L = vec3(0.0012, 0.0019, 0.0042) + uAmb * (1.1 - 0.85 * depth);
+  vec3 c = alb * L;
+  c += uAmb * 0.4 * exp(-(H - el) * 1500.0) * (1.0 - rock);   // подсвеченный гребень
+  vec3 haze = vec3(0.0026, 0.0040, 0.0080) + uAmb * 0.06;
+  return mix(c, haze, layer * 0.5);
+}
+
+/* ---------- посёлок: тёплые огни у воды ---------- */
+const int NL = 10;
+const vec3 LT[NL] = vec3[](
+  vec3(0.262, 0.0024, 1.0), vec3(0.269, 0.0031, 0.55), vec3(0.281, 0.0022, 0.8),
+  vec3(0.338, 0.0038, 0.45), vec3(0.346, 0.0027, 1.0), vec3(0.357, 0.0066, 0.35),
+  vec3(0.418, 0.0029, 0.6), vec3(0.426, 0.0118, 0.3), vec3(0.475, 0.0035, 0.5), vec3(0.512, 0.0190, 0.25));
+vec3 village(float az, float el){
+  vec3 c = vec3(0.0);
+  for (int i = 0; i < NL; i++){
+    vec2 dd = vec2(az - LT[i].x, el - LT[i].y);
+    float r2 = dot(dd, dd);
+    float fl = 0.92 + 0.08 * sin(uTime * (1.1 + float(i) * 0.37) + float(i) * 4.0);
+    c += vec3(1.0, 0.58, 0.24) * LT[i].z * fl * (exp(-r2 / 6.0e-7) * 2.2 + exp(-r2 / 2.5e-5) * 0.07);
+  }
+  return c;
+}
+vec3 villageRefl(float az, float el){
+  vec3 c = vec3(0.0);
+  float me = -el;
+  for (int i = 0; i < NL; i++){
+    float wob = (nz(vec2(me * 1400.0 + float(i) * 7.0, uTime * 1.3)) - 0.5) * 0.0024;
+    float dx = az - LT[i].x + wob;
+    float dy = me - LT[i].y;
+    float br = 0.55 + 0.45 * nz(vec2(me * 2600.0, uTime * 2.1 + float(i)));
+    c += vec3(1.0, 0.58, 0.24) * LT[i].z * br * br * exp(-dx * dx / 1.1e-6) * exp(-dy * dy / 9.0e-5) * 0.4;
+  }
+  return c;
+}
+
+/* ---------- звёзды, Млечный Путь, метеор ---------- */
+vec3 stars(vec3 d){
+  vec3 col = vec3(0.0);
+  for (int l = 0; l < 2; l++){
+    float sc = l == 0 ? 150.0 : 340.0;
+    vec3 q = d * sc;
+    vec3 id = floor(q);
+    vec3 f = fract(q) - 0.5;
+    float h = hash13(id + float(l) * 17.0);
+    if (h > (l == 0 ? 0.978 : 0.988)){
+      vec3 off = (vec3(hash13(id + 1.3), hash13(id + 2.7), hash13(id + 4.1)) - 0.5) * 0.6;
+      float r = length(f - off);
+      float b = pow(hash13(id + 8.8), 6.0) * 4.0 + 0.12;
+      float tw = 0.72 + 0.28 * sin(uTime * (1.5 + h * 7.0) + h * 91.0);
+      vec3 tint = mix(vec3(1.0, 0.8, 0.62), vec3(0.74, 0.84, 1.0), hash13(id + 5.5));
+      col += tint * b * tw * exp(-r * r * (l == 0 ? 70.0 : 120.0));
+    }
+  }
+  return col * 0.9 * smoothstep(0.0, 0.2, d.y);
+}
+vec3 milky(vec3 d){
+  vec3 n = normalize(vec3(0.55, 0.35, -0.76));   // полюс полосы
+  float b = dot(d, n);
+  float band = exp(-b * b * 22.0);
+  float dust = nz(d.xy * 22.0 + d.z * 13.0) * 0.6 + nz(d.zx * 55.0) * 0.4;
+  return vec3(0.008, 0.009, 0.013) * band * (0.35 + dust) * smoothstep(0.05, 0.4, d.y);
+}
+vec3 meteor(vec3 d){
+  if (uMetT <= 0.0 || uMetT >= 1.0) return vec3(0.0);
+  vec3 head = normalize(mix(uMetA, uMetB, uMetT));
+  vec3 tail = normalize(mix(uMetA, uMetB, max(uMetT - 0.38, 0.0)));
+  vec3 pa = d - tail, ba = head - tail;
+  float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-8), 0.0, 1.0);
+  float dist = length(pa - ba * h);
+  return vec3(0.75, 0.9, 1.0) * exp(-dist * dist / 8.0e-7) * h * h * sin(PI * uMetT) * 2.2;
+}
+
+/* ---------- небо, горы, посёлок ---------- */
+vec3 skyView(vec3 d, float jit, bool refl){
+  float az = atan(d.x, d.z);
+  float el = asin(clamp(d.y, -1.0, 1.0));
+  if (el < 0.36){                                  // выше гор не проверяем
+    float hn = hNear(az);
+    if (el < hn) return mountain(0.0, az, el, hn) + (refl ? vec3(0.0) : village(az, el));
+    float hm = hMid(az);
+    if (el < hm) return mountain(1.0, az, el, hm);
+    float hf = hFar(az);
+    if (el < hf) return mountain(2.0, az, el, hf);
+  }
+  vec3 c = mix(vec3(0.0040, 0.0058, 0.0098), vec3(0.0005, 0.0009, 0.0024), smoothstep(0.0, 0.5, d.y));
+  c += uAmb * 0.05 * (1.0 - smoothstep(0.0, 0.6, d.y));
+  c += vec3(0.005, 0.006, 0.0035) * exp(-max(el, 0.0) * 30.0);     // свечение у горизонта
+  return c + stars(d) + milky(d) + aurora(d, jit) + meteor(d);
+}
+
+void main(){
+  vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
+  float tf = tan(uFov * 0.5);
+  vec3 d = normalize(vec3(uv.x * 2.0 * tf, uv.y * 2.0 * tf, 1.0));
+  float cp = cos(uLook.y), sp = sin(uLook.y);
+  d = vec3(d.x, d.y * cp + d.z * sp, -d.y * sp + d.z * cp);
+  float cy = cos(uLook.x), sy = sin(uLook.x);
+  d = vec3(d.x * cy + d.z * sy, d.y, -d.x * sy + d.z * cy);
+
+  float jit = hash12(gl_FragCoord.xy + vec2(uFrame * 7.13, uFrame * 3.71));
+
+  vec3 col;
+  if (d.y >= 0.0){
+    col = skyView(d, jit, false);
+  } else {
+    float t = 3.0 / -d.y;                 // камера в 3 м над водой; t — метры
+    vec2 wp = d.xz * t;
+    float foot = t * t * 0.00024 + 0.01;  // размер пикселя на воде, м
+    vec2 g = vec2(0.0);
+    for (int i = 0; i < 6; i++){          // спокойная направленная рябь, длины 0,6–15 м
+      float fi = float(i);
+      float ang = 1.35 + sin(fi * 2.3) * 0.5;
+      vec2 dir = vec2(cos(ang), sin(ang));
+      float lam = 0.6 * pow(1.9, fi);
+      float k = 6.2831853 / lam;
+      float ph = dot(dir, wp) * k - sqrt(9.81 * k) * uTime * 0.5 + fi * 1.7;
+      g += dir * (0.021 * cos(ph) * smoothstep(1.2, 3.5, lam / foot));
+    }
+    vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
+    vec3 r = reflect(d, n);
+    r.y = abs(r.y);
+    float fres = 0.02 + 0.98 * pow(1.0 - clamp(dot(-d, n), 0.0, 1.0), 5.0);
+    vec3 refl = skyView(r, jit, true);
+    float az = atan(d.x, d.z);
+    float el = asin(clamp(d.y, -1.0, 1.0));
+    col = vec3(0.0006, 0.0011, 0.0021) + refl * mix(fres, 1.0, 0.06) * 0.9 + villageRefl(az, el);
+  }
+  vec3 prev = texelFetch(uPrev, ivec2(gl_FragCoord.xy), 0).rgb;
+  fragColor = vec4(mix(prev, col, uAlpha), 1.0);
+}`;
+
+const FS_PRESENT = `#version 300 es
+precision highp float;
+uniform sampler2D uTex;
+uniform vec2 uRes;
+uniform float uTime;
+out vec4 fragColor;
+float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+void main(){
+  vec2 uv = gl_FragCoord.xy / uRes;
+  vec3 col = texture(uTex, uv).rgb;
+  // экспозиция и мезопическое зрение: в темноте цвет уходит к палочкам (эффект Пуркинье)
+  col = 1.0 - exp(-col * 1.4);
+  float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  float rod = (1.0 - smoothstep(0.015, 0.45, lum)) * 0.4;
+  col = mix(col, vec3(0.62, 0.8, 1.0) * lum * 1.05, rod);
+  vec2 vq = uv - 0.5;
+  col *= 1.0 - dot(vq, vq) * 0.55;
+  col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+  col += (hash12(gl_FragCoord.xy + fract(uTime * 13.0) * 97.0) - 0.5) * 0.012;
+  fragColor = vec4(col, 1.0);
+}`;
+
+function program(fs) {
+  const mk = (type, src) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  };
+  const p = gl.createProgram();
+  gl.attachShader(p, mk(gl.VERTEX_SHADER, VS));
+  gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+const scene = program(FS_SCENE), present = program(FS_PRESENT);
+gl.bindVertexArray(gl.createVertexArray());
+const U = {}, P = {};
+['uRes','uTime','uFrame','uFov','uAlpha','uLook','uBand','uLines','uCG','uCR','uCB','uCP','uAmb','uMetA','uMetB','uMetT','uSteps','uNoise','uPrev']
+  .forEach(n => U[n] = gl.getUniformLocation(scene, n));
+['uTex','uRes','uTime'].forEach(n => P[n] = gl.getUniformLocation(present, n));
+
+// текстура шума 256×256 (детерминированный генератор)
+let noiseTex = null;
+(function noiseTexture() {
+  let a = 0x9e3779b9;
+  const rnd = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const data = new Uint8Array(256 * 256);
+  for (let i = 0; i < data.length; i++) data[i] = rnd() * 256;
+  const tex = noiseTex = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 256, 256, 0, gl.RED, gl.UNSIGNED_BYTE, data);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+})();
+gl.useProgram(scene);
+gl.uniform1i(U.uNoise, 0);
+gl.uniform1i(U.uPrev, 1);
+gl.uniform3fv(U.uCG, C_G); gl.uniform3fv(U.uCR, C_R); gl.uniform3fv(U.uCB, C_B); gl.uniform3fv(U.uCP, C_P);
+gl.useProgram(present);
+gl.uniform1i(P.uTex, 1);
+
+/* ------------------------------------------------------------------
+   Разрешение: сцена считается в уменьшенном буфере, масштаб адаптивный.
+   Программный рендер (SwiftShader) держим на фиксированном дешёвом режиме.
+------------------------------------------------------------------ */
+let software = false;
+try {
+  const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+  software = /swiftshader|llvmpipe|software/i.test(dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '');
+} catch (e) { software = false; }
+// режим съёмки обложки (_tools/shot): чёткий кадр, время заморожено, кадры усредняются
+const SHOT = !!window.__SHOT__;
+const DPR = SHOT ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+let scale = SHOT ? 0.75 : software ? 0.42 : 0.6;
+const STEPS = SHOT ? 30 : software ? 22 : 40;
+const rt = [null, null];
+let rw = 0, rh = 0, needReset = true, shotN = 0;
+function makeRT(w, h) {
+  const tex = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE2);            // отдельный блок: не трогаем шум на TEXTURE0
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, floatRT ? gl.RGBA16F : gl.RGBA8, w, h, 0, gl.RGBA, floatRT ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  return { tex, fb };
+}
+function resize() {
+  const cw = Math.max(2, Math.round(innerWidth * DPR)), ch = Math.max(2, Math.round(innerHeight * DPR));
+  if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+  const w = Math.max(2, Math.round(innerWidth * Math.min(DPR, 1.5) * scale));
+  const h = Math.max(2, Math.round(innerHeight * Math.min(DPR, 1.5) * scale));
+  shotN = 0;
+  if (w !== rw || h !== rh) {
+    rt.forEach(r => { if (r) { gl.deleteTexture(r.tex); gl.deleteFramebuffer(r.fb); } });
+    rt[0] = makeRT(w, h); rt[1] = makeRT(w, h);
+    rw = w; rh = h; needReset = true;
+  }
+}
+addEventListener('resize', resize);
+resize();
+
+/* ------------------------------------------------------------------
+   Сила бури: Kp → геометрия овала и яркость линий
+------------------------------------------------------------------ */
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+function bandFromKp(k) {
+  const u = k / 9;
+  return [720 - 950 * Math.pow(u, 1.1), 90 + 300 * u, 132 - 42 * u, 0.3 + 1.7 * u];
+}
+function linesFromKp(k) {
+  const u = k / 9, I = 0.5 + 1.3 * u;
+  return [I, I * (0.01 + 0.9 * Math.pow(u, 3.5)), I * 1.1 * smooth(0.35, 0.9, u), I * 0.8 * smooth(0.55, 1.0, u)];
+}
+function ambFromKp(k, lines) {
+  const u = k / 9, vis = 0.3 + 0.7 * smooth(0.1, 0.7, u);
+  return [0, 1, 2].map(i => (C_G[i] * lines[0] * 0.022 + C_R[i] * lines[1] * 0.008 + C_B[i] * lines[2] * 0.006) * vis);
+}
+function kpLabel(v) {
+  const base = Math.round(v), fr = v - base;
+  if (Math.abs(fr) < 0.15) return base + 'o';
+  return fr > 0 ? base + '+' : base + '−';
+}
+const CAPS = [
+  [0,   'Спокойное поле: бледная дуга над морем', 'Kp 0–1 · зелёная линия кислорода, 557,7 нм'],
+  [2,   'Дуга крепнет и медленно дышит', 'Kp 2–3 · овал ещё к северу от посёлка'],
+  [4,   'Суббуря: занавесы разворачиваются и пляшут', 'Kp 4–5 · овал подходит к зениту'],
+  [5.8, 'Сильная буря: над зелёным разгорается красный кислород', 'Kp 6–7 · линия 630,0 нм, высота 200–300 км'],
+  [7.8, 'Экстремальная буря: корона в зените, всё небо горит', 'Kp 8–9 · фиолетовая кайма азота, 427,8 нм']
+];
+
+const kpInput = document.getElementById('kp'), kpOut = document.getElementById('kpv'), gsc = document.getElementById('gsc');
+const cap = document.getElementById('cap');
+let kpTarget = parseFloat(kpInput.value), kp = kpTarget, capIndex = -1, capTimer = 0;
+function showCaption() {
+  let idx = 0;
+  for (let i = 0; i < CAPS.length; i++) if (kpTarget >= CAPS[i][0]) idx = i;
+  if (idx === capIndex) return;
+  capIndex = idx;
+  cap.classList.remove('on');
+  clearTimeout(capTimer);
+  setTimeout(() => {
+    cap.innerHTML = CAPS[idx][1] + '<small>' + CAPS[idx][2] + '</small>';
+    cap.classList.add('on');
+    capTimer = setTimeout(() => cap.classList.remove('on'), 5600);
+  }, 380);
+}
+function setKp(v, fromInput) {
+  kpTarget = Math.min(9, Math.max(0, v));
+  if (!fromInput) kpInput.value = kpTarget;
+  kpOut.textContent = kpLabel(kpTarget);
+  const G = kpTarget >= 4.83 ? Math.min(5, Math.round(kpTarget) - 4) : 0;
+  gsc.textContent = 'G' + G;
+  gsc.classList.toggle('off', !G);
+  gsc.classList.toggle('hot', G >= 3);
+  showCaption();
+  audio.update();
+}
+kpInput.addEventListener('input', () => setKp(parseFloat(kpInput.value), true));
+addEventListener('keydown', e => {
+  if (e.target === kpInput || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (/^[0-9]$/.test(e.key)) { setKp(parseInt(e.key, 10)); hideHint(); }
+});
+
+/* ------------------------------------------------------------------
+   Мини-спектр: три линии, высота = текущая интенсивность
+------------------------------------------------------------------ */
+const spec = document.getElementById('spec'), sctx = spec.getContext('2d');
+const SW = 176, SH = 36;
+(function hiDPI() { const r = Math.min(devicePixelRatio || 1, 2); spec.width = SW * r; spec.height = SH * r; sctx.setTransform(r, 0, 0, r, 0, 0); })();
+const L0 = 400, L1 = 690, lx = l => 4 + (l - L0) / (L1 - L0) * (SW - 8);
+const SPEC_LINES = [
+  { l: 427.8, c: C_B, name: 'N₂⁺ 427,8 нм — ионизированный азот, нижняя кромка при сильных бурях' },
+  { l: 557.7, c: C_G, name: 'O I 557,7 нм — атомарный кислород на 100–150 км: главный зелёный' },
+  { l: 630.0, c: C_R, name: 'O I 630,0 нм — атомарный кислород выше 200 км: красные вершины' }
+];
+const specBg = document.createElement('canvas');
+(function specBackground() {
+  specBg.width = SW; specBg.height = SH;
+  const c = specBg.getContext('2d');
+  for (let x = 4; x < SW - 4; x++) {
+    const l = L0 + (x - 4) / (SW - 8) * (L1 - L0), y = cie(l)[1];
+    c.fillStyle = css(lineRGB(l));
+    c.globalAlpha = 0.1 + 0.16 * y;
+    c.fillRect(x, SH - 7, 1, 3);
+  }
+  c.globalAlpha = 0.35; c.fillStyle = '#e2f1ea'; c.fillRect(4, SH - 3.5, SW - 8, 0.5);
+})();
+function drawSpec(lines) {
+  sctx.clearRect(0, 0, SW, SH);
+  sctx.drawImage(specBg, 0, 0);
+  const vals = [lines[2], lines[0], lines[1]];
+  SPEC_LINES.forEach((L, i) => {
+    const x = lx(L.l), hgt = Math.max(2, Math.min(1, vals[i] / 1.8) * (SH - 12));
+    const col = css(L.c);
+    sctx.save();
+    sctx.shadowColor = col; sctx.shadowBlur = 7;
+    sctx.fillStyle = col;
+    sctx.fillRect(x - 0.75, SH - 8 - hgt, 1.5, hgt);
+    sctx.restore();
+  });
+}
+spec.addEventListener('mousemove', e => {
+  const rect = spec.getBoundingClientRect(), x = (e.clientX - rect.left) * SW / rect.width;
+  let best = SPEC_LINES[0], bd = 1e9;
+  SPEC_LINES.forEach(L => { const dd = Math.abs(lx(L.l) - x); if (dd < bd) { bd = dd; best = L; } });
+  spec.title = best.name;
+});
+
+/* ------------------------------------------------------------------
+   Взгляд: перетаскивание с инерцией, колесо — угол обзора
+------------------------------------------------------------------ */
+const portrait = innerHeight > innerWidth * 1.15;
+let yaw = -0.02, pitch = portrait ? 0.34 : 0.2, fov = (portrait ? 84 : 70) * Math.PI / 180, vYaw = 0, vPitch = 0, dragging = false, lastX = 0, lastY = 0, lastMove = -1e9;
+const hint = document.getElementById('hint');
+let hintShown = true;
+function hideHint() { if (hintShown) { hintShown = false; hint.classList.remove('on'); } }
+canvas.addEventListener('pointerdown', e => {
+  dragging = true; lastX = e.clientX; lastY = e.clientY; canvas.setPointerCapture(e.pointerId); canvas.classList.add('drag'); hideHint();
+});
+canvas.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const k = fov / innerHeight;
+  const dx = (e.clientX - lastX) * k, dy = (e.clientY - lastY) * k;
+  lastX = e.clientX; lastY = e.clientY;
+  yaw -= dx; pitch += dy;
+  vYaw = -dx * 60; vPitch = dy * 60;
+  lastMove = performance.now();
+});
+const endDrag = () => { dragging = false; canvas.classList.remove('drag'); };
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  fov = Math.min(95, Math.max(32, fov * 180 / Math.PI + e.deltaY * 0.03)) * Math.PI / 180;
+  needReset = true;
+  hideHint();
+}, { passive: false });
+
+/* ------------------------------------------------------------------
+   Метеоры
+------------------------------------------------------------------ */
+const met = { a: [0, 1, 0], b: [0, 1, 0], t0: -1, dur: 0.9, next: 44 };
+const dirFrom = (az, el) => [Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)];
+function spawnMeteor(now) {
+  const az = yaw + (Math.random() - 0.5) * 1.6, el = 0.45 + Math.random() * 0.6;
+  const ang = Math.random() * Math.PI * 2, len = 0.18 + Math.random() * 0.22;
+  met.a = dirFrom(az, el);
+  met.b = dirFrom(az + Math.cos(ang) * len, el - Math.abs(Math.sin(ang)) * len);
+  met.t0 = now; met.dur = 0.6 + Math.random() * 0.6;
+  met.next = now + 7 + Math.random() * 16;
+}
+
+/* ------------------------------------------------------------------
+   Звук: ветер + низкий гул, громкость растёт с бурей
+------------------------------------------------------------------ */
+const audio = (() => {
+  let ctx = null, master, windGain, windBp, droneGain, shimmerGain, on = false;
+  function build() {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+    const len = ctx.sampleRate * 3, buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); let b = 0; for (let i = 0; i < len; i++) { b = 0.97 * b + 0.03 * (Math.random() * 2 - 1); d[i] = b * 3.2; } }
+    const noise = ctx.createBufferSource(); noise.buffer = buf; noise.loop = true;
+    windBp = ctx.createBiquadFilter(); windBp.type = 'bandpass'; windBp.frequency.value = 420; windBp.Q.value = 0.7;
+    windGain = ctx.createGain(); windGain.gain.value = 0.5;
+    noise.connect(windBp).connect(windGain).connect(master); noise.start();
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.07;
+    const lfoAmt = ctx.createGain(); lfoAmt.gain.value = 180; lfo.connect(lfoAmt).connect(windBp.frequency); lfo.start();
+    const lfo2 = ctx.createOscillator(); lfo2.frequency.value = 0.13;
+    const lfo2Amt = ctx.createGain(); lfo2Amt.gain.value = 0.22; lfo2.connect(lfo2Amt).connect(windGain.gain); lfo2.start();
+    droneGain = ctx.createGain(); droneGain.gain.value = 0.0;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320;
+    droneGain.connect(lp).connect(master);
+    [[55, 'sine', 0.5], [82.41, 'sine', 0.32], [110.3, 'triangle', 0.12], [164.6, 'sine', 0.06]].forEach(([f, type, g]) => {
+      const o = ctx.createOscillator(); o.type = type; o.frequency.value = f; o.detune.value = (Math.random() - 0.5) * 8;
+      const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg).connect(droneGain); o.start();
+    });
+    shimmerGain = ctx.createGain(); shimmerGain.gain.value = 0;
+    const sh = ctx.createOscillator(); sh.type = 'sine'; sh.frequency.value = 1318.5;
+    const trem = ctx.createOscillator(); trem.frequency.value = 0.31; const tremAmt = ctx.createGain(); tremAmt.gain.value = 0.5;
+    const shAmp = ctx.createGain(); shAmp.gain.value = 0.5; trem.connect(tremAmt).connect(shAmp.gain);
+    sh.connect(shAmp).connect(shimmerGain).connect(master); sh.start(); trem.start();
+  }
+  function update() {
+    if (!ctx || !on) return;
+    const u = kpTarget / 9, t = ctx.currentTime;
+    droneGain.gain.setTargetAtTime(0.08 + 0.3 * u, t, 1.5);
+    shimmerGain.gain.setTargetAtTime(0.012 * smooth(0.45, 1, u), t, 2);
+    windGain.gain.setTargetAtTime(0.35 + 0.25 * u, t, 1.5);
+  }
+  function toggle() {
+    if (!ctx) build();
+    on = !on;
+    if (on) { ctx.resume(); master.gain.setTargetAtTime(0.32, ctx.currentTime, 0.8); update(); }
+    else master.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
+    return on;
+  }
+  return { toggle, update };
+})();
+const snd = document.getElementById('snd');
+snd.addEventListener('click', () => snd.setAttribute('aria-pressed', audio.toggle() ? 'true' : 'false'));
+
+/* ------------------------------------------------------------------
+   Часы: местное время посёлка (МСК, UTC+3)
+------------------------------------------------------------------ */
+const clock = document.getElementById('clock');
+function tickClock() {
+  const d = new Date(Date.now() + 3 * 3600 * 1000);
+  clock.textContent = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0') + ' МСК';
+}
+tickClock(); setInterval(tickClock, 10000);
+
+/* ------------------------------------------------------------------
+   Главный цикл
+------------------------------------------------------------------ */
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let last = performance.now(), frame = 0, simT = 40, acc = 0, accN = 0, running = true, cur = 0;
+let pYaw = yaw, pPitch = pitch;
+document.addEventListener('visibilitychange', () => {
+  running = !document.hidden;
+  if (running) { last = performance.now(); requestAnimationFrame(loop); }
+});
+function loop(now) {
+  if (!running) return;
+  // в программном рендере кадр идёт секунды — время двигаем как при 30 кадрах/с
+  const dt = SHOT ? 0 : software ? 1 / 30 : Math.min(0.1, (now - last) / 1000);
+  last = now;
+  simT += dt * (reduced ? 0.35 : 1);
+  kp += (kpTarget - kp) * (1 - Math.exp(-dt / 1.1));
+
+  if (!dragging) {
+    yaw += vYaw * dt; pitch += vPitch * dt;
+    vYaw *= Math.exp(-dt * 3.2); vPitch *= Math.exp(-dt * 3.2);
+    if (now - lastMove > 9000 && !reduced && !SHOT) yaw += Math.sin(simT * 0.045) * 0.0009;
+  }
+  pitch = Math.min(1.35, Math.max(-0.25, pitch));
+  if (yaw > Math.PI) yaw -= 2 * Math.PI;
+  if (yaw < -Math.PI) yaw += 2 * Math.PI;
+
+  if (!software && !SHOT) {
+    acc += dt; accN++;
+    if (accN >= 24) {
+      const ft = acc / accN;
+      if (ft > 0.024 && scale > 0.35) { scale = Math.max(0.35, scale * 0.88); resize(); }
+      else if (ft < 0.0145 && scale < 0.85) { scale = Math.min(0.85, scale * 1.05); resize(); }
+      acc = 0; accN = 0;
+    }
+  }
+
+  // накопление кадров: при быстром движении камеры почти не смешиваем
+  const moved = Math.abs(yaw - pYaw) + Math.abs(pitch - pPitch);
+  pYaw = yaw; pPitch = pitch;
+  const alpha = SHOT ? 1 / (++shotN) : needReset ? 1 : Math.min(1, 0.22 + moved * 60);
+  needReset = false;
+
+  const band = bandFromKp(kp), lines = linesFromKp(kp), amb = ambFromKp(kp, lines);
+  if (simT > met.next && !SHOT) spawnMeteor(simT);
+  const mt = met.t0 < 0 ? -1 : (simT - met.t0) / met.dur;
+
+  const src = rt[cur], dst = rt[1 - cur];
+  gl.useProgram(scene);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb);
+  gl.viewport(0, 0, rw, rh);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, noiseTex);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, src.tex);
+  gl.uniform2f(U.uRes, rw, rh);
+  gl.uniform1f(U.uTime, simT);
+  gl.uniform1f(U.uFrame, frame % 997);
+  gl.uniform1f(U.uFov, fov);
+  gl.uniform1f(U.uAlpha, alpha);
+  gl.uniform1i(U.uSteps, STEPS);
+  gl.uniform2f(U.uLook, yaw, pitch);
+  gl.uniform4fv(U.uBand, band);
+  gl.uniform4fv(U.uLines, lines);
+  gl.uniform3fv(U.uAmb, amb);
+  gl.uniform3fv(U.uMetA, met.a); gl.uniform3fv(U.uMetB, met.b); gl.uniform1f(U.uMetT, mt);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  gl.useProgram(present);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, dst.tex);
+  gl.uniform2f(P.uRes, canvas.width, canvas.height);
+  gl.uniform1f(P.uTime, simT);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  cur = 1 - cur;
+
+  if (frame % 6 === 0) drawSpec(lines);
+  frame++;
+  window.__frames = frame;
+  requestAnimationFrame(loop);
+}
+
+setKp(kpTarget, true);
+drawSpec(linesFromKp(kp));
+setTimeout(() => { if (hintShown) hint.classList.add('on'); }, 600);
+setTimeout(hideHint, 9000);
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Четыре такта — как работает двигатель</title>
+<meta name="description" content="Рядный четырёхцилиндровый двигатель в разрезе: такты, клапаны, P–V диаграмма цикла Отто и синтезированный звук мотора.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #efe9dd;
+    --paper-2: #f7f3ea;
+    --ink: #1d2025;
+    --ink-2: #454a52;
+    --ink-3: #5f646c;
+    --rule: rgba(29, 32, 37, .18);
+    --red: #c9401a;
+    --intake: #2f6fcf;
+    --comp: #5b4fc4;
+    --fire: #e8661e;
+    --exhaust: #8a7560;
+    --cond: 'Oswald', 'Arial Narrow', system-ui, sans-serif;
+    --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #d9d2c4; color: var(--ink); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  body { min-height: 100vh; }
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 452px; min-height: 100vh; }
+
+  .sheet-wrap { position: relative; padding: 18px 0 18px 18px; min-width: 0; }
+  #sheet { display: block; width: 100%; height: calc(100vh - 36px); min-height: 620px; background: var(--paper); box-shadow: 0 1px 0 rgba(0, 0, 0, .05), 0 24px 60px -30px rgba(40, 30, 10, .45); border-radius: 2px; touch-action: manipulation; }
+
+  .side { padding: 30px 30px 28px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .kicker { font: 500 12px/1 var(--cond); letter-spacing: .16em; text-transform: uppercase; color: var(--red); }
+  h1 { margin: 8px 0 0; font: 600 54px/.95 var(--cond); letter-spacing: -.01em; text-transform: uppercase; }
+  .lead { margin: 10px 0 0; color: var(--ink-2); font-size: 15px; max-width: 44ch; }
+
+  .stroke { background: var(--paper-2); border: 1px solid var(--rule); border-radius: 3px; padding: 16px 18px 14px; }
+  .stroke-top { display: flex; justify-content: space-between; align-items: baseline; font: 500 12px/1 var(--cond); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .stroke h2 { margin: 8px 0 6px; font: 600 34px/1 var(--cond); text-transform: uppercase; letter-spacing: .01em; transition: color .3s var(--ease); }
+  .stroke p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); min-height: 63px; }
+  .strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin-top: 14px; position: relative; }
+  .strip button {
+    appearance: none; border: 0; padding: 8px 0 0; background: none; cursor: pointer; text-align: left;
+    font: 500 12px/1 var(--cond); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+    box-shadow: inset 0 3px 0 var(--c); transition: box-shadow .25s var(--ease), color .25s var(--ease);
+  }
+  .strip button:hover { color: var(--ink-2); }
+  .strip button.on { color: var(--ink); box-shadow: inset 0 6px 0 var(--c); padding-top: 11px; }
+  .strip button:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+  .strip .cursor { position: absolute; top: -3px; width: 2px; height: 10px; background: var(--ink); transform: translateX(-1px); pointer-events: none; }
+
+  .controls { display: grid; gap: 12px; }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    appearance: none; height: 40px; padding: 0 14px; border-radius: 3px; border: 1px solid var(--ink); background: transparent; color: var(--ink);
+    font: 500 14px/1 var(--cond); letter-spacing: .06em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    transition: background .2s var(--ease), color .2s var(--ease);
+  }
+  .btn svg { width: 16px; height: 16px; }
+  .btn:hover { background: rgba(29, 32, 37, .07); }
+  .btn.on { background: var(--ink); color: var(--paper-2); }
+  .btn:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  .field { display: grid; gap: 4px; }
+  .field .lab { display: flex; justify-content: space-between; align-items: baseline; font: 500 13px/1.2 var(--cond); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+  .field .lab b { font: 500 14px/1 var(--mono); letter-spacing: 0; text-transform: none; color: var(--ink); }
+  .field .note { font: 400 12px/1.35 var(--sans); color: var(--ink-3); min-height: 16px; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 24px; background: transparent; cursor: pointer; --p: 30%; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { height: 3px; background: linear-gradient(90deg, var(--ink) 0 var(--p), rgba(29, 32, 37, .2) var(--p) 100%); }
+  input[type=range]::-moz-range-track { height: 3px; background: rgba(29, 32, 37, .2); }
+  input[type=range]::-moz-range-progress { height: 3px; background: var(--ink); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6.5px; border-radius: 1px; background: var(--paper-2); border: 2px solid var(--ink); transform: rotate(45deg); }
+  input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 1px; background: var(--paper-2); border: 2px solid var(--ink); }
+  input[type=range]:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+  .chart { background: var(--paper-2); border: 1px solid var(--rule); border-radius: 3px; padding: 12px 12px 8px; }
+  .chart h3 { margin: 0 0 6px; display: flex; justify-content: space-between; align-items: baseline; font: 500 13px/1.2 var(--cond); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+  .chart h3 b { font: 400 12px/1 var(--mono); letter-spacing: 0; text-transform: none; color: var(--ink-3); }
+  .chart canvas { display: block; width: 100%; }
+  #pv { height: 190px; }
+  #timing { height: 150px; }
+
+  @media (max-width: 1100px) {
+    .page { grid-template-columns: 1fr; }
+    .side { display: contents; }
+    .side > header { order: 1; padding: 22px 16px 4px; }
+    .sheet-wrap { order: 2; }
+    .side > .stroke { order: 3; margin: 0 16px; }
+    .side > .controls { order: 4; margin: 0 16px; }
+    .side > .chart { order: 5; margin: 0 16px; }
+    .side > .chart:last-child { margin-bottom: 28px; }
+    .page { gap: 16px; }
+    .sheet-wrap { padding: 12px; }
+    #sheet { height: auto; aspect-ratio: 1 / 1.45; min-height: 0; }
+    .side { padding: 8px 16px 28px; }
+    h1 { font-size: 44px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration: .01s !important; } }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="sheet-wrap">
+    <canvas id="sheet" aria-label="Чертёж: разрез цилиндра и вид на четыре цилиндра"></canvas>
+  </div>
+
+  <aside class="side">
+    <header>
+      <div class="kicker">Опыт № 010 · как это устроено</div>
+      <h1>Четыре такта</h1>
+      <p class="lead">Рядная «четвёрка» в&nbsp;разрезе: каждый цилиндр делает четыре хода поршня, и&nbsp;только один из&nbsp;них толкает машину вперёд.</p>
+    </header>
+
+    <section class="stroke" aria-live="polite">
+      <div class="stroke-top"><span>Цилиндр 1</span><span id="strokeNum">Такт 1 из 4</span></div>
+      <h2 id="strokeName">Впуск</h2>
+      <p id="strokeText"></p>
+      <div class="strip" id="strip">
+        <button type="button" data-c="360" style="--c: var(--intake)">Впуск</button>
+        <button type="button" data-c="540" style="--c: var(--comp)">Сжатие</button>
+        <button type="button" data-c="0" style="--c: var(--fire)">Рабочий ход</button>
+        <button type="button" data-c="180" style="--c: var(--exhaust)">Выпуск</button>
+        <span class="cursor" id="stripCursor"></span>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div class="btnrow">
+        <button class="btn on" id="btnPlay" type="button" aria-pressed="true">
+          <svg viewBox="0 0 16 16" fill="currentColor" id="icoPause"><rect x="3" y="2" width="3.4" height="12"/><rect x="9.6" y="2" width="3.4" height="12"/></svg>
+          <svg viewBox="0 0 16 16" fill="currentColor" id="icoPlay" style="display:none"><path d="M3.5 2l10 6-10 6z"/></svg>
+          <span>Пауза</span>
+        </button>
+        <button class="btn" id="btnStep" type="button" title="Повернуть коленвал на 15° (стрелка вправо)">+15°</button>
+        <button class="btn" id="btnSound" type="button" aria-pressed="false">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 6h2.5L8 3v10L4.5 10H2z" fill="currentColor" stroke="none"/><path d="M10.5 5.5a3.5 3.5 0 0 1 0 5M12.5 3.5a6.3 6.3 0 0 1 0 9"/></svg>
+          <span>Звук мотора</span>
+        </button>
+      </div>
+      <div class="field">
+        <div class="lab"><span id="lRpm">Обороты</span><b id="vRpm">60 об/мин</b></div>
+        <input type="range" id="rpm" min="0" max="1" step="0.001" aria-labelledby="lRpm">
+        <div class="note" id="rpmNote"></div>
+      </div>
+      <div class="field">
+        <div class="lab"><span id="lXray">Корпус</span><b id="vXray">100 %</b></div>
+        <input type="range" id="xray" min="0" max="1" step="0.01" value="1" aria-labelledby="lXray">
+      </div>
+    </section>
+
+    <section class="chart">
+      <h3><span>Давление P от объёма V</span><b id="work">—</b></h3>
+      <canvas id="pv" aria-label="Диаграмма давления от объёма"></canvas>
+    </section>
+    <section class="chart">
+      <h3><span>Фазы: такты и клапаны</span><b>0–720° коленвала</b></h3>
+      <canvas id="timing" aria-label="Такты четырёх цилиндров и подъём клапанов"></canvas>
+    </section>
+  </aside>
+</main>
+<script src="engine.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Очередь FIFO: одновременно работают максимум SHOT_SLOTS headless-браузеров (по умолчанию 3).
+# Кто раньше встал в очередь, тот раньше снимает; зависшие и убитые билеты убираются сами.
+DIR="$(cd "$(dirname "$0")" && pwd)"
+Q="$DIR/.queue"; mkdir -p "$Q"
+SLOTS=${SHOT_SLOTS:-3}
+t=$(flock "$Q/.counter.lock" bash -c 'f="$0/.counter"; n=$(cat "$f" 2>/dev/null || echo 0); echo $((n+1)) > "$f"; printf "%09d" "$n"' "$Q")
+echo $$ > "$Q/w-$t"
+trap 'rm -f "$Q/w-$t" "$Q/r-$t"' EXIT
+alive() { local pid; pid=$(cat "$1" 2>/dev/null); [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; }
+start=$(date +%s)
+while :; do
+  ahead=0; running=0
+  for f in "$Q"/w-* "$Q"/r-*; do
+    [ -e "$f" ] || continue
+    if ! alive "$f"; then rm -f "$f"; continue; fi
+    b=$(basename "$f")
+    case "$b" in
+      r-*) running=$((running+1)) ;;
+      w-*) [ "${b#w-}" \< "$t" ] && ahead=$((ahead+1)) ;;
+    esac
+  done
+  # снимки, запущенные старой версией очереди (замки .shot-1/.shot-2)
+  running=$((running + $(pgrep -fc 'flock -n -E 99 .*\.shot-[12]\.lock node' || true)))
+  if [ "$ahead" -eq 0 ] && [ "$running" -lt "$SLOTS" ]; then break; fi
+  if [ $(( $(date +%s) - start )) -gt 2400 ]; then echo "Очередь скриншотов занята >40 мин" >&2; exit 98; fi
+  sleep 1
+done
+echo $$ > "$Q/r-$t"; rm -f "$Q/w-$t"
+node "$DIR/shot.mjs" "$@"
+exit $?

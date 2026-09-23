@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Кузница планет</title>
+<meta name="description" content="Генератор планет: рельеф, биомы, океаны, облака, атмосфера, кольца и паспорт экспедиции.">
+<meta name="theme-color" content="#04050a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@200;300;400;500;600&family=Martian+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="gl" aria-label="Трёхмерная планета"></canvas>
+<div class="scrim" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="boot" id="boot">Разогреваем горн…</div>
+
+<header class="brand">
+  <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h12.5c2.6 0 4.6-1.4 5.5-3.5H8.5M6.5 7.5c0 2.4 1.9 4.2 4.3 4.2h1.7v3.1M9 18.8h8.5M10.2 18.8l1.2-4h2.8l1.2 4"/></svg>
+  <span>Кузница планет</span>
+  <span class="brand-count">выковано <b id="forged">1</b></span>
+</header>
+
+<section class="passport" id="passport" aria-live="polite">
+  <div class="pp-kicker">Паспорт экспедиции <span id="ppNum">№ 0001</span></div>
+  <h1 id="pName">Кузница</h1>
+  <div class="pp-sub"><span class="mono" id="pDesig">КП-0000 b</span><i class="sep"></i><span class="cls" id="pClass">—</span></div>
+  <dl class="pp-grid" id="ppGrid">
+    <div style="--i:0" class="wide"><dt>Звезда</dt><dd><i class="swatch" id="starSw"></i><span id="pStar">—</span></dd></div>
+    <div style="--i:1"><dt>Радиус</dt><dd id="pRadius">—</dd></div>
+    <div style="--i:2"><dt>Тяготение</dt><dd id="pGrav">—</dd></div>
+    <div style="--i:3"><dt>Средняя t°</dt><dd id="pTemp">—</dd></div>
+    <div style="--i:4" id="rowWater"><dt id="dtWater">Вода</dt><dd id="pWater">—</dd></div>
+    <div style="--i:5"><dt>Атмосфера</dt><dd id="pAtm">—</dd></div>
+    <div style="--i:6"><dt>Спутники</dt><dd id="pMoons">—</dd></div>
+    <div style="--i:7" class="opt"><dt>Сутки</dt><dd id="pDay">—</dd></div>
+    <div style="--i:8" class="opt"><dt>Год</dt><dd id="pYear">—</dd></div>
+    <div style="--i:9" class="opt wide"><dt>Состав</dt><dd id="pComp">—</dd></div>
+  </dl>
+  <p class="pp-desc" id="pDesc"></p>
+  <p class="pp-advice"><span>Совет экспедиции</span><b id="pAdvice">—</b></p>
+  <div class="hab">
+    <span>Индекс обитаемости</span>
+    <div class="bar"><i id="habBar"></i></div>
+    <b id="habVal">0,00</b>
+  </div>
+</section>
+
+<section class="params" id="params" aria-label="Параметры планеты">
+  <div class="params-head"><span>Параметры</span><button class="x" id="paramsClose" aria-label="Закрыть параметры"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <label class="sl" id="slWater"><span class="lbl">Вода</span><output></output><input type="range" data-k="water" min="0" max="100" step="1"></label>
+  <label class="sl" id="slTemp"><span class="lbl">Температура</span><output></output><input type="range" data-k="temp" min="0" max="1000" step="1"></label>
+  <label class="sl" id="slTect"><span class="lbl">Тектоника</span><output></output><input type="range" data-k="tect" min="0" max="100" step="1"></label>
+  <label class="sl" id="slClouds"><span class="lbl">Облака</span><output></output><input type="range" data-k="clouds" min="0" max="100" step="1"></label>
+  <label class="sl" id="slAtm"><span class="lbl">Атмосфера</span><output></output><input type="range" data-k="atm" min="0" max="100" step="1"></label>
+  <div class="toggles">
+    <button class="tog" id="tRings" aria-pressed="false"><i></i>Кольца</button>
+    <button class="tog" id="tSpin" aria-pressed="true"><i></i>Вращение</button>
+    <div class="stepper" role="group" aria-label="Число спутников">
+      <span>Спутники</span>
+      <button id="mMinus" aria-label="Меньше спутников">−</button>
+      <b id="mCount">0</b>
+      <button id="mPlus" aria-label="Больше спутников">+</button>
+    </div>
+  </div>
+</section>
+
+<footer class="dock">
+  <button class="forge" id="forge" aria-label="Выковать новую планету">
+    <svg class="hammer" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 3.6l7.2 7.2-2.6 2.6-7.2-7.2zM11.9 8.8L3.6 17.1a1.6 1.6 0 0 0 0 2.3l1 1a1.6 1.6 0 0 0 2.3 0l8.3-8.3"/></svg>
+    <span>Выковать новую</span><kbd>N</kbd>
+  </button>
+  <div class="seed">
+    <label for="seed">seed</label>
+    <input id="seed" inputmode="numeric" autocomplete="off" spellcheck="false" value="20260922">
+    <button id="dice" aria-label="Случайный seed"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1"/><circle cx="15" cy="15" r="1.1"/><circle cx="15" cy="9" r="1.1"/><circle cx="9" cy="15" r="1.1"/></svg></button>
+  </div>
+  <div class="tools">
+    <button id="paramsBtn" class="only-mobile" aria-label="Параметры"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+    <button id="snap" aria-label="Сохранить снимок PNG" title="Снимок (S)"><svg viewBox="0 0 24 24"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10H4z"/><circle cx="12" cy="13.2" r="3.2"/></svg></button>
+    <button id="sound" aria-label="Звук" aria-pressed="false" title="Звук"><svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="on" d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/><path class="off" d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button>
+    <button id="hide" aria-label="Скрыть интерфейс" title="Скрыть интерфейс (H)"><svg viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+  </div>
+</footer>
+
+<div class="hint" id="hint">тяните — вращать · колесо — ближе · <b>N</b> — новая планета · <b>H</b> — скрыть интерфейс</div>
+
+<script src="app.js"></script>
+</body>
+</html>

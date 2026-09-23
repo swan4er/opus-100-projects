@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Как модель читает текст · BPE вживую</title>
+<meta name="description" content="Токенизация BPE учится на русском тексте прямо в браузере: склейки частых пар, словарь токенов и то, почему модели трудно считать буквы в слове.">
+<meta name="theme-color" content="#E5E3DD">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&family=Piazzolla:opsz,wght@8..30,400..700&family=Science+Gothic:wdth,wght@50..150,500..900&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ═══ Левая колонка: заголовок, текущая склейка, плеер ═══ -->
+  <header class="left">
+    <p class="kicker"><span class="kn">090</span>Токенизация BPE вживую</p>
+    <h1 class="title hov" id="title" aria-label="Как модель читает текст"></h1>
+    <p class="lead">Модель не&nbsp;видит букв. Она читает кусками — <b>токенами</b>, и&nbsp;каждый кусок для&nbsp;неё просто номер в&nbsp;словаре. Здесь алгоритм BPE учится на&nbsp;русском тексте: считает соседние пары и&nbsp;склеивает самую частую.</p>
+
+    <section class="merge" id="merge" aria-live="off">
+      <h2 class="label"><span id="mTitle">Склейка</span> <span class="mono" id="mStep"></span></h2>
+      <div class="eq hov" id="mEq"></div>
+      <p class="mnote" id="mNote"></p>
+    </section>
+
+    <section class="player" id="player" aria-label="Обучение">
+      <div class="transport">
+        <button class="btn ic" id="bReset" type="button" aria-label="В начало" title="В начало (Home)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14"/><path d="M18 6l-8.5 6L18 18z" class="fill"/></svg>
+        </button>
+        <button class="btn ic" id="bBack" type="button" aria-label="Шаг назад" title="Шаг назад (←)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <button class="btn play" id="bPlay" type="button" aria-label="Пауза" title="Пуск и пауза (пробел)">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="i-pause"><path d="M8.5 6v12M15.5 6v12"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="i-play"><path d="M8 5.5v13l10.5-6.5z" class="fill"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="i-again"><path d="M5 12a7 7 0 1 0 2.1-5"/><path d="M5 4v4.5h4.5"/></svg>
+        </button>
+        <button class="btn ic" id="bFwd" type="button" aria-label="Шаг вперёд" title="Шаг вперёд (→)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <div class="seg speed" id="segSpeed" role="group" aria-label="Скорость">
+          <button type="button" data-speed="1" aria-pressed="true">×1</button>
+          <button type="button" data-speed="5" aria-pressed="false">×5</button>
+          <button type="button" data-speed="25" aria-pressed="false">×25</button>
+        </div>
+      </div>
+      <div class="timeline" id="timeline" role="slider" tabindex="0" aria-label="Шаг обучения" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+        <svg id="curve" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs><clipPath id="clipDone"><rect id="clipRect" x="0" y="0" width="0" height="100"/></clipPath></defs>
+          <path id="curveAreaBg" class="area-bg"/>
+          <path id="curveLineBg" class="line-bg"/>
+          <g clip-path="url(#clipDone)"><path id="curveArea" class="area"/><path id="curveLine" class="line"/></g>
+        </svg>
+        <div class="thumb" id="thumb"><span class="knob"></span></div>
+        <span class="tl-cap tl-cap-a">токенов в&nbsp;тексте</span>
+      </div>
+      <div class="tl-legend"><span>0</span><span id="tlMax"></span></div>
+    </section>
+
+    <ol class="how" aria-label="Как это работает">
+      <li>Сначала каждый знак — отдельный токен.</li>
+      <li>Алгоритм считает все пары соседних токенов и&nbsp;склеивает <b>самую частую</b> в&nbsp;новый токен.</li>
+      <li>Шаг повторяется: словарь растёт, текст становится короче. Модели достаются не&nbsp;буквы, а&nbsp;<b>номера</b> токенов.</li>
+    </ol>
+
+    <section class="options" id="options" aria-label="Основа словаря">
+      <div class="opt">
+        <span class="opt-l">Начать с</span>
+        <div class="seg" id="segBase" role="group" aria-label="Исходные символы">
+          <button type="button" data-base="char" aria-pressed="true">букв</button>
+          <button type="button" data-base="byte" aria-pressed="false">байтов UTF-8</button>
+        </div>
+      </div>
+      <p class="opt-note" id="baseNote"></p>
+    </section>
+  </header>
+
+  <!-- ═══ Центр: лист, который читает модель ═══ -->
+  <main class="center">
+    <div class="sheet" id="sheet">
+      <div class="sheet-head">
+        <div class="tabs" role="tablist" aria-label="Что показать">
+          <button class="tab" role="tab" type="button" data-scene="corpus" aria-selected="true" aria-controls="sCorpus">Учебный текст</button>
+          <button class="tab" role="tab" type="button" data-scene="own" aria-selected="false" aria-controls="sOwn">Свой текст</button>
+          <button class="tab" role="tab" type="button" data-scene="count" aria-selected="false" aria-controls="sCount">Счёт букв</button>
+        </div>
+        <div class="seg viewseg" id="segView" role="group" aria-label="Как показывать токены">
+          <button type="button" data-view="text" aria-pressed="true">Буквы</button>
+          <button type="button" data-view="ids" aria-pressed="false">Номера</button>
+        </div>
+      </div>
+
+      <div class="scene" id="sCorpus" role="tabpanel">
+        <div class="page hov" id="page" tabindex="0" aria-label="Учебный текст, разбитый на токены"></div>
+      </div>
+
+      <div class="scene" id="sOwn" role="tabpanel" hidden>
+        <div class="own">
+          <label class="own-l" for="ownInput">Напишите что угодно — разбиение обновляется на&nbsp;лету</label>
+          <textarea id="ownInput" rows="3" spellcheck="false" maxlength="600"></textarea>
+          <div class="chips-row" id="ownPresets"></div>
+          <div class="page own-out hov" id="ownOut" aria-live="polite"></div>
+          <p class="own-hint" id="ownHint"></p>
+        </div>
+      </div>
+
+      <div class="scene" id="sCount" role="tabpanel" hidden>
+        <div class="count" id="count"></div>
+      </div>
+
+      <footer class="sheet-foot">
+        <p class="stats" id="stats"></p>
+        <p class="legend" aria-hidden="true"><span class="sw sw-b"></span>одиночный знак <span class="sw sw-k"></span>склейка <span class="sw sw-n"></span>новая</p>
+      </footer>
+    </div>
+  </main>
+
+  <!-- ═══ Правая колонка: разбор токена и словарь ═══ -->
+  <aside class="right">
+    <section class="insp" id="insp">
+      <h2 class="label"><span id="insTitle">Как собран токен</span> <button class="unpin" id="unpin" type="button" hidden>снять выбор</button></h2>
+      <div class="ins-head" id="insHead"></div>
+      <div class="tree hov" id="tree"></div>
+      <div class="ex" id="insEx"></div>
+      <p class="ins-hint" id="insHint"></p>
+    </section>
+    <section class="vocab">
+      <h2 class="label">Словарь <span class="mono" id="vocabCount"></span></h2>
+      <p class="vocab-note" id="vocabNote"></p>
+      <div class="wall hov" id="wall"></div>
+    </section>
+  </aside>
+</div>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+
+<script src="corpus.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

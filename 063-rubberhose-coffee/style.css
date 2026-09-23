@@ -1,0 +1,183 @@
+/* Кофейник Жорж · зал маленького кинотеатра: тёмный тёплый фон, латунь, кремовая бумага билета */
+:root {
+  --bg: #0e0c0a;
+  --bg2: #17140f;
+  --ink: #ece5d4;
+  --muted: #a69d8b;
+  --line: #3b352c;
+  --brass: #e2bd73;
+  --ticket: #e8dcc0;
+  --ticket-ink: #1a1510;
+  --gut: 24px;
+  --chrome: 178px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: radial-gradient(120% 90% at 50% 42%, #1c1813 0%, var(--bg) 62%) var(--bg);
+  color: var(--ink);
+  font: 400 14px/1.45 "Oswald", "Arial Narrow", "Roboto Condensed", sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+
+.app {
+  --w: min(calc(100vw - var(--gut) * 2), calc((100svh - var(--chrome)) * 16 / 9), 1600px);
+  width: var(--w);
+  min-height: 100svh;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "head ticket" "screen screen" "player player" "note note";
+  align-content: center;
+  column-gap: 16px;
+}
+
+/* ---------- заголовок ---------- */
+.head { grid-area: head; display: flex; align-items: flex-end; padding-bottom: 12px; min-width: 0; }
+.title { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; min-width: 0; }
+.num {
+  font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted);
+  border: 1px solid var(--line); padding: 2px 7px 1px; border-radius: 2px;
+}
+h1 {
+  margin: 0; font: 400 28px/1 "Yeseva One", "Playfair Display", Georgia, serif; letter-spacing: 0.01em;
+  color: var(--ink);
+}
+.sub { margin: 0; font-size: 13px; letter-spacing: 0.08em; color: var(--muted); }
+
+/* ---------- билет «Смотреть со звуком» ---------- */
+.ticket {
+  grid-area: ticket; align-self: end; justify-self: end; margin-bottom: 10px;
+  position: relative; display: inline-flex; align-items: center; gap: 18px;
+  height: 44px; padding: 0 22px 0 16px; border: 0; cursor: pointer;
+  background: var(--ticket); color: var(--ticket-ink);
+  font-size: 15px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+  border-radius: 3px;
+  -webkit-mask: radial-gradient(circle 7px at 0 50%, #0000 96%, #000) left / 51% 100% no-repeat,
+                radial-gradient(circle 7px at 100% 50%, #0000 96%, #000) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle 7px at 0 50%, #0000 96%, #000) left / 51% 100% no-repeat,
+        radial-gradient(circle 7px at 100% 50%, #0000 96%, #000) right / 51% 100% no-repeat;
+  transition: transform 0.18s cubic-bezier(.2,.8,.2,1.2), background-color 0.18s ease;
+}
+.ticket::after {
+  content: ""; position: absolute; left: 44px; top: 7px; bottom: 7px;
+  border-left: 2px dotted rgba(26, 21, 16, 0.45);
+}
+.ticket svg { width: 20px; height: 20px; flex: none; }
+.ticket:hover { background: #f1e7cf; transform: translateY(-1px); }
+.ticket:active { transform: translateY(0) scale(0.98); }
+.ticket:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; }
+.ticket[hidden] { display: none; }
+
+/* ---------- экран ---------- */
+.screen {
+  grid-area: screen; position: relative; width: 100%; aspect-ratio: 16 / 9;
+  background: var(--bg); border-radius: 6px; overflow: hidden;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.9);
+}
+.screen canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
+
+/* ---------- плеер ---------- */
+.player {
+  grid-area: player; display: grid; align-items: center;
+  grid-template-columns: auto auto 1fr auto auto auto;
+  grid-template-areas: "play cur track dur scene tools";
+  column-gap: 14px; padding-top: 10px; min-width: 0;
+}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 40px; min-width: 40px; padding: 0 10px; border: 0; border-radius: 4px;
+  background: transparent; cursor: pointer;
+  transition: background-color 0.16s ease, transform 0.16s ease;
+}
+.btn svg { width: 22px; height: 22px; fill: currentColor; flex: none; }
+.btn:hover { background: rgba(236, 229, 212, 0.08); }
+.btn:active { transform: scale(0.95); }
+.btn:focus-visible, .track:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.play { grid-area: play; padding: 0 14px 0 10px; border: 1px solid var(--line); font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
+.play .lbl { min-width: 5.6em; text-align: left; }
+.play .i-play, .play .i-again { display: none; }
+.play.paused .i-pause, .play.ended .i-pause { display: none; }
+.play.paused .i-play { display: block; }
+.play.ended .i-again { display: block; }
+.time { grid-area: cur; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--ink); min-width: 3.1em; text-align: right; }
+.time.dur { grid-area: dur; color: var(--muted); text-align: left; }
+.scene {
+  grid-area: scene; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass);
+  min-width: 8.5em; white-space: nowrap;
+}
+.tools { grid-area: tools; display: flex; gap: 2px; }
+/* на десктопе обёртка прозрачна для сетки плеера; на телефоне — своя строка во всю ширину */
+.timeline { display: contents; }
+#snd .i-on { display: none; }
+#snd[aria-pressed="true"] .i-on { display: block; }
+#snd[aria-pressed="true"] .i-off { display: none; }
+
+.track { grid-area: track; position: relative; height: 40px; cursor: pointer; touch-action: none; min-width: 0; }
+.rail { position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--ink); transform-origin: left; }
+.marks { position: absolute; inset: 0; pointer-events: none; }
+.mark { position: absolute; top: 50%; width: 2px; height: 12px; margin: -6px 0 0 -1px; background: var(--muted); }
+.knob {
+  position: absolute; top: 50%; left: 0; width: 4px; height: 20px; margin: -10px 0 0 -2px;
+  background: var(--brass); border-radius: 1px; pointer-events: none;
+  transition: height 0.15s ease, margin 0.15s ease;
+}
+.track:hover .knob, .track.drag .knob { height: 26px; margin-top: -13px; }
+.tip {
+  position: absolute; bottom: 36px; left: 0; transform: translateX(-50%);
+  padding: 4px 8px; background: var(--ticket); color: var(--ticket-ink); border-radius: 2px;
+  font-size: 12px; letter-spacing: 0.06em; white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity 0.15s ease;
+}
+.track:hover .tip, .track.drag .tip { opacity: 1; }
+
+.note { grid-area: note; margin: 12px 0 0; font-size: 14px; color: var(--muted); letter-spacing: 0.02em; }
+.note .keys { color: #8d8474; margin-left: 6px; }
+
+/* ---------- весь экран ---------- */
+.app:fullscreen {
+  --w: 100vw; width: 100vw; height: 100vh; background: #000;
+  grid-template-columns: 1fr; grid-template-areas: "screen"; align-content: center; justify-items: center;
+}
+.app:fullscreen .head, .app:fullscreen .ticket, .app:fullscreen .note { display: none; }
+.app:fullscreen .screen { width: min(100vw, 100vh * 16 / 9); border-radius: 0; box-shadow: none; }
+.app:fullscreen .player {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(94vw, 1100px);
+  padding: 6px 12px; background: rgba(14, 12, 10, 0.86); border-radius: 6px;
+  transition: opacity 0.3s ease;
+}
+.app.idle:fullscreen .player { opacity: 0; }
+.app.idle:fullscreen .screen canvas { cursor: none; }
+
+/* ---------- телефон ---------- */
+@media (max-width: 720px) {
+  :root { --gut: 12px; }
+  .app {
+    --w: calc(100vw - var(--gut) * 2);
+    grid-template-columns: 1fr;
+    grid-template-areas: "head" "screen" "player" "ticket" "note";
+  }
+  .head { padding-bottom: 12px; }
+  .title { gap: 6px 10px; }
+  h1 { font-size: 26px; }
+  .sub { width: 100%; }
+  .screen { border-radius: 4px; }
+  .player {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: "tl tl tl" "play scene tools";
+    row-gap: 6px; column-gap: 10px; padding-top: 8px;
+  }
+  .timeline {
+    grid-area: tl; display: grid; align-items: center; column-gap: 10px;
+    grid-template-columns: auto 1fr auto; grid-template-areas: "cur track dur";
+  }
+  .scene { justify-self: start; min-width: 0; }
+  .ticket { justify-self: stretch; justify-content: center; margin: 14px 0 0; height: 48px; }
+  .ticket::after { left: 50px; }
+  .note { font-size: 14px; }
+}
+@media (hover: none) { .note .keys { display: none; } }
+@media (prefers-reduced-motion: reduce) { .ticket, .btn, .knob { transition: none; } }

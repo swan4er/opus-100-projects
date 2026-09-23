@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>В бездну — погружение на 10 935 метров</title>
+<meta name="description" content="Прокрутите страницу от поверхности океана до дна Марианского жёлоба: свет гаснет, давление растёт, а на своих настоящих глубинах встречаются кальмары, удильщики и «Триест».">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300;0,600;0,800;1,300&family=Onest:wght@400;500;600&family=Jura:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #e9f6ff;
+    --ink-2: rgba(233, 246, 255, 0.8);
+    --ink-3: rgba(233, 246, 255, 0.6);
+    --glow: #7df9ff;
+    --biolum: #59ffd0;
+    --deep: #01040c;
+    --head: "Exo 2", "Onest", system-ui, sans-serif;
+    --body: "Onest", system-ui, sans-serif;
+    --num: "Jura", "Onest", ui-monospace, monospace;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--deep); }
+  body { margin: 0; color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  #sea { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; display: block; }
+
+  /* ——— поверхность ——— */
+  .surface { height: 100vh; height: 100svh; position: relative; display: flex; flex-direction: column; justify-content: flex-start; padding: 12vh 8vw 0; }
+  .surface .kicker { font: 600 13px var(--head); letter-spacing: .3em; text-transform: uppercase; color: #0d2c4d; }
+  .surface h1 { font: 800 clamp(72px, 12vw, 176px)/0.86 var(--head); letter-spacing: -.03em; margin: 14px 0 20px; color: #0a2442; }
+  .surface p { font-size: clamp(17px, 1.5vw, 21px); max-width: 520px; margin: 0; color: #123a5e; line-height: 1.5; }
+  .dive-cue { position: absolute; left: 8vw; bottom: 7vh; display: flex; align-items: center; gap: 12px; color: #051c33; font: 600 16px var(--body); }
+  .dive-cue svg { width: 22px; height: 22px; animation: bob 2s var(--ease) infinite; }
+  @keyframes bob { 50% { transform: translateY(6px); } }
+
+  /* ——— океан ——— */
+  #ocean { position: relative; }
+  .zone { position: absolute; left: 8vw; width: min(470px, 84vw); pointer-events: none; }
+  .zone .z-depth { font: 700 15px var(--num); letter-spacing: .08em; color: var(--glow); }
+  .zone h2 { font: 800 clamp(40px, 6vw, 84px)/0.95 var(--head); letter-spacing: -.02em; margin: 8px 0 14px; }
+  .zone p { font-size: 18px; color: var(--ink-2); margin: 0; }
+  .zone .rule { height: 1px; background: linear-gradient(to right, rgba(125, 249, 255, 0.6), rgba(125, 249, 255, 0)); margin-bottom: 18px; }
+
+  .item { position: absolute; display: flex; align-items: center; gap: 22px; }
+  .item.left { left: 8vw; width: calc(50vw - 8vw - 28px); }
+  .item.right { right: max(8vw, 190px); width: calc(50vw - max(8vw, 190px) - 28px); flex-direction: row-reverse; text-align: right; }
+  .item .art { flex: 0 1 46%; min-width: 0; display: flex; justify-content: center; }
+  .item .art svg { display: block; overflow: visible; max-width: 100%; height: auto; }
+  .item .card { flex: 1 1 54%; }
+  .card { max-width: 340px; padding: 16px 18px 15px; border-radius: 14px; background: rgba(1, 10, 28, 0.58); border: 1px solid rgba(125, 249, 255, 0.18); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  .card .d { font: 700 14px var(--num); color: var(--glow); letter-spacing: .06em; }
+  .card h3 { font: 600 22px/1.15 var(--head); margin: 4px 0 6px; }
+  .card p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--ink-2); }
+  .item.right .card { text-align: left; }
+  .marker { position: absolute; left: 0; right: 0; height: 1px; pointer-events: none; }
+  .marker::before { content: ""; position: absolute; left: 0; width: 5vw; height: 1px; background: rgba(125, 249, 255, 0.35); }
+
+  .everest { position: absolute; left: 2.4vw; width: 36px; border-left: 1px dashed rgba(233, 246, 255, 0.35); pointer-events: none; }
+  .everest span { position: absolute; left: 12px; top: 8px; font: 500 13px var(--body); color: var(--ink-3); writing-mode: vertical-rl; letter-spacing: .06em; white-space: nowrap; }
+
+  .bottom { position: absolute; left: 0; right: 0; padding: 0 8vw; text-align: center; }
+  .bottom h2 { font: 800 clamp(44px, 7vw, 96px)/0.95 var(--head); margin: 0 0 16px; }
+  .bottom p { max-width: 620px; margin: 0 auto 14px; color: var(--ink-2); font-size: 18px; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; height: 50px; padding: 0 26px; border-radius: 25px; border: 1px solid rgba(233, 246, 255, 0.45); background: rgba(1, 10, 28, 0.5); color: var(--ink); font: 600 17px var(--body); cursor: pointer; margin-top: 14px; transition: background .25s, border-color .25s; }
+  .btn:hover { background: rgba(20, 60, 100, 0.55); border-color: rgba(233, 246, 255, 0.8); }
+  .btn svg { width: 18px; height: 18px; }
+  :focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; }
+
+  /* ——— глубиномер ——— */
+  .gauge { position: fixed; right: 26px; top: 50%; transform: translateY(-50%); width: 150px; z-index: 5; opacity: 0; transition: opacity .6s var(--ease); pointer-events: none; }
+  .gauge.on { opacity: 1; pointer-events: auto; }
+  .gauge .lbl { font: 600 12px var(--head); letter-spacing: .24em; text-transform: uppercase; color: var(--ink-3); }
+  .gauge .val { font: 700 38px/1 var(--num); margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+  .gauge .val small { font-size: 18px; margin-left: 4px; color: var(--ink-2); }
+  .gauge .zn { font: 600 14px var(--head); color: var(--glow); min-height: 20px; }
+  .gauge dl { margin: 12px 0 14px; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 13px; }
+  .gauge dt { color: var(--ink-3); }
+  .gauge dd { margin: 0; font: 500 13px var(--num); text-align: right; }
+  .track { position: relative; height: 34vh; margin-left: 6px; border-left: 1px solid rgba(233, 246, 255, 0.35); }
+  .track .tk { position: absolute; left: -4px; display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 0; color: var(--ink-3); font: 500 13px var(--body); cursor: pointer; transform: translateY(-50%); }
+  .track .tk::before { content: ""; width: 7px; height: 1px; background: rgba(233, 246, 255, 0.6); }
+  .track .tk:hover { color: var(--ink); }
+  .track .me { position: absolute; left: -6px; width: 11px; height: 11px; border-radius: 50%; background: var(--glow); transform: translateY(-50%); }
+
+  @media (max-width: 900px) {
+    .gauge { top: 12px; right: 12px; transform: none; width: auto; padding: 8px 12px; border-radius: 12px; background: rgba(1, 10, 28, 0.6); border: 1px solid rgba(125, 249, 255, 0.2); }
+    .gauge .val { font-size: 24px; margin: 2px 0 0; }
+    .gauge dl, .gauge .track, .gauge .lbl { display: none; }
+    .gauge .zn { font-size: 12px; min-height: 0; }
+    .item, .item.left, .item.right { left: 5vw; right: auto; width: 90vw; flex-direction: row; align-items: center; text-align: left; gap: 10px; }
+    .item .art { width: 30%; }
+    .item .art svg { width: 100%; height: auto; max-height: 120px; }
+    .card { max-width: none; flex: 1; padding: 12px 14px; }
+    .card h3 { font-size: 18px; }
+    .card p { font-size: 14px; }
+    .zone { left: 5vw; width: 90vw; }
+    .zone h2 { font-size: 40px; }
+    .zone p { font-size: 16px; }
+    .everest { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .dive-cue svg { animation: none; } }
+</style>
+</head>
+<body>
+<canvas id="sea" aria-hidden="true"></canvas>
+
+<header class="surface">
+  <div class="kicker">Погружение на 10 935 метров</div>
+  <h1>В бездну</h1>
+  <p>Прокрутите страницу вниз, до&nbsp;дна Марианского жёлоба. Масштаб честный: каждые сто метров глубины&nbsp;— сто двадцать пять пикселей. Свет кончится очень быстро, дорога&nbsp;— нет.</p>
+  <div class="dive-cue"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 3v15M5 12l6 6 6-6"/></svg>Нырнуть</div>
+</header>
+
+<main id="ocean" aria-label="Толща океана"></main>
+
+<aside class="gauge" id="gauge" aria-live="off">
+  <div class="lbl">Глубина</div>
+  <div class="val" id="gDepth">0<small>м</small></div>
+  <div class="zn" id="gZone">Солнечная зона</div>
+  <dl>
+    <dt>давление</dt><dd id="gP">1 атм</dd>
+    <dt>вода</dt><dd id="gT">24 °C</dd>
+    <dt>свет</dt><dd id="gL">100 %</dd>
+  </dl>
+  <div class="track" id="track"><span class="me" id="gMe"></span></div>
+</aside>
+
+<script>
+(() => {
+'use strict';
+const SCALE = 1.25;                 // пикселей на метр
+const BOTTOM = 10935;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const NB = ' ';
+const fmt = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, NB);
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ================================================================
+   Зоны и обитатели (глубины — по данным наблюдений)
+   ================================================================ */
+const ZONES = [
+  { d: 0, name: 'Солнечная зона', short: 'Солнечная' },
+  { d: 200, name: 'Сумеречная зона', short: 'Сумеречная', title: 'Сумеречная зона', text: 'Здесь остаётся около одного процента солнечного света. Водорослям его уже не хватает: фотосинтез кончается, и дальше жизнь питается тем, что падает сверху.' },
+  { d: 1000, name: 'Полуночная зона', short: 'Полуночная', title: 'Полуночная зона', text: 'Солнечного света нет совсем. Единственный свет здесь живой: около трёх четвертей обитателей толщи воды умеют светиться.' },
+  { d: 4000, name: 'Бездна', short: 'Бездна', title: 'Бездна', text: 'Вода на пару градусов теплее нуля, давление — четыреста атмосфер. На этих глубинах лежит дно большей части океана.' },
+  { d: 6000, name: 'Зона желобов', short: 'Желоба', title: 'Зона желобов', text: 'Ниже шести километров океан уходит в узкие разломы. Их назвали хадальными — в честь Аида. Пищи мало: она медленно оседает сверху хлопьями «морского снега».' },
+];
+
+// SVG-рисунки: стилизованные силуэты с живым светом
+const G = '#59ffd0', C = '#7df9ff';
+const glow = (id, color) => `<radialGradient id="${id}"><stop offset="0" stop-color="${color}" stop-opacity=".95"/><stop offset=".35" stop-color="${color}" stop-opacity=".35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient>`;
+const ART = {
+  red: () => `<svg width="260" height="90" viewBox="0 0 260 90">${[['#e0452f', 0], ['#ef8a2a', 1], ['#f2d12a', 2], ['#3fbf5a', 3], ['#2f6fe0', 4]].map(([c, i]) => `<g transform="translate(${20 + i * 50} 45)"><circle r="18" fill="${c}"/><circle r="18" fill="#0a3a5a" opacity="${[0.75, 0.55, 0.35, 0.18, 0.05][i]}"/></g>`).join('')}<text x="20" y="88" fill="rgba(233,246,255,.6)" font-family="Onest" font-size="13">так выглядят краски на глубине 10 м</text></svg>`,
+  diver: () => `<svg width="220" height="120" viewBox="0 0 220 120"><g fill="#062b45"><ellipse cx="110" cy="58" rx="46" ry="11"/><circle cx="160" cy="54" r="10"/><rect x="72" y="44" width="42" height="9" rx="4" fill="#0d4d70"/><path d="M64 58 L28 44 L18 52 L60 64 Z"/><path d="M64 60 L26 72 L22 82 L62 66 Z"/></g><circle cx="167" cy="52" r="4" fill="#9ee7ff" opacity=".7"/>${[0, 1, 2, 3, 4, 5].map((i) => `<circle cx="${168 + (i % 2) * 6}" cy="${40 - i * 7}" r="${2 + i * 0.6}" fill="none" stroke="rgba(233,246,255,.7)" stroke-width="1.2"/>`).join('')}</svg>`,
+  freediver: () => `<svg width="120" height="180" viewBox="0 0 120 180"><g fill="#041f38"><circle cx="60" cy="150" r="9"/><path d="M52 142 Q60 90 58 60 L64 60 Q66 92 68 142 Z"/><path d="M58 62 L40 18 L50 14 L62 56 Z"/><path d="M62 62 L76 16 L86 20 L66 58 Z"/></g><path d="M60 158 L60 178" stroke="rgba(233,246,255,.35)" stroke-dasharray="3 5"/></svg>`,
+  scuba: () => `<svg width="130" height="170" viewBox="0 0 130 170"><g fill="#031a30"><circle cx="64" cy="140" r="9"/><path d="M56 132 Q60 84 60 58 L70 58 Q72 86 74 132 Z"/><rect x="72" y="80" width="12" height="40" rx="5" fill="#0b3b5c"/><path d="M60 60 L46 16 L56 13 L66 55 Z"/><path d="M66 58 L82 18 L92 22 L72 58 Z"/></g><circle cx="64" cy="140" r="3.5" fill="#9ee7ff" opacity=".5"/></svg>`,
+  lantern: () => { let s = '<svg width="360" height="170" viewBox="0 0 360 170"><defs>' + glow('lg', G) + '</defs>'; for (let i = 0; i < 16; i++) { const x = 20 + (i * 67) % 320, y = 20 + ((i * 41) % 130), k = 0.6 + ((i * 7) % 5) * 0.12; s += `<g transform="translate(${x} ${y}) scale(${k})"><path d="M0 0 Q14 -9 30 0 Q14 9 0 0 Z M30 0 L38 -6 L38 6 Z" fill="#082643"/>${[6, 11, 16, 21].map((px) => `<circle cx="${px}" cy="4" r="3.2" fill="url(#lg)"/>`).join('')}<circle cx="5" cy="-1" r="1.6" fill="#bff"/></g>`; } return s + '</svg>'; },
+  penguin: () => `<svg width="200" height="110" viewBox="0 0 200 110"><g transform="rotate(12 100 55)"><path d="M30 58 Q60 30 130 44 Q170 50 178 58 Q170 66 130 72 Q60 86 30 58 Z" fill="#051a2c"/><path d="M60 66 Q100 74 140 64 Q120 72 80 74 Z" fill="#12344f"/><path d="M178 58 L192 56 L178 61 Z" fill="#051a2c"/><path d="M92 54 L70 80 L100 64 Z" fill="#051a2c"/><circle cx="168" cy="54" r="2" fill="#bfe"/></g>${[0, 1, 2].map((i) => `<circle cx="${40 - i * 10}" cy="${58 - i * 12}" r="${2 + i}" fill="none" stroke="rgba(233,246,255,.5)"/>`).join('')}</svg>`,
+  barreleye: () => `<svg width="230" height="120" viewBox="0 0 230 120"><path d="M40 70 Q90 40 160 58 Q190 66 204 72 Q190 80 160 84 Q90 96 40 70 Z" fill="#0a2a44"/><path d="M204 72 L224 58 L220 72 L224 86 Z" fill="#0a2a44"/><path d="M52 68 Q60 18 110 22 Q142 26 150 60" fill="rgba(160,240,255,.08)" stroke="rgba(160,240,255,.5)" stroke-width="1.5"/><ellipse cx="96" cy="42" rx="7" ry="13" fill="#41ff8a" opacity=".85"/><ellipse cx="116" cy="44" rx="7" ry="13" fill="#41ff8a" opacity=".6"/><circle cx="58" cy="76" r="2.4" fill="#bff"/></svg>`,
+  squid: () => `<svg width="420" height="170" viewBox="0 0 420 170"><defs><linearGradient id="sq" x1="0" x2="1"><stop offset="0" stop-color="#3a0d18"/><stop offset="1" stop-color="#6e1f25"/></linearGradient></defs><path d="M250 85 Q300 50 390 78 Q410 85 390 92 Q300 120 250 85 Z" fill="url(#sq)"/><path d="M392 85 L414 70 L410 85 L414 100 Z" fill="#6e1f25"/>${[-22, -14, -6, 2, 10, 18].map((o, i) => `<path d="M252 ${85 + o * 0.2} Q ${190 - i * 6} ${85 + o * 1.4} ${120 - i * 10} ${85 + o * 2.2}" stroke="#5a1720" stroke-width="${5 - i * 0.4}" fill="none" stroke-linecap="round"/>`).join('')}<path d="M252 84 Q140 70 20 40" stroke="#5a1720" stroke-width="2.4" fill="none"/><path d="M252 88 Q150 110 30 128" stroke="#5a1720" stroke-width="2.4" fill="none"/><ellipse cx="18" cy="40" rx="10" ry="5" fill="#5a1720"/><ellipse cx="28" cy="128" rx="10" ry="5" fill="#5a1720"/><circle cx="268" cy="80" r="11" fill="#f2e6c8"/><circle cx="266" cy="80" r="6" fill="#0a0506"/></svg>`,
+  siphon: () => { let s = '<svg width="560" height="150" viewBox="0 0 560 150"><defs>' + glow('sg', C) + '</defs><path d="M10 40 C 150 150, 300 0, 550 110" stroke="rgba(125,249,255,.35)" stroke-width="1.5" fill="none"/>'; for (let i = 0; i < 28; i++) { const t = i / 27; const x = 10 + t * 540, y = 40 + Math.sin(t * Math.PI * 1.3 + 0.4) * 38 + t * 40; s += `<circle cx="${x}" cy="${y}" r="${5 + (i % 3) * 2}" fill="url(#sg)" opacity="${0.5 + (i % 4) * 0.12}"/><circle cx="${x}" cy="${y}" r="${3 + (i % 3)}" fill="none" stroke="rgba(190,255,255,.6)" stroke-width="1"/>`; } return s + '</svg>'; },
+  vampire: () => `<svg width="220" height="170" viewBox="0 0 220 170"><defs>${glow('vg', '#5ad7ff')}</defs><path d="M110 20 Q150 22 150 70 Q150 92 172 142 Q140 124 126 148 Q112 124 96 150 Q84 124 50 140 Q72 94 70 70 Q70 22 110 20 Z" fill="#2a0a14"/><path d="M78 36 Q60 22 58 40 M142 36 Q160 22 162 40" stroke="#2a0a14" stroke-width="8" stroke-linecap="round"/><circle cx="96" cy="64" r="9" fill="#c9372c"/><circle cx="124" cy="64" r="9" fill="#c9372c"/><circle cx="96" cy="64" r="4" fill="#120203"/><circle cx="124" cy="64" r="4" fill="#120203"/><circle cx="58" cy="44" r="10" fill="url(#vg)"/><circle cx="162" cy="44" r="10" fill="url(#vg)"/></svg>`,
+  komsomolets: () => `<svg width="420" height="110" viewBox="0 0 420 110"><path d="M20 62 Q40 44 110 44 L330 44 Q392 46 404 62 Q392 78 330 80 L110 80 Q40 80 20 62 Z" fill="#06121f"/><path d="M190 44 L204 20 L262 20 L272 44 Z" fill="#06121f"/><path d="M404 62 L416 50 L416 74 Z" fill="#06121f"/><path d="M40 62 L380 62" stroke="rgba(125,249,255,.2)"/></svg>`,
+  turtle: () => `<svg width="240" height="140" viewBox="0 0 240 140"><path d="M50 72 Q90 30 160 50 Q190 60 196 74 Q186 92 150 100 Q80 110 50 72 Z" fill="#081b2c"/><path d="M60 72 Q110 60 190 74 M70 84 Q120 78 180 86 M80 60 Q120 48 170 58" stroke="rgba(125,249,255,.25)" fill="none"/><path d="M196 72 Q216 64 226 72 Q216 82 196 78 Z" fill="#081b2c"/><path d="M120 54 Q100 12 60 8 Q88 32 104 58 Z" fill="#081b2c"/><path d="M120 96 Q108 128 76 132 Q98 112 108 94 Z" fill="#081b2c"/><circle cx="218" cy="70" r="2" fill="#bff"/></svg>`,
+  angler: () => `<svg width="230" height="170" viewBox="0 0 230 170"><defs>${glow('ag', G)}</defs><path d="M60 100 Q60 50 120 52 Q172 56 176 100 Q172 140 120 142 Q72 142 60 100 Z" fill="#070c12"/><path d="M60 100 L24 80 L30 104 L20 128 Z" fill="#070c12"/><path d="M172 92 Q186 104 172 120 Q162 110 172 92 Z" fill="#010203"/>${[0, 1, 2, 3, 4, 5].map((i) => `<path d="M${170 + (i % 2) * 2} ${96 + i * 4} l6 2 l-6 2" fill="#dfe" opacity=".85"/>`).join('')}<path d="M130 56 Q150 10 196 24" stroke="#0b1520" stroke-width="3" fill="none"/><circle cx="198" cy="26" r="22" fill="url(#ag)"/><circle cx="198" cy="26" r="5" fill="#dfffee"/><circle cx="148" cy="84" r="4" fill="#9fe"/></svg>`,
+  whale: () => `<svg width="460" height="170" viewBox="0 0 460 170"><g transform="rotate(20 230 85)"><path d="M40 80 Q40 44 110 42 L300 50 Q370 60 400 80 Q370 104 300 112 L110 118 Q40 116 40 80 Z" fill="#081725"/><path d="M398 80 L446 56 L432 82 L448 104 Z" fill="#081725"/><path d="M160 112 L134 150 L180 116 Z" fill="#081725"/><path d="M48 96 L140 100" stroke="rgba(125,249,255,.2)"/><circle cx="92" cy="74" r="2.4" fill="#bfe"/></g></svg>`,
+  gulper: () => `<svg width="380" height="150" viewBox="0 0 380 150"><defs>${glow('gg', '#ff5aa0')}</defs><path d="M20 30 Q90 10 120 60 Q90 120 20 120 Q60 76 20 30 Z" fill="#080a10"/><path d="M118 62 Q220 76 300 70 Q346 66 360 90" stroke="#0b0f18" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M300 70 Q346 66 360 90" stroke="#0b0f18" stroke-width="3" fill="none"/><circle cx="362" cy="92" r="14" fill="url(#gg)"/><circle cx="104" cy="54" r="3" fill="#bff"/></svg>`,
+  vents: () => { let s = `<svg width="300" height="220" viewBox="0 0 300 220"><defs><radialGradient id="smk"><stop offset="0" stop-color="#2a2a2a" stop-opacity=".9"/><stop offset="1" stop-color="#101010" stop-opacity="0"/></radialGradient></defs>`; s += `<path d="M110 220 L124 90 L150 84 L170 220 Z" fill="#0d0b0a"/><path d="M200 220 L208 140 L226 138 L236 220 Z" fill="#0d0b0a"/>`; for (let i = 0; i < 7; i++) s += `<circle cx="${136 + Math.sin(i) * 10}" cy="${80 - i * 16}" r="${14 + i * 6}" fill="url(#smk)"/>`; for (let i = 0; i < 9; i++) { const x = 40 + i * 12 + (i > 4 ? 140 : 0); s += `<path d="M${x} 220 Q${x - 4} 190 ${x + 2} ${176 - (i % 3) * 8}" stroke="#e8e0d0" stroke-width="4" fill="none"/><circle cx="${x + 2}" cy="${174 - (i % 3) * 8}" r="5" fill="#d8283a"/>`; } return s + '</svg>'; },
+  beaked: () => `<svg width="340" height="130" viewBox="0 0 340 130"><g transform="rotate(26 170 65)"><path d="M30 64 Q60 44 150 46 Q250 50 300 64 Q250 80 150 84 Q60 84 30 64 Z" fill="#07131f"/><path d="M30 64 L6 60 L30 68 Z" fill="#07131f"/><path d="M296 64 L330 48 L320 64 L330 82 Z" fill="#07131f"/><path d="M160 50 L176 30 L186 48 Z" fill="#07131f"/><circle cx="46" cy="60" r="2" fill="#bff"/></g></svg>`,
+  titanic: () => `<svg width="460" height="200" viewBox="0 0 460 200"><path d="M40 190 L60 90 L380 60 Q420 58 440 80 L436 190 Z" fill="#0b0908"/><path d="M60 90 L380 60 L386 72 L64 102 Z" fill="#1c1410"/><path d="M200 70 L200 20 M300 62 L300 14" stroke="#0b0908" stroke-width="4"/><path d="M120 120 L400 96" stroke="rgba(180,110,60,.35)" stroke-width="3" stroke-dasharray="6 10"/><path d="M0 196 Q230 176 460 196 L460 200 L0 200 Z" fill="#0a0c10"/></svg>`,
+  dumbo: () => `<svg width="200" height="170" viewBox="0 0 200 170"><path d="M100 30 Q140 32 142 74 Q142 100 158 120 Q130 112 118 128 Q104 110 92 128 Q76 112 46 120 Q60 98 60 74 Q60 32 100 30 Z" fill="#c86a4a"/><path d="M60 58 Q22 36 18 64 Q40 70 60 70 Z" fill="#e0876a"/><path d="M140 58 Q178 36 182 64 Q160 70 140 70 Z" fill="#e0876a"/><circle cx="86" cy="70" r="6" fill="#1a0a06"/><circle cx="114" cy="70" r="6" fill="#1a0a06"/></svg>`,
+  mir: () => `<svg width="420" height="170" viewBox="0 0 420 170"><defs><linearGradient id="beam" x1="0" x2="1"><stop offset="0" stop-color="#fff6c8" stop-opacity=".55"/><stop offset="1" stop-color="#fff6c8" stop-opacity="0"/></linearGradient></defs><path d="M290 70 L420 30 L420 130 Z" fill="url(#beam)"/><path d="M60 80 Q60 44 150 44 L250 48 Q300 56 300 84 Q300 110 250 116 L150 120 Q60 118 60 80 Z" fill="#e8b92c"/><circle cx="276" cy="80" r="16" fill="#1a2a3a" stroke="#caa01e" stroke-width="4"/><rect x="120" y="30" width="60" height="16" rx="4" fill="#d9a91f"/><path d="M60 80 L30 64 L30 96 Z" fill="#d9a91f"/><text x="130" y="92" font-family="Exo 2" font-weight="800" font-size="22" fill="#6a4e06">МИР</text></svg>`,
+  snailfish: () => `<svg width="240" height="110" viewBox="0 0 240 110"><path d="M40 56 Q40 30 80 30 Q120 32 170 52 Q210 66 230 60 Q214 76 170 72 Q120 84 80 82 Q40 82 40 56 Z" fill="#f2c8c4" opacity=".92"/><path d="M60 72 Q120 76 190 66" stroke="#d8a09c" fill="none"/><circle cx="66" cy="50" r="4" fill="#2a1a1a"/></svg>`,
+  cameron: () => `<svg width="120" height="260" viewBox="0 0 120 260"><rect x="42" y="20" width="36" height="200" rx="18" fill="#3c8a3e"/><rect x="36" y="200" width="48" height="36" rx="10" fill="#e3e8e0"/><circle cx="60" cy="226" r="7" fill="#1a2a3a"/><rect x="46" y="60" width="28" height="6" fill="#2b6a2d"/><path d="M60 236 L40 258 L80 258 Z" fill="rgba(255,246,200,.35)"/></svg>`,
+  trieste: () => `<svg width="300" height="220" viewBox="0 0 300 220"><path d="M20 70 Q20 36 90 34 L230 38 Q280 46 282 70 Q280 94 230 100 L90 104 Q20 104 20 70 Z" fill="#c9cfd4"/><path d="M130 34 L140 14 L176 14 L184 36 Z" fill="#aab2b8"/><rect x="138" y="102" width="24" height="18" fill="#8e979e"/><circle cx="150" cy="150" r="32" fill="#9aa4ab"/><circle cx="162" cy="146" r="6" fill="#1a2a3a"/><path d="M20 70 L8 62 L8 78 Z" fill="#aab2b8"/></svg>`,
+  floor: () => { let s = '<svg width="900" height="160" viewBox="0 0 900 160" preserveAspectRatio="none">'; s += '<path d="M0 90 Q120 70 240 88 T480 84 T720 92 T900 80 L900 160 L0 160 Z" fill="#0b0d12"/>'; for (let i = 0; i < 14; i++) { const x = 30 + i * 62, y = 80 + (i % 3) * 4; s += `<g transform="translate(${x} ${y})"><path d="M0 0 q5 -4 10 0 q4 3 10 0" stroke="rgba(240,220,200,.55)" stroke-width="2" fill="none"/><circle cx="-2" cy="-1" r="1.4" fill="rgba(240,220,200,.7)"/></g>`; } return s + '</svg>'; },
+};
+const ITEMS = [
+  { d: 10, art: 'red', side: 'left', t: 'Красный гаснет первым', p: 'Вода жадно поглощает красный свет: уже на десяти метрах красное выглядит бурым. Синий проникает глубже всех — поэтому море синее.' },
+  { d: 40, art: 'diver', side: 'right', t: 'Предел любительского дайвинга', p: 'С аквалангом по обычным правилам спускаются до сорока метров. Давление здесь уже пять атмосфер.' },
+  { d: 214, art: 'freediver', side: 'right', t: 'Херберт Ничш, 2007', p: 'Рекорд погружения на задержке дыхания без ограничений: двести четырнадцать метров на одном вдохе.' },
+  { d: 332, art: 'scuba', side: 'right', t: 'Ахмед Габр, 2014', p: 'Рекорд с аквалангом — 332 метра. Спуск занял минуты, подъём — много часов: иначе декомпрессия убила бы дайвера.' },
+  { d: 430, art: 'lantern', side: 'left', t: 'Светящиеся анчоусы', p: 'Каждую ночь миллиарды рыб и рачков поднимаются к поверхности кормиться, а к утру уходят обратно в сумерки. Это крупнейшая ежедневная миграция на планете.' },
+  { d: 564, art: 'penguin', side: 'right', t: 'Императорский пингвин', p: 'Самая глубоко ныряющая птица: записанный рекорд — 564 метра.' },
+  { d: 660, art: 'barreleye', side: 'left', t: 'Бочкоглаз', p: 'Прозрачная голова, а внутри — зелёные трубчатые глаза. Рыба может повернуть их вверх и смотреть сквозь собственный лоб.' },
+  { d: 760, art: 'squid', side: 'right', t: 'Гигантский кальмар', p: 'До двенадцати–тринадцати метров вместе со щупальцами. Живым в природе его впервые сфотографировали только в 2004 году.' },
+  { d: 860, art: 'siphon', side: 'left', t: 'Сифонофора', p: 'Не одно животное, а колония: тысячи специализированных особей работают как единый организм. Некоторые сифонофоры длиннее синего кита.' },
+  { d: 950, art: 'vampire', side: 'right', t: 'Адский вампир', p: 'Ни кальмар, ни осьминог — отдельный отряд. Живёт там, где кислорода почти нет, а в опасности выворачивает свой плащ наизнанку.' },
+  { d: 1027, art: 'komsomolets', side: 'right', t: 'К-278 «Комсомолец», 1984', p: 'Рекорд для боевых подводных лодок: 1027 метров.' },
+  { d: 1250, art: 'turtle', side: 'right', t: 'Кожистая черепаха', p: 'Самая крупная черепаха на Земле ныряет глубже 1200 метров.' },
+  { d: 1550, art: 'angler', side: 'left', t: 'Удильщик', p: 'Приманка на голове светится благодаря бактериям. У некоторых видов крошечный самец прирастает к самке навсегда.' },
+  { d: 2000, art: 'whale', side: 'right', t: 'Кашалот', p: 'Ныряет глубже двух километров, охотясь на кальмаров. Шрамы от присосок на его коже — следы этих схваток.' },
+  { d: 2250, art: 'gulper', side: 'left', t: 'Мешкорот', p: 'Пасть больше тела: раскрывается, как мешок, чтобы не упустить редкую добычу. Кончик хвоста светится.' },
+  { d: 2500, art: 'vents', side: 'right', t: 'Гидротермальные источники', p: 'В 1977 году аппарат «Алвин» нашёл у Галапагосских островов горячие источники и оазисы жизни вокруг них, а в 1979-м — «чёрных курильщиков» с водой под 350 °C. Черви-рифтии живут здесь без солнца: их кормят бактерии.' },
+  { d: 2992, art: 'beaked', side: 'left', t: 'Клюворыл Кювье', p: 'Рекорд среди млекопитающих: нырок на 2992 метра и 137 минут без вдоха.' },
+  { d: 3800, art: 'titanic', side: 'right', t: '«Титаник»', p: 'Лежит на глубине около 3800 метров с 1912 года. Нашли его только в 1985-м.' },
+  { d: 4450, art: 'dumbo', side: 'left', t: 'Осьминог Дамбо', p: 'Машет плавниками, похожими на уши слонёнка. В 2020 году такого осьминога сняли почти на семи километрах — глубже других осьминогов.' },
+  { d: 4261, art: 'mir', side: 'right', t: '«Мир-1» и «Мир-2», 2007', p: 'Российские глубоководные аппараты опустились на дно у Северного полюса — 4261 метр.', shift: -60 },
+  { d: 8336, art: 'snailfish', side: 'left', t: 'Рыба-слизень', p: 'Самая глубоководная рыба из когда-либо снятых: 8336 метров, жёлоб Идзу-Огасавара, 2022 год. Глубже рыбы, по-видимому, жить не могут: белки не выдерживают давления.' },
+  { d: 10908, art: 'cameron', side: 'right', t: 'Джеймс Кэмерон, 2012', p: 'Первое одиночное погружение на дно Марианского жёлоба — аппарат Deepsea Challenger.', shift: -230 },
+  { d: 10911, art: 'trieste', side: 'left', t: '«Триест», 1960', p: 'Жак Пикар и Дон Уолш первыми достигли дна Бездны Челленджера. В иллюминатор они увидели облако поднятого ила.', shift: -200 },
+];
+
+/* ——— сборка страницы ——— */
+const ocean = document.getElementById('ocean');
+ocean.style.height = (BOTTOM * SCALE + 620) + 'px';
+for (const z of ZONES.slice(1)) {
+  const el = document.createElement('section');
+  el.className = 'zone';
+  Object.assign(el.dataset, { d: z.d, side: 'left', kind: 'zone' });
+  el.innerHTML = `<div class="rule"></div><div class="z-depth">${fmt(z.d)} м</div><h2>${z.title}</h2><p>${z.text}</p>`;
+  ocean.appendChild(el);
+}
+for (const it of ITEMS) {
+  const el = document.createElement('article');
+  el.className = `item ${it.side}`;
+  el.innerHTML = `<div class="art">${ART[it.art]()}</div><div class="card"><div class="d">${fmt(it.d)} м</div><h3>${it.t}</h3><p>${it.p}</p></div>`;
+  Object.assign(el.dataset, { d: it.d, side: it.side, kind: 'item', shift: it.shift || 0 });
+  ocean.appendChild(el);
+  const mk = document.createElement('div'); mk.className = 'marker'; mk.style.top = (it.d * SCALE) + 'px'; ocean.appendChild(mk);
+}
+// Эверест на дне
+{
+  const e = document.createElement('div'); e.className = 'everest';
+  const top = (BOTTOM - 8849) * SCALE;
+  e.style.top = top + 'px'; e.style.height = (8849 * SCALE) + 'px';
+  e.innerHTML = '<span>Эверест, 8849 м: поставленный на дно, он остался бы на два километра под водой</span>';
+  ocean.appendChild(e);
+}
+{
+  const b = document.createElement('section');
+  b.className = 'bottom';
+  b.style.top = (BOTTOM * SCALE - 70) + 'px';
+  b.innerHTML = `<div class="art" style="margin:0 -8vw 26px">${ART.floor()}</div>
+    <div class="z-depth" style="font:700 15px var(--num);color:var(--glow);letter-spacing:.08em">≈ 10 935 м</div>
+    <h2>Бездна Челленджера</h2>
+    <p>Самая глубокая известная точка океана; оценки разных экспедиций расходятся на десятки метров. Давление здесь — больше тонны на каждый квадратный сантиметр.</p>
+    <p>И даже здесь живут крошечные рачки-бокоплавы.</p>
+    <button class="btn" id="up"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 15V3M4 8l5-5 5 5"/></svg>Всплыть</button>`;
+  ocean.appendChild(b);
+  b.querySelector('.art svg').style.width = '100%';
+}
+// раскладка: блоки стоят на своей глубине, но не налезают на соседей по колонке
+function layout() {
+  const mobile = innerWidth <= 900;
+  const blocks = [...ocean.querySelectorAll('[data-kind]')].map((el) => ({ el, d: +el.dataset.d, side: mobile ? 'one' : el.dataset.side, shift: +(el.dataset.shift || 0), kind: el.dataset.kind, h: el.offsetHeight }));
+  const want = (b) => (b.kind === 'zone' ? b.d * SCALE - 26 : b.d * SCALE + b.shift - b.h / 2);
+  blocks.sort((a, b) => want(a) - want(b));
+  const last = { left: 30, right: 30, one: 30 };
+  for (const b of blocks) {
+    const top = Math.max(want(b), (last[b.side] ?? -1e9) + (mobile ? 22 : 16));
+    b.el.style.top = top + 'px';
+    last[b.side] = top + b.h;
+  }
+}
+layout();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+let lt = 0; window.addEventListener('resize', () => { clearTimeout(lt); lt = setTimeout(layout, 120); });
+document.getElementById('up').addEventListener('click', () => window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }));
+
+/* ——— глубиномер ——— */
+const track = document.getElementById('track');
+const TICKS = [[0, 'поверхность'], [200, 'сумерки'], [1000, 'полночь'], [4000, 'бездна'], [6000, 'желоба'], [BOTTOM, 'дно']];
+for (const [d, name] of TICKS) {
+  const b = document.createElement('button'); b.className = 'tk'; b.textContent = name;
+  b.style.top = (d / BOTTOM * 100) + '%';
+  b.addEventListener('click', () => { window.scrollTo({ top: heroH() + d * SCALE - innerHeight * 0.5 + 1, behavior: reduceMotion ? 'auto' : 'smooth' }); });
+  track.appendChild(b);
+}
+const heroH = () => document.querySelector('.surface').offsetHeight;
+function depthNow() { return (window.scrollY + innerHeight * 0.5 - heroH()) / SCALE; }
+function temperature(d) {
+  if (d < 60) return 24 - d * 0.05;
+  if (d < 1000) return lerp(21, 4.5, Math.pow((d - 60) / 940, 0.55));
+  if (d < 4000) return lerp(4.5, 1.6, (d - 1000) / 3000);
+  return lerp(1.6, 2.4, clamp((d - 4000) / 7000, 0, 1));
+}
+function lightStr(d) {
+  const pct = 100 * Math.exp(-d / 43.5);
+  if (d > 1000) return 'темнота';
+  if (pct >= 1) return `${Math.round(pct)} %`;
+  if (pct >= 0.01) return `${pct.toFixed(2).replace('.', ',')} %`;
+  const e = Math.floor(Math.log10(pct));
+  return `10${String(e).replace('-', '⁻').replace(/\d/g, (c) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c])} %`;
+}
+function updateGauge() {
+  const d = clamp(depthNow(), 0, BOTTOM);
+  document.getElementById('gauge').classList.toggle('on', window.scrollY > heroH() * 0.6);
+  document.getElementById('gDepth').innerHTML = `${fmt(d)}<small>м</small>`;
+  const z = [...ZONES].reverse().find((zz) => d >= zz.d);
+  document.getElementById('gZone').textContent = z.name;
+  document.getElementById('gP').textContent = `${fmt(1 + d / 10)} атм`;
+  document.getElementById('gT').textContent = `≈ ${temperature(d).toFixed(1).replace('.', ',')} °C`;
+  document.getElementById('gL').textContent = lightStr(d);
+  document.getElementById('gMe').style.top = (d / BOTTOM * 100) + '%';
+}
+
+/* ================================================================
+   Фон: вода, лучи, морской снег, вспышки биолюминесценции
+   ================================================================ */
+const cv = document.getElementById('sea'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; }
+window.addEventListener('resize', resize); resize();
+const STOPS = [[0, [88, 212, 222]], [15, [44, 166, 204]], [50, [22, 118, 172]], [130, [12, 72, 132]], [300, [7, 42, 92]], [600, [4, 26, 60]], [1000, [2, 12, 34]], [2000, [1, 6, 19]], [4000, [0, 3, 11]], [11000, [0, 2, 8]]];
+function waterAt(d) {
+  if (d <= 0) return STOPS[0][1];
+  for (let i = 1; i < STOPS.length; i++) {
+    if (d <= STOPS[i][0]) {
+      const [d0, c0] = STOPS[i - 1], [d1, c1] = STOPS[i];
+      const t = (Math.log(d + 10) - Math.log(d0 + 10)) / (Math.log(d1 + 10) - Math.log(d0 + 10));
+      return [lerp(c0[0], c1[0], t), lerp(c0[1], c1[1], t), lerp(c0[2], c1[2], t)];
+    }
+  }
+  return STOPS[STOPS.length - 1][1];
+}
+const rgb = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+const snow = Array.from({ length: 160 }, (_, i) => ({ x: Math.random(), y: Math.random() * 3, z: 0.3 + Math.random() * 0.9, ph: Math.random() * 6.28 }));
+const flashes = [];
+let lastScroll = 0, tPrev = performance.now();
+function drawSea(now) {
+  const dt = Math.min(0.05, (now - tPrev) / 1000); tPrev = now;
+  const y0 = window.scrollY;
+  const surfY = heroH() * 0.62 - y0;           // линия воды на экране
+  const dTop = (y0 - heroH()) / SCALE, dBot = dTop + H / SCALE;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // вода: градиент от глубины верхнего края до нижнего
+  const hh = heroH(), surfDoc = hh * 0.62;
+  const colorDepth = (docY) => (docY < hh ? Math.max(0, (docY - surfDoc) / SCALE) * 0.35 : (hh - surfDoc) / SCALE * 0.35 + (docY - hh) / SCALE);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  for (let k = 0; k <= 16; k++) { const yy = (k / 16) * H; g.addColorStop(k / 16, rgb(waterAt(colorDepth(y0 + yy)))); }
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // небо над водой (первый экран)
+  if (surfY > 0) {
+    const sg = ctx.createLinearGradient(0, 0, 0, surfY);
+    sg.addColorStop(0, '#bfe8ff'); sg.addColorStop(0.6, '#e8f6ff'); sg.addColorStop(1, '#fff6e6');
+    ctx.fillStyle = sg; ctx.fillRect(0, 0, W, surfY);
+    // солнце
+    const sx = W * 0.78, sy = surfY * 0.36;
+    const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.min(W, H) * 0.35);
+    halo.addColorStop(0, 'rgba(255,248,220,1)'); halo.addColorStop(0.12, 'rgba(255,240,200,.8)'); halo.addColorStop(1, 'rgba(255,240,200,0)');
+    ctx.fillStyle = halo; ctx.fillRect(0, 0, W, surfY);
+    // волны
+    ctx.fillStyle = 'rgba(40,150,190,1)';
+    ctx.beginPath(); ctx.moveTo(0, surfY);
+    for (let x = 0; x <= W; x += 8) ctx.lineTo(x, surfY + Math.sin(x * 0.02 + now * 0.0012) * 4 + Math.sin(x * 0.047 - now * 0.0017) * 2.5);
+    ctx.lineTo(W, surfY + 60); ctx.lineTo(0, surfY + 60); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let x = 0; x <= W; x += 8) { const yy = surfY + Math.sin(x * 0.02 + now * 0.0012) * 4 + Math.sin(x * 0.047 - now * 0.0017) * 2.5; x ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy); }
+    ctx.stroke();
+    // блики солнца на воде
+    for (let i = 0; i < 40; i++) { const xx = sx + (Math.sin(i * 12.9) * 0.5) * W * 0.3; const yy = surfY + 6 + (i % 6) * 5; ctx.fillStyle = `rgba(255,255,240,${0.3 + 0.4 * Math.abs(Math.sin(now * 0.003 + i))})`; ctx.fillRect(xx, yy, 10 + (i % 4) * 6, 1.5); }
+  }
+  // лучи под водой (первые ~150 м)
+  const rayA = clamp(1 - Math.max(0, dTop) / 160, 0, 1);
+  if (rayA > 0) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const top = Math.max(surfY, 0);
+    for (let i = 0; i < 9; i++) {
+      const x = W * (0.06 + i * 0.105) + Math.sin(now * 0.00025 + i * 2.3) * 50;
+      const w0 = 26 + (i % 3) * 26, len = H * (0.8 + (i % 4) * 0.12);
+      const sway = Math.sin(now * 0.0004 + i) * 0.02;
+      // четыре вложенные полосы дают мягкий край
+      for (let k = 1; k <= 4; k++) {
+        const w = w0 * k / 2.2;
+        const rg = ctx.createLinearGradient(0, top, 0, top + len);
+        rg.addColorStop(0, `rgba(190,245,255,${0.028 * rayA})`); rg.addColorStop(0.55, `rgba(190,245,255,${0.012 * rayA})`); rg.addColorStop(1, 'rgba(190,245,255,0)');
+        ctx.fillStyle = rg; ctx.beginPath();
+        ctx.moveTo(x - w / 2, top); ctx.lineTo(x + w / 2, top);
+        ctx.lineTo(x + w * 0.9 + len * (0.22 + sway), top + len); ctx.lineTo(x - w * 0.9 + len * (0.22 + sway), top + len); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  // морской снег: частицы уходят вверх при погружении
+  const dy = (y0 - lastScroll); lastScroll = y0;
+  const deepK = clamp((dTop - 100) / 800, 0, 1);
+  for (const s of snow) {
+    s.y -= dy / H * s.z * 0.9;
+    s.y += dt * 0.012 * s.z * (reduceMotion ? 0 : 1);
+    s.x += Math.sin(now * 0.0004 + s.ph) * 0.00006;
+    if (s.y < 0) s.y += 3; if (s.y > 3) s.y -= 3;
+    if (s.y > 1) continue;
+    const sy = s.y * H;
+    if (sy < surfY + 10) continue;
+    ctx.fillStyle = `rgba(220,240,255,${(0.1 + 0.35 * deepK) * s.z})`;
+    ctx.fillRect(s.x * W, sy, 1.4 * s.z, 1.4 * s.z);
+  }
+  // вспышки биолюминесценции
+  const bioK = clamp((dTop - 350) / 700, 0, 1);
+  if (bioK > 0 && !reduceMotion && Math.random() < 0.08 * bioK) flashes.push({ x: Math.random() * W, y: Math.random() * H, t: 0, hue: Math.random() < 0.8 ? '89,255,208' : '125,200,255', r: 2 + Math.random() * 5, n: 1 + Math.floor(Math.random() * 5) });
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let i = flashes.length - 1; i >= 0; i--) {
+    const f = flashes[i]; f.t += dt; f.y -= dy;
+    const a = Math.sin(Math.min(1, f.t / 1.6) * Math.PI);
+    if (f.t > 1.6) { flashes.splice(i, 1); continue; }
+    for (let k = 0; k < f.n; k++) {
+      const xx = f.x + k * 9, yy = f.y + Math.sin(k) * 6;
+      const gr = ctx.createRadialGradient(xx, yy, 0, xx, yy, f.r * 5);
+      gr.addColorStop(0, `rgba(${f.hue},${0.8 * a})`); gr.addColorStop(1, `rgba(${f.hue},0)`);
+      ctx.fillStyle = gr; ctx.fillRect(xx - f.r * 5, yy - f.r * 5, f.r * 10, f.r * 10);
+    }
+  }
+  ctx.restore();
+}
+let ticking = false;
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (document.hidden) return;
+  drawSea(now);
+  updateGauge();
+}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

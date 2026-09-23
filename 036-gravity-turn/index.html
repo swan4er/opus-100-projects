@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>На орбиту — трансляция старта</title>
+<meta name="description" content="Двухступенчатая ракета от старта до орбиты: атмосфера, гравитационный разворот, наведение по закону линейного тангенса.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sofia+Sans+Condensed:wght@400;500;600;700&family=Sofia+Sans+Extra+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <section class="stage" id="stage" aria-label="Внешняя камера">
+    <canvas id="view"></canvas>
+
+    <header class="bug">
+      <div class="live"><span class="dot"></span>ЭФИР</div>
+      <div class="mission">
+        <h1 id="missionName">Миссия «Сумерки»</h1>
+        <span id="missionSub">РН «Стриж-2» · космодром Восточный</span>
+      </div>
+    </header>
+
+    <div class="clock" aria-live="off"><span class="tsign" id="tsign">T−</span><span id="tclock">00:00:10</span></div>
+    <div class="hint" id="hint">Трансляция идёт сама.<br>Ускорьте время — ×4 или ×16,<br>полёт до орбиты длится 8 минут.</div>
+
+    <div class="caption" id="caption"></div>
+
+    <div class="toolbar">
+      <div class="group" role="group" aria-label="Пуск">
+        <button class="btn" id="btnPause" title="Пауза (P)" aria-label="Пауза">
+          <svg viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>
+        </button>
+        <button class="btn" id="btnRestart" title="Новый пуск (R)" aria-label="Новый пуск">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.8-4.1"/><path d="M12.4 1.5v3.2H9.2"/></svg>
+        </button>
+      </div>
+      <div class="group" role="group" aria-label="Ускорение времени">
+        <span class="lbl">Время</span>
+        <button class="btn warp on" data-warp="1">×1</button>
+        <button class="btn warp" data-warp="4">×4</button>
+        <button class="btn warp" data-warp="16">×16</button>
+        <button class="btn warp" data-warp="64">×64</button>
+      </div>
+      <div class="group cam-group" role="group" aria-label="Камера">
+        <span class="lbl">Камера</span>
+        <button class="btn cam on" data-cam="auto">Авто</button>
+        <button class="btn cam" data-cam="close">Близко</button>
+        <button class="btn cam" data-cam="wide">Далеко</button>
+      </div>
+      <div class="group">
+        <button class="btn" id="btnSound" title="Звук" aria-label="Звук" aria-pressed="false">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6h2.2L8 3.2v9.6L4.7 10H2.5z" fill="currentColor" stroke="none"/><path id="sndWave" d="M10.6 5.6a3.4 3.4 0 0 1 0 4.8M12.4 3.8a6 6 0 0 1 0 8.4" opacity="0.35"/></svg>
+        </button>
+        <button class="btn" id="btnSettings" title="Настройки полёта (S)">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 4h7M12 4h2M2 12h2M7 12h7"/><circle cx="10.5" cy="4" r="1.6"/><circle cx="5.5" cy="12" r="1.6"/></svg>
+          <span>Полёт</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="manual" id="manual" hidden>
+      <div class="mtitle">Ручное управление</div>
+      <canvas id="pitchDial" width="432" height="240"></canvas>
+      <div class="row">
+        <button class="btn" id="pDown" aria-label="Тангаж ниже">Ниже</button>
+        <button class="btn" id="pUp" aria-label="Тангаж выше">Выше</button>
+        <button class="btn" id="cutBtn" aria-label="Выключить двигатель">Выкл.</button>
+      </div>
+      <div class="keys"><kbd>←</kbd> <kbd>→</kbd> тангаж · <kbd>↑</kbd> <kbd>↓</kbd> тяга · <kbd>X</kbd> выключить двигатель</div>
+    </div>
+
+    <div class="result" id="result" hidden></div>
+  </section>
+
+  <aside class="side" aria-label="Телеметрия">
+    <div class="panel">
+      <div class="ph">Орбита <em>высоты ×8</em></div>
+      <canvas id="orbit"></canvas>
+      <div class="readout">
+        <div>Апоцентр<b id="rAp">—</b></div>
+        <div>Перицентр<b id="rPe">—</b></div>
+        <div>Период<b id="rPer">—</b></div>
+        <div>Тангаж<b id="rPitch">90<small>°</small></b></div>
+        <div>Напор<b id="rQ">0<small>кПа</small></b></div>
+        <div>Число Маха<b id="rMach">0</b></div>
+      </div>
+    </div>
+    <div class="panel charts" id="charts">
+      <div class="ph">Телеметрия <em class="legendline"><span><i></i>факт</span><span><i class="dash"></i>расчёт</span></em></div>
+      <div class="chart"><canvas data-key="h"></canvas><span class="cl">Высота</span><span class="cv" id="cv-h"></span></div>
+      <div class="chart"><canvas data-key="v"></canvas><span class="cl">Скорость</span><span class="cv" id="cv-v"></span></div>
+      <div class="chart"><canvas data-key="q"></canvas><span class="cl">Скоростной напор</span><span class="cv" id="cv-q"></span></div>
+      <div class="chart"><canvas data-key="g"></canvas><span class="cl">Перегрузка</span><span class="cv" id="cv-g"></span></div>
+    </div>
+    <div class="panel log">
+      <div class="ph">Журнал полёта</div>
+      <ol id="log"></ol>
+    </div>
+  </aside>
+
+  <footer class="strip">
+    <div class="tele s1" id="tele1">
+      <div class="name"><span id="tele1Name">Ракета</span><em id="tele1Tag">ступени 1 + 2</em></div>
+      <div class="vals">
+        <div class="v"><b id="s1v">0</b><small>км/ч</small></div>
+        <div class="v"><b id="s1h">0,0</b><small>км высота</small></div>
+      </div>
+      <div class="fuel"><i id="s1f"></i></div>
+    </div>
+    <div class="timeline"><canvas id="timeline"></canvas></div>
+    <div class="tele s2 dimmed" id="tele2">
+      <div class="name"><span>Ступень 2</span><em id="tele2Tag">ожидание</em></div>
+      <div class="vals">
+        <div class="v"><b id="s2v">0</b><small>км/ч</small></div>
+        <div class="v"><b id="s2h">0,0</b><small>км высота</small></div>
+      </div>
+      <div class="fuel"><i id="s2f"></i></div>
+    </div>
+  </footer>
+</div>
+
+<div class="sheet" id="settings" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <h2 id="setTitle">Параметры полёта</h2>
+    <p class="note">Ракета условная, но её цифры близки к современным носителям среднего класса. Меняйте параметры и смотрите, чего стоит орбита.</p>
+    <div class="field"><div class="top">Режим</div>
+      <div class="chips" data-set="mode">
+        <button class="chip" data-v="auto">Автопилот<small>линейный тангенс</small></button>
+        <button class="chip" data-v="manual">Ручное<small>тангаж и тяга — ваши</small></button>
+      </div></div>
+    <div class="field"><div class="top">Космодром</div>
+      <div class="chips" data-set="site">
+        <button class="chip" data-v="vostochny">Восточный<small>51,9° с. ш.</small></button>
+        <button class="chip" data-v="baikonur">Байконур<small>46,0° с. ш.</small></button>
+        <button class="chip" data-v="plesetsk">Плесецк<small>62,9° с. ш.</small></button>
+        <button class="chip" data-v="kourou">Куру<small>5,2° с. ш.</small></button>
+      </div></div>
+    <div class="field"><div class="top">Время старта</div>
+      <div class="chips" data-set="sky">
+        <button class="chip" data-v="dusk">Сумерки<small>светящийся шлейф</small></button>
+        <button class="chip" data-v="night">Ночь</button>
+        <button class="chip" data-v="day">День</button>
+      </div></div>
+    <div class="field"><div class="top">Полезная нагрузка <b id="vPayload"></b></div><input type="range" id="inPayload" min="1" max="22" step="0.5"></div>
+    <div class="field"><div class="top">Целевая орбита <b id="vTarget"></b></div><input type="range" id="inTarget" min="160" max="600" step="10"></div>
+    <div class="field"><div class="top">Манёвр по тангажу <b id="vKick"></b></div><input type="range" id="inKick" min="3" max="8" step="0.1"></div>
+    <div class="field"><div class="top">Предел скоростного напора <b id="vQ"></b></div><input type="range" id="inQ" min="20" max="45" step="1"></div>
+    <div class="actions">
+      <button class="btn" id="setCancel">Отмена</button>
+      <button class="btn primary" id="setGo">Пуск</button>
+    </div>
+  </div>
+</div>
+
+<script src="sim.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

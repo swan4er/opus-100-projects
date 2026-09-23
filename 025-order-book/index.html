@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Биржевой стакан</title>
+<meta name="description" content="Симулятор микроструктуры рынка: книга заявок, четыре типа агентов, новости, флеш-крэш и предохранитель.">
+<meta name="theme-color" content="#07090c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bar">
+  <div class="tick">
+    <b>ИСКР</b>
+    <span>«Искра», обыкновенные · учебный рынок</span>
+  </div>
+  <div class="quote">
+    <b id="qLast">100,00</b>
+    <span id="qChg" class="up">+0,00 %</span>
+  </div>
+  <dl class="kpis">
+    <div><dt>Спред</dt><dd id="kSpread">—</dd></div>
+    <div><dt>Объём</dt><dd id="kVol">—</dd></div>
+    <div><dt>Волатильность</dt><dd id="kVolat">—</dd></div>
+    <div><dt>Время</dt><dd id="kTime">10:00:00</dd></div>
+  </dl>
+  <div class="status" id="status"><i></i><span>Торги идут</span></div>
+</header>
+
+<nav class="controls" aria-label="События и агенты">
+  <div class="grp">
+    <span class="lbl">События</span>
+    <button class="ev up" id="eUp"><svg viewBox="0 0 16 16"><path d="M8 3l5 7H3z"/></svg>Хорошая новость</button>
+    <button class="ev down" id="eDown"><svg viewBox="0 0 16 16"><path d="M8 13L3 6h10z"/></svg>Плохая новость</button>
+    <button class="ev liq" id="eLiq"><svg viewBox="0 0 16 16"><path d="M8 2.5C6 5.5 4.5 7.4 4.5 9.6a3.5 3.5 0 0 0 7 0C11.5 7.4 10 5.5 8 2.5z"/><path d="M3 13.5l10-10"/></svg>Уход ликвидности</button>
+    <button class="ev crash" id="eCrash"><svg viewBox="0 0 16 16"><path d="M2 4l4 4 2-2 6 7"/><path d="M14 9v4h-4"/></svg>Флеш-крэш</button>
+  </div>
+  <div class="grp">
+    <button class="tog" id="tCB" aria-pressed="true"><i></i>Предохранитель</button>
+    <button class="tog" id="tFair" aria-pressed="true"><i></i>Справедливая цена</button>
+  </div>
+  <div class="grp agents" id="agents"></div>
+  <div class="grp speed" role="radiogroup" aria-label="Скорость">
+    <button class="play" id="bPlay" aria-label="Пауза"><svg class="i-pause" viewBox="0 0 16 16"><path d="M4 3h3v10H4zM9 3h3v10H9z"/></svg><svg class="i-play" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z"/></svg></button>
+    <button data-s="0.25" role="radio">×15</button>
+    <button data-s="1" role="radio" aria-checked="true">×60</button>
+    <button data-s="4" role="radio">×240</button>
+  </div>
+</nav>
+
+<main class="grid">
+  <section class="pane chart">
+    <header><h2>Цена и&nbsp;объём</h2><span>свеча — 30&nbsp;секунд</span><span class="leg" id="legFair"><i></i>справедливая цена</span><output class="evline" id="evline" aria-live="polite"></output></header>
+    <canvas id="cChart" aria-label="Свечной график цены"></canvas>
+  </section>
+  <section class="pane book">
+    <header><h2>Стакан</h2><span id="bookNote">20 уровней</span></header>
+    <div class="ladder" id="ladder"></div>
+  </section>
+  <section class="pane depth">
+    <header><h2>Глубина рынка</h2><span id="depthNote">накопленный объём</span></header>
+    <canvas id="cDepth" aria-label="График глубины"></canvas>
+  </section>
+  <section class="pane hist">
+    <header><h2>Доходности</h2><span id="kurt">5&nbsp;с · эксцесс —</span></header>
+    <canvas id="cHist" aria-label="Распределение доходностей"></canvas>
+  </section>
+  <section class="pane pnl">
+    <header><h2>Кто зарабатывает</h2><span>прибыль с начала, ₽</span></header>
+    <canvas id="cPnl" aria-label="Прибыль по типам агентов"></canvas>
+  </section>
+  <section class="pane tape">
+    <header><h2>Лента сделок</h2><span>кто ударил</span></header>
+    <ol class="trades" id="trades"></ol>
+  </section>
+</main>
+<script src="market.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

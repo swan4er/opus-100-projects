@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>054 · Допрос</title>
+<meta name="description" content="Нуарная комната допроса в 3D: нейросеть придумывает дело и прячет правду, подозреваемый врёт последовательно — поймайте его фактами.">
+<meta name="theme-color" content="#070a09">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=PT+Mono&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head>
+<body class="phase-title">
+<canvas id="stage" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div class="shade" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ============ верхняя строка ============ -->
+<header class="top">
+  <div class="brand">
+    <span class="mark">Допрос</span>
+    <button class="case-tag" id="caseTag" type="button" hidden></button>
+  </div>
+  <div class="demo-flag" id="demoFlag" hidden><i></i>демо-режим — нейросеть не подключена</div>
+  <div class="top-right">
+    <span class="cost" id="cost" title="Потрачено на нейросеть в этой вкладке" hidden>$0.000</span>
+    <button class="icon-btn" id="soundBtn" type="button" aria-label="Звук" aria-pressed="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path class="on" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z M15.5 9a4.2 4.2 0 0 1 0 6 M18 6.5a8 8 0 0 1 0 11"/><path class="off" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z M16 9.5l5 5 M21 9.5l-5 5"/></svg>
+    </button>
+    <button class="icon-btn" id="menuBtn" type="button" aria-label="К списку дел">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h6l2 2h9v10h-17z M12 11.5v5 M9.5 14h5"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- ============ титул ============ -->
+<section class="screen title-screen" id="titleScreen" aria-labelledby="titleH">
+  <p class="kicker">Портовый город · конец семидесятых · ночь</p>
+  <h1 class="wordmark" id="titleH">Допрос</h1>
+  <p class="lede">Нейросеть придумывает преступление и&nbsp;прячет правду. Напротив&nbsp;— человек, который будет врать вам в&nbsp;глаза. У&nbsp;вас&nbsp;— лампа, плёнка на&nbsp;45&nbsp;минут и&nbsp;улики, которые приносят по&nbsp;ходу.</p>
+  <ol class="rules">
+    <li>Дайте ему выговориться&nbsp;— пусть сам построит легенду.</li>
+    <li>Бейте фактом по&nbsp;тому, что он уже сказал: уликой или его&nbsp;же словами.</li>
+    <li>Решите: обвинение или свобода. Невиновные тоже врут.</li>
+  </ol>
+  <div class="actions">
+    <button class="btn primary" id="newCaseBtn" type="button">Взять новое дело</button>
+    <button class="btn ghost" id="demoCaseBtn" type="button">Демо-дело «Проявка»</button>
+    <button class="btn ghost" id="resumeBtn" type="button" hidden>Вернуться к&nbsp;допросу</button>
+  </div>
+  <p class="net-note" id="netNote"></p>
+</section>
+
+<!-- ============ дело готовится ============ -->
+<section class="screen gen-screen" id="genScreen" hidden aria-live="polite">
+  <div class="dossier">
+    <p class="dossier-head"><span>Дело № <b id="genNo">—</b></span><span id="genDate"></span></p>
+    <dl class="seed">
+      <dt>Место</dt><dd id="genPlace"></dd>
+      <dt>Что случилось</dt><dd id="genCrime"></dd>
+      <dt id="genWhoLabel">Задержан</dt><dd id="genWho"></dd>
+    </dl>
+    <p class="gen-status"><span class="reel" aria-hidden="true"></span><span id="genStatus">Дежурный поднимает сводку за ночь…</span><span class="gen-time" id="genTime">0:00</span></p>
+    <p class="gen-tip" id="genTip"></p>
+    <p class="gen-error" id="genError" hidden></p>
+    <div class="actions small">
+      <button class="btn ghost" id="genRetry" type="button" hidden>Попробовать ещё раз</button>
+      <button class="btn ghost" id="genDemo" type="button" hidden>Играть демо-дело</button>
+      <button class="btn ghost" id="genCancel" type="button">Отмена</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ папка с делом ============ -->
+<section class="screen brief-screen" id="briefScreen" hidden>
+  <article class="paper folder" aria-labelledby="bTitle">
+    <header class="folder-head">
+      <span class="folder-no" id="bNo">Дело №</span>
+      <span class="stamp" id="bStamp">В работе</span>
+    </header>
+    <h2 class="folder-title" id="bTitle"></h2>
+    <p class="folder-meta" id="bMeta"></p>
+    <h3>Что известно</h3>
+    <p id="bBrief"></p>
+    <h3>Потерпевший</h3>
+    <p id="bVictim"></p>
+    <h3 id="bSuspectH">Задержан</h3>
+    <p id="bSuspect"></p>
+    <h3>У вас на руках</h3>
+    <ul class="folder-cards" id="bCards"></ul>
+    <p class="folder-note">Ещё три улики принесут по&nbsp;ходу допроса. Плёнки&nbsp;— на&nbsp;45&nbsp;минут.</p>
+    <div class="actions">
+      <button class="btn primary" id="startBtn" type="button">Войти в&nbsp;допросную</button>
+      <button class="btn ink" id="briefBack" type="button" hidden>Вернуться к&nbsp;допросу</button>
+    </div>
+  </article>
+</section>
+
+<!-- ============ допрос ============ -->
+<section class="hud" id="hud" hidden>
+  <aside class="protocol" id="protocol" aria-label="Протокол допроса">
+    <header class="panel-head">
+      <h2>Протокол</h2>
+      <span class="hint">нажмите на реплику, чтобы зачитать её</span>
+      <button class="icon-btn small" id="protoClose" type="button" aria-label="Свернуть протокол"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"/></svg></button>
+    </header>
+    <ol class="proto-list" id="protoList"></ol>
+  </aside>
+
+  <div class="gauges" aria-label="Состояние допроса">
+    <div class="recorder">
+      <div class="rec-head"><span class="label">Стресс</span><span class="rec-key"><span><i></i>уровень</span><span class="p"><i></i>пульс</span></span><b id="stressNum">30</b></div>
+      <canvas id="trace" aria-hidden="true"></canvas>
+    </div>
+    <div class="gauge-row">
+      <span class="label">Плёнка</span><b class="tape" id="tapeLeft">45:00</b>
+      <span class="tape-bar"><i id="tapeBar"></i></span>
+      <span class="label caught-l">Уличён</span><span class="caught" id="caught"></span>
+    </div>
+  </div>
+
+  <div class="talk" id="talk" aria-live="polite">
+    <p class="q-line" id="qLine"></p>
+    <p class="a-line" id="aLine"><span class="who" id="aWho"></span><span class="a-text" id="aText"></span></p>
+  </div>
+
+  <div class="hand" id="hand" hidden>
+    <header class="panel-head"><h2>Улики</h2><span class="hint">выберите улику, чтобы положить её на&nbsp;стол вместе с&nbsp;вопросом</span>
+      <button class="icon-btn small" id="handClose" type="button" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"/></svg></button></header>
+    <div class="hand-cards" id="handCards"></div>
+  </div>
+
+  <form class="dock" id="dock" autocomplete="off">
+    <div class="attach" id="attach" hidden><span class="attach-kind" id="attachKind"></span><span class="attach-text" id="attachText"></span><button type="button" class="attach-x" id="attachX" aria-label="Убрать">×</button></div>
+    <div class="ask-row">
+      <input id="q" name="q" type="text" maxlength="300" placeholder="Ваш вопрос… Enter — спросить" aria-label="Ваш вопрос" enterkeyhint="send">
+      <button class="btn primary send" id="askBtn" type="submit" aria-label="Спросить"><span>Спросить</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15 M13 6l6 6-6 6"/></svg></button>
+    </div>
+    <div class="tools">
+      <button type="button" class="tool" id="handBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10l4 4v11H5z M15 4.5v4h4 M8 12h8 M8 15.5h6"/></svg>Улики <b id="handCount">0</b></button>
+      <button type="button" class="tool" id="silentBtn" title="Промолчать и смотреть на него"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10 M7 20h10 M8 4c0 5 8 5 8 8s-8 3-8 8 M16 4c0 5-8 5-8 8"/></svg>Молчать</button>
+      <button type="button" class="tool proto-toggle" id="protoBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14 M5 10h14 M5 14h10 M5 18h7"/></svg>Протокол</button>
+      <button type="button" class="tool verdict" id="verdictBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14 M8 16.5h8 M9.5 16.5V13 M14.5 16.5V13 M7 13h10 M12 4v9 M8 7.5l4-3.5 4 3.5"/></svg>Решение</button>
+    </div>
+  </form>
+</section>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<!-- ============ решение ============ -->
+<div class="modal" id="verdictModal" hidden role="dialog" aria-modal="true" aria-labelledby="vH">
+  <div class="sheet">
+    <h2 id="vH">Решение по&nbsp;делу</h2>
+    <p id="vText">Допрос закончится. Что дальше?</p>
+    <div class="choices">
+      <button class="choice" type="button" data-v="charge"><b>Предъявить обвинение</b><span id="vCharge">Он это сделал&nbsp;— дело уходит в&nbsp;суд.</span></button>
+      <button class="choice" type="button" data-v="release"><b>Отпустить</b><span id="vRelease">Он этого не делал&nbsp;— пусть идёт домой.</span></button>
+    </div>
+    <button class="btn ghost" id="verdictBack" type="button">Продолжить допрос</button>
+  </div>
+</div>
+
+<!-- ============ финал ============ -->
+<section class="screen finale-screen" id="finale" hidden>
+  <article class="paper report" aria-labelledby="fTitle">
+    <p class="report-kicker" id="fKicker"></p>
+    <div class="report-head">
+      <h2 id="fTitle"></h2>
+      <span class="stamp big" id="fStamp"></span>
+    </div>
+    <p class="report-lead" id="fText"></p>
+    <h3>Как было на&nbsp;самом деле</h3>
+    <p id="fTruth"></p>
+    <p class="report-secret" id="fSecret"></p>
+    <h3>Опоры его легенды</h3>
+    <ol class="lies" id="fLies"></ol>
+    <h3>Протокол с&nbsp;пометками</h3>
+    <ol class="annot" id="fProto"></ol>
+    <h3>Что было потом</h3>
+    <p class="epilogue" id="fEpi"></p>
+    <dl class="stats" id="fStats"></dl>
+    <div class="actions">
+      <button class="btn primary" id="againBtn" type="button">Новое дело</button>
+      <button class="btn ink" id="replayBtn" type="button">Переиграть это дело</button>
+    </div>
+  </article>
+</section>
+
+<p class="no3d-note" id="no3dNote" hidden></p>
+
+<script src="../_ai/ai.js"></script>
+<script src="data.js"></script>
+<script src="brain.js"></script>
+<script src="scene.js"></script>
+<script src="app.js"></script>
+<script type="module" onerror="window.App && App.no3D('cdn')">
+import * as THREE from 'three';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+window.App.start3D(THREE, { Reflector });
+</script>
+</body>
+</html>

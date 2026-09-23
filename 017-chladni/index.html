@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Фигуры Хладни — песок на звучащей пластине</title>
+<meta name="description" content="Колеблющаяся пластина: песок собирается на узловых линиях. Моды считаются численно, спектр отклика — по разложению на собственные колебания.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=JetBrains+Mono:wght@400&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <div class="kicker">Акустика · 1787</div>
+    <h1>Фигуры Хладни</h1>
+    <p class="lede">Песок на звучащей пластине собирается там, где она не движется, — на узловых линиях. Ведите частоту: на резонансах из хаоса проступает узор.</p>
+
+    <section class="block" aria-labelledby="fLbl">
+      <div class="lbl" id="fLbl">Частота</div>
+      <div class="freq"><span id="fVal">—</span><small>Гц</small></div>
+      <input type="range" id="fSlider" min="0" max="1000" step="1" aria-labelledby="fLbl">
+      <div class="row">
+        <button class="btn" id="prevRes" title="Предыдущий резонанс (PageDown)"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 2.5 4 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Резонанс</button>
+        <button class="btn" id="nextRes" title="Следующий резонанс (PageUp)">Резонанс<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 2.5 8 6 4.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <div class="mode" id="modeInfo" aria-live="polite">—</div>
+    </section>
+
+    <section class="block" aria-labelledby="sLbl">
+      <div class="lbl" id="sLbl">Пластина</div>
+      <div class="chips" id="shapes">
+        <button class="chip" data-shape="square">Квадрат</button>
+        <button class="chip" data-shape="rect">Прямоугольник</button>
+        <button class="chip" data-shape="circle">Круг</button>
+        <button class="chip" data-shape="guitar">Дека гитары</button>
+      </div>
+    </section>
+
+    <section class="block toggles">
+      <button class="tog" id="tSound" aria-pressed="false"><i></i>Звук</button>
+      <button class="tog" id="tWave" aria-pressed="false"><i></i>Колебания</button>
+      <button class="tog on" id="tTour" aria-pressed="true"><i></i>Экскурсия</button>
+      <button class="btn wide" id="reseed">Насыпать песок заново</button>
+    </section>
+
+    <p class="note">Клик по пластине переносит смычок — точку, где пластину раскачивают. От неё зависит, какие моды зазвучат.</p>
+    <p class="history">Эрнст Хладни показал эти фигуры в 1787&nbsp;году. Математическую теорию колебаний пластин Парижская академия наук наградила в 1816&nbsp;году — премию получила Софи Жермен.</p>
+  </aside>
+
+  <main class="stage" id="stage">
+    <canvas id="plate" aria-label="Пластина с песком"></canvas>
+    <div class="mtitle" aria-hidden="true">Фигуры Хладни</div>
+    <div class="busy" id="busy" hidden><span></span>Считаю собственные моды…</div>
+  </main>
+
+  <section class="spectrum" aria-label="Спектр отклика">
+    <div class="spec-head"><span>Спектр отклика</span><em>пики — резонансы пластины; клик — перейти к частоте</em></div>
+    <canvas id="spec"></canvas>
+  </section>
+</div>
+<script src="modes.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

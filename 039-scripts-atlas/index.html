@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Письменности мира — генеалогия письма за пять тысяч лет</title>
+<meta name="description" content="36 систем письма от клинописи до хангыля: родословная алфавитов, экспонаты, эволюция букв и ваше имя в 13 письменностях.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+Sans:wght@400;500;700&family=Alegreya+SC:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Cuneiform&family=Noto+Sans+Egyptian+Hieroglyphs&family=Noto+Sans+Phoenician&family=Noto+Sans+Old+Italic&family=Noto+Sans+Runic&family=Noto+Sans+Ogham&family=Noto+Sans+Gothic&family=Noto+Sans+Coptic&family=Noto+Sans+Armenian&family=Noto+Sans+Georgian&family=Noto+Sans+Glagolitic&family=Noto+Sans+Imperial+Aramaic&family=Noto+Sans+Hebrew&family=Noto+Sans+Syriac&family=Noto+Naskh+Arabic&family=Noto+Sans+Mongolian&family=Noto+Sans+Brahmi&family=Noto+Sans+Devanagari&family=Noto+Sans+Bengali&family=Noto+Sans+Tamil&family=Noto+Serif+Tibetan&family=Noto+Sans+Thai&family=Noto+Sans+Khmer&family=Noto+Sans+Ethiopic&family=Noto+Serif+SC&family=Noto+Sans+JP&family=Noto+Sans+KR&family=Noto+Sans+Cherokee&family=Noto+Sans+Canadian+Aboriginal&family=Noto+Sans+NKo&family=Noto+Sans+Tifinagh&family=Noto+Sans+Mayan+Numerals&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#efe7d6; --ink:#2a2118; --ink2:#4b3f33; --muted:#6b5c4b; --line:#cdbfa6; --card:#f7f1e4;
+  --ox:#8e2f1f; --logo:#8e2f1f; --abjad:#a36a12; --alpha:#274a63; --abug:#3b6a45; --syll:#6a4a7c; --feat:#1f6b6b;
+  --serif:'Alegreya',Georgia,serif; --sans:'Alegreya Sans','Helvetica Neue',Arial,sans-serif; --sc:'Alegreya SC','Alegreya',serif;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ox);outline-offset:2px}
+
+header{display:grid;grid-template-columns:1fr auto;align-items:end;gap:30px;padding:26px 36px 16px;max-width:1500px;margin:0 auto}
+.kicker{font:500 13px/1 var(--sc);letter-spacing:.14em;color:var(--ox)}
+h1{font:700 54px/.95 var(--serif);margin:8px 0 10px;letter-spacing:-.015em}
+.lede{font:400 17px/1.4 var(--serif);color:var(--ink2);margin:0;max-width:640px}
+.lede em{color:var(--ox);font-style:italic}
+.filters{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:560px}
+.f{height:34px;padding:0 12px 0 10px;border:1px solid var(--line);background:rgba(247,241,228,.7);border-radius:17px;display:inline-flex;align-items:center;gap:7px;font:500 14px/1 var(--sans);color:var(--ink2);transition:background .2s,border-color .2s,color .2s}
+.f i{width:10px;height:10px;border-radius:50%}
+.f:hover{border-color:var(--muted)}
+.f.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+
+.chartwrap{max-width:1500px;margin:0 auto;padding:0 36px}
+.chart{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#e9dcc2;box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 10px 30px -18px rgba(60,40,20,.5)}
+.chart canvas{position:absolute;inset:0;width:100%;height:100%}
+.chart svg{position:relative;display:block;width:100%;height:auto}
+.node{cursor:pointer}
+.node .badge{transition:transform .3s var(--ease)}
+.node:hover .badge{transform:scale(1.12)}
+.dim{opacity:.22;transition:opacity .4s}
+.lit{opacity:1;transition:opacity .4s}
+
+main{max-width:1500px;margin:0 auto;padding:22px 36px 40px;display:grid;grid-template-columns:1.25fr 1fr 1.15fr;gap:26px}
+section h2{font:700 26px/1.1 var(--serif);margin:0 0 4px}
+.sec-k{font:500 13px/1 var(--sc);letter-spacing:.12em;color:var(--muted);margin-bottom:10px}
+
+/* экспонат */
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:20px 22px 22px;box-shadow:0 12px 30px -24px rgba(60,40,20,.6)}
+.card .num{font:500 13px/1 var(--sc);letter-spacing:.12em;color:var(--muted)}
+.card h2{font-size:38px;margin:8px 0 6px}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;font:500 14px/1.4 var(--sans);color:var(--ink2);margin-bottom:14px}
+.meta b{font-weight:700;color:var(--ink)}
+.vitrine{position:relative;border-radius:4px;padding:16px 16px 12px;margin:0 0 14px;overflow:hidden;min-height:124px;border:1px solid rgba(60,40,20,.18)}
+.vitrine canvas{position:absolute;inset:0;width:100%;height:100%}
+.glyphs{position:relative;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:34px;line-height:1.35;color:#2a1c10}
+.glyphs span{display:inline-block;min-width:.8em;text-align:center;opacity:0;transform:translateY(6px);animation:rise .5s var(--ease) forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+.fact{font:400 16.5px/1.5 var(--serif);margin:0 0 14px;color:var(--ink)}
+.rel{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;font:500 14px/1.3 var(--sans);color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--line);background:#fffaf0;border-radius:14px;padding:5px 10px;font:500 14px/1 var(--sans);color:var(--ink);transition:border-color .2s}
+.chip:hover{border-color:var(--ink)}
+.chip small{color:var(--muted);font-size:12px;margin-left:4px}
+
+/* эволюция */
+.evo{display:grid;gap:10px}
+.erow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px;border:1px solid var(--line);border-radius:6px;background:rgba(247,241,228,.65);cursor:pointer;transition:background .25s,border-color .25s;position:relative}
+.erow:hover,.erow.on{background:var(--card);border-color:var(--ink2)}
+.etile{display:grid;justify-items:center;gap:4px}
+.etile .g{height:46px;display:grid;place-items:center;font-size:34px;line-height:1;color:var(--ink);transition:color .3s,transform .3s var(--ease)}
+.etile .g svg{width:40px;height:40px}
+.etile small{font:500 12px/1.2 var(--sans);color:var(--muted);text-align:center}
+.erow.on .etile.hot .g{color:var(--ox);transform:scale(1.14)}
+.evo-note{font:400 15px/1.45 var(--serif);color:var(--ink2);margin:10px 0 0}
+
+/* имя */
+.namebox{display:flex;gap:8px;margin-bottom:12px}
+.namebox input{flex:1;height:46px;border:1px solid var(--ink2);border-radius:6px;background:var(--card);padding:0 14px;font:500 20px/1 var(--serif);outline:none}
+.namebox input:focus{box-shadow:0 0 0 3px rgba(142,47,31,.15);border-color:var(--ox)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:9px 12px 10px;min-height:80px;display:grid;align-content:space-between;gap:4px;cursor:pointer;transition:border-color .2s}
+.tile:hover{border-color:var(--ink2)}
+.tile .h{display:flex;justify-content:space-between;gap:8px;font:500 12px/1 var(--sc);letter-spacing:.08em;color:var(--muted)}
+.tile .t{font-size:25px;line-height:1.3;overflow-wrap:anywhere;color:var(--ink)}
+.tile .n{font:400 12.5px/1.2 var(--sans);color:var(--muted)}
+.foot{max-width:1500px;margin:0 auto;padding:0 36px 34px;font:400 14px/1.5 var(--sans);color:var(--muted)}
+
+@media (max-width:1180px){
+  main{grid-template-columns:1fr 1fr}
+  main .namesec{grid-column:1/-1}
+  .tiles{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:760px){
+  header{grid-template-columns:1fr;padding:18px 16px 12px}
+  h1{font-size:40px}
+  .lede{font-size:16px}
+  .filters{justify-content:flex-start}
+  .f{height:40px}
+  .chartwrap{padding:0 0 0 16px}
+  .chart{overflow-x:auto;border-right:0;border-radius:6px 0 0 6px}
+  .chart .inner{width:1180px;position:relative}
+  main{grid-template-columns:1fr;padding:18px 16px 30px}
+  .tiles{grid-template-columns:1fr 1fr}
+  .card h2{font-size:32px}
+  .foot{padding:0 16px 30px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="kicker">Музей письма · зал первый</div>
+    <h1>Письменности мира</h1>
+    <p class="lede">Пять тысяч лет письма: <em>36 систем</em> от клинописи до хангыля. Щёлкните экспонат — загорятся его предки и потомки.</p>
+  </div>
+  <div class="filters" id="filters" aria-label="Типы письма"></div>
+</header>
+
+<div class="chartwrap">
+  <div class="chart" id="chart"><div class="inner" id="inner"><canvas id="tex"></canvas><svg id="tree" viewBox="0 0 1428 520" aria-label="Родословная письменностей"></svg></div></div>
+</div>
+
+<main>
+  <section aria-label="Экспонат">
+    <div class="card" id="card"></div>
+  </section>
+  <section aria-label="Эволюция букв">
+    <div class="sec-k">Одна буква — три тысячи лет</div>
+    <h2>Как бык стал буквой «А»</h2>
+    <div class="evo" id="evo" style="margin-top:12px"></div>
+    <p class="evo-note">Семитские рудокопы на Синае читали египетские рисунки по первому звуку слова: «бык» — <i>ʾalp</i> — стал знаком звука ʾ. Финикийцы положили быка на бок, греки перевернули его рогами вниз и прочли как гласную «а».</p>
+  </section>
+  <section class="namesec" aria-label="Ваше имя">
+    <div class="sec-k">Примерьте письменность</div>
+    <h2>Ваше имя в 13 письменностях</h2>
+    <div class="namebox" style="margin-top:12px"><input id="name" value="Кирилл" maxlength="24" aria-label="Имя" spellcheck="false"></div>
+    <div class="tiles" id="tiles"></div>
+  </section>
+</main>
+<p class="foot">Даты — время первых известных надписей, округлены. Пунктир на схеме — влияние или гипотеза, а не прямое происхождение. Транслитерация имени приблизительная: у каждого языка свои правила передачи иностранных имён.</p>
+
+<script>
+'use strict';
+/* ═════════════════════════════════════════════════════════
+   1. Экспонаты
+   ═════════════════════════════════════════════════════════ */
+const TYPES = {
+  logo: { ru: 'логографическое', color: '#8e2f1f' },
+  abjad: { ru: 'абджад — только согласные', short: 'абджад', color: '#a36a12' },
+  alpha: { ru: 'алфавит', color: '#274a63' },
+  abug: { ru: 'абугида — слоговые знаки', short: 'абугида', color: '#3b6a45' },
+  syll: { ru: 'слоговое', color: '#6a4a7c' },
+  feat: { ru: 'признаковое', color: '#1f6b6b' }
+};
+const LANES = ['Месопотамия', 'Египет и Ханаан', 'Греция и Рим', 'Северная Европа', 'Кавказ и славяне', 'Ближний Восток', 'Африка', 'Индия', 'Юго-Восточная Азия', 'Восточная Азия', 'Америка'];
+const S = [
+  { id: 'cun', name: 'Клинопись', lane: 0, date: -3200, when: 'ок. 3200 до н. э.', place: 'Шумер', type: 'logo', dir: '→ (сначала столбцами)', users: 'вымерла к I в. н. э.', font: 'Noto Sans Cuneiform', g: '𒀭', sample: '𒀭 𒈗 𒂗 𒆠 𒌓 𒀀 𒁀 𒄿 𒉿 𒊩', era: 'clay',
+    fact: 'Писали заострённой тростниковой палочкой по сырой глине — отсюда клиновидные штрихи. Клинописью записывали больше десятка языков: шумерский, аккадский, хеттский и другие.' },
+  { id: 'egy', name: 'Египетские иероглифы', lane: 1, date: -3200, when: 'ок. 3200 до н. э.', place: 'Египет', type: 'logo', dir: '→ или ←, а также столбцами', users: 'вымерли, последняя надпись — 394 г.', font: 'Noto Sans Egyptian Hieroglyphs', g: '𓂀', sample: '𓀀 𓁐 𓂀 𓃀 𓄿 𓅓 𓆓 𓇋 𓈖 𓊪', era: 'papyrus',
+    fact: 'Фигуры людей и животных смотрят навстречу началу строки — так узнают направление чтения. Около двух десятков знаков обозначали одиночные согласные: египтяне были в шаге от алфавита.' },
+  { id: 'psn', name: 'Протосинайское', lane: 1, date: -1850, when: 'ок. 1850 до н. э.', place: 'Синай', type: 'abjad', dir: 'разное', users: 'вымерло', font: null, g: null, sample: null, era: 'papyrus',
+    fact: 'Семитские рабочие бирюзовых рудников Серабит-эль-Хадима взяли египетские рисунки и стали читать их по первому звуку слова. Так родился принцип алфавита.' },
+  { id: 'phn', name: 'Финикийское', lane: 1, date: -1050, when: 'ок. 1050 до н. э.', place: 'Финикия (Ливан)', type: 'abjad', dir: '← справа налево', users: 'вымерло в первые века н. э.', font: 'Noto Sans Phoenician', g: '𐤀', sample: '𐤀 𐤁 𐤂 𐤃 𐤄 𐤅 𐤆 𐤇 𐤈 𐤉 𐤊 𐤋 𐤌 𐤍', era: 'papyrus',
+    fact: '22 буквы — и только согласные. Мореходы разнесли его по Средиземноморью, и от него происходит большинство алфавитов мира.' },
+  { id: 'grk', name: 'Греческое', lane: 2, date: -800, when: 'ок. 800 до н. э.', place: 'Греция', type: 'alpha', dir: '→ (в древности и ←, и «бустрофедоном»)', users: '≈ 13 млн', font: null, g: 'Ω', sample: 'Α Β Γ Δ Ε Ζ Η Θ Λ Ξ Σ Φ Ψ Ω', era: 'papyrus',
+    fact: 'Греки превратили лишние для них финикийские согласные в гласные — получился первый алфавит, где записываются все звуки.' },
+  { id: 'ita', name: 'Этрусское', lane: 2, date: -700, when: 'ок. 700 до н. э.', place: 'Этрурия', type: 'alpha', dir: '← справа налево', users: 'вымерло', font: 'Noto Sans Old Italic', g: '𐌀', sample: '𐌀 𐌁 𐌂 𐌃 𐌄 𐌅 𐌆 𐌇 𐌈 𐌉 𐌊 𐌋 𐌌 𐌍', era: 'papyrus',
+    fact: 'Этруски получили алфавит от греческих колонистов и передали его римлянам. Сам этрусский язык понят лишь частично.' },
+  { id: 'lat', name: 'Латиница', lane: 2, date: -600, when: 'VII–VI вв. до н. э.', place: 'Рим', type: 'alpha', dir: '→', users: 'самая распространённая письменность мира', font: null, g: 'A', sample: 'A B C D E F G H I K L M N O P Q R S T V X', era: 'papyrus',
+    fact: 'В классической латыни было 23 буквы. J, U и W появились только в Средние века и Новое время.' },
+  { id: 'cop', name: 'Коптское', lane: 2, date: 200, when: 'II–III вв.', place: 'Египет', type: 'alpha', dir: '→', users: 'язык богослужения коптов', font: 'Noto Sans Coptic', g: 'Ⲁ', sample: 'Ⲁ Ⲃ Ⲅ Ⲇ Ⲉ Ⲍ Ⲏ Ⲑ Ⲓ Ⲕ Ⲗ Ϣ Ϥ Ϧ Ϩ Ϫ Ϭ Ϯ', era: 'parch',
+    fact: 'Греческий алфавит плюс несколько знаков из египетского демотического письма — для звуков, которых нет в греческом. Последняя ступень египетского языка.' },
+  { id: 'got', name: 'Готское', lane: 2, date: 350, when: 'ок. 350 г.', place: 'готы, Нижний Дунай', type: 'alpha', dir: '→', users: 'вымерло', font: 'Noto Sans Gothic', g: '𐌰', sample: '𐌰 𐌱 𐌲 𐌳 𐌴 𐌵 𐌶 𐌷 𐌸 𐌹 𐌺 𐌻 𐌼 𐌽 𐌾 𐌿', era: 'parch',
+    fact: 'Епископ Вульфила создал его для перевода Библии: взял греческие буквы и добавил латинские и рунические.' },
+  { id: 'run', name: 'Руны', lane: 3, date: 150, when: 'II в.', place: 'Скандинавия', type: 'alpha', dir: '→ (иногда ←)', users: 'вышли из обихода в Средние века', font: 'Noto Sans Runic', g: 'ᚠ', sample: 'ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ ᛇ ᛈ ᛉ ᛊ ᛏ ᛒ ᛖ ᛗ ᛚ ᛜ ᛞ ᛟ', era: 'parch',
+    fact: 'Старший футарк назван по первым шести рунам: ᚠ f, ᚢ u, ᚦ þ, ᚨ a, ᚱ r, ᚲ k. Угловатые формы удобно резать по дереву поперёк волокон.' },
+  { id: 'ogh', name: 'Огам', lane: 3, date: 350, when: 'IV в.', place: 'Ирландия', type: 'alpha', dir: '↑ снизу вверх по ребру камня', users: 'на камнях — IV–VI вв.', font: 'Noto Sans Ogham', g: 'ᚁ', sample: 'ᚁ ᚂ ᚃ ᚄ ᚅ ᚆ ᚇ ᚈ ᚉ ᚊ ᚋ ᚌ ᚍ ᚎ ᚏ ᚐ ᚑ ᚒ ᚓ ᚔ', era: 'parch',
+    fact: 'Буквы — это черточки по одну или по другую сторону от линии. Линией служило ребро каменной стелы.' },
+  { id: 'arm', name: 'Армянское', lane: 4, date: 405, when: '405 г.', place: 'Армения', type: 'alpha', dir: '→', users: '≈ 6 млн', font: 'Noto Sans Armenian', g: 'Ա', sample: 'Ա Բ Գ Դ Ե Զ Է Ը Թ Ժ Ի Լ Խ Ծ Կ Հ Ձ Ղ Ճ Մ', era: 'parch',
+    fact: 'Создано монахом Месропом Маштоцем: 36 букв, позже добавили ещё две. Там, где звуки совпадают, порядок букв повторяет греческий.' },
+  { id: 'geo', name: 'Грузинское', lane: 4, date: 430, when: 'V в.', place: 'Грузия', type: 'alpha', dir: '→', users: '≈ 4 млн', font: 'Noto Sans Georgian', g: 'ა', sample: 'ა ბ გ დ ე ვ ზ თ ი კ ლ მ ნ ო პ ჟ რ ს ტ უ', era: 'parch',
+    fact: 'Письмо прошло три формы — асомтаврули, нусхури и мхедрули. В обычном тексте мхедрули нет заглавных букв.' },
+  { id: 'gla', name: 'Глаголица', lane: 4, date: 862, when: '862–863 гг.', place: 'Великая Моравия', type: 'alpha', dir: '→', users: 'в хорватском богослужении — до XX в.', font: 'Noto Sans Glagolitic', g: 'Ⰰ', sample: 'Ⰰ Ⰱ Ⰲ Ⰳ Ⰴ Ⰵ Ⰶ Ⰷ Ⰸ Ⰺ Ⰻ Ⰽ Ⰾ Ⰿ Ⱀ Ⱁ Ⱂ Ⱃ Ⱄ Ⱅ', era: 'parch',
+    fact: 'Первая славянская азбука. Её создал Константин Философ (в монашестве Кирилл) для миссии в Моравию; многие буквы не похожи ни на один известный алфавит.' },
+  { id: 'cyr', name: 'Кириллица', lane: 4, date: 893, when: 'конец IX в.', place: 'Болгария', type: 'alpha', dir: '→', users: '≈ 250 млн', font: null, g: 'Ж', sample: 'А Б В Г Д Е Ж З И Й К Л М Н О П Р С Т У Ф Х Ц Ч Ш Щ Ъ Ы Ь Э Ю Я', era: 'parch',
+    fact: 'Названа в честь Кирилла, но создана, вероятно, его учениками в Болгарии. Основа — греческий унциал, а для славянских звуков пригодились знаки глаголицы: Ш, Ц, Ч.' },
+  { id: 'arc', name: 'Арамейское', lane: 5, date: -800, when: 'ок. 800 до н. э.', place: 'Сирия и Месопотамия', type: 'abjad', dir: '← справа налево', users: 'предок множества письменностей', font: 'Noto Sans Imperial Aramaic', g: '𐡀', sample: '𐡀 𐡁 𐡂 𐡃 𐡄 𐡅 𐡆 𐡇 𐡈 𐡉 𐡊 𐡋 𐡌 𐡍', era: 'papyrus',
+    fact: 'Письмо канцелярий Персидской державы от Египта до Индии. Его потомки — еврейское квадратное, сирийское, арабское, монгольское и, вероятно, брахми.' },
+  { id: 'heb', name: 'Еврейское', lane: 5, date: -200, when: 'III–II вв. до н. э.', place: 'Иудея', type: 'abjad', dir: '← справа налево', users: '≈ 9 млн (иврит, идиш)', font: 'Noto Sans Hebrew', g: 'א', sample: 'א ב ג ד ה ו ז ח ט י כ ל מ נ ס ע פ צ ק ר ש ת', era: 'papyrus',
+    fact: 'Квадратные буквы унаследованы от арамейского. Гласные можно отметить точками-огласовками, но в обычном тексте их не пишут.' },
+  { id: 'syr', name: 'Сирийское', lane: 5, date: 50, when: 'I в.', place: 'Эдесса', type: 'abjad', dir: '← справа налево', users: 'церкви сирийской традиции', font: 'Noto Sans Syriac', g: 'ܐ', sample: 'ܐ ܒ ܓ ܕ ܗ ܘ ܙ ܚ ܛ ܝ ܟ ܠ ܡ ܢ', era: 'parch',
+    fact: 'Письмо восточных христиан. Сирийские миссионеры донесли его до Индии и Китая — надпись им есть на знаменитой стеле в Сиане (781 г.).' },
+  { id: 'ara', name: 'Арабское', lane: 5, date: 400, when: 'IV–VI вв.', place: 'Аравия', type: 'abjad', dir: '← справа налево', users: 'сотни миллионов: арабский, персидский, урду', font: 'Noto Naskh Arabic', g: 'ع', sample: 'ا ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م ن ه و ي', era: 'parch',
+    fact: 'Буквы связаны друг с другом, и у каждой до четырёх форм — отдельно, в начале, середине и конце слова. Произошло от набатейского варианта арамейского письма.' },
+  { id: 'mon', name: 'Монгольское', lane: 5, date: 1204, when: '1204 г.', place: 'Монголия', type: 'alpha', dir: '↓ столбцами, слева направо', users: 'Внутренняя Монголия', font: 'Noto Sans Mongolian', g: 'ᠮ', sample: 'ᠠ ᠡ ᠢ ᠣ ᠤ ᠥ ᠦ ᠨ ᠪ ᠫ ᠬ ᠭ ᠮ ᠯ ᠰ', era: 'paper',
+    fact: 'Пишется сверху вниз, а столбцы идут слева направо. Досталось от уйгуров, те получили письмо от согдийцев, а согдийцы — от арамейцев.' },
+  { id: 'tif', name: 'Тифинаг', lane: 6, date: -300, when: 'ок. III в. до н. э.', place: 'Северная Африка', type: 'abjad', dir: '→ (в древности разные)', users: 'берберские языки', font: 'Noto Sans Tifinagh', g: 'ⵣ', sample: 'ⴰ ⴱ ⴳ ⴷ ⴹ ⴻ ⴼ ⴽ ⵀ ⵃ ⵄ ⵅ ⵇ ⵉ ⵊ ⵍ ⵎ ⵏ ⵓ ⵔ ⵙ ⵜ ⵣ', era: 'papyrus',
+    fact: 'Знак ⵣ («яз») стал символом берберских народов и изображён на их флаге. Происхождение древнеливийского письма спорно; возможно, оно связано с финикийским.' },
+  { id: 'eth', name: 'Эфиопское', lane: 6, date: 350, when: 'IV в.', place: 'Аксум', type: 'abug', dir: '→', users: 'амхарский, тигринья и другие', font: 'Noto Sans Ethiopic', g: 'ሀ', sample: 'ሀ ለ ሐ መ ሠ ረ ሰ ቀ በ ተ ኀ ነ አ ከ ወ ዐ ዘ የ ደ ገ', era: 'parch',
+    fact: 'Потомок южноаравийского письма. В отличие от родственных семитских пишется слева направо и отмечает гласные значками при согласной.' },
+  { id: 'nko', name: 'Нко', lane: 6, date: 1949, when: '1949 г.', place: 'Гвинея', type: 'alpha', dir: '← справа налево', users: 'языки манде', font: 'Noto Sans NKo', g: 'ߒ', sample: 'ߊ ߋ ߌ ߍ ߎ ߏ ߐ ߒ ߓ ߔ ߕ ߖ ߗ ߘ ߙ ߚ', era: 'paper',
+    fact: 'Сулейман Канте создал его, чтобы доказать: языки Западной Африки можно записывать собственным письмом. «Нко» значит «я говорю».' },
+  { id: 'bra', name: 'Брахми', lane: 7, date: -250, when: 'III в. до н. э.', place: 'Индия', type: 'abug', dir: '→', users: 'вымерло', font: 'Noto Sans Brahmi', g: '𑀓', sample: '𑀅 𑀆 𑀇 𑀉 𑀏 𑀑 𑀓 𑀔 𑀕 𑀘 𑀝 𑀢 𑀦 𑀧 𑀫 𑀬 𑀭 𑀮 𑀯 𑀲', era: 'papyrus',
+    fact: 'Им высечены эдикты царя Ашоки. Согласная сама по себе читается со звуком «а», другие гласные обозначаются значками при ней — это принцип абугиды.' },
+  { id: 'tam', name: 'Тамильское', lane: 7, date: 580, when: 'VI–VII вв.', place: 'Южная Индия', type: 'abug', dir: '→', users: '≈ 80 млн', font: 'Noto Sans Tamil', g: 'த', sample: 'அ ஆ இ ஈ உ ஊ எ ஏ ஒ க ங ச ஞ ட ண த ந ப ம ய ர ல வ ழ', era: 'parch',
+    fact: 'В нём всего 18 согласных: звонкость не записывается, её подсказывает положение звука в слове.' },
+  { id: 'tib', name: 'Тибетское', lane: 7, date: 650, when: 'VII в.', place: 'Тибет', type: 'abug', dir: '→', users: '≈ 6 млн', font: 'Noto Serif Tibetan', g: 'ཀ', sample: 'ཀ ཁ ག ང ཅ ཆ ཇ ཉ ཏ ཐ ད ན པ ཕ བ མ ཙ ཚ ཛ ཝ', era: 'parch',
+    fact: 'По преданию, его создал министр Тхонми Самбхота по образцу индийского письма. Слоги разделяются точкой-цегом ་.' },
+  { id: 'dev', name: 'Деванагари', lane: 7, date: 1000, when: 'ок. X в.', place: 'Северная Индия', type: 'abug', dir: '→', users: '≈ 600 млн (хинди, маратхи, непали)', font: 'Noto Sans Devanagari', g: 'अ', sample: 'अ आ इ ई उ ए ओ क ख ग घ च ज ट त द न प म य र ल व स ह', era: 'parch',
+    fact: 'Буквы висят под общей горизонтальной чертой. Когда согласные идут подряд без гласной, они сливаются в лигатуру.' },
+  { id: 'ben', name: 'Бенгальское', lane: 7, date: 1050, when: 'XI в.', place: 'Бенгалия', type: 'abug', dir: '→', users: '≈ 300 млн', font: 'Noto Sans Bengali', g: 'অ', sample: 'অ আ ই উ এ ও ক খ গ ঘ চ জ ট ত দ ন প ম য র ল স হ', era: 'parch',
+    fact: 'Этим письмом писал Рабиндранат Тагор — первый нобелевский лауреат по литературе из Азии (1913).' },
+  { id: 'khm', name: 'Кхмерское', lane: 8, date: 611, when: '611 г. — первая датированная надпись', place: 'Камбоджа', type: 'abug', dir: '→', users: '≈ 17 млн', font: 'Noto Sans Khmer', g: 'ក', sample: 'ក ខ គ ឃ ង ច ឆ ជ ឈ ញ ដ ឋ ឌ ឍ ណ ត ថ ទ ធ ន', era: 'parch',
+    fact: 'По Книге рекордов Гиннесса — самый длинный алфавит: 74 знака.' },
+  { id: 'tha', name: 'Тайское', lane: 8, date: 1283, when: '1283 г. (по преданию)', place: 'Сукхотаи', type: 'abug', dir: '→', users: 'десятки миллионов', font: 'Noto Sans Thai', g: 'ก', sample: 'ก ข ค ฆ ง จ ฉ ช ซ ญ ฎ ฏ ฐ ด ต ถ ท ธ น บ', era: 'paper',
+    fact: 'Пробелы ставят между фразами, а не между словами. Тон слога вычисляют по классу согласной и значкам тона.' },
+  { id: 'chn', name: 'Китайское', lane: 9, date: -1250, when: 'ок. 1250 до н. э.', place: 'Китай, эпоха Шан', type: 'logo', dir: '→ (традиционно ↓ столбцами справа налево)', users: 'больше миллиарда человек', font: 'Noto Serif SC', g: '文', sample: '人 口 日 月 山 水 火 木 馬 鳥 魚 車 門 雨 心 手', era: 'papyrus',
+    fact: 'Древнейшие тексты — гадательные надписи на костях и черепашьих панцирях. Это самая старая письменность, которой пользуются без перерыва до сих пор.' },
+  { id: 'kan', name: 'Японская кана', lane: 9, date: 850, when: 'IX в.', place: 'Япония', type: 'syll', dir: '→ или ↓', users: '≈ 125 млн', font: 'Noto Sans JP', g: 'あ', sample: 'あ い う え お か き く け こ さ し ア イ ウ エ オ カ キ', era: 'parch',
+    fact: 'Хирагана и катакана выросли из упрощённых китайских иероглифов, которые брали только ради их звучания.' },
+  { id: 'han', name: 'Хангыль', lane: 9, date: 1443, when: '1443 г.', place: 'Корея', type: 'feat', dir: '→', users: '≈ 80 млн', font: 'Noto Sans KR', g: '한', sample: 'ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅎ ㅏ ㅓ ㅗ ㅜ ㅡ ㅣ 한 글', era: 'paper',
+    fact: 'Изобретён по указу короля Седжона. Формы согласных рисуют положение языка и губ, а буквы складываются в квадратные слоги.' },
+  { id: 'may', name: 'Майя', lane: 10, date: -300, when: 'ок. III в. до н. э.', place: 'Мезоамерика', type: 'logo', dir: '↓ парными столбцами', users: 'вышло из употребления в XVI–XVII вв.', font: 'Noto Sans Mayan Numerals', g: '𝋠', sample: '𝋠 𝋡 𝋢 𝋣 𝋤 𝋥 𝋦 𝋧 𝋨 𝋩 𝋪 𝋫 𝋬 𝋭 𝋮 𝋯 𝋰 𝋱 𝋲 𝋳', era: 'papyrus',
+    fact: 'Сами иероглифы майя ещё не вошли в Юникод — здесь только цифры, среди них ноль-ракушка 𝋠. Ключ к дешифровке в 1950-х нашёл советский учёный Юрий Кнорозов.' },
+  { id: 'che', name: 'Чероки', lane: 10, date: 1821, when: '1821 г.', place: 'народ чероки', type: 'syll', dir: '→', users: 'язык чероки', font: 'Noto Sans Cherokee', g: 'Ꮳ', sample: 'Ꭰ Ꭱ Ꭲ Ꭳ Ꭴ Ꭵ Ꭶ Ꭷ Ꭸ Ꭹ Ꭺ Ꭻ Ꭼ Ꭽ Ꭾ Ꭿ Ꮀ Ꮁ Ꮂ Ꮃ', era: 'paper',
+    fact: 'Секвойя не умел читать ни на одном языке — и за двенадцать лет в одиночку создал письмо из 85 знаков. Многие формы похожи на латиницу, но звуки у них совсем другие.' },
+  { id: 'cas', name: 'Канадское слоговое', lane: 10, date: 1840, when: '1840 г.', place: 'кри и инуиты', type: 'abug', dir: '→', users: 'кри, оджибве, инуктитут', font: 'Noto Sans Canadian Aboriginal', g: 'ᐊ', sample: 'ᐁ ᐃ ᐅ ᐊ ᐯ ᐱ ᐳ ᐸ ᑌ ᑎ ᑐ ᑕ ᑫ ᑭ ᑯ ᑲ ᒣ ᒥ ᒧ ᒪ', era: 'paper',
+    fact: 'Гласную меняет поворот знака: ᐯ пэ, ᐱ пи, ᐳ по, ᐸ па. Письмо придумал миссионер Джеймс Эванс.' }
+];
+const EDGES = [
+  ['egy', 'psn'], ['psn', 'phn'], ['psn', 'eth', 'h', 'через южноаравийское'], ['phn', 'grk'], ['phn', 'arc'], ['phn', 'tif', 'h'],
+  ['grk', 'ita'], ['ita', 'lat'], ['ita', 'run', 'h'], ['lat', 'ogh', 'h'], ['grk', 'cop'], ['grk', 'got'],
+  ['grk', 'gla', 'h'], ['grk', 'cyr'], ['gla', 'cyr', 'h'], ['grk', 'arm', 'h'], ['grk', 'geo', 'h'],
+  ['arc', 'heb'], ['arc', 'syr'], ['arc', 'ara', 'd', 'через набатейское'], ['arc', 'mon', 'd', 'через согдийское и уйгурское'], ['arc', 'bra', 'h'],
+  ['bra', 'tam'], ['bra', 'tib'], ['bra', 'dev'], ['bra', 'ben'], ['bra', 'khm'], ['khm', 'tha'],
+  ['chn', 'kan'], ['lat', 'che', 'h', 'формы букв']
+];
+const byId = Object.fromEntries(S.map(s => [s.id, s]));
+S.forEach((s, i) => { s.no = i + 1; s.parents = []; s.children = []; });
+EDGES.forEach(([a, b, k, note]) => { byId[a].children.push({ id: b, k, note }); byId[b].parents.push({ id: a, k, note }); });
+const fontOf = s => s.font ? `'${s.font}', var(--serif)` : 'var(--serif)';
+
+/* ═════════════════════════════════════════════════════════
+   2. Схема: время, дорожки, узлы, связи
+   ═════════════════════════════════════════════════════════ */
+const VW = 1428, LANE_H = 50, TOP = 46, LEFT = 150, RIGHT = 20;
+const VH = TOP + LANES.length * LANE_H + 26;
+const DOM = [-3400, -1000, 500, 2050], RNG = [0, 0.3, 0.61, 1];
+function X(year) {
+  for (let i = 0; i < 3; i++) if (year <= DOM[i + 1] || i === 2) {
+    const t = (year - DOM[i]) / (DOM[i + 1] - DOM[i]);
+    return LEFT + (RNG[i] + t * (RNG[i + 1] - RNG[i])) * (VW - LEFT - RIGHT);
+  }
+}
+const laneY = l => TOP + l * LANE_H + LANE_H / 2;
+function layoutNodes() {
+  const byLane = LANES.map(() => []);
+  S.forEach(s => byLane[s.lane].push(s));
+  byLane.forEach((list, l) => {
+    list.sort((a, b) => a.date - b.date);
+    // до трёх подрядов: экспонат уходит ниже, если подпись соседа ещё не кончилась
+    const ends = [-1e9, -1e9, -1e9];
+    list.forEach(s => {
+      s.x = X(s.date);
+      const w = 34 + s.name.length * 7.2;
+      let r = ends.findIndex(e => s.x - 16 >= e);
+      if (r < 0) r = ends.indexOf(Math.min(...ends));
+      s.row = r; ends[r] = s.x + w;
+    });
+    const rows = Math.max(...list.map(s => s.row)) + 1;
+    const OFF = rows === 1 ? [0] : rows === 2 ? [-12, 13] : [-16, 0, 16];
+    list.forEach(s => { s.y = laneY(l) + OFF[s.row]; });
+  });
+}
+const OX = `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 14 L20 32 L27 14 Z"/><path d="M13 14 C8 12 6 8 7 4"/><path d="M27 14 C32 12 34 8 33 4"/><circle cx="17.5" cy="19" r="1" fill="currentColor"/><circle cx="22.5" cy="19" r="1" fill="currentColor"/></svg>`;
+const HOUSE = `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 31 V11 H32 V31 H21 V22 H15"/></svg>`;
+const WATER = `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16 L10 25 L16 16 L22 25 L28 16 L34 25"/></svg>`;
+const EYE = `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20 Q20 8 35 20 Q20 32 5 20 Z"/><circle cx="20" cy="20" r="4.5" fill="currentColor"/></svg>`;
+
+function edgePath(a, b) {
+  const x1 = a.x + 13, y1 = a.y, x2 = b.x - 13, y2 = b.y;
+  const dx = Math.max(30, (x2 - x1) * 0.5);
+  return `M${x1.toFixed(1)} ${y1.toFixed(1)} C${(x1 + dx).toFixed(1)} ${y1.toFixed(1)}, ${(x2 - dx).toFixed(1)} ${y2.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+}
+function buildTree() {
+  layoutNodes();
+  const svg = document.getElementById('tree');
+  svg.setAttribute('viewBox', `0 0 ${VW} ${VH}`);
+  let s = '';
+  // подписи дорожек и разделители
+  LANES.forEach((name, l) => {
+    const y = TOP + l * LANE_H;
+    if (l) s += `<line x1="0" x2="${VW}" y1="${y}" y2="${y}" stroke="rgba(60,40,20,.12)"/>`;
+    s += `<text x="16" y="${laneY(l) + 5}" font-family="Alegreya SC, serif" font-weight="500" font-size="13.5" letter-spacing=".5" fill="#6b5c4b">${name}</text>`;
+  });
+  s += `<rect x="0" y="0" width="${LEFT - 8}" height="${VH}" fill="rgba(239,231,214,.55)"/>`;
+  // ось времени
+  const ticks = [[-3000, '3000 до н. э.'], [-2000, '2000'], [-1000, '1000'], [-500, '500'], [0, 'н. э.'], [500, '500'], [1000, '1000'], [1500, '1500'], [2000, '2000']];
+  ticks.forEach(([yr, t]) => {
+    const x = X(yr);
+    s += `<line x1="${x}" x2="${x}" y1="${TOP - 6}" y2="${VH - 20}" stroke="rgba(60,40,20,${yr === 0 ? .35 : .13})" ${yr === 0 ? '' : 'stroke-dasharray="2 5"'}/>`;
+    s += `<text x="${x}" y="${TOP - 14}" text-anchor="middle" font-family="Alegreya Sans, sans-serif" font-weight="500" font-size="13" fill="#4b3f33">${t}</text>`;
+  });
+  // рёбра
+  s += `<g id="edges">`;
+  EDGES.forEach(([a, b, k, note], i) => {
+    s += `<path data-e="${i}" d="${edgePath(byId[a], byId[b])}" fill="none" stroke="#4b3f33" stroke-width="1.5" stroke-opacity=".55" ${k === 'h' ? 'stroke-dasharray="4 4"' : ''}/>`;
+  });
+  s += `</g><g id="nodes">`;
+  S.forEach(sc => {
+    const col = TYPES[sc.type].color;
+    const glyph = sc.g ? `<text y="${sc.id === 'mon' ? 5 : 5.5}" text-anchor="middle" font-family="${sc.font ? sc.font : 'Alegreya'}, serif" font-size="${sc.id === 'egy' || sc.id === 'cun' ? 15 : 15}" fill="#f7f1e4">${sc.g}</text>` : `<g transform="translate(-9 -9) scale(.45)" color="#f7f1e4">${OX.replace('<svg viewBox="0 0 40 40"', '<svg width="40" height="40" viewBox="0 0 40 40"')}</g>`;
+    s += `<g class="node" data-id="${sc.id}" transform="translate(${sc.x.toFixed(1)} ${sc.y.toFixed(1)})" tabindex="0" role="button" aria-label="${sc.name}">
+      <g class="badge"><circle r="11.5" fill="${col}"/>${glyph}</g>
+      <text x="18" y="5" font-family="Alegreya Sans, sans-serif" font-weight="700" font-size="14" fill="#2a2118">${sc.name}</text></g>`;
+  });
+  s += `</g>`;
+  svg.innerHTML = s;
+  svg.querySelectorAll('.node').forEach(n => {
+    n.addEventListener('click', () => select(n.dataset.id));
+    n.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(n.dataset.id); } });
+  });
+}
+function lineage(id) {
+  const set = new Set([id]);
+  const up = x => byId[x].parents.forEach(p => { if (!set.has(p.id)) { set.add(p.id); up(p.id); } });
+  const down = x => byId[x].children.forEach(c => { if (!set.has(c.id)) { set.add(c.id); down(c.id); } });
+  up(id); down(id);
+  return set;
+}
+let filterType = null, selected = 'cyr', pathOverride = null;
+function paintTree() {
+  const lit = pathOverride || lineage(selected);
+  document.querySelectorAll('#nodes .node').forEach(n => {
+    const s = byId[n.dataset.id];
+    const on = lit.has(s.id) && (!filterType || s.type === filterType || s.id === selected);
+    const fOk = !filterType || s.type === filterType;
+    n.setAttribute('class', 'node ' + ((filterType ? fOk : on) ? 'lit' : 'dim'));
+    const c = n.querySelector('circle');
+    c.setAttribute('stroke', s.id === selected ? '#2a2118' : 'none');
+    c.setAttribute('stroke-width', s.id === selected ? 3 : 0);
+    c.setAttribute('r', s.id === selected ? 13.5 : 11.5);
+  });
+  document.querySelectorAll('#edges path').forEach(p => {
+    const [a, b] = EDGES[+p.dataset.e];
+    const on = !filterType && lit.has(a) && lit.has(b);
+    p.setAttribute('stroke', on ? '#8e2f1f' : '#4b3f33');
+    p.setAttribute('stroke-width', on ? 2.6 : 1.3);
+    p.setAttribute('stroke-opacity', on ? .95 : filterType ? .2 : .28);
+  });
+}
+
+/* ═════════════════════════════════════════════════════════
+   3. Фактура эпох: глина, папирус, пергамент, бумага
+   ═════════════════════════════════════════════════════════ */
+function rand(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const ERAS = [
+  { id: 'clay', from: -3400, to: -1500, base: [205, 170, 135], name: 'глина' },
+  { id: 'papyrus', from: -1500, to: 300, base: [220, 202, 160], name: 'папирус' },
+  { id: 'parch', from: 300, to: 1450, base: [232, 219, 192], name: 'пергамент' },
+  { id: 'paper', from: 1450, to: 2100, base: [242, 235, 220], name: 'бумага' }
+];
+function paintTexture(ctx, x0, x1, h, era, rnd, scale) {
+  const [r, g, b] = era.base;
+  ctx.fillStyle = `rgb(${r},${g},${b})`;
+  ctx.fillRect(x0, 0, x1 - x0, h);
+  const w = x1 - x0;
+  if (era.id === 'clay') {
+    for (let i = 0; i < w * h / 55; i++) { const x = x0 + rnd() * w, y = rnd() * h, s = rnd(); ctx.fillStyle = s > .5 ? 'rgba(120,80,50,.10)' : 'rgba(255,240,220,.12)'; ctx.fillRect(x, y, 1.5 + s * 2.5, 1.5 + s * 2); }
+    ctx.strokeStyle = 'rgba(110,70,40,.16)'; ctx.lineWidth = 1;
+    for (let i = 0; i < w / 60; i++) { let x = x0 + rnd() * w, y = rnd() * h; ctx.beginPath(); ctx.moveTo(x, y); for (let k = 0; k < 6; k++) { x += (rnd() - .5) * 26; y += rnd() * 16; ctx.lineTo(x, y); } ctx.stroke(); }
+  } else if (era.id === 'papyrus') {
+    for (let y = 0; y < h; y += 2 + rnd() * 3) { ctx.fillStyle = `rgba(${rnd() > .5 ? '140,110,60' : '255,245,210'},${.06 + rnd() * .08})`; ctx.fillRect(x0, y, w, 1 + rnd() * 1.5); }
+    for (let x = x0; x < x1; x += 3 + rnd() * 5) { ctx.fillStyle = `rgba(140,110,60,${.03 + rnd() * .05})`; ctx.fillRect(x, 0, 1 + rnd() * 2, h); }
+  } else if (era.id === 'parch') {
+    for (let i = 0; i < w * h / 2600; i++) { const x = x0 + rnd() * w, y = rnd() * h, rr = 12 + rnd() * 40; const gr = ctx.createRadialGradient(x, y, 0, x, y, rr); gr.addColorStop(0, `rgba(170,140,95,${.05 + rnd() * .06})`); gr.addColorStop(1, 'rgba(170,140,95,0)'); ctx.fillStyle = gr; ctx.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+    for (let i = 0; i < w * h / 90; i++) { ctx.fillStyle = 'rgba(120,90,60,.06)'; ctx.fillRect(x0 + rnd() * w, rnd() * h, 1, 1); }
+  } else {
+    for (let x = x0; x < x1; x += 7) { ctx.fillStyle = 'rgba(150,130,100,.05)'; ctx.fillRect(x, 0, 1, h); }
+    for (let i = 0; i < w * h / 70; i++) { ctx.fillStyle = 'rgba(120,100,70,.05)'; ctx.fillRect(x0 + rnd() * w, rnd() * h, 1, 1); }
+  }
+}
+function drawChartTexture() {
+  const cv = document.getElementById('tex'), inner = document.getElementById('inner');
+  const W = inner.clientWidth, H = inner.clientHeight;
+  const d = Math.min(2, devicePixelRatio || 1);
+  cv.width = Math.round(W * d); cv.height = Math.round(H * d);
+  const ctx = cv.getContext('2d'); ctx.setTransform(d, 0, 0, d, 0, 0);
+  const k = W / VW, rnd = rand(77);
+  ERAS.forEach(e => paintTexture(ctx, Math.max(0, X(e.from) * k), Math.min(W, X(e.to) * k + 1), H, e, rnd));
+  // мягкие переходы между эпохами
+  ERAS.slice(1).forEach(e => {
+    const x = X(e.from) * k;
+    const gr = ctx.createLinearGradient(x - 40, 0, x + 40, 0);
+    gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.5, 'rgba(90,60,30,.10)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gr; ctx.fillRect(x - 40, 0, 80, H);
+  });
+  ctx.font = '500 13px "Alegreya SC", serif'; ctx.fillStyle = 'rgba(75,63,51,.7)'; ctx.textAlign = 'right';
+  ERAS.forEach(e => { const x = Math.min(W - 10, X(e.to) * k - 10); ctx.fillText(e.name, x, H - 9); });
+  // подложка под подписями дорожек
+  ctx.fillStyle = 'rgba(239,231,214,.72)'; ctx.fillRect(0, 0, (LEFT - 8) * k, H);
+}
+function vitrineTexture(cv, era) {
+  const r = cv.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1);
+  cv.width = Math.max(2, Math.round(r.width * d)); cv.height = Math.max(2, Math.round(r.height * d));
+  const ctx = cv.getContext('2d'); ctx.setTransform(d, 0, 0, d, 0, 0);
+  paintTexture(ctx, 0, r.width, r.height, ERAS.find(e => e.id === era), rand(era.length * 31 + 7));
+  const gr = ctx.createLinearGradient(0, 0, 0, r.height); gr.addColorStop(0, 'rgba(255,255,255,.18)'); gr.addColorStop(1, 'rgba(60,40,20,.12)');
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, r.width, r.height);
+}
+
+/* ═════════════════════════════════════════════════════════
+   4. Карточка экспоната
+   ═════════════════════════════════════════════════════════ */
+function select(id) {
+  selected = id; pathOverride = null;
+  document.querySelectorAll('.erow').forEach(r => r.classList.remove('on'));
+  paintTree(); renderCard();
+}
+function renderCard() {
+  const s = byId[selected], t = TYPES[s.type];
+  const rel = (list, emptyTxt) => list.length ? list.map(p => `<button class="chip" data-go="${p.id}">${byId[p.id].name}${p.k === 'h' ? '<small>влияние</small>' : ''}${p.note ? `<small>${p.note}</small>` : ''}</button>`).join('') : `<span style="font:400 14px var(--sans)">${emptyTxt}</span>`;
+  const glyphs = s.sample
+    ? s.sample.split(' ').map((g, i) => `<span style="animation-delay:${i * 35}ms">${g}</span>`).join('')
+    : [OX, HOUSE, WATER, EYE].map((svg, i) => `<span style="width:44px;height:44px;animation-delay:${i * 60}ms">${svg}</span>`).join('');
+  document.getElementById('card').innerHTML = `
+    <div class="num">Экспонат № ${String(s.no).padStart(2, '0')} · <span style="color:${t.color}">${t.ru}</span></div>
+    <h2>${s.name}</h2>
+    <div class="meta"><span><b>${s.when}</b></span><span>${s.place}</span><span>${s.dir}</span><span>${s.users}</span></div>
+    <div class="vitrine"><canvas></canvas><div class="glyphs" style="font-family:${fontOf(s)}${s.id === 'mon' ? ';writing-mode:vertical-lr;height:150px' : ''}" lang="${s.id}">${glyphs}</div></div>
+    <p class="fact">${s.fact}</p>
+    <div class="rel"><span>Предки</span><div class="chips">${rel(s.parents, 'независимое изобретение')}</div>
+    <span>Потомки</span><div class="chips">${rel(s.children, '—')}</div></div>`;
+  const cv = document.querySelector('#card .vitrine canvas');
+  requestAnimationFrame(() => vitrineTexture(cv, s.era));
+  document.querySelectorAll('#card [data-go]').forEach(b => b.addEventListener('click', () => select(b.dataset.go)));
+}
+
+/* ═════════════════════════════════════════════════════════
+   5. Эволюция букв
+   ═════════════════════════════════════════════════════════ */
+const EVO = [
+  { pic: OX, word: 'ʾalp — бык', ph: '𐤀', gr: 'Α', la: 'A', cy: 'А' },
+  { pic: HOUSE, word: 'bēt — дом', ph: '𐤁', gr: 'Β', la: 'B', cy: 'Б В' },
+  { pic: WATER, word: 'mēm — вода', ph: '𐤌', gr: 'Μ', la: 'M', cy: 'М' },
+  { pic: EYE, word: 'ʿayin — глаз', ph: '𐤏', gr: 'Ο', la: 'O', cy: 'О' }
+];
+function buildEvo() {
+  const box = document.getElementById('evo');
+  box.innerHTML = EVO.map((e, i) => `<div class="erow" data-i="${i}" role="button" tabindex="0">
+    <div class="etile"><div class="g">${e.pic}</div><small>${e.word}</small></div>
+    <div class="etile"><div class="g" style="font-family:'Noto Sans Phoenician',serif">${e.ph}</div><small>финикийское</small></div>
+    <div class="etile"><div class="g">${e.gr}</div><small>греческое</small></div>
+    <div class="etile"><div class="g">${e.la}</div><small>латиница</small></div>
+    <div class="etile"><div class="g">${e.cy}</div><small>кириллица</small></div></div>`).join('');
+  box.querySelectorAll('.erow').forEach(r => {
+    const go = () => {
+      box.querySelectorAll('.erow').forEach(x => x.classList.remove('on'));
+      r.classList.add('on');
+      pathOverride = new Set(['egy', 'psn', 'phn', 'grk', 'ita', 'lat', 'cyr']);
+      selected = 'phn'; paintTree();
+      // бегущая подсветка по плиткам
+      const tiles = r.querySelectorAll('.etile');
+      tiles.forEach(t => t.classList.remove('hot'));
+      tiles.forEach((t, k) => setTimeout(() => { tiles.forEach(x => x.classList.remove('hot')); t.classList.add('hot'); }, k * 420));
+    };
+    r.addEventListener('click', go);
+    r.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+}
+
+/* ═════════════════════════════════════════════════════════
+   6. Имя в разных письменностях
+   ═════════════════════════════════════════════════════════ */
+const LAT2CYR = [['shch', 'щ'], ['sch', 'щ'], ['sh', 'ш'], ['ch', 'ч'], ['zh', 'ж'], ['kh', 'х'], ['ts', 'ц'], ['ya', 'я'], ['yu', 'ю'], ['yo', 'ё'], ['ye', 'е'],
+  ['a', 'а'], ['b', 'б'], ['c', 'к'], ['d', 'д'], ['e', 'е'], ['f', 'ф'], ['g', 'г'], ['h', 'х'], ['i', 'и'], ['j', 'дж'], ['k', 'к'], ['l', 'л'], ['m', 'м'], ['n', 'н'], ['o', 'о'], ['p', 'п'], ['q', 'к'], ['r', 'р'], ['s', 'с'], ['t', 'т'], ['u', 'у'], ['v', 'в'], ['w', 'в'], ['x', 'кс'], ['y', 'и'], ['z', 'з']];
+function toCyr(s) {
+  s = s.toLowerCase();
+  if (/[а-яё]/.test(s) || !/[a-z]/.test(s)) return s.replace(/[^а-яё\s-]/g, '');
+  let out = '';
+  for (let i = 0; i < s.length;) { const m = LAT2CYR.find(([l]) => s.startsWith(l, i)); if (m) { out += m[1]; i += m[0].length; } else { if (/\s|-/.test(s[i])) out += ' '; i++; } }
+  return out;
+}
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+const mapWord = (w, M) => [...w].map(ch => M[ch] ?? '').join('');
+const words = s => s.split(/[\s-]+/).filter(Boolean);
+const V = 'аеёиоуыэюя';
+
+const LATIN = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'i', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ъ: 'ie', ы: 'y', ь: '', э: 'e', ю: 'iu', я: 'ia' };
+const GREEK = { а: 'α', б: 'μπ', в: 'β', г: 'γ', д: 'ντ', е: 'ε', ё: 'ιο', ж: 'ζ', з: 'ζ', и: 'ι', й: 'ι', к: 'κ', л: 'λ', м: 'μ', н: 'ν', о: 'ο', п: 'π', р: 'ρ', с: 'σ', т: 'τ', у: 'ου', ф: 'φ', х: 'χ', ц: 'τσ', ч: 'τσ', ш: 'σ', щ: 'σ', ъ: '', ы: 'ι', ь: '', э: 'ε', ю: 'ιου', я: 'ια' };
+const ARM = { а: 'ա', б: 'բ', в: 'վ', г: 'գ', д: 'դ', е: 'ե', ё: 'յո', ж: 'ժ', з: 'զ', и: 'ի', й: 'յ', к: 'կ', л: 'լ', м: 'մ', н: 'ն', о: 'ո', п: 'պ', р: 'ր', с: 'ս', т: 'տ', у: 'ու', ф: 'ֆ', х: 'խ', ц: 'ց', ч: 'չ', ш: 'շ', щ: 'շչ', ъ: '', ы: 'ը', ь: '', э: 'է', ю: 'յու', я: 'յա' };
+const GEO = { а: 'ა', б: 'ბ', в: 'ვ', г: 'გ', д: 'დ', е: 'ე', ё: 'იო', ж: 'ჟ', з: 'ზ', и: 'ი', й: 'ი', к: 'კ', л: 'ლ', м: 'მ', н: 'ნ', о: 'ო', п: 'პ', р: 'რ', с: 'ს', т: 'ტ', у: 'უ', ф: 'ფ', х: 'ხ', ц: 'ც', ч: 'ჩ', ш: 'შ', щ: 'შჩ', ъ: '', ы: 'ი', ь: '', э: 'ე', ю: 'იუ', я: 'ია' };
+const GLAG = { а: 'ⰰ', б: 'ⰱ', в: 'ⰲ', г: 'ⰳ', д: 'ⰴ', е: 'ⰵ', ё: 'ⱖ', ж: 'ⰶ', з: 'ⰸ', и: 'ⰻ', й: 'ⰻ', к: 'ⰽ', л: 'ⰾ', м: 'ⰿ', н: 'ⱀ', о: 'ⱁ', п: 'ⱂ', р: 'ⱃ', с: 'ⱄ', т: 'ⱅ', у: 'ⱆ', ф: 'ⱇ', х: 'ⱈ', ц: 'ⱌ', ч: 'ⱍ', ш: 'ⱎ', щ: 'ⱋ', ъ: 'ⱏ', ы: 'ⱏⰻ', ь: 'ⱐ', э: 'ⰵ', ю: 'ⱓ', я: 'ⱑ' };
+const RUNE = { а: 'ᚨ', б: 'ᛒ', в: 'ᚹ', г: 'ᚷ', д: 'ᛞ', е: 'ᛖ', ё: 'ᛃᛟ', ж: 'ᛋ', з: 'ᛉ', и: 'ᛁ', й: 'ᛃ', к: 'ᚲ', л: 'ᛚ', м: 'ᛗ', н: 'ᚾ', о: 'ᛟ', п: 'ᛈ', р: 'ᚱ', с: 'ᛋ', т: 'ᛏ', у: 'ᚢ', ф: 'ᚠ', х: 'ᚺ', ц: 'ᛏᛋ', ч: 'ᚲ', ш: 'ᛋ', щ: 'ᛋ', ъ: '', ы: 'ᛁ', ь: '', э: 'ᛖ', ю: 'ᛃᚢ', я: 'ᛃᚨ' };
+const OGH = { а: 'ᚐ', б: 'ᚁ', в: 'ᚃ', г: 'ᚌ', д: 'ᚇ', е: 'ᚓ', ё: 'ᚔᚑ', ж: 'ᚎ', з: 'ᚎ', и: 'ᚔ', й: 'ᚔ', к: 'ᚉ', л: 'ᚂ', м: 'ᚋ', н: 'ᚅ', о: 'ᚑ', п: 'ᚚ', р: 'ᚏ', с: 'ᚄ', т: 'ᚈ', у: 'ᚒ', ф: 'ᚃ', х: 'ᚆ', ц: 'ᚈᚄ', ч: 'ᚉ', ш: 'ᚄ', щ: 'ᚄ', ъ: '', ы: 'ᚔ', ь: '', э: 'ᚓ', ю: 'ᚔᚒ', я: 'ᚔᚐ' };
+
+const collapse = w => w.replace(/(.)\1+/g, '$1');
+function phoenician(w) {
+  const C = { б: '𐤁', в: '𐤅', г: '𐤂', д: '𐤃', ж: '𐤆', з: '𐤆', й: '𐤉', к: '𐤊', л: '𐤋', м: '𐤌', н: '𐤍', п: '𐤐', р: '𐤓', с: '𐤎', т: '𐤕', ф: '𐤐', х: '𐤇', ц: '𐤑', ч: '𐤑', ш: '𐤔', щ: '𐤔' };
+  w = collapse(w); let o = '';
+  [...w].forEach((ch, i) => { if (C[ch]) o += C[ch]; else if (i === 0 && V.includes(ch)) o += 'яюеё'.includes(ch) ? '𐤉' : '𐤀'; else if ('яюё'.includes(ch)) o += '𐤉'; });
+  return o;
+}
+function hebrew(w) {
+  w = w.replace(/([иы])й$/, '$1');
+  const C = { б: 'ב', в: 'ב', г: 'ג', д: 'ד', ж: 'ז׳', з: 'ז', й: 'י', к: 'ק', л: 'ל', м: 'מ', н: 'נ', п: 'פ', р: 'ר', с: 'ס', т: 'ט', ф: 'פ', х: 'ח', ц: 'צ', ч: 'צ׳', ш: 'ש', щ: 'שצ׳' };
+  const FIN = { 'מ': 'ם', 'נ': 'ן', 'פ': 'ף', 'צ': 'ץ' };
+  w = collapse(w); let o = '';
+  const L = [...w];
+  L.forEach((ch, i) => {
+    const last = i === L.length - 1;
+    if (C[ch]) { let c = C[ch]; if (last && FIN[c]) c = FIN[c]; o += c; return; }
+    if (i === 0) { o += 'א'; if ('оу'.includes(ch)) o += 'ו'; else if ('иы'.includes(ch)) o += 'י'; else if ('яюе'.includes(ch)) o = 'י' + ('ю'.includes(ch) ? 'ו' : ''); return; }
+    if ('иы'.includes(ch)) o += 'י';
+    else if ('оу'.includes(ch)) o += 'ו';
+    else if (ch === 'ю') o += L[i - 1] === 'и' ? 'ו' : 'יו';
+    else if (ch === 'я') o += L[i - 1] === 'и' ? (last ? 'ה' : '') : (last ? 'יה' : 'י');
+    else if (ch === 'й' && L[i - 1] === 'и' && last) o += '';
+    else if (ch === 'а' && last) o += 'ה';
+    else if (ch === 'е' && last) o += 'ה';
+  });
+  return o;
+}
+function arabic(w) {
+  w = w.replace(/([иы])й$/, '$1');
+  const C = { б: 'ب', в: 'ف', г: 'غ', д: 'د', ж: 'ج', з: 'ز', й: 'ي', к: 'ك', л: 'ل', м: 'م', н: 'ن', п: 'ب', р: 'ر', с: 'س', т: 'ت', ф: 'ف', х: 'خ', ц: 'تس', ч: 'تش', ш: 'ش', щ: 'شتش' };
+  w = collapse(w); let o = '';
+  [...w].forEach((ch, i) => {
+    if (C[ch]) { o += C[ch]; return; }
+    if (i === 0) { o += 'а' === ch ? 'ا' : 'оу'.includes(ch) ? 'أو' : 'яюё'.includes(ch) ? ('я' === ch ? 'يا' : 'يو') : 'إي'; return; }
+    const afterI = 'иы'.includes(w[i - 1]);
+    o += ch === 'а' ? 'ا' : ch === 'я' ? (afterI ? 'ا' : 'يا') : 'оуё'.includes(ch) ? 'و' : ch === 'ю' ? (afterI ? 'و' : 'يو') : 'иыеэ'.includes(ch) ? 'ي' : '';
+  });
+  return o;
+}
+// фонемы с оглушением конечных звонких — для слоговых систем
+function phon(w, devoice = true) {
+  w = w.replace(/([иы])й$/, '$1');
+  const P = { б: 'b', в: 'v', г: 'g', д: 'd', ж: 'zh', з: 'z', й: 'j', к: 'k', л: 'l', м: 'm', н: 'n', п: 'p', р: 'r', с: 's', т: 't', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sh' };
+  const out = [];
+  [...w].forEach((ch, i) => {
+    const prev = w[i - 1];
+    const soft = i === 0 || V.includes(prev) || prev === 'ь' || prev === 'ъ';
+    if (P[ch]) out.push(P[ch]);
+    else if (ch === 'а') out.push('a'); else if (ch === 'о') out.push('o'); else if (ch === 'у') out.push('u');
+    else if (ch === 'и' || ch === 'ы') out.push('i'); else if (ch === 'э') out.push('e');
+    else if (ch === 'е') { if (soft) out.push('j'); out.push('e'); }
+    else if (ch === 'ё') { out.push('j'); out.push('o'); }
+    else if (ch === 'ю') { out.push('j'); out.push('u'); }
+    else if (ch === 'я') { out.push('j'); out.push('a'); }
+  });
+  const dev = { b: 'p', v: 'f', g: 'k', d: 't', z: 's', zh: 'sh' };
+  if (devoice && out.length && dev[out[out.length - 1]]) out[out.length - 1] = dev[out[out.length - 1]];
+  return out;
+}
+const isV = p => 'aeiou'.includes(p);
+function devanagari(w) {
+  const C = { b: 'ब', v: 'व', g: 'ग', d: 'द', zh: 'ज़', z: 'ज़', j: 'य', k: 'क', l: 'ल', m: 'म', n: 'न', p: 'प', r: 'र', s: 'स', t: 'त', f: 'फ़', kh: 'ख़', ts: 'त्स', ch: 'च', sh: 'श' };
+  const IND = { a: 'अ', e: 'ए', i: 'इ', o: 'ओ', u: 'उ' }, SIGN = { a: 'ा', e: 'े', i: 'ि', o: 'ो', u: 'ु' };
+  const p = phon(w, false).filter((x, i, a) => !(i === a.length - 1 && x === a[i - 1] && !isV(x)));
+  let o = '';
+  for (let i = 0; i < p.length; i++) {
+    const x = p[i];
+    if (isV(x)) { o += IND[x]; continue; }
+    o += C[x] || '';
+    const nx = p[i + 1];
+    if (nx && isV(nx)) { o += SIGN[nx]; i++; }
+    else if (nx) o += '्';
+  }
+  return o;
+}
+function hangul(w) {
+  const L = { g: 0, n: 2, d: 3, r: 5, l: 5, m: 6, b: 7, v: 7, s: 9, sh: 9, zh: 12, z: 12, ch: 14, ts: 14, k: 15, t: 16, p: 17, f: 17, kh: 18 };
+  const VV = { a: 0, e: 5, i: 20, o: 8, u: 13 }, VJ = { a: 2, e: 7, i: 20, o: 12, u: 17 };
+  const raw = phon(w);
+  const syl = [];
+  for (let i = 0; i < raw.length; i++) {
+    const x = raw[i], nx = raw[i + 1], nx2 = raw[i + 2];
+    if (isV(x)) { syl.push({ L: 11, V: VV[x], T: 0 }); continue; }
+    if (x === 'j' && nx && isV(nx)) { syl.push({ L: 11, V: VJ[nx], T: 0 }); i++; continue; }
+    if (x === 'j') { const pr = syl[syl.length - 1]; if (pr && pr.V === 0) pr.V = 1; else syl.push({ L: 11, V: 20, T: 0 }); continue; }
+    const prev = syl[syl.length - 1];
+    // удвоенные n, m, l — в батчим и в начало следующего слога
+    if (nx === x && ['n', 'm', 'l'].includes(x)) { if (prev && !prev.T) prev.T = x === 'n' ? 4 : x === 'm' ? 16 : 8; if (!(nx2 && isV(nx2))) i++; continue; }
+    if (nx === x) continue;
+    if (nx && isV(nx)) {
+      if (x === 'l' && prev && !prev.T) prev.T = 8;
+      const sh = x === 'sh' || x === 'zh' || x === 'ch';
+      syl.push({ L: L[x], V: sh ? VJ[nx] : VV[nx], T: 0 }); i++; continue;
+    }
+    if (nx === 'j' && nx2 && isV(nx2)) { if (x === 'l' && prev && !prev.T) prev.T = 8; syl.push({ L: L[x], V: VJ[nx2], T: 0 }); i += 2; continue; }
+    if (['n', 'm', 'l'].includes(x) && prev && !prev.T && (!nx || !isV(nx))) { prev.T = x === 'n' ? 4 : x === 'm' ? 16 : 8; continue; }
+    syl.push({ L: L[x] ?? 11, V: (x === 'sh' || x === 'zh' || x === 'ch') ? 20 : 18, T: 0 });
+  }
+  return syl.map(s => String.fromCharCode(0xAC00 + (s.L * 21 + s.V) * 28 + s.T)).join('');
+}
+function katakana(w) {
+  const T = {
+    '': ['ア', 'イ', 'ウ', 'エ', 'オ'], k: ['カ', 'キ', 'ク', 'ケ', 'コ'], g: ['ガ', 'ギ', 'グ', 'ゲ', 'ゴ'], s: ['サ', 'シ', 'ス', 'セ', 'ソ'], z: ['ザ', 'ジ', 'ズ', 'ゼ', 'ゾ'],
+    t: ['タ', 'ティ', 'トゥ', 'テ', 'ト'], d: ['ダ', 'ディ', 'ドゥ', 'デ', 'ド'], n: ['ナ', 'ニ', 'ヌ', 'ネ', 'ノ'], kh: ['ハ', 'ヒ', 'フ', 'ヘ', 'ホ'],
+    b: ['バ', 'ビ', 'ブ', 'ベ', 'ボ'], p: ['パ', 'ピ', 'プ', 'ペ', 'ポ'], m: ['マ', 'ミ', 'ム', 'メ', 'モ'], r: ['ラ', 'リ', 'ル', 'レ', 'ロ'], l: ['ラ', 'リ', 'ル', 'レ', 'ロ'],
+    j: ['ヤ', 'イ', 'ユ', 'イェ', 'ヨ'], v: ['ヴァ', 'ヴィ', 'ヴ', 'ヴェ', 'ヴォ'], f: ['ファ', 'フィ', 'フ', 'フェ', 'フォ'],
+    sh: ['シャ', 'シ', 'シュ', 'シェ', 'ショ'], zh: ['ジャ', 'ジ', 'ジュ', 'ジェ', 'ジョ'], ch: ['チャ', 'チ', 'チュ', 'チェ', 'チョ'], ts: ['ツァ', 'ツィ', 'ツ', 'ツェ', 'ツォ']
+  };
+  const VI = { a: 0, i: 1, u: 2, e: 3, o: 4 };
+  const SOLO = { s: 'ス', t: 'ト', d: 'ド', k: 'ク', g: 'グ', b: 'ブ', p: 'プ', f: 'フ', v: 'フ', kh: 'フ', l: 'ル', r: 'ル', m: 'ム', n: 'ン', zh: 'ジュ', sh: 'シュ', ch: 'チ', ts: 'ツ', z: 'ズ', j: 'イ' };
+  const SMALL = { a: 'ャ', u: 'ュ', o: 'ョ', e: 'ェ' };
+  const p = phon(w);
+  let o = '';
+  for (let i = 0; i < p.length; i++) {
+    const x = p[i], nx = p[i + 1], nx2 = p[i + 2];
+    if (isV(x)) { o += T[''][VI[x]]; continue; }
+    if (nx === x) { if (x === 'n' || x === 'm') o += 'ン'; else if (!['l', 'r'].includes(x)) o += 'ッ'; continue; }
+    if (nx && isV(nx)) { o += T[x] ? T[x][VI[nx]] : ''; i++; continue; }
+    if (nx === 'j' && nx2 && isV(nx2) && x !== 'j') {
+      const base = T[x] ? T[x][1] : 'イ';
+      o += nx2 === 'i' ? base : base.slice(0, 1) + (SMALL[nx2] || '');
+      i += 2; continue;
+    }
+    o += SOLO[x] || '';
+  }
+  return o;
+}
+const NAME_SCRIPTS = [
+  { name: 'Латиница', f: w => cap(mapWord(w, LATIN)), font: null },
+  { name: 'Греческое', f: w => cap(mapWord(w.replace(/[иы]й$/, 'и'), GREEK).replace(/κσ/g, 'ξ').replace(/ννт/g, 'ντ').replace(/ν+ντ/g, 'ντ').replace(/ι+/g, 'ι').replace(/σ$/, 'ς')), font: null },
+  { name: 'Армянское', f: w => { w = w.replace(/(.)\1$/, '$1').replace(/([иы])й$/, '$1'); let o = mapWord(w, ARM); if (w[0] === 'е') o = 'յե' + o.slice(1); if (w[0] === 'о') o = 'օ' + o.slice(1); return cap(o); }, font: 'Noto Sans Armenian' },
+  { name: 'Грузинское', f: w => mapWord(collapse(w).replace(/[иы]й$/, 'и'), GEO), font: 'Noto Sans Georgian', note: 'заглавных нет' },
+  { name: 'Глаголица', f: w => cap(mapWord(w, GLAG)), font: 'Noto Sans Glagolitic' },
+  { name: 'Руны', f: w => mapWord(collapse(w), RUNE), font: 'Noto Sans Runic', join: '᛫', note: 'двойные буквы не писали' },
+  { name: 'Огам', f: w => mapWord(w, OGH), font: 'Noto Sans Ogham', wrap: ['᚛', '᚜'], join: ' ', note: 'читается снизу вверх' },
+  { name: 'Финикийское', f: phoenician, font: 'Noto Sans Phoenician', rtl: true, note: 'только согласные' },
+  { name: 'Иврит', f: hebrew, font: 'Noto Sans Hebrew', rtl: true, note: 'справа налево' },
+  { name: 'Арабское', f: arabic, font: 'Noto Naskh Arabic', rtl: true, note: 'буквы сливаются' },
+  { name: 'Деванагари', f: devanagari, font: 'Noto Sans Devanagari', note: 'согласные сливаются' },
+  { name: 'Хангыль', f: hangul, font: 'Noto Sans KR', note: 'слоги-блоки' },
+  { name: 'Катакана', f: katakana, font: 'Noto Sans JP', note: 'слоговая' }
+];
+function renderNames() {
+  const raw = document.getElementById('name').value;
+  const cyr = toCyr(raw);
+  const ws = words(cyr);
+  const tiles = document.getElementById('tiles');
+  tiles.innerHTML = NAME_SCRIPTS.map((sc, i) => {
+    let txt = ws.map(w => sc.f(w)).join(sc.join || ' ');
+    if (sc.wrap && txt) txt = sc.wrap[0] + txt + sc.wrap[1];
+    const id = S.find(s => s.name.startsWith(sc.name.slice(0, 5)))?.id;
+    return `<div class="tile" data-go="${id || ''}" title="Показать на схеме"><div class="h"><span>${sc.name}</span></div>
+      <div class="t" dir="${sc.rtl ? 'rtl' : 'ltr'}" style="font-family:${sc.font ? `'${sc.font}', ` : ''}var(--serif)">${txt || '—'}</div>
+      <div class="n">${sc.note || '&nbsp;'}</div></div>`;
+  }).join('');
+  tiles.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => { if (t.dataset.go) { select(t.dataset.go); document.getElementById('chart').scrollIntoView({ behavior: 'smooth', block: 'center' }); } }));
+}
+document.getElementById('name').addEventListener('input', renderNames);
+
+/* ═════════════════════════════════════════════════════════
+   7. Фильтры и старт
+   ═════════════════════════════════════════════════════════ */
+function buildFilters() {
+  const box = document.getElementById('filters');
+  box.innerHTML = `<button class="f on" data-t="">все</button>` + Object.entries(TYPES).map(([k, t]) => `<button class="f" data-t="${k}"><i style="background:${t.color}"></i>${t.short || t.ru}</button>`).join('');
+  box.querySelectorAll('.f').forEach(b => b.addEventListener('click', () => {
+    filterType = b.dataset.t || null;
+    box.querySelectorAll('.f').forEach(x => x.classList.toggle('on', x === b));
+    paintTree();
+  }));
+}
+buildFilters(); buildTree(); buildEvo(); renderNames();
+select('cyr');
+function sizeAll() { drawChartTexture(); const cv = document.querySelector('#card .vitrine canvas'); if (cv) vitrineTexture(cv, byId[selected].era); }
+let rz = 0; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(sizeAll, 120); });
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(sizeAll);
+sizeAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Шифровальный кабинет — взлом классических шифров</title>
+<meta name="description" content="Классические шифры и их вскрытие на русском языке: Цезарь, Атбаш, перестановка, Виженер, простая замена и роторная машина. Частотный анализ, метод Касиски, индекс совпадений.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=PT+Mono&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --olive:#4E573C;
+    --olive-2:#434B33;
+    --olive-3:#394029;
+    --olive-hi:#6A7552;
+    --paper:#EFE8D2;
+    --paper-2:#E4DBBF;
+    --ink:#27231E;
+    --ink-2:#4A4238;
+    --red:#B3261E;
+    --brass:#B08D4A;
+    --amber:#FFC766;
+    --text:#F1EAD5;
+    --text-2:#D9D0B4;
+    --head:"Oswald", "PT Sans Narrow", "Arial Narrow", sans-serif;
+    --mono:"PT Mono", ui-monospace, Menlo, monospace;
+    --serif:"PT Serif", Georgia, serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--olive-3)}
+  body{min-height:100vh;color:var(--text);font-family:var(--serif);font-size:14px;-webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(1400px 800px at 50% -20%, rgba(255,255,230,.07), transparent 60%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .12 0 0 0 0 .06 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E"),
+      linear-gradient(180deg,#4A5339,#3A412D)}
+  .wrap{max-width:1440px;margin:0 auto;padding:18px 24px 28px}
+
+  /* шапка */
+  .top{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:16px}
+  .nameplate{display:flex;align-items:center;gap:16px}
+  .plate{background:linear-gradient(180deg,#E6C98A,#B89452 55%,#8C6D31);color:#231C14;padding:9px 18px 8px;border-radius:3px;position:relative;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(0,0,0,.3),0 3px 8px rgba(0,0,0,.45)}
+  .plate::before,.plate::after{content:"";position:absolute;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFF1C8,#7A5E28);box-shadow:0 1px 1px rgba(0,0,0,.5)}
+  .plate::before{left:6px}.plate::after{right:6px}
+  h1{font-family:var(--head);font-weight:700;font-size:30px;line-height:1;letter-spacing:.08em;text-transform:uppercase;padding:0 10px}
+  .nameplate p{font-size:14px;color:var(--text-2);max-width:420px;line-height:1.4}
+  .progress{display:flex;align-items:center;gap:12px;font-family:var(--head);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-2)}
+  .dots{display:flex;gap:7px}
+  .dots i{width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#6C624D,#2C2620);box-shadow:inset 0 1px 2px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.12)}
+  .dots i.on{background:radial-gradient(circle at 35% 35%,#FFE9A8,#E5A93A 55%,#9A5F14);box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+
+  .desk{display:grid;grid-template-columns:292px minmax(0,1fr) 380px;gap:18px;align-items:start}
+  .panel{position:relative;background:linear-gradient(180deg,#5B6546,#4D563B);border-radius:10px;padding:16px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -2px 0 rgba(0,0,0,.2),0 12px 26px -10px rgba(0,0,0,.55)}
+  .panel .rv{position:absolute;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#9AA37F,#2E3322);box-shadow:0 1px 0 rgba(255,255,255,.15)}
+  .rv.a{left:8px;top:8px}.rv.b{right:8px;top:8px}.rv.c{left:8px;bottom:8px}.rv.d{right:8px;bottom:8px}
+  .label{display:inline-block;background:linear-gradient(180deg,#E6C98A,#B89452 60%,#94743A);color:#231C14;font:600 12px/1 var(--head);letter-spacing:.14em;text-transform:uppercase;
+    padding:5px 9px 4px;border-radius:2px;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 1px 2px rgba(0,0,0,.45);margin-bottom:12px}
+  .hint{font-size:13.5px;color:var(--text);line-height:1.45}
+
+  /* досье перехватов */
+  .cases{display:flex;flex-direction:column;gap:10px}
+  .case{position:relative;text-align:left;border:0;cursor:pointer;background:var(--paper);color:var(--ink);border-radius:3px;padding:11px 12px 10px 14px;
+    box-shadow:0 2px 0 #CFC4A2,0 6px 12px rgba(0,0,0,.3);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+  .case:hover{transform:translateX(4px)}
+  .case[aria-current=true]{transform:translateX(8px);background:#FFF8E2}
+  .case:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .case .no{font:700 12px/1 var(--head);letter-spacing:.12em;color:var(--red);text-transform:uppercase}
+  .case h3{font:600 18px/1.1 var(--head);letter-spacing:.02em;margin:5px 0 4px}
+  .case .meta{font:12px/1.35 var(--mono);color:var(--ink-2)}
+  .case .solved{position:absolute;right:10px;top:12px;font:700 12px/1 var(--head);letter-spacing:.12em;color:var(--red);border:2px solid var(--red);padding:3px 5px 2px;border-radius:2px;transform:rotate(-7deg);opacity:0;transition:opacity .3s}
+  .case.done .solved{opacity:.85}
+
+  /* центр: бланк с лентами */
+  .form{background:var(--paper);color:var(--ink);border-radius:3px;padding:14px 16px 14px;position:relative;box-shadow:0 2px 0 #CFC4A2,0 10px 22px rgba(0,0,0,.35)}
+  .form .hdr{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid #8C3A2E;padding-bottom:6px;margin-bottom:10px;color:#8C3A2E}
+  .form .hdr b{font:700 17px/1 var(--head);letter-spacing:.28em}
+  .form .hdr span{font:12px/1 var(--mono);color:#6E5D52}
+  .strips{display:flex;flex-direction:column;gap:6px;min-height:40px}
+  .strip{align-self:flex-start;background:#F8F3E3;border-top:1px solid rgba(0,0,0,.06);border-bottom:1px solid rgba(0,0,0,.08);box-shadow:0 1px 2px rgba(0,0,0,.18);
+    padding:5px 12px 4px;font:17px/1.25 var(--mono);letter-spacing:.14em;white-space:pre;color:#1F1B17;max-width:100%;overflow:hidden}
+  .strip .kas{border-bottom:2.5px solid;padding-bottom:0}
+  .editor{display:none;width:100%;min-height:92px;border:1px dashed #A99C7C;background:#FBF7EA;border-radius:2px;padding:8px 10px;font:16px/1.4 var(--mono);color:var(--ink);resize:vertical}
+  .editor:focus{outline:2px solid var(--brass);outline-offset:1px}
+  .own .editor{display:block}
+  .own .strips.in{display:none}
+
+  .methods{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:16px 0 14px}
+  .sw{position:relative;border:0;cursor:pointer;padding:12px 4px 10px;border-radius:6px;color:#EDE4CB;font:600 13px/1 var(--head);letter-spacing:.03em;text-transform:uppercase;
+    background:linear-gradient(180deg,#3B3029,#211A15);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 4px 0 #0E0B08,0 8px 12px rgba(0,0,0,.35);transition:transform .12s,box-shadow .12s}
+  .sw::after{content:"";position:absolute;left:50%;top:6px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#4A3E33}
+  .sw[aria-pressed=true]{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 1px 0 #0E0B08,0 3px 6px rgba(0,0,0,.35)}
+  .sw[aria-pressed=true]::after{background:var(--amber)}
+  .sw:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+
+  .keypanel{background:linear-gradient(180deg,#434B33,#3B422D);border-radius:8px;padding:14px;min-height:118px;box-shadow:inset 0 2px 6px rgba(0,0,0,.35)}
+  .kp-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .kp-lab{font:600 12px/1 var(--head);letter-spacing:.14em;text-transform:uppercase;color:var(--text-2)}
+  .keyin{font:18px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;background:var(--paper);color:var(--ink);border:0;border-radius:3px;padding:9px 10px;width:210px;box-shadow:inset 0 2px 3px rgba(0,0,0,.25)}
+  .keyin:focus{outline:2px solid var(--amber)}
+  .dialwrap{display:flex;align-items:center;gap:16px}
+  #dial{width:108px;height:108px;cursor:grab;touch-action:none}
+  .shiftv{font:600 40px/1 var(--head);color:var(--amber)}
+  .shiftv small{display:block;font:400 13px/1.3 var(--serif);color:var(--text-2);letter-spacing:0}
+  .subgrid{display:grid;grid-template-columns:repeat(16,1fr);gap:4px}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:2px;font:14px/1 var(--mono)}
+  .cell span{color:var(--text-2);font-size:12px}
+  .cell input{width:100%;max-width:30px;text-align:center;font:16px/1 var(--mono);text-transform:uppercase;border:0;border-radius:2px;padding:5px 0;background:var(--paper);color:var(--ink)}
+  .cell input:focus{outline:2px solid var(--amber)}
+  .cell input.hot{background:#FFE7A3}
+  .small-btn{border:0;cursor:pointer;font:600 12px/1 var(--head);letter-spacing:.12em;text-transform:uppercase;padding:9px 12px;border-radius:4px;color:#231C14;
+    background:linear-gradient(180deg,#E6C98A,#B89452);box-shadow:0 2px 0 #6E5424,0 4px 6px rgba(0,0,0,.35)}
+  .small-btn:active{transform:translateY(2px);box-shadow:0 0 0 #6E5424}
+  .small-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+  .outform{margin-top:14px}
+  .typed{min-height:66px;font:17px/1.55 var(--mono);color:#1E1A16;letter-spacing:.06em;white-space:pre-wrap;word-break:break-word;text-shadow:0 0 .5px rgba(30,26,22,.7)}
+  .typed .bad{color:#9A8D7A}
+  .reading{margin-top:8px;font:italic 16px/1.5 var(--serif);color:#3E362D;border-top:1px dashed #BDB094;padding-top:8px;display:none}
+  .reading.show{display:block}
+  .bigstamp{position:absolute;right:22px;top:44px;font:700 26px/1 var(--head);letter-spacing:.14em;color:var(--red);border:3px solid var(--red);padding:6px 12px 4px;border-radius:3px;
+    transform:rotate(-9deg);opacity:0;pointer-events:none}
+  .bigstamp.on{animation:stamp .55s cubic-bezier(.2,1.5,.3,1) forwards}
+  @keyframes stamp{0%{opacity:0;transform:rotate(-9deg) scale(2)}100%{opacity:.82;transform:rotate(-9deg) scale(1)}}
+
+  .actions{display:flex;align-items:center;gap:16px;margin-top:16px;flex-wrap:wrap}
+  .crack{display:flex;align-items:center;gap:12px;border:0;background:transparent;cursor:pointer;color:var(--text);font:700 16px/1 var(--head);letter-spacing:.16em;text-transform:uppercase}
+  .crack .btn{width:62px;height:62px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#F26A56,#B3261E 55%,#6E120C);
+    border:5px solid #2A231D;outline:2px solid #8F7440;box-shadow:0 6px 0 2px #16120E,0 12px 18px rgba(0,0,0,.5);transition:transform .1s}
+  .crack:active .btn{transform:translateY(3px)}
+  .crack:focus-visible{outline:2px solid var(--amber);outline-offset:6px;border-radius:40px}
+  .crack[disabled]{opacity:.55;cursor:not-allowed}
+  .toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font:600 13px/1 var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--text);border:0;background:transparent}
+  .toggle .lever{width:46px;height:24px;border-radius:12px;background:#2A231D;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,.6)}
+  .toggle .lever::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFF1C8,#9C7A36);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+  .toggle[aria-pressed=true] .lever::after{transform:translateX(22px)}
+  .toggle:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+  .actions .spacer{flex:1}
+
+  /* анализ */
+  .lab .block{margin-bottom:14px}
+  .lab canvas{display:block;width:100%}
+  #hist{height:170px}
+  .gauges{display:grid;grid-template-columns:170px 1fr;gap:12px;align-items:center}
+  #ioc{height:112px}
+  #periods{height:112px}
+  .log{background:#2E3424;border-radius:6px;padding:10px 12px;font:13px/1.5 var(--mono);color:#E6DEC4;min-height:156px;max-height:210px;overflow:auto;box-shadow:inset 0 2px 6px rgba(0,0,0,.5)}
+  .log div{padding:1px 0;animation:ln .3s ease-out}
+  .log b{color:var(--amber);font-weight:400}
+  @keyframes ln{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+  /* роторная машина */
+  .machine{display:none}
+  .rotor-mode .machine{display:block}
+  .rotor-mode .cipher-ui{display:none}
+  .rotors{display:flex;gap:14px;justify-content:center;margin:6px 0 14px}
+  .rotor{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .rotor .win{width:58px;height:66px;border-radius:6px;background:linear-gradient(180deg,#1E1914,#3A3128 50%,#1E1914);display:grid;place-items:center;font:700 32px/1 var(--mono);color:var(--paper);
+    border:3px solid #8F7440;box-shadow:inset 0 3px 8px rgba(0,0,0,.8)}
+  .rotor button{width:40px;height:30px;border:0;border-radius:4px;background:linear-gradient(180deg,#3B3029,#211A15);color:var(--text);cursor:pointer;font:16px/1 var(--mono)}
+  .rotor button:focus-visible{outline:2px solid var(--amber)}
+  .rotor small{font:600 12px/1 var(--head);letter-spacing:.12em;color:var(--text);text-transform:uppercase}
+  .lamps{display:flex;flex-direction:column;gap:8px;align-items:center;padding:14px;background:#221C17;border-radius:8px;box-shadow:inset 0 3px 10px rgba(0,0,0,.7)}
+  .lamps .r{display:flex;gap:7px}
+  .lamp{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font:700 16px/1 var(--mono);color:#6E6252;
+    background:radial-gradient(circle at 40% 35%,#4A4036,#29221C);box-shadow:inset 0 2px 3px rgba(255,255,255,.08),0 2px 3px rgba(0,0,0,.6);transition:background .15s,color .15s}
+  .lamp.on{color:#3A2208;background:radial-gradient(circle at 40% 35%,#FFF6CF,#FFC766 50%,#D98A1A);box-shadow:0 0 18px 4px rgba(255,190,80,.55),inset 0 2px 3px rgba(255,255,255,.4)}
+  #wiring{height:230px}
+  .mtape{margin-top:12px}
+
+  footer{margin-top:18px;font-size:13px;color:var(--text-2);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+  @media (max-width:1180px){
+    .desk{grid-template-columns:minmax(0,1fr)}
+    .cases{flex-direction:row;overflow-x:auto;padding-bottom:6px}
+    .case{min-width:200px}
+    .case:hover,.case[aria-current=true]{transform:translateY(-3px)}
+  }
+  @media (max-width:640px){
+    .wrap{padding:12px 12px 24px}
+    .top{flex-direction:column;align-items:flex-start}
+    .nameplate{flex-direction:column;align-items:flex-start;gap:10px}
+    .form .hdr{flex-direction:column;align-items:flex-start;gap:6px}
+    h1{font-size:22px}
+    .methods{grid-template-columns:repeat(3,1fr)}
+    .subgrid{grid-template-columns:repeat(8,1fr)}
+    .gauges{grid-template-columns:1fr}
+    .strip{font-size:14px;letter-spacing:.08em;padding:5px 8px 4px}
+    .lamp{width:30px;height:30px;font-size:13px}
+    .lamps .r{gap:4px}
+    .keyin{width:100%}
+  }
+  @media (prefers-reduced-motion:reduce){ .case,.sw,.crack .btn{transition:none} .bigstamp.on{animation:none;opacity:.82} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="nameplate">
+      <div class="plate"><h1>Шифровальный кабинет</h1></div>
+      <p>Пять перехватов, пять шифров и&nbsp;главный инструмент взломщика — привычки русского языка.</p>
+    </div>
+    <div class="progress">Вскрыто <span class="dots" id="dots"></span> <span id="progTxt">0 из 5</span></div>
+  </div>
+
+  <div class="desk" id="desk">
+    <aside class="panel">
+      <span class="rv a"></span><span class="rv b"></span><span class="rv c"></span><span class="rv d"></span>
+      <div class="label">Перехваты</div>
+      <div class="cases" id="cases"></div>
+      <p class="hint" style="margin-top:12px">Выберите депешу, подберите метод и&nbsp;ключ — или нажмите красную кнопку и&nbsp;посмотрите, как шифр вскрывается сам.</p>
+    </aside>
+
+    <main class="panel" id="center">
+      <span class="rv a"></span><span class="rv b"></span><span class="rv c"></span><span class="rv d"></span>
+      <div class="form" id="inform">
+        <div class="hdr"><b>ТЕЛЕГРАММА</b><span id="inMeta">—</span></div>
+        <div class="strips in" id="inStrips"></div>
+        <textarea class="editor" id="ownText" spellcheck="false" aria-label="Свой открытый текст">Встречаемся в полночь у маяка. Принесите карту и фонарь.</textarea>
+      </div>
+
+      <div class="methods" id="methods" role="group" aria-label="Метод шифрования"></div>
+
+      <div class="cipher-ui">
+        <div class="keypanel" id="keypanel"></div>
+        <div class="form outform" id="outform">
+          <div class="hdr"><b id="outTitle">ОТКРЫТЫЙ ТЕКСТ</b><span id="outMeta">ключ не подобран</span></div>
+          <div class="typed" id="typed"></div>
+          <div class="reading" id="reading"></div>
+          <div class="bigstamp" id="bigstamp">ВСКРЫТО</div>
+        </div>
+        <div class="actions">
+          <button class="crack" id="crack"><span class="btn" aria-hidden="true"></span>Вскрыть</button>
+          <span class="spacer"></span>
+          <button class="toggle" id="ownToggle" aria-pressed="false"><span class="lever"></span>Свой текст</button>
+        </div>
+      </div>
+
+      <div class="machine">
+        <div class="rotors" id="rotors"></div>
+        <div class="lamps" id="lamps"></div>
+        <div class="form mtape">
+          <div class="hdr"><b>ЛЕНТА МАШИНЫ</b><span>нажимайте буквы на&nbsp;клавиатуре</span></div>
+          <div class="typed" id="mtape"></div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel lab">
+      <span class="rv a"></span><span class="rv b"></span><span class="rv c"></span><span class="rv d"></span>
+      <div class="cipher-ui">
+        <div class="label">Частоты букв</div>
+        <div class="block"><canvas id="hist" aria-label="Частоты букв в шифровке и в русском языке"></canvas></div>
+        <div class="label">Индекс совпадений</div>
+        <div class="block gauges"><canvas id="ioc" aria-label="Индекс совпадений"></canvas><canvas id="periods" aria-label="Индекс совпадений по длине ключа"></canvas></div>
+        <div class="label">Журнал вскрытия</div>
+        <div class="log" id="log" aria-live="polite"></div>
+      </div>
+      <div class="machine">
+        <div class="label">Путь сигнала</div>
+        <canvas id="wiring" aria-label="Путь тока через роторы и рефлектор"></canvas>
+        <p class="hint" style="margin-top:10px">Ток проходит три ротора, отражается и&nbsp;возвращается другим путём. Правый ротор поворачивается при каждом нажатии, поэтому одна и&nbsp;та&nbsp;же буква каждый раз шифруется по-новому. Машина симметрична: набрав шифровку при тех&nbsp;же начальных положениях, вы получите открытый текст.</p>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <span>Алфавит из 32 букв: Ё читается как Е. Частоты русского языка — по Национальному корпусу; модель пар букв обучена на встроенном тексте.</span>
+    <span>Все депеши и&nbsp;история вымышлены.</span>
+  </footer>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Шифровальный кабинет: шифры, частотный анализ, метод Касиски,
+   индекс совпадений, χ² и отжиг для простой замены.
+   ===================================================================== */
+const A = 'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+const N = 32;
+const idx = (c) => A.indexOf(c);
+// частоты букв русского языка, % (Ё учтена в Е)
+const RU = { О: 10.97, Е: 8.49, А: 8.01, И: 7.35, Н: 6.70, Т: 6.26, С: 5.47, Р: 4.73, В: 4.54, Л: 4.40, К: 3.49, М: 3.21, Д: 2.98, П: 2.81, У: 2.62, Я: 2.01, Ы: 1.90, Ь: 1.74, Г: 1.70, З: 1.65, Б: 1.59, Ч: 1.44, Й: 1.21, Х: 0.97, Ж: 0.94, Ш: 0.73, Ю: 0.64, Ц: 0.48, Щ: 0.36, Э: 0.32, Ф: 0.26, Ъ: 0.04 };
+const EXP = (() => { const s = Object.values(RU).reduce((a, b) => a + b, 0); return [...A].map((c) => RU[c] / s); })();
+const norm = (s) => s.toUpperCase().replace(/Ё/g, 'Е').split('').filter((c) => A.includes(c)).join('');
+
+// учебный корпус для модели пар букв (собственный текст)
+const CORPUS = `Телеграф работал всю ночь. Ленты ползли из аппаратов, как тонкие бумажные реки, и дежурный едва успевал отрывать их и раскладывать по ящикам. К утру на столе лежали сотни групп по пять букв, и ни одна из них не была похожа на обычные слова. Так выглядит шифр для постороннего глаза: бессмысленный шум, в котором будто бы нет ни порядка, ни смысла. Но язык упрям. Он проступает сквозь любую маску, потому что у каждого языка есть привычки. В русском тексте чаще всего встречается буква о, за ней идут е, а и и, а твёрдый знак попадается так редко, что его можно не считать вовсе. Эти привычки не прячутся, даже когда буквы переставлены или заменены. Если посчитать, сколько раз встречается каждый знак в перехваченной депеше, и сравнить с обычной речью, картина начинает проясняться. Самый частый знак в шифровке почти наверняка обозначает о, следующий за ним скорее всего е или а. Дальше помогают пары букв. Мы привыкли, что после согласной часто идёт гласная, что сочетание ст встречается на каждом шагу, а после мягкого знака почти никогда не стоит другой мягкий знак. Опытный шифровальщик читает такие пары, как следопыт читает следы на снегу. Он пробует одну замену, потом другую, и вдруг в середине строки проступает целое слово. Одно слово тянет за собой соседние, и через полчаса депеша ложится на стол открытым текстом.
+Старый мастер говорил, что хороший шифр должен выглядеть как погода: вчера шёл дождь, сегодня светит солнце, и никто не может сказать, почему. Плохой шифр похож на часы: стоит понять, как движется одна стрелка, и ты знаешь всё остальное. Шифр Цезаря именно такой. Каждая буква просто сдвигается на несколько позиций по алфавиту, и достаточно перебрать все сдвиги, чтобы найти нужный. Шифр Виженера хитрее. В нём сдвиг меняется от буквы к букве по ключевому слову, и частоты букв перемешиваются. Долгое время его считали неразгаданным. Но и у него есть слабость: ключ повторяется. Если ключевое слово состоит из шести букв, то каждая шестая буква зашифрована одним и тем же сдвигом. Стоит угадать длину ключа, и сложный шифр распадается на шесть простых. Длину ключа выдают повторы. Одинаковые куски открытого текста, попавшие под одинаковую часть ключа, превращаются в одинаковые куски шифровки, и расстояние между ними кратно длине ключа.
+Мы жили тогда в маленьком городе у реки. По утрам над водой стоял туман, а к полудню он поднимался и открывал мост, водонапорную башню и крыши складов. Почту привозили дважды в неделю на старом грузовике. Водитель всегда опаздывал, и мы успевали выпить чай в станционном буфете, где на стене висела карта железных дорог. Вечером на площади играл оркестр, и под фонарями собирались люди. Никто из них не знал, что в подвале почты работает маленькая комната с тремя столами, радиоприёмником и железным шкафом, ключ от которого носили на шнурке под рубашкой. Там слушали эфир. Сквозь треск и свист приходили далёкие голоса, морзянка и странные ряды цифр. Иногда за ночь не удавалось поймать ничего, а иногда перехватывали сразу несколько сообщений, и тогда работа шла до рассвета.
+Весной пришло письмо без подписи. В нём было всего несколько строк, написанных аккуратным почерком: встреча состоится в четверг у старой мельницы, приходите один и не опаздывайте. Мы долго спорили, стоит ли верить. Потом решили пойти вдвоём, но держаться на расстоянии. В четверг лил дождь, дорога размокла, и к мельнице мы добрались только к вечеру. Там никого не было, кроме серой кошки на крыльце. Под крыльцом лежал свёрток в клеёнке, а в нём тетрадь, исписанная группами по пять букв. На первой странице карандашом было выведено одно слово: сирень.`;
+const LB = (() => {
+  const C = norm(CORPUS), big = new Float64Array(N * N).fill(0.5);
+  for (let i = 0; i + 1 < C.length; i++) big[idx(C[i]) * N + idx(C[i + 1])]++;
+  const out = new Float64Array(N * N);
+  for (let a = 0; a < N; a++) { let s = 0; for (let b = 0; b < N; b++) s += big[a * N + b]; for (let b = 0; b < N; b++) out[a * N + b] = Math.log(big[a * N + b] / s); }
+  return out;
+})();
+const bigramScore = (arr) => { let s = 0; for (let i = 0; i + 1 < arr.length; i++) s += LB[arr[i] * N + arr[i + 1]]; return s / Math.max(1, arr.length - 1); };
+
+// ---------------- шифры ----------------
+const toIdx = (s) => [...s].map(idx);
+const fromIdx = (a) => a.map((i) => A[i]).join('');
+const mod = (x) => ((x % N) + N) % N;
+const caesar = (s, k) => fromIdx(toIdx(s).map((i) => mod(i + k)));
+const atbash = (s) => fromIdx(toIdx(s).map((i) => N - 1 - i));
+const vigenere = (s, key, dir) => { const k = toIdx(norm(key)); if (!k.length) return s; return fromIdx(toIdx(s).map((i, j) => mod(i + dir * k[j % k.length]))); };
+function colOrder(key) { const k = [...norm(key)]; return k.map((c, i) => [c, i]).sort((a, b) => idx(a[0]) - idx(b[0]) || a[1] - b[1]).map((x) => x[1]); }
+function transEnc(s, key) {
+  const L = norm(key).length; if (L < 2) return s;
+  const order = colOrder(key); let out = '';
+  for (const c of order) for (let r = c; r < s.length; r += L) out += s[r];
+  return out;
+}
+function transDecOrder(s, order) {
+  const L = order.length, n = s.length, full = Math.floor(n / L), extra = n % L;
+  const cols = new Array(L); let p = 0;
+  for (const c of order) { const len = full + (c < extra ? 1 : 0); cols[c] = s.slice(p, p + len); p += len; }
+  let out = '';
+  for (let r = 0; r <= full; r++) for (let c = 0; c < L; c++) if (r < cols[c].length) out += cols[c][r];
+  return out;
+}
+const transDec = (s, key) => (norm(key).length < 2 ? s : transDecOrder(s, colOrder(key)));
+const substApply = (s, map) => [...s].map((c) => map[idx(c)] ?? '·').join('');
+
+// ---------------- перехваты (вымышленные) ----------------
+function seeded(seed) { let x = seed; return () => ((x = (x * 48271) % 2147483647) / 2147483647); }
+const SUBST_KEY = (() => { const r = seeded(9173), p = [...Array(N).keys()]; for (let i = N - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } return p; })();
+const CASES = [
+  { title: 'Мельница', method: 'caesar', key: 5, when: '12.III · 04:17', freq: '7 400 кГц',
+    plain: 'Посылка прибудет во вторник. Ждите у водонапорной башни после заката.' },
+  { title: 'Вокзал', method: 'atbash', key: null, when: '14.III · 22:40', freq: '6 150 кГц',
+    plain: 'Часы на вокзале отстают на десять минут. Это важно для расписания.' },
+  { title: 'Шарф', method: 'trans', key: 'ОКЕАН', when: '17.III · 01:05', freq: '9 020 кГц',
+    plain: 'Связной носит серый шарф и читает газету вверх ногами. Не подходите первым.' },
+  { title: 'Сирень', method: 'vig', key: 'СИРЕНЬ', when: '21.III · 03:33', freq: '7 400 кГц',
+    plain: 'Весной в городе цветёт сирень, и все говорят о погоде. Мы получили ваше письмо и проверили адрес. Квартира на третьем этаже пустует уже две недели, но по вечерам там горит свет. Соседи говорят, что туда приходит человек с чёрным чемоданом и уходит до рассвета. Мы думаем, что это радист. Если это так, то он выходит на связь по четвергам. Просим прислать пеленгатор и двух человек, которые умеют молчать. Пароль прежний.' },
+  { title: 'Коробок', method: 'subst', key: SUBST_KEY, when: '25.III · 05:12', freq: '5 870 кГц',
+    plain: 'Туман над рекой держался до полудня, и мы ждали связного у старого моста. Он пришёл в сером пальто, молча положил на перила коробок спичек и ушёл, не оглядываясь. Внутри коробка лежала узкая полоска бумаги с группами букв. Мы решили, что это новый ключ, и вечером проверили его на последней депеше. Ключ подошёл. В депеше говорилось, что груз задержан на границе и что следующая встреча переносится на субботу.' },
+];
+// перестановка: хвост дополняется знаками Ъ до полной таблицы (иначе поворот порядка столбцов неотличим)
+const padTo = (p, L) => p + 'Ъ'.repeat((L - (p.length % L)) % L);
+function encryptCase(c) {
+  const p = c.method === 'trans' ? padTo(norm(c.plain), c.key.length) : norm(c.plain);
+  switch (c.method) {
+    case 'caesar': return caesar(p, c.key);
+    case 'atbash': return atbash(p);
+    case 'trans': return transEnc(p, c.key);
+    case 'vig': return vigenere(p, c.key, 1);
+    case 'subst': return fromIdx(toIdx(p).map((i) => c.key[i]));
+  }
+}
+CASES.forEach((c) => { c.cipher = encryptCase(c); c.norm = c.method === 'trans' ? padTo(norm(c.plain), c.key.length) : norm(c.plain); });
+
+const METHODS = [
+  { id: 'caesar', name: 'Цезарь' }, { id: 'atbash', name: 'Атбаш' }, { id: 'trans', name: 'Перестановка' },
+  { id: 'vig', name: 'Виженер' }, { id: 'subst', name: 'Замена' }, { id: 'rotor', name: 'Роторы' },
+];
+
+// ---------------- состояние ----------------
+const state = {
+  caseIdx: 0, method: 'caesar', own: false,
+  shift: 0, word: '', transKey: '', vigKey: '',
+  subMap: new Array(N).fill(null), // шифробуква → открытая буква
+  solved: new Set(), busy: false,
+};
+try { const s = JSON.parse(localStorage.getItem('cipher-cabinet-solved') || '[]'); s.forEach((x) => state.solved.add(x)); } catch (e) { /* хранилище недоступно */ }
+const saveSolved = () => { try { localStorage.setItem('cipher-cabinet-solved', JSON.stringify([...state.solved])); } catch (e) { /* нет доступа */ } };
+
+const $ = (id) => document.getElementById(id);
+const group5 = (s) => s.replace(/(.{5})/g, '$1 ').trim();
+
+// текущий шифротекст: перехват или свой текст, зашифрованный выбранным методом
+function currentCipher() {
+  if (!state.own) return CASES[state.caseIdx].cipher;
+  return norm($('ownText').value);
+}
+function currentPlainGuess() {
+  const c = currentCipher();
+  switch (state.method) {
+    case 'caesar': return state.own ? caesar(c, state.shift) : caesar(c, -state.shift);
+    case 'atbash': return atbash(c);
+    case 'trans': return state.own ? transEnc(c, state.transKey) : transDec(c, state.transKey);
+    case 'vig': return state.own ? vigenere(c, state.vigKey, 1) : vigenere(c, state.vigKey, -1);
+    case 'subst': return state.own ? substApply(c, state.subMap.map((_, i) => A[mod(i * 7 + 3)])) : substApply(c, state.subMap);
+  }
+  return c;
+}
+
+// ---------------- отрисовка лент ----------------
+let kasMarks = [];
+const KAS_COLORS = ['#B3261E', '#2F6BAE', '#3E8A3A', '#9A5A12', '#6B3FA0'];
+function groupsPerStrip() {
+  const w = $('inform').clientWidth - 40;
+  const ch = innerWidth < 640 ? 14 * 0.6 + 14 * 0.08 : 17 * 0.6 + 17 * 0.14;
+  return Math.max(3, Math.floor((w + ch) / (ch * 6)));
+}
+function renderStrips(target, text, perLine) {
+  const box = $(target);
+  box.innerHTML = '';
+  const groups = group5(text).split(' ');
+  const per = perLine || groupsPerStrip();
+  for (let i = 0; i < groups.length; i += per) {
+    const d = document.createElement('div');
+    d.className = 'strip';
+    d.textContent = groups.slice(i, i + per).join(' ');
+    box.appendChild(d);
+  }
+}
+function renderInput() {
+  const c = CASES[state.caseIdx];
+  $('inMeta').textContent = state.own ? 'свой текст' : `№ ${state.caseIdx + 1} · ${c.when} · ${c.freq}`;
+  if (!state.own) {
+    renderStrips('inStrips', c.cipher);
+    if (kasMarks.length) paintKasiski();
+  }
+}
+function paintKasiski() {
+  // подчёркиваем найденные повторы прямо на ленте
+  const text = currentCipher();
+  const per = groupsPerStrip();
+  const marks = new Map();
+  kasMarks.forEach((m, k) => m.pos.forEach((p) => { for (let j = 0; j < m.len; j++) marks.set(p + j, k); }));
+  const box = $('inStrips');
+  box.innerHTML = '';
+  let html = '', pos = 0;
+  const groupsPerLine = per;
+  for (let g = 0; pos < text.length; g++) {
+    if (g % groupsPerLine === 0) { if (g) html += '</div>'; html += '<div class="strip">'; }
+    else html += ' ';
+    for (let j = 0; j < 5 && pos < text.length; j++, pos++) {
+      const k = marks.get(pos);
+      html += k !== undefined ? `<span class="kas" style="border-color:${KAS_COLORS[k % KAS_COLORS.length]}">${text[pos]}</span>` : text[pos];
+    }
+  }
+  box.innerHTML = html + '</div>';
+}
+function renderOutput() {
+  const guess = currentPlainGuess();
+  const c = CASES[state.caseIdx];
+  $('outTitle').textContent = state.own ? 'ШИФРОВКА' : 'ОТКРЫТЫЙ ТЕКСТ';
+  const typed = $('typed');
+  if (state.own) typed.textContent = group5(guess);
+  else typed.innerHTML = group5(guess).replace(/·/g, '<span class="bad">·</span>');
+  // совпадение с оригиналом
+  let good = 0;
+  if (!state.own) for (let i = 0; i < c.norm.length; i++) if (guess[i] === c.norm[i]) good++;
+  const ratio = state.own ? 0 : good / c.norm.length;
+  $('outMeta').textContent = state.own ? `метод: ${METHODS.find((m) => m.id === state.method).name}` : keyDescription();
+  const reading = $('reading');
+  if (!state.own && ratio >= 0.97) {
+    reading.textContent = 'Прочтение: ' + c.plain;
+    reading.classList.add('show');
+    if (!state.solved.has(state.caseIdx)) { state.solved.add(state.caseIdx); saveSolved(); stampSolved(); renderCases(); renderProgress(); }
+    else if (!$('bigstamp').classList.contains('on')) $('bigstamp').classList.add('on');
+  } else {
+    reading.classList.remove('show');
+    $('bigstamp').classList.remove('on');
+  }
+  drawHist();
+  drawIoc();
+}
+function keyDescription() {
+  switch (state.method) {
+    case 'caesar': return `сдвиг ${state.shift}`;
+    case 'atbash': return 'алфавит отражён';
+    case 'trans': return state.transKey ? `ключ ${state.transKey}` : 'ключ не задан';
+    case 'vig': return state.vigKey ? `ключ ${state.vigKey}` : 'ключ не задан';
+    case 'subst': return `подобрано ${state.subMap.filter((x) => x).length} из 32`;
+  }
+  return '';
+}
+function stampSolved() { const s = $('bigstamp'); s.classList.remove('on'); void s.offsetWidth; s.classList.add('on'); }
+
+// ---------------- досье ----------------
+function renderCases() {
+  const box = $('cases');
+  box.innerHTML = '';
+  CASES.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'case' + (state.solved.has(i) ? ' done' : '');
+    b.setAttribute('aria-current', i === state.caseIdx && !state.own);
+    const hint = { caesar: 'похоже на простой сдвиг', atbash: 'алфавит будто в зеркале', trans: 'буквы свои, порядок чужой', vig: 'частоты размыты', subst: 'каждая буква — другая' }[c.method];
+    b.innerHTML = `<div class="no">Перехват № ${i + 1}</div><h3>«${c.title}»</h3><div class="meta">${c.when} · ${c.cipher.length} букв<br>${hint}</div><span class="solved">вскрыто</span>`;
+    b.addEventListener('click', () => selectCase(i));
+    box.appendChild(b);
+  });
+}
+function renderProgress() {
+  $('dots').innerHTML = CASES.map((_, i) => `<i class="${state.solved.has(i) ? 'on' : ''}"></i>`).join('');
+  $('progTxt').textContent = `${state.solved.size} из 5`;
+}
+function selectCase(i) {
+  if (state.busy) return;
+  state.caseIdx = i;
+  if (state.own) setOwn(false);
+  kasMarks = [];
+  clearLog();
+  selectMethod(CASES[i].method === 'trans' ? 'trans' : CASES[i].method, true);
+  renderCases();
+  renderInput();
+  logLine(`Перехват № ${i + 1} «${CASES[i].title}»: ${CASES[i].cipher.length} букв.`);
+  logLine(`Индекс совпадений: <b>${fmt(ioc(CASES[i].cipher), 4)}</b> (русский ≈ 0,0553, случайный ≈ 0,0313).`);
+}
+
+// ---------------- методы и ключи ----------------
+function renderMethods() {
+  const box = $('methods');
+  box.innerHTML = '';
+  METHODS.forEach((m) => {
+    const b = document.createElement('button');
+    b.className = 'sw';
+    b.textContent = m.name;
+    b.setAttribute('aria-pressed', state.method === m.id);
+    b.addEventListener('click', () => selectMethod(m.id));
+    box.appendChild(b);
+  });
+}
+function selectMethod(id, keepLog) {
+  if (state.busy) return;
+  state.method = id;
+  renderMethods();
+  $('center').classList.toggle('rotor-mode', id === 'rotor');
+  document.querySelector('.lab').classList.toggle('rotor-mode', id === 'rotor');
+  if (id === 'rotor') { initMachine(); return; }
+  renderKeyPanel();
+  if (!keepLog) { kasMarks = []; renderInput(); }
+  renderOutput();
+}
+function renderKeyPanel() {
+  const kp = $('keypanel');
+  kp.innerHTML = '';
+  $('crack').disabled = state.own;
+  if (state.method === 'caesar') {
+    kp.innerHTML = `<div class="kp-row dialwrap"><canvas id="dial" aria-label="Диск сдвига: тяните по кругу"></canvas>
+      <div class="shiftv" id="shiftv">${state.shift}<small>сдвиг: крутите диск<br>или стрелки ← →</small></div></div>`;
+    setupDial();
+  } else if (state.method === 'atbash') {
+    kp.innerHTML = `<div class="kp-row"><span class="kp-lab">Ключа нет</span><span class="hint">А ↔ Я, Б ↔ Ю, В ↔ Э… Атбаш отражает алфавит, поэтому расшифровка совпадает с&nbsp;шифрованием.</span></div>`;
+  } else if (state.method === 'trans' || state.method === 'vig') {
+    const k = state.method === 'trans' ? state.transKey : state.vigKey;
+    kp.innerHTML = `<div class="kp-row"><label class="kp-lab" for="kw">Ключевое слово</label><input class="keyin" id="kw" maxlength="12" autocomplete="off" spellcheck="false" value="${k}">
+      <span class="hint">${state.method === 'trans' ? 'Порядок столбцов задаётся алфавитным порядком букв ключа.' : 'Каждая буква ключа — свой сдвиг; ключ повторяется по кругу.'}</span></div>`;
+    $('kw').addEventListener('input', (e) => {
+      const v = norm(e.target.value);
+      if (state.method === 'trans') state.transKey = v; else state.vigKey = v;
+      renderOutput();
+    });
+  } else if (state.method === 'subst') {
+    let html = '<div class="subgrid">';
+    for (let i = 0; i < N; i++) html += `<label class="cell"><span>${A[i]}</span><input data-i="${i}" maxlength="1" value="${state.subMap[i] || ''}" aria-label="Открытая буква для ${A[i]}"></label>`;
+    html += '</div><div class="kp-row" style="margin-top:10px"><span class="hint">Сверху — буква шифровки, в клетке — ваша догадка. Начните с самых частых знаков.</span><button class="small-btn" id="freqGuess">По частотам</button><button class="small-btn" id="clearMap">Очистить</button></div>';
+    kp.innerHTML = html;
+    kp.querySelectorAll('input').forEach((inp) => inp.addEventListener('input', (e) => {
+      const i = +e.target.dataset.i, v = norm(e.target.value).slice(-1);
+      e.target.value = v;
+      state.subMap[i] = v || null;
+      renderOutput();
+    }));
+    $('freqGuess').addEventListener('click', () => { freqGuess(); renderKeyPanel(); renderOutput(); logLine('Первое приближение: самые частые знаки шифровки ↔ самые частые буквы языка.'); });
+    $('clearMap').addEventListener('click', () => { state.subMap.fill(null); renderKeyPanel(); renderOutput(); });
+  }
+}
+function freqGuess() {
+  const cnt = new Array(N).fill(0);
+  for (const ch of currentCipher()) cnt[idx(ch)]++;
+  const co = [...Array(N).keys()].sort((a, b) => cnt[b] - cnt[a]);
+  const po = [...Array(N).keys()].sort((a, b) => EXP[b] - EXP[a]);
+  state.subMap.fill(null);
+  co.forEach((c, k) => { if (cnt[c]) state.subMap[c] = A[po[k]]; });
+}
+
+// --- диск сдвига ---
+function setupDial() {
+  const cv = $('dial');
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  cv.width = 108 * dpr; cv.height = 108 * dpr; cv.style.width = '108px'; cv.style.height = '108px';
+  const g = cv.getContext('2d');
+  const draw = () => {
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, 108, 108);
+    const cx = 54, cy = 54;
+    g.fillStyle = '#231C16'; g.beginPath(); g.arc(cx, cy, 52, 0, Math.PI * 2); g.fill();
+    g.save(); g.translate(cx, cy); g.rotate(-state.shift / N * Math.PI * 2);
+    g.font = '600 11px "PT Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let i = 0; i < N; i++) {
+      const a = i / N * Math.PI * 2 - Math.PI / 2;
+      g.fillStyle = i === 0 ? '#FFC766' : '#E9E0C6';
+      g.fillText(A[i], Math.cos(a) * 41, Math.sin(a) * 41);
+    }
+    g.restore();
+    const grd = g.createRadialGradient(cx - 8, cy - 8, 2, cx, cy, 30);
+    grd.addColorStop(0, '#6A5B4A'); grd.addColorStop(1, '#2A221B');
+    g.fillStyle = grd; g.beginPath(); g.arc(cx, cy, 28, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#FFC766'; g.beginPath(); g.moveTo(cx, 2); g.lineTo(cx - 5, 10); g.lineTo(cx + 5, 10); g.closePath(); g.fill();
+    g.fillStyle = '#E9E0C6'; g.font = '600 20px "Oswald", sans-serif'; g.fillText(A[mod(state.shift)], cx, cy + 1);
+  };
+  draw();
+  setupDial.draw = draw;
+  let drag = null;
+  const angle = (e) => { const r = cv.getBoundingClientRect(); return Math.atan2(e.clientY - r.top - 54, e.clientX - r.left - 54); };
+  cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); drag = { a: angle(e), s: state.shift }; });
+  cv.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    let d = angle(e) - drag.a; if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2;
+    const ns = mod(Math.round(drag.s - d / (Math.PI * 2) * N));
+    if (ns !== state.shift) setShift(ns);
+  });
+  cv.addEventListener('pointerup', () => (drag = null));
+}
+function setShift(s) {
+  state.shift = mod(s);
+  if (setupDial.draw) setupDial.draw();
+  const v = $('shiftv'); if (v) v.firstChild.nodeValue = state.shift;
+  renderOutput();
+}
+addEventListener('keydown', (e) => {
+  if (state.method === 'caesar' && !e.target.closest('input,textarea') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); setShift(state.shift + (e.key === 'ArrowRight' ? 1 : -1)); }
+});
+
+// ---------------- анализ ----------------
+function counts(s) { const c = new Array(N).fill(0); for (const ch of s) c[idx(ch)]++; return c; }
+function ioc(s) { const c = counts(s), n = s.length; if (n < 2) return 0; let sum = 0; for (const x of c) sum += x * (x - 1); return sum / (n * (n - 1)); }
+function chi2(s) { const c = counts(s), n = s.length || 1; let x = 0; for (let i = 0; i < N; i++) { const e = EXP[i] * n; x += (c[i] - e) ** 2 / e; } return x; }
+const fmt = (x, d = 2) => x.toFixed(d).replace('.', ',');
+
+const hist = $('hist'), iocCv = $('ioc'), perCv = $('periods');
+function prep(cv) {
+  const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  return { g, w, h };
+}
+function drawHist() {
+  const { g, w, h } = prep(hist);
+  const s = state.method === 'subst' || state.own ? currentCipher() : currentCipher();
+  const c = counts(s), n = s.length || 1;
+  const max = Math.max(0.12, ...c.map((x) => x / n));
+  const bw = w / N, base = h - 18;
+  g.fillStyle = '#2E3424'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < N; i++) {
+    const x = i * bw;
+    const e = EXP[i] / max * (base - 8), o = c[i] / n / max * (base - 8);
+    g.fillStyle = '#E6C98A'; g.fillRect(x + 1.5, base - o, bw - 3, o);
+    g.strokeStyle = 'rgba(241,234,213,.7)'; g.lineWidth = 1; g.setLineDash([2, 2]);
+    g.strokeRect(x + 1.5, base - e, bw - 3, e); g.setLineDash([]);
+    g.fillStyle = '#D9D0B4'; g.font = '12px "PT Mono", monospace'; g.textAlign = 'center';
+    g.fillText(A[i], x + bw / 2, h - 5);
+  }
+  // легенда: нарисованные образцы вместо символов, которых может не быть в шрифте
+  g.fillStyle = '#E6C98A'; g.fillRect(8, 7, 9, 11);
+  g.fillStyle = '#F1EAD5'; g.font = '12px "PT Serif", serif'; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.fillText('шифровка', 22, 17);
+  g.strokeStyle = 'rgba(241,234,213,.8)'; g.setLineDash([2, 2]); g.strokeRect(96.5, 7.5, 9, 11); g.setLineDash([]);
+  g.fillText('русский язык', 110, 17);
+}
+function drawIoc(periodData) {
+  // стрелочный прибор
+  const { g, w, h } = prep(iocCv);
+  const v = ioc(currentCipher());
+  const cx = w / 2, cy = h - 14, R = Math.min(w / 2 - 10, h - 26);
+  const lo = 0.025, hi = 0.07;
+  const ang = (x) => Math.PI + (Math.min(hi, Math.max(lo, x)) - lo) / (hi - lo) * Math.PI;
+  g.fillStyle = '#F2EBD3'; g.beginPath(); g.arc(cx, cy, R + 6, Math.PI, 0); g.closePath(); g.fill();
+  g.strokeStyle = '#27231E'; g.lineWidth = 1;
+  for (let x = lo; x <= hi + 1e-9; x += 0.005) { const a = ang(x); g.beginPath(); g.moveTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); g.lineTo(cx + Math.cos(a) * (R - 7), cy + Math.sin(a) * (R - 7)); g.stroke(); }
+  const zone = (x0, x1, col) => { g.strokeStyle = col; g.lineWidth = 5; g.beginPath(); g.arc(cx, cy, R - 12, ang(x0), ang(x1)); g.stroke(); };
+  zone(0.029, 0.034, '#8D8D8D'); zone(0.051, 0.06, '#3E8A3A');
+  g.fillStyle = '#27231E'; g.font = '12px "PT Mono", monospace'; g.textAlign = 'center';
+  g.fillText('случ.', cx - R * 0.66, cy - R * 0.28); g.fillText('рус.', cx + R * 0.62, cy - R * 0.36);
+  const target = ang(v);
+  drawIoc.cur = drawIoc.cur ?? target;
+  drawIoc.cur += (target - drawIoc.cur) * 0.25;
+  const a = drawIoc.cur;
+  g.strokeStyle = '#B3261E'; g.lineWidth = 2; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * (R - 4), cy + Math.sin(a) * (R - 4)); g.stroke();
+  g.fillStyle = '#27231E'; g.beginPath(); g.arc(cx, cy, 5, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#F1EAD5'; g.font = '600 14px "Oswald", sans-serif'; g.fillText(fmt(v, 4), cx, h - 0.5);
+  if (Math.abs(target - drawIoc.cur) > 0.002 && !drawIoc.raf) drawIoc.raf = requestAnimationFrame(() => { drawIoc.raf = 0; drawIoc(); });
+  drawPeriods(periodData);
+}
+let periodCache = null;
+function drawPeriods(data) {
+  if (data) periodCache = data;
+  const { g, w, h } = prep(perCv);
+  g.fillStyle = '#2E3424'; g.fillRect(0, 0, w, h);
+  const s = currentCipher();
+  const vals = periodCache && periodCache.text === s ? periodCache.vals : null;
+  g.fillStyle = '#D9D0B4'; g.font = '12px "PT Serif", serif'; g.textAlign = 'left';
+  if (!vals) { g.fillText('Индекс по длине ключа —', 8, 18); g.fillText('появится при вскрытии Виженера', 8, 36); return; }
+  const bw = (w - 16) / vals.length, base = h - 18;
+  const lo = 0.025, hi = 0.07;
+  vals.forEach((v, i) => {
+    const hh = Math.max(2, (Math.min(hi, v) - lo) / (hi - lo) * (base - 20));
+    g.fillStyle = periodCache.best === i + 1 ? '#FFC766' : '#9AA37F';
+    g.fillRect(8 + i * bw + 2, base - hh, bw - 4, hh);
+    // подписываем 1, каждую третью длину и найденный период — иначе цифры слипаются
+    if (i === 0 || (i + 1) % 3 === 0 || periodCache.best === i + 1) {
+      g.fillStyle = periodCache.best === i + 1 ? '#FFC766' : '#D9D0B4'; g.textAlign = 'center'; g.font = '12px "PT Mono", monospace';
+      g.fillText(String(i + 1), 8 + i * bw + bw / 2, h - 5);
+    }
+  });
+  const y55 = base - (0.0553 - lo) / (hi - lo) * (base - 20);
+  g.strokeStyle = 'rgba(241,234,213,.6)'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(8, y55); g.lineTo(w - 8, y55); g.stroke(); g.setLineDash([]);
+  g.textAlign = 'left'; g.fillStyle = '#F1EAD5'; g.fillText('длина ключа →', 8, 14);
+}
+
+// ---------------- журнал ----------------
+function clearLog() { $('log').innerHTML = ''; }
+function logLine(html) { const d = document.createElement('div'); d.innerHTML = html; $('log').appendChild(d); $('log').scrollTop = 1e6; }
+
+// ---------------- вскрытие ----------------
+// при съёмке обложки вскрытие идёт без пауз, чтобы успеть к кадру
+const sleep = (ms) => (window.__SHOT__ ? Promise.resolve() : new Promise((r) => setTimeout(r, ms)));
+async function crack() {
+  if (state.busy || state.own) return;
+  state.busy = true;
+  $('crack').disabled = true;
+  const s = currentCipher();
+  try {
+    if (state.method === 'caesar') await crackCaesar(s);
+    else if (state.method === 'atbash') { logLine('Атбаш не имеет ключа: отражаем алфавит.'); renderOutput(); }
+    else if (state.method === 'trans') await crackTrans(s);
+    else if (state.method === 'vig') await crackVig(s);
+    else if (state.method === 'subst') await crackSubst(s);
+  } finally {
+    state.busy = false;
+    $('crack').disabled = false;
+  }
+}
+async function crackCaesar(s) {
+  clearLog();
+  logLine('Перебираем все 32 сдвига и сравниваем частоты с русским языком (χ²).');
+  const res = [];
+  for (let k = 0; k < N; k++) res.push({ k, x: chi2(caesar(s, -k)) });
+  const best = res.reduce((a, b) => (b.x < a.x ? b : a));
+  for (let k = 0; k <= best.k; k++) { setShift(k); await sleep(55); }
+  const sorted = res.slice().sort((a, b) => a.x - b.x).slice(0, 3);
+  sorted.forEach((r, i) => logLine(`${i === 0 ? '→' : '&nbsp;&nbsp;'} сдвиг ${r.k} (буква ${A[r.k]}): χ² = <b>${fmt(r.x, 1)}</b>`));
+  logLine(`Лучший сдвиг — <b>${best.k}</b>: следующий по качеству хуже в ${fmt(sorted[1].x / best.x, 1)} раза.`);
+}
+async function crackTrans(s) {
+  clearLog();
+  logLine('Буквы шифровки — обычные русские: индекс совпадений ' + fmt(ioc(s), 4) + '. Значит, их только переставили.');
+  logLine('Пробуем ширину таблицы от 2 до 7 и все порядки столбцов; оцениваем по частотам пар букв.');
+  let best = null;
+  const perms = (n) => { const out = []; const a = [...Array(n).keys()]; const rec = (k) => { if (k === n) { out.push(a.slice()); return; } for (let i = k; i < n; i++) { [a[k], a[i]] = [a[i], a[k]]; rec(k + 1); [a[k], a[i]] = [a[i], a[k]]; } }; rec(0); return out; };
+  for (let L = 2; L <= 7; L++) {
+    if (s.length % L) continue; // таблица заполнена целиком
+    let bestL = null;
+    for (const order of perms(L)) {
+      const dec = transDecOrder(s, order);
+      const sc = bigramScore(toIdx(dec));
+      if (!bestL || sc > bestL.sc) bestL = { sc, order, dec, L };
+    }
+    logLine(`ширина ${L}: лучшая оценка <b>${fmt(bestL.sc, 3)}</b> — «${bestL.dec.slice(0, 18)}…»`);
+    if (!best || bestL.sc > best.sc) best = bestL;
+    $('typed').textContent = group5(bestL.dec);
+    await sleep(260);
+  }
+  // восстановим ключевое слово-образец: столбцы по порядку
+  const letters = [...'АБВГДЕЖ'].slice(0, best.L);
+  const word = new Array(best.L);
+  best.order.forEach((col, rank) => (word[col] = letters[rank]));
+  state.transKey = word.join('');
+  renderKeyPanel();
+  logLine(`Ширина <b>${best.L}</b>, порядок столбцов ${best.order.map((x) => x + 1).join('–')}. Эквивалентный ключ: <b>${state.transKey}</b>. Хвост «Ъ» — заполнитель таблицы.`);
+  renderOutput();
+}
+async function crackVig(s) {
+  clearLog();
+  // 1. Касиски
+  const reps = new Map();
+  for (let L = 5; L >= 3; L--) for (let i = 0; i + L <= s.length; i++) {
+    const t = s.slice(i, i + L);
+    if (!reps.has(t)) reps.set(t, []);
+    reps.get(t).push(i);
+  }
+  const found = [...reps.entries()].filter(([t, p]) => p.length > 1 && t.length >= 3).sort((a, b) => b[0].length - a[0].length || b[1].length - a[1].length);
+  const used = new Set(); kasMarks = [];
+  const factorTally = new Array(17).fill(0);
+  for (const [t, p] of found) {
+    if (kasMarks.length >= 5) break;
+    if (p.some((x) => used.has(x))) continue;
+    p.forEach((x) => { for (let j = 0; j < t.length; j++) used.add(x + j); });
+    kasMarks.push({ t, pos: p, len: t.length });
+  }
+  for (const [, p] of found) for (let k = 1; k < p.length; k++) { const d = p[k] - p[0]; for (let f = 2; f <= 16; f++) if (d % f === 0) factorTally[f]++; }
+  paintKasiski();
+  logLine('<b>Шаг 1. Метод Касиски.</b> Ищем повторы в шифровке:');
+  for (const m of kasMarks.slice(0, 4)) {
+    const d = m.pos.slice(1).map((x) => x - m.pos[0]);
+    logLine(`«${m.t}» × ${m.pos.length}: расстояния ${d.join(', ')}`);
+    await sleep(320);
+  }
+  const topF = factorTally.map((v, f) => ({ f, v })).filter((x) => x.f >= 2).sort((a, b) => b.v - a.v).slice(0, 4);
+  logLine(`Чаще всего расстояния делятся на ${topF.map((x) => `<b>${x.f}</b>`).join(', ')}.`);
+  await sleep(400);
+  // 2. индекс совпадений по периоду
+  logLine('<b>Шаг 2. Индекс совпадений</b> для каждой длины ключа:');
+  const vals = [];
+  for (let L = 1; L <= 12; L++) {
+    let sum = 0;
+    for (let c = 0; c < L; c++) { let col = ''; for (let i = c; i < s.length; i += L) col += s[i]; sum += ioc(col); }
+    vals.push(sum / L);
+    drawIoc({ text: s, vals: vals.slice(), best: null });
+    await sleep(110);
+  }
+  const maxV = Math.max(...vals);
+  const bestL = vals.findIndex((v) => v > maxV * 0.9) + 1;
+  drawIoc({ text: s, vals, best: bestL });
+  logLine(`Период <b>${bestL}</b>: индекс ${fmt(vals[bestL - 1], 4)} — как у обычного русского текста.`);
+  await sleep(400);
+  // 3. каждый столбец — свой Цезарь: χ²
+  logLine(`<b>Шаг 3.</b> Делим шифровку на ${bestL} столбцов и&nbsp;для&nbsp;каждого подбираем сдвиг по&nbsp;χ²:`);
+  let key = '';
+  state.vigKey = '';
+  renderKeyPanel();
+  for (let c = 0; c < bestL; c++) {
+    let col = ''; for (let i = c; i < s.length; i += bestL) col += s[i];
+    let best = { k: 0, x: Infinity };
+    for (let k = 0; k < N; k++) { const x = chi2(caesar(col, -k)); if (x < best.x) best = { k, x }; }
+    // «вращаем» букву ключа
+    for (let k = 0; k <= best.k; k += 2) { $('kw').value = key + A[k]; await sleep(14); }
+    key += A[best.k];
+    $('kw').value = key; state.vigKey = key;
+    logLine(`столбец ${c + 1}: сдвиг ${best.k} → буква <b>${A[best.k]}</b> (χ² = ${fmt(best.x, 1)})`);
+    renderOutput();
+    await sleep(160);
+  }
+  logLine(`Ключ: <b>${key}</b>.`);
+  renderOutput();
+}
+async function crackSubst(s) {
+  clearLog();
+  const cidx = toIdx(s);
+  logLine('<b>Отжиг.</b> Начинаем с частотной догадки и меняем пары букв в ключе.');
+  logLine('Обмен оставляем, если текст становится «русее» по частотам пар букв; иногда принимаем и худший — чтобы не застрять.');
+  const cnt = new Array(N).fill(0); for (const ch of s) cnt[idx(ch)]++;
+  const co = [...Array(N).keys()].sort((a, b) => cnt[b] - cnt[a]);
+  const po = [...Array(N).keys()].sort((a, b) => EXP[b] - EXP[a]);
+  const base = new Array(N); co.forEach((c, k) => (base[c] = po[k]));
+  const score = (kk) => bigramScore(cidx.map((c) => kk[c]));
+  let best = base.slice(), bestS = score(best);
+  const show = () => { best.forEach((k, i) => (state.subMap[i] = A[k])); renderOutput(); };
+  show();
+  const ROUNDS = 5, ITERS = 30000, CHUNK = 1800;
+  for (let r = 0; r < ROUNDS; r++) {
+    const key = (r === 0 ? base : best).slice();
+    if (r > 0) for (let k = 0; k < r * 3; k++) { const a = Math.floor(Math.random() * N), b = Math.floor(Math.random() * N); [key[a], key[b]] = [key[b], key[a]]; }
+    let cur = score(key), T = 0.025;
+    for (let it = 0; it < ITERS; it += CHUNK) {
+      for (let j = 0; j < CHUNK; j++) {
+        const a = Math.floor(Math.random() * N), b = Math.floor(Math.random() * N);
+        if (a === b) continue;
+        [key[a], key[b]] = [key[b], key[a]];
+        const sc = score(key);
+        if (sc > cur || Math.random() < Math.exp((sc - cur) / T)) { cur = sc; if (sc > bestS) { bestS = sc; best = key.slice(); } }
+        else [key[a], key[b]] = [key[b], key[a]];
+        T = Math.max(0.0006, T * 0.99985);
+      }
+      show();
+      await sleep(30);
+    }
+    logLine(`заход ${r + 1} из ${ROUNDS}: лучшая оценка <b>${fmt(bestS, 3)}</b>`);
+  }
+  // жадная доводка: перебираем все пары, пока текст улучшается
+  let improved = true;
+  while (improved) {
+    improved = false;
+    for (let a = 0; a < N; a++) for (let b = a + 1; b < N; b++) {
+      [best[a], best[b]] = [best[b], best[a]];
+      const sc = score(best);
+      if (sc > bestS + 1e-12) { bestS = sc; improved = true; } else [best[a], best[b]] = [best[b], best[a]];
+    }
+  }
+  show();
+  renderKeyPanel();
+  logLine(`Доводка перебором пар: оценка <b>${fmt(bestS, 3)}</b>. Редкие буквы могли перепутаться — поправьте их в таблице.`);
+}
+$('crack').addEventListener('click', crack);
+
+// ---------------- свой текст ----------------
+function setOwn(v) {
+  state.own = v;
+  $('ownToggle').setAttribute('aria-pressed', v);
+  $('inform').classList.toggle('own', v);
+  kasMarks = [];
+  renderCases();
+  renderInput();
+  if (state.method !== 'rotor') { renderKeyPanel(); renderOutput(); }
+}
+$('ownToggle').addEventListener('click', () => { if (!state.busy) setOwn(!state.own); });
+$('ownText').addEventListener('input', () => { if (state.method !== 'rotor') renderOutput(); });
+
+// =====================================================================
+// Роторная машина (условная проводка, три ротора и рефлектор)
+// =====================================================================
+const ROT = [1, 2, 3].map((k) => { const r = seeded(k * 7919 + 11), p = [...Array(N).keys()]; for (let i = N - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } return p; });
+const INV = ROT.map((p) => { const q = new Array(N); p.forEach((v, i) => (q[v] = i)); return q; });
+const REFL = (() => { const r = seeded(4242), p = [...Array(N).keys()]; for (let i = N - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } const m = new Array(N); for (let i = 0; i < N; i += 2) { m[p[i]] = p[i + 1]; m[p[i + 1]] = p[i]; } return m; })();
+const mach = { pos: [0, 0, 0], tape: '', path: null, inited: false };
+const LAYOUT = ['ЙЦУКЕНГШЩЗХЪ', 'ФЫВАПРОЛДЖЭ', 'ЯЧСМИТЬБЮ'];
+const KEYMAP = { KeyQ: 'Й', KeyW: 'Ц', KeyE: 'У', KeyR: 'К', KeyT: 'Е', KeyY: 'Н', KeyU: 'Г', KeyI: 'Ш', KeyO: 'Щ', KeyP: 'З', BracketLeft: 'Х', BracketRight: 'Ъ',
+  KeyA: 'Ф', KeyS: 'Ы', KeyD: 'В', KeyF: 'А', KeyG: 'П', KeyH: 'Р', KeyJ: 'О', KeyK: 'Л', KeyL: 'Д', Semicolon: 'Ж', Quote: 'Э',
+  KeyZ: 'Я', KeyX: 'Ч', KeyC: 'С', KeyV: 'М', KeyB: 'И', KeyN: 'Т', KeyM: 'Ь', Comma: 'Б', Period: 'Ю', Backquote: 'Е' };
+function initMachine() {
+  if (!mach.inited) {
+    mach.inited = true;
+    const rb = $('rotors');
+    ['Левый', 'Средний', 'Правый'].forEach((nm, r) => {
+      const d = document.createElement('div'); d.className = 'rotor';
+      d.innerHTML = `<button aria-label="${nm} ротор вперёд">▲</button><div class="win" id="rw${r}">А</div><button aria-label="${nm} ротор назад">▼</button><small>${nm}</small>`;
+      d.children[0].addEventListener('click', () => { mach.pos[r] = mod(mach.pos[r] + 1); drawMachine(); });
+      d.children[2].addEventListener('click', () => { mach.pos[r] = mod(mach.pos[r] - 1); drawMachine(); });
+      rb.appendChild(d);
+    });
+    const lb = $('lamps');
+    LAYOUT.forEach((row) => {
+      const r = document.createElement('div'); r.className = 'r';
+      for (const ch of row) { const l = document.createElement('button'); l.className = 'lamp'; l.textContent = ch; l.id = 'lamp-' + ch; l.setAttribute('aria-label', 'Нажать ' + ch); l.addEventListener('click', () => pressMachine(ch)); r.appendChild(l); }
+      lb.appendChild(r);
+    });
+    // демонстрация: машина уже набрала слово — видна дорожка тока
+    'ШИФР'.split('').forEach((ch) => pressMachine(ch, true));
+  }
+  drawMachine();
+}
+function pressMachine(ch, silent) {
+  // шаг роторов (одометр): правый — каждый раз
+  mach.pos[2] = mod(mach.pos[2] + 1);
+  if (mach.pos[2] === 0) { mach.pos[1] = mod(mach.pos[1] + 1); if (mach.pos[1] === 0) mach.pos[0] = mod(mach.pos[0] + 1); }
+  let c = idx(ch);
+  const path = [c];
+  for (let r = 2; r >= 0; r--) { c = mod(ROT[r][mod(c + mach.pos[r])] - mach.pos[r]); path.push(c); }
+  c = REFL[c]; path.push(c);
+  for (let r = 0; r <= 2; r++) { c = mod(INV[r][mod(c + mach.pos[r])] - mach.pos[r]); path.push(c); }
+  mach.path = path;
+  const out = A[c];
+  mach.tape += out;
+  document.querySelectorAll('.lamp.on').forEach((l) => l.classList.remove('on'));
+  const lamp = $('lamp-' + out); if (lamp) lamp.classList.add('on');
+  clearTimeout(pressMachine.t);
+  if (!silent) pressMachine.t = setTimeout(() => lamp && lamp.classList.remove('on'), 900);
+  drawMachine();
+}
+addEventListener('keydown', (e) => {
+  if (state.method !== 'rotor' || e.metaKey || e.ctrlKey || e.altKey || e.target.closest('input,textarea')) return;
+  let ch = KEYMAP[e.code];
+  const k = e.key && e.key.toUpperCase().replace('Ё', 'Е');
+  if (k && A.includes(k)) ch = k;
+  if (ch) { e.preventDefault(); pressMachine(ch); }
+  if (e.key === 'Backspace') { mach.tape = mach.tape.slice(0, -1); drawMachine(); }
+});
+function drawMachine() {
+  for (let r = 0; r < 3; r++) $('rw' + r).textContent = A[mach.pos[r]];
+  $('mtape').textContent = group5(mach.tape) || '—';
+  const cv = $('wiring');
+  const { g, w, h } = prep(cv);
+  const cols = ['вход', 'пр.', 'ср.', 'лев.', 'рефл.'];
+  const x0 = 26, x1 = w - 26, colX = (k) => x0 + (x1 - x0) * k / 4;
+  const y = (i) => 16 + (h - 34) * i / (N - 1);
+  g.fillStyle = '#2E3424'; g.fillRect(0, 0, w, h);
+  for (let k = 0; k < 5; k++) {
+    for (let i = 0; i < N; i++) { g.fillStyle = '#6A7552'; g.beginPath(); g.arc(colX(k), y(i), 1.8, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = '#D9D0B4'; g.font = '12px "PT Mono", monospace'; g.textAlign = 'center'; g.fillText(cols[k], colX(k), h - 3);
+  }
+  if (!mach.path) return;
+  const p = mach.path;
+  const seg = (ka, ia, kb, ib, col, off) => { g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); g.moveTo(colX(ka) + off, y(ia)); g.bezierCurveTo((colX(ka) + colX(kb)) / 2, y(ia), (colX(ka) + colX(kb)) / 2, y(ib), colX(kb) + off, y(ib)); g.stroke(); };
+  // туда — красный, обратно — янтарный
+  seg(0, p[0], 1, p[1], '#E0533F', 0); seg(1, p[1], 2, p[2], '#E0533F', 0); seg(2, p[2], 3, p[3], '#E0533F', 0);
+  seg(3, p[3], 4, p[3], '#E0533F', 0);
+  g.strokeStyle = '#F1EAD5'; g.lineWidth = 2; g.beginPath(); g.moveTo(colX(4), y(p[3])); g.quadraticCurveTo(colX(4) + 16, (y(p[3]) + y(p[4])) / 2, colX(4), y(p[4])); g.stroke();
+  seg(4, p[4], 3, p[5], '#FFC766', 0); seg(3, p[5], 2, p[6], '#FFC766', 0); seg(2, p[6], 1, p[7], '#FFC766', 0); seg(1, p[7], 0, p[7], '#FFC766', 0);
+  g.fillStyle = '#F1EAD5'; g.font = '600 14px "PT Mono", monospace'; g.textAlign = 'right';
+  g.fillText(A[p[0]], colX(0) - 8, y(p[0]) + 5);
+  g.fillStyle = '#FFC766'; g.fillText(A[p[7]], colX(0) - 8, y(p[7]) + 5);
+}
+
+// ---------------- старт ----------------
+let rz;
+addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (state.method === 'rotor') drawMachine(); else { if (kasMarks.length) paintKasiski(); else renderInput(); renderOutput(); } }, 150); });
+function boot() {
+  renderProgress();
+  renderCases();
+  selectCase(3); // «Сирень» — самый эффектный взлом
+  // стартовая демонстрация: шифр уже вскрывается
+  setTimeout(() => crack(), window.__SHOT__ ? 0 : 700);
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot); else boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Небосвод</title>
+<meta name="description" content="Небо над вами: яркие звёзды с настоящими координатами и цветами, созвездия, планеты по орбитальным элементам, Луна и сумерки.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tenor+Sans&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#e9eefc; --dim:rgba(233,238,252,.72); --line:rgba(233,238,252,.2); --panel:rgba(8,13,32,.78); --gold:#f3cf7a; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#040817;color:var(--ink);font:500 13px/1.45 "Manrope",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  canvas.drag{cursor:grabbing}
+  button,select,input{font:inherit;color:inherit}
+
+  .top{position:fixed;left:28px;top:24px;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.6)}
+  h1{margin:0;font:400 38px/1 "Tenor Sans",serif;letter-spacing:.14em;text-transform:uppercase}
+  .where{margin-top:12px;display:flex;gap:10px;align-items:baseline;pointer-events:auto}
+  .where select{appearance:none;-webkit-appearance:none;background:none;border:0;border-bottom:1px solid var(--line);padding:2px 18px 3px 0;font:600 14px "Manrope",sans-serif;
+                color:var(--ink);cursor:pointer;background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+                background-position:calc(100% - 7px) 55%,calc(100% - 2px) 55%;background-size:5px 5px;background-repeat:no-repeat}
+  .where select option{color:#111}
+  .where select:focus-visible{outline:1px solid var(--gold);outline-offset:3px}
+  .clock{font:600 14px "Manrope",sans-serif;color:var(--dim);font-variant-numeric:tabular-nums}
+  .note{margin-top:10px;max-width:380px;font-size:13px;color:var(--dim);line-height:1.5;pointer-events:auto}
+  .note button{background:none;border:0;padding:0;color:var(--gold);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+  .bar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:6px;border-radius:30px;background:var(--panel);
+       border:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .bar button{height:40px;min-width:40px;padding:0 13px;border-radius:20px;border:0;background:none;color:var(--dim);font-weight:600;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s}
+  .bar button:hover{color:var(--ink)}
+  .bar button[aria-pressed="true"]{background:var(--ink);color:#0a1024}
+  .bar button:focus-visible{outline:1px solid var(--gold);outline-offset:1px}
+  .sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+
+  .layers{position:fixed;right:22px;top:22px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+  .layers button{height:34px;padding:0 13px;border-radius:17px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-weight:600;cursor:pointer;backdrop-filter:blur(8px)}
+  .layers button[aria-pressed="true"]{color:var(--ink);border-color:rgba(233,238,252,.5)}
+  .layers button:focus-visible{outline:1px solid var(--gold);outline-offset:2px}
+
+  .card{position:fixed;right:22px;bottom:84px;width:300px;padding:18px 20px 16px;border-radius:14px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(12px);
+        -webkit-backdrop-filter:blur(12px);opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+  .card.on{opacity:1;transform:none;pointer-events:auto}
+  .card h2{margin:0;font:400 26px/1.1 "Tenor Sans",serif;letter-spacing:.04em}
+  .card .kind{margin-top:5px;color:var(--gold);font-weight:600}
+  .card dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:14px 0 0;font-variant-numeric:tabular-nums}
+  .card dt{color:var(--dim)}
+  .card dd{margin:0;text-align:right}
+  .card .x{position:absolute;right:10px;top:10px;width:32px;height:32px;border:0;border-radius:50%;background:none;color:var(--dim);font-size:18px;cursor:pointer}
+  .card .x:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+
+  .hint{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);color:var(--dim);font-size:13px;pointer-events:none;transition:opacity 1s;text-shadow:0 1px 8px rgba(0,0,0,.7)}
+  @media (max-width:760px){
+    .top{left:16px;top:14px;right:16px}
+    h1{font-size:26px}
+    .where{flex-wrap:wrap;gap:4px 12px}
+    .clock{font-size:12.5px}
+    .note{max-width:none;font-size:12.5px}
+    .layers{left:10px;right:10px;top:auto;bottom:68px;flex-direction:row;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+    .layers::-webkit-scrollbar{display:none}
+    .layers button{flex:none;height:34px;padding:0 12px;font-size:12px}
+    .bar{bottom:12px;gap:2px;padding:4px;max-width:calc(100vw - 16px)}
+    .bar button{padding:0 10px;height:40px;min-width:40px;font-size:12.5px}
+    .bar .mob-hide{display:none}
+    .card{left:12px;right:12px;width:auto;bottom:112px}
+    .hint{display:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="sky" aria-label="Карта неба. Тяните, чтобы осмотреться; колесо — масштаб; клик по светилу — подробности."></canvas>
+
+<div class="top">
+  <h1>Небосвод</h1>
+  <div class="where">
+    <select id="city" aria-label="Место наблюдения"></select>
+    <span class="clock" id="clock">—</span>
+  </div>
+  <div class="note" id="note" hidden></div>
+</div>
+
+<div class="layers" id="layers">
+  <button data-l="lines" aria-pressed="true">Созвездия</button>
+  <button data-l="names" aria-pressed="true">Названия</button>
+  <button data-l="ecl" aria-pressed="false">Эклиптика</button>
+  <button data-l="grid" aria-pressed="false">Сетка</button>
+  <button data-l="trails" aria-pressed="false">Следы звёзд</button>
+</div>
+
+<div class="bar" id="bar" role="group" aria-label="Время">
+  <button id="back" class="mob-hide" aria-label="На час назад">−1 ч</button>
+  <button data-sp="1" aria-pressed="true">Живое</button>
+  <button data-sp="120" class="mob-hide">2 мин/с</button>
+  <button data-sp="1800">½ ч/с</button>
+  <button data-sp="21600">6 ч/с</button>
+  <button data-sp="0">Пауза</button>
+  <button id="fwd" class="mob-hide" aria-label="На час вперёд">+1 ч</button>
+  <span class="sep mob-hide"></span>
+  <button id="now">Сейчас</button>
+</div>
+<div class="hint" id="hint">Тяните небо · колесо — масштаб · клик по звезде — подробности</div>
+
+<div class="card" id="card" role="dialog" aria-live="polite">
+  <button class="x" id="cardX" aria-label="Закрыть">×</button>
+  <h2 id="cName"></h2>
+  <div class="kind" id="cKind"></div>
+  <dl id="cData"></dl>
+</div>
+
+<script>
+(() => {
+'use strict';
+const D2R = Math.PI / 180, R2D = 180 / Math.PI, TAU = Math.PI * 2;
+const norm360 = a => ((a % 360) + 360) % 360;
+
+/* =====================================================================
+   Каталог: яркие звёзды, J2000. ключ | имя | α (ч м с) | δ (° ′) | V | B−V
+   ===================================================================== */
+const STAR_SRC = `
+sirius|Сириус|06 45 08.9|-16 42.97|-1.46|0.00
+canopus|Канопус|06 23 57.1|-52 41.75|-0.74|0.15
+arcturus|Арктур|14 15 39.7|19 10.95|-0.05|1.23
+rigilkent|Альфа Центавра|14 39 36.5|-60 50.03|-0.27|0.71
+vega|Вега|18 36 56.3|38 47.02|0.03|0.00
+capella|Капелла|05 16 41.4|45 59.88|0.08|0.80
+rigel|Ригель|05 14 32.3|-08 12.10|0.13|-0.03
+procyon|Процион|07 39 18.1|05 13.50|0.34|0.42
+achernar|Ахернар|01 37 42.8|-57 14.20|0.46|-0.16
+betelgeuse|Бетельгейзе|05 55 10.3|07 24.42|0.50|1.85
+hadar|Хадар|14 03 49.4|-60 22.38|0.61|-0.23
+altair|Альтаир|19 50 47.0|08 52.10|0.76|0.22
+acrux|Акрукс|12 26 35.9|-63 05.95|0.76|-0.24
+aldebaran|Альдебаран|04 35 55.2|16 30.55|0.86|1.54
+antares|Антарес|16 29 24.4|-26 25.92|0.96|1.83
+spica|Спика|13 25 11.6|-11 09.68|0.97|-0.23
+pollux|Поллукс|07 45 18.9|28 01.57|1.14|1.00
+fomalhaut|Фомальгаут|22 57 39.0|-29 37.33|1.16|0.09
+deneb|Денеб|20 41 25.9|45 16.82|1.25|0.09
+mimosa|Мимоза|12 47 43.3|-59 41.32|1.25|-0.23
+regulus|Регул|10 08 22.3|11 58.03|1.35|-0.11
+adhara|Адара|06 58 37.5|-28 58.33|1.50|-0.21
+castor|Кастор|07 34 36.0|31 53.30|1.58|0.03
+gacrux|Гакрукс|12 31 09.9|-57 06.80|1.63|1.60
+shaula|Шаула|17 33 36.5|-37 06.23|1.62|-0.22
+bellatrix|Беллатрикс|05 25 07.9|06 20.98|1.64|-0.22
+elnath|Эльнат|05 26 17.5|28 36.45|1.65|-0.13
+alnilam|Альнилам|05 36 12.8|-01 12.12|1.69|-0.18
+alnitak|Альнитак|05 40 45.5|-01 56.57|1.77|-0.21
+alioth|Алиот|12 54 01.7|55 57.58|1.77|-0.02
+dubhe|Дубхе|11 03 43.7|61 45.05|1.79|1.07
+mirfak|Мирфак|03 24 19.4|49 51.67|1.79|0.48
+wezen|Везен|07 08 23.5|-26 23.60|1.83|0.68
+alkaid|Бенетнаш|13 47 32.4|49 18.80|1.86|-0.19
+kausaus|Каус Австралис|18 24 10.3|-34 23.08|1.85|-0.03
+sargas|Саргас|17 37 19.1|-42 59.87|1.86|0.40
+menkalinan|Менкалинан|05 59 31.7|44 56.85|1.90|0.08
+alhena|Альхена|06 37 42.7|16 23.95|1.93|0.00
+mirzam|Мирзам|06 22 42.0|-17 57.35|1.98|-0.23
+alphard|Альфард|09 27 35.2|-08 39.52|1.98|1.44
+polaris|Полярная|02 31 49.1|89 15.85|1.98|0.60
+hamal|Гамаль|02 07 10.4|23 27.75|2.00|1.15
+algieba|Альгиеба|10 19 58.4|19 50.48|2.08|1.13
+diphda|Дифда|00 43 35.4|-17 59.20|2.04|1.02
+nunki|Нунки|18 55 15.9|-26 17.80|2.05|-0.13
+mirach|Мирах|01 09 43.9|35 37.23|2.05|1.58
+alpheratz|Альферац|00 08 23.3|29 05.43|2.06|-0.11
+rasalhague|Рас Альхаге|17 34 56.1|12 33.60|2.07|0.15
+kochab|Кохаб|14 50 42.3|74 09.33|2.08|1.47
+saiph|Саиф|05 47 45.4|-09 40.18|2.07|-0.17
+denebola|Денебола|11 49 03.6|14 34.32|2.14|0.09
+algol|Алголь|03 08 10.1|40 57.33|2.12|-0.05
+alphecca|Гемма|15 34 41.3|26 42.88|2.23|-0.02
+mizar|Мицар|13 23 55.5|54 55.52|2.23|0.02
+sadr|Садр|20 22 13.7|40 15.40|2.23|0.67
+schedar|Шедар|00 40 30.4|56 32.23|2.24|1.17
+eltanin|Этамин|17 56 36.4|51 29.33|2.24|1.52
+mintaka|Минтака|05 32 00.4|-00 17.95|2.23|-0.22
+caph|Каф|00 09 10.7|59 08.98|2.28|0.34
+dschubba|Дшубба|16 00 20.0|-22 37.30|2.29|-0.12
+merak|Мерак|11 01 50.5|56 22.95|2.37|-0.02
+izar|Ицар|14 44 59.2|27 04.45|2.37|0.97
+enif|Эниф|21 44 11.2|09 52.50|2.39|1.53
+phecda|Фекда|11 53 49.8|53 41.68|2.44|0.04
+scheat|Шеат|23 03 46.5|28 04.97|2.42|1.67
+alderamin|Альдерамин|21 18 34.8|62 35.13|2.45|0.22
+markab|Маркаб|23 04 45.7|15 12.32|2.49|-0.04
+navi|Нави|00 56 42.5|60 43.00|2.47|-0.15
+menkar|Менкар|03 02 16.8|04 05.38|2.54|1.64
+zosma|Зосма|11 14 06.5|20 31.42|2.56|0.12
+acrab|Акраб|16 05 26.2|-19 48.33|2.62|-0.07
+ruchbah|Рукбах|01 25 48.9|60 14.12|2.66|0.13
+sheratan|Шератан|01 54 38.4|20 48.48|2.64|0.13
+muphrid|Муфрид|13 54 41.1|18 23.87|2.68|0.58
+porrima|Поррима|12 41 39.6|-01 26.97|2.74|0.36
+tarazed|Таразед|19 46 15.6|10 36.80|2.72|1.52
+kornephoros|Корнефорос|16 30 13.2|21 29.38|2.77|0.94
+rastaban|Растабан|17 30 26.0|52 18.08|2.79|0.98
+kausmed|Каус Медиа|18 20 59.6|-29 49.68|2.70|1.38
+kausbor|Каус Бореалис|18 27 58.2|-25 25.30|2.81|1.04
+algenib|Альгениб|00 13 14.2|15 11.02|2.83|-0.23
+vindemiatrix|Виндемиатрикс|13 02 10.6|10 57.55|2.83|0.94
+zetaher|Дзета Геркулеса|16 41 17.2|31 36.17|2.81|0.65
+ascella|Аскелла|19 02 36.7|-29 52.82|2.60|0.08
+epsper|Эпсилон Персея|03 57 51.2|40 00.62|2.89|-0.18
+zetaper|Дзета Персея|03 54 07.9|31 53.02|2.85|0.12
+alcyone|Альциона (Плеяды)|03 47 29.1|24 06.30|2.87|-0.09
+tejat|Тегмен|06 22 57.6|22 30.82|2.87|1.64
+gomeisa|Гомейза|07 27 09.0|08 17.37|2.89|-0.09
+pisco|Пи Скорпиона|15 58 51.1|-26 06.85|2.89|-0.19
+sigsco|Сигма Скорпиона|16 21 11.3|-25 35.57|2.89|0.13
+tausco|Тау Скорпиона|16 35 53.0|-28 12.97|2.82|-0.25
+epssco|Эпсилон Скорпиона|16 50 09.8|-34 17.60|2.29|1.15
+mu1sco|Мю Скорпиона|16 51 52.2|-38 02.85|3.00|-0.20
+zeta2sco|Дзета Скорпиона|16 54 35.0|-42 21.68|3.62|1.37
+etasco|Эта Скорпиона|17 12 09.2|-43 14.35|3.33|0.41
+iota1sco|Йота Скорпиона|17 47 35.1|-40 07.63|2.99|0.51
+kappasco|Каппа Скорпиона|17 42 29.3|-39 01.80|2.39|-0.22
+alnasl|Альнасль|18 05 48.5|-30 25.45|2.99|1.00
+tausgr|Тау Стрельца|19 06 56.4|-27 40.22|3.32|1.19
+phisgr|Фи Стрельца|18 45 39.4|-26 59.45|3.17|-0.11
+seginus|Сегин (Волопас)|14 32 04.7|38 18.50|3.03|0.19
+nekkar|Неккар|15 01 56.8|40 23.43|3.50|0.97
+deltaboo|Дельта Волопаса|15 15 30.2|33 18.88|3.47|0.95
+rhoboo|Ро Волопаса|14 31 49.8|30 22.28|3.58|1.30
+betacrb|Нусакан|15 27 49.7|29 06.35|3.68|0.28
+thetacrb|Тета Северной Короны|15 32 55.8|31 21.55|4.14|-0.13
+gammacrb|Гамма Северной Короны|15 42 44.6|26 17.73|3.84|0.00
+deltacrb|Дельта Северной Короны|15 49 35.6|26 04.10|4.63|0.80
+epscrb|Эпсилон Северной Короны|15 57 35.3|26 52.67|4.15|1.23
+etaher|Эта Геркулеса|16 42 53.8|38 55.33|3.48|0.92
+piher|Пи Геркулеса|17 15 02.8|36 48.55|3.16|1.44
+epsher|Эпсилон Геркулеса|17 00 17.4|30 55.58|3.92|-0.02
+deltaher|Сарин|17 15 01.9|24 50.35|3.14|0.08
+epslyr|Эпсилон Лиры|18 44 20.3|39 40.20|4.67|0.20
+zetalyr|Дзета Лиры|18 44 46.4|37 36.30|4.36|0.20
+sheliak|Шелиак|18 50 04.8|33 21.77|3.52|0.00
+sulafat|Сулафат|18 58 56.6|32 41.37|3.24|-0.05
+deltalyr|Дельта Лиры|18 54 30.3|36 53.92|4.30|1.60
+gienahcyg|Эпсилон Лебедя|20 46 12.7|33 58.22|2.48|1.03
+fawaris|Дельта Лебедя|19 44 58.5|45 07.85|2.87|-0.03
+albireo|Альбирео|19 30 43.3|27 57.58|3.08|1.13
+alshain|Альшаин|19 55 18.8|06 24.40|3.71|0.86
+zetaaql|Дзета Орла|19 05 24.6|13 51.80|2.99|0.01
+deltaaql|Дельта Орла|19 25 29.9|03 06.88|3.36|0.32
+lambdaaql|Лямбда Орла|19 06 14.9|-04 52.95|3.43|-0.09
+thetaaql|Тета Орла|20 11 18.3|-00 49.28|3.24|-0.07
+porrima2|Дельта Девы|12 55 36.2|03 23.85|3.38|1.58
+zetavir|Дзета Девы|13 34 41.6|-00 35.75|3.37|0.11
+betavir|Бета Девы|11 50 41.7|01 45.88|3.61|0.55
+almach|Аламак|02 03 54.0|42 19.78|2.26|1.37
+deltaand|Дельта Андромеды|00 39 19.7|30 51.67|3.27|1.28
+homam|Хомам|22 41 27.7|10 49.88|3.40|-0.09
+biham|Бихам|22 10 12.0|06 11.87|3.53|0.08
+segin|Сегин|01 54 23.7|63 40.20|3.37|-0.15
+alfirk|Альфирк|21 28 39.6|70 33.65|3.23|-0.22
+errai|Эррай|23 39 20.8|77 37.95|3.21|1.03
+iotacep|Йота Цефея|22 49 40.8|66 12.02|3.52|1.05
+zetacep|Дзета Цефея|22 10 51.3|58 12.08|3.35|1.57
+grumium|Грумиум|17 53 31.7|56 52.37|3.75|1.18
+altais|Альтаис|19 12 33.3|67 39.68|3.07|1.00
+zetadra|Дзета Дракона|17 08 47.2|65 42.88|3.17|-0.12
+etadra|Эта Дракона|16 23 59.5|61 30.85|2.73|0.91
+thetadra|Тета Дракона|16 01 53.3|58 33.92|4.01|0.52
+iotadra|Йота Дракона|15 24 55.8|58 57.97|3.29|1.16
+thuban|Тубан|14 04 23.3|64 22.55|3.65|-0.05
+kappadra|Каппа Дракона|12 33 29.0|69 47.30|3.87|-0.13
+lambdadra|Лямбда Дракона|11 31 24.2|69 19.87|3.82|1.62
+pherkad|Феркад|15 20 43.7|71 50.03|3.05|0.05
+yildun|Йильдун|17 32 12.9|86 35.18|4.35|0.02
+epsumi|Эпсилон Малой Медведицы|16 45 58.2|82 02.23|4.21|0.89
+zetaumi|Дзета Малой Медведицы|15 44 03.5|77 47.67|4.32|0.04
+etaumi|Эта Малой Медведицы|16 17 30.3|75 45.32|4.95|0.37
+megrez|Мегрец|12 15 25.6|57 01.95|3.31|0.08
+meissa|Мейсса|05 35 08.3|09 56.05|3.39|-0.18
+mebsuta|Мебсута|06 43 55.9|25 07.87|2.98|1.40
+wasat|Васат|07 20 07.4|21 58.93|3.53|0.34
+alzirr|Альзирр|06 45 17.4|12 53.73|3.35|0.43
+adhafera|Адхафера|10 16 41.4|23 25.03|3.44|0.31
+raselased|Рас Эласед|09 52 45.8|26 00.42|3.88|1.22
+epsleo|Эпсилон Льва|09 45 51.1|23 46.45|2.98|0.80
+etaleo|Эта Льва|10 07 19.9|16 45.75|3.52|-0.03
+chertan|Хорт|11 14 14.4|15 25.77|3.33|0.00
+deltaper|Дельта Персея|03 42 55.5|47 47.27|3.01|-0.13
+gammaper|Гамма Персея|03 04 47.8|53 30.38|2.93|0.70
+thetaaur|Тета Возничего|05 59 43.3|37 12.75|2.62|-0.08
+hassaleh|Хассалех|04 56 59.6|33 09.97|2.69|1.53
+epsaur|Эпсилон Возничего|05 01 58.1|43 49.40|3.00|0.54
+zetatau|Дзета Тельца|05 37 38.7|21 08.55|3.00|-0.19
+gammatau|Гамма Тельца|04 19 47.6|15 37.65|3.65|0.99
+epstau|Эпсилон Тельца|04 28 37.0|19 10.83|3.53|1.01
+aludra|Алудра|07 24 05.7|-29 18.18|2.45|-0.08
+furud|Фуруд|06 20 18.8|-30 03.80|3.02|-0.19
+sadalsuud|Садальсууд|21 31 33.5|-05 34.27|2.87|0.83
+sadalmelik|Садальмелик|22 05 47.0|-00 19.18|2.95|0.97
+skat|Скат|22 54 39.0|-15 49.25|3.27|0.05
+sadachbia|Гамма Водолея|22 21 39.4|-01 23.23|3.84|-0.05
+zetaaqr|Дзета Водолея|22 28 49.9|-00 01.20|3.65|0.38
+etaaqr|Эта Водолея|22 35 21.4|-00 07.05|4.02|-0.09
+lambdaaqr|Лямбда Водолея|22 52 36.9|-07 34.80|3.74|1.64
+albali|Альбали|20 47 40.6|-09 29.70|3.77|0.00
+denebalgedi|Денеб Альгеди|21 47 02.4|-16 07.60|2.87|0.29
+dabih|Дабих|20 21 00.7|-14 46.90|3.08|0.79
+algedi|Альгеди|20 18 03.3|-12 32.70|3.57|0.94
+nashira|Нашира|21 40 05.5|-16 39.70|3.68|0.32
+zetacap|Дзета Козерога|21 26 40.0|-22 24.70|3.74|1.00
+thetacap|Тета Козерога|21 05 56.8|-17 13.97|4.07|-0.01
+omegacap|Омега Козерога|20 51 49.3|-26 55.10|4.12|1.64
+psicap|Пси Козерога|20 46 05.7|-25 16.30|4.14|0.43
+alpherg|Альферг|01 31 29.0|15 20.75|3.62|0.97
+gammapsc|Гамма Рыб|23 17 09.9|03 16.95|3.69|0.92
+omegapsc|Омега Рыб|23 59 18.7|06 51.80|4.03|0.42
+alrescha|Альриша|02 02 02.8|02 45.80|3.82|0.03
+iotapsc|Йота Рыб|23 39 57.0|05 37.60|4.13|0.51
+thetapsc|Тета Рыб|23 27 58.1|06 22.80|4.28|1.07
+kappapsc|Каппа Рыб|23 26 56.0|01 15.30|4.94|0.03
+lambdapsc|Лямбда Рыб|23 42 02.8|01 46.80|4.49|0.20
+epspsc|Эпсилон Рыб|01 02 56.6|07 53.40|4.28|0.96
+deltapsc|Дельта Рыб|00 48 40.9|07 35.10|4.43|1.50
+nupsc|Ню Рыб|01 41 25.9|05 29.30|4.44|1.36
+omicronpsc|Омикрон Рыб|01 45 23.6|09 09.50|4.26|0.96
+taucet|Тау Кита|01 44 04.1|-15 56.20|3.50|0.72
+etacet|Эта Кита|01 08 35.4|-10 10.90|3.46|1.16
+thetacet|Тета Кита|01 24 01.4|-08 11.00|3.60|1.06
+zetacet|Дзета Кита|01 51 27.6|-10 20.10|3.73|1.14
+iotacet|Йота Кита|00 19 25.7|-08 49.40|3.56|1.22
+gammacet|Гамма Кита|02 43 18.0|03 14.10|3.47|0.09
+deltacet|Дельта Кита|02 39 28.9|00 19.70|4.07|-0.22
+betatri|Бета Треугольника|02 09 32.6|34 59.20|3.00|0.14
+alphatri|Альфа Треугольника|01 53 04.9|29 34.70|3.41|0.49
+gammatri|Гамма Треугольника|02 17 18.9|33 50.80|4.01|0.02
+mesarthim|Мезартим|01 53 31.8|19 17.60|3.86|-0.05
+alphalac|Альфа Ящерицы|22 31 17.5|50 16.90|3.77|0.01
+sualocin|Суалокин|20 39 38.3|15 54.70|3.77|-0.06
+rotanev|Ротанев|20 37 32.9|14 35.70|3.63|0.44
+gammadel|Гамма Дельфина|20 46 39.5|16 07.50|4.27|1.04
+deltadel|Дельта Дельфина|20 43 27.5|15 04.50|4.43|0.32
+epsdel|Эпсилон Дельфина|20 33 12.8|11 18.20|4.03|-0.13
+gammasge|Гамма Стрелы|19 58 45.4|19 29.50|3.47|1.57
+deltasge|Дельта Стрелы|19 47 23.3|18 32.10|3.82|1.41
+alphasge|Альфа Стрелы|19 40 05.8|18 00.80|4.37|0.78
+betasge|Бета Стрелы|19 41 02.9|17 28.60|4.37|1.05
+sabik|Сабик|17 10 22.7|-15 43.50|2.43|0.06
+cebalrai|Цельбальрай|17 43 28.4|04 34.00|2.77|1.16
+zetaoph|Дзета Змееносца|16 37 09.5|-10 34.00|2.56|0.02
+yedprior|Йед Приор|16 14 20.7|-03 41.70|2.74|1.58
+epsoph|Йед Постериор|16 18 19.3|-04 41.60|3.23|0.97
+kappaoph|Каппа Змееносца|16 57 40.1|09 22.50|3.20|1.15
+unukalhai|Унук аль-Хайя|15 44 16.1|06 25.50|2.63|1.17
+zubeneschamali|Зубен Эшемали|15 17 00.4|-09 22.97|2.61|-0.07
+zubenelgenubi|Зубен Эльгенуби|14 50 52.7|-16 02.50|2.75|0.15
+sigmalib|Сигма Весов|15 04 04.2|-25 16.90|3.29|1.70
+gammalib|Гамма Весов|15 35 31.6|-14 47.40|3.91|1.01
+gienahcrv|Гиенах|12 15 48.4|-17 32.50|2.59|-0.11
+kraz|Краз|12 34 23.2|-23 23.80|2.65|0.89
+algorab|Альгораб|12 29 51.9|-16 30.90|2.95|-0.01
+epscrv|Эпсилон Ворона|12 10 07.5|-22 37.20|3.00|1.33
+tarf|Тарф|08 16 30.9|09 11.10|3.52|1.48
+asellusaus|Южный Ослик|08 44 41.1|18 09.30|3.94|1.08
+cor caroli|Сердце Карла|12 56 01.7|38 19.10|2.90|-0.12
+zetacyg|Дзета Лебедя|21 12 56.2|30 13.60|3.21|0.99
+cursa|Курса|05 07 51.0|-05 05.20|2.79|0.13
+zaurak|Заурак|03 58 01.8|-13 30.50|2.95|1.59
+arneb|Арнеб|05 32 43.8|-17 49.30|2.58|0.21
+nihal|Нихаль|05 28 14.7|-20 45.60|2.81|0.82
+alphalyn|Альфа Рыси|09 21 03.3|34 23.60|3.14|1.55
+`;
+const STARS = STAR_SRC.trim().split('\n').map(line => {
+  const [key0, name, ra, dec, mag, bv] = line.split('|'), key = key0.replace(/\s+/g, '');
+  const [h, m, s] = ra.split(' ').map(Number);
+  const [dd, dm] = dec.split(' ');
+  const sign = dd.trim().startsWith('-') ? -1 : 1;
+  const decDeg = sign * (Math.abs(parseFloat(dd)) + parseFloat(dm) / 60);
+  return { key, name, ra: (h + m / 60 + s / 3600) * 15, dec: decDeg, mag: +mag, bv: +bv, type: 'star' };
+});
+const BYKEY = Object.fromEntries(STARS.map(s => [s.key, s]));
+
+const CONST = [
+  ['Большая Медведица', 'dubhe merak phecda megrez dubhe; megrez alioth mizar alkaid'],
+  ['Малая Медведица', 'polaris yildun epsumi zetaumi kochab pherkad etaumi zetaumi'],
+  ['Кассиопея', 'caph schedar navi ruchbah segin'],
+  ['Цефей', 'alderamin alfirk errai iotacep zetacep alderamin; alfirk iotacep'],
+  ['Лебедь', 'deneb sadr albireo; gienahcyg sadr fawaris'],
+  ['Лира', 'vega epslyr; vega zetalyr sheliak sulafat deltalyr zetalyr'],
+  ['Орёл', 'tarazed altair alshain; altair deltaaql lambdaaql; deltaaql thetaaql; zetaaql tarazed'],
+  ['Орион', 'meissa betelgeuse; meissa bellatrix; betelgeuse bellatrix; betelgeuse alnitak alnilam mintaka bellatrix; alnitak saiph; mintaka rigel'],
+  ['Телец', 'gammatau aldebaran zetatau; gammatau epstau elnath'],
+  ['Близнецы', 'castor pollux; castor mebsuta tejat; pollux wasat alhena; wasat alzirr'],
+  ['Возничий', 'capella menkalinan thetaaur elnath hassaleh capella; capella epsaur'],
+  ['Персей', 'gammaper mirfak deltaper epsper zetaper; mirfak algol'],
+  ['Андромеда', 'alpheratz deltaand mirach almach'],
+  ['Пегас', 'alpheratz scheat markab algenib alpheratz; markab homam biham enif'],
+  ['Овен', 'hamal sheratan'],
+  ['Лев', 'regulus etaleo algieba adhafera raselased epsleo; algieba zosma denebola chertan regulus; zosma chertan'],
+  ['Волопас', 'arcturus izar deltaboo nekkar seginus rhoboo arcturus; arcturus muphrid'],
+  ['Северная Корона', 'thetacrb betacrb alphecca gammacrb deltacrb epscrb'],
+  ['Геркулес', 'zetaher etaher piher epsher zetaher; zetaher kornephoros; epsher deltaher'],
+  ['Дева', 'spica zetavir porrima porrima2 vindemiatrix; porrima betavir'],
+  ['Скорпион', 'acrab dschubba pisco; dschubba sigsco antares tausco epssco mu1sco zeta2sco etasco sargas iota1sco kappasco shaula'],
+  ['Стрелец', 'alnasl kausmed kausaus alnasl; kausmed kausbor phisgr kausmed; phisgr nunki tausgr ascella phisgr; ascella kausaus'],
+  ['Большой Пёс', 'mirzam sirius wezen adhara furud; wezen aludra'],
+  ['Малый Пёс', 'procyon gomeisa'],
+  ['Дракон', 'rastaban eltanin grumium rastaban; grumium altais zetadra etadra thetadra iotadra thuban kappadra lambdadra'],
+  ['Козерог', 'dabih psicap omegacap zetacap denebalgedi nashira thetacap dabih; algedi dabih'],
+  ['Водолей', 'albali sadalsuud sadalmelik sadachbia zetaaqr etaaqr; zetaaqr lambdaaqr skat'],
+  ['Рыбы', 'gammapsc thetapsc iotapsc lambdapsc kappapsc gammapsc; iotapsc omegapsc deltapsc epspsc nupsc alrescha omicronpsc alpherg'],
+  ['Кит', 'menkar gammacet deltacet; deltacet zetacet taucet diphda iotacet etacet thetacet zetacet'],
+  ['Треугольник', 'alphatri betatri gammatri alphatri'],
+  ['Дельфин', 'sualocin rotanev deltadel gammadel sualocin; rotanev epsdel'],
+  ['Стрела', 'gammasge deltasge alphasge; deltasge betasge'],
+  ['Ворон', 'gienahcrv algorab kraz epscrv gienahcrv'],
+  ['Весы', 'zubenelgenubi zubeneschamali gammalib; zubenelgenubi sigmalib'],
+  ['Змееносец', 'rasalhague kappaoph yedprior epsoph zetaoph sabik cebalrai rasalhague'],
+  ['Заяц', 'arneb nihal']
+].map(([name, spec]) => {
+  const segs = [];
+  spec.split(';').forEach(chain => { const k = chain.trim().split(/\s+/); for (let i = 0; i + 1 < k.length; i++) { if (BYKEY[k[i]] && BYKEY[k[i + 1]]) segs.push([BYKEY[k[i]], BYKEY[k[i + 1]]]); } });
+  const members = [...new Set(segs.flat())];
+  return { name, segs, members };
+});
+
+/* =====================================================================
+   Время, координаты, эфемериды
+   ===================================================================== */
+const jd = ms => ms / 86400000 + 2440587.5;
+function gmst(J) { const d = J - 2451545.0, T = d / 36525; return norm360(280.46061837 + 360.98564736629 * d + 0.000387933 * T * T); }
+function eqToHor(ra, dec, lst, lat) {
+  const H = (lst - ra) * D2R, d = dec * D2R, f = lat * D2R;
+  const alt = Math.asin(Math.sin(f) * Math.sin(d) + Math.cos(f) * Math.cos(d) * Math.cos(H));
+  const az = Math.atan2(-Math.cos(d) * Math.sin(H), Math.sin(d) * Math.cos(f) - Math.cos(d) * Math.sin(f) * Math.cos(H));
+  return { alt: alt * R2D, az: norm360(az * R2D) };
+}
+// рефракция (Беннет), чтобы звёзды у горизонта «приподнимались», как в жизни
+const refract = alt => alt > -1 ? alt + 1.02 / Math.tan((alt + 10.3 / (alt + 5.11)) * D2R) / 60 : alt;
+
+// элементы орбит JPL (Standish), 1800–2050: a, e, I, L, ϖ, Ω и их скорости за столетие
+const EL = {
+  mercury: [0.38709927, 0.20563593, 7.00497902, 252.25032350, 77.45779628, 48.33076593, 0.00000037, 0.00001906, -0.00594749, 149472.67411175, 0.16047689, -0.12534081],
+  venus: [0.72333566, 0.00677672, 3.39467605, 181.97909950, 131.60246718, 76.67984255, 0.00000390, -0.00004107, -0.00078890, 58517.81538729, 0.00268329, -0.27769418],
+  earth: [1.00000261, 0.01671123, -0.00001531, 100.46457166, 102.93768193, 0.0, 0.00000562, -0.00004392, -0.01294668, 35999.37244981, 0.32327364, 0.0],
+  mars: [1.52371034, 0.09339410, 1.84969142, -4.55343205, -23.94362959, 49.55953891, 0.00001847, 0.00007882, -0.00813131, 19140.30268499, 0.44441088, -0.29257343],
+  jupiter: [5.20288700, 0.04838624, 1.30439695, 34.39644051, 14.72847983, 100.47390909, -0.00011607, -0.00013253, -0.00183714, 3034.74612775, 0.21252668, 0.20469106],
+  saturn: [9.53667594, 0.05386179, 2.48599187, 49.95424423, 92.59887831, 113.66242448, -0.00125060, -0.00050991, 0.00193609, 1222.49362201, -0.41897216, -0.28867794],
+  uranus: [19.18916464, 0.04725744, 0.77263783, 313.23810451, 170.95427630, 74.01692503, -0.00196176, -0.00004397, -0.00242939, 428.48202785, 0.40805281, 0.04240589],
+  neptune: [30.06992276, 0.00859048, 1.77004347, -55.12002969, 44.96476227, 131.78422574, 0.00026291, 0.00005105, 0.00035372, 218.45945325, -0.32241464, -0.00508664]
+};
+function helio(k, T) {
+  const e0 = EL[k], v = i => e0[i] + e0[i + 6] * T;
+  const a = v(0), e = v(1), I = v(2) * D2R, L = v(3), w = v(4), O = v(5) * D2R;
+  const om = (w - v(5)) * D2R;
+  let M = norm360(L - w); if (M > 180) M -= 360; M *= D2R;
+  let E = M + e * Math.sin(M);
+  for (let i = 0; i < 8; i++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  const xp = a * (Math.cos(E) - e), yp = a * Math.sqrt(1 - e * e) * Math.sin(E);
+  const cw = Math.cos(om), sw = Math.sin(om), cO = Math.cos(O), sO = Math.sin(O), cI = Math.cos(I), sI = Math.sin(I);
+  return [
+    (cw * cO - sw * sO * cI) * xp + (-sw * cO - cw * sO * cI) * yp,
+    (cw * sO + sw * cO * cI) * xp + (-sw * sO + cw * cO * cI) * yp,
+    (sw * sI) * xp + (cw * sI) * yp
+  ];
+}
+const EPS = 23.43928 * D2R;
+function eclToEq(x, y, z) {
+  const ye = Math.cos(EPS) * y - Math.sin(EPS) * z, ze = Math.sin(EPS) * y + Math.cos(EPS) * z;
+  const r = Math.hypot(x, ye, ze);
+  return { ra: norm360(Math.atan2(ye, x) * R2D), dec: Math.asin(ze / r) * R2D, r };
+}
+const PLANETS = [
+  ['mercury', 'Меркурий', '#d9cbb6', 3.2], ['venus', 'Венера', '#fff6dc', 5.4], ['mars', 'Марс', '#ff8a5c', 3.8],
+  ['jupiter', 'Юпитер', '#ffe7c4', 5.0], ['saturn', 'Сатурн', '#f0d9a2', 4.2], ['uranus', 'Уран', '#bfe8f0', 2.2], ['neptune', 'Нептун', '#9ab7ff', 2.0]
+];
+function bodies(J) {
+  const T = (J - 2451545.0) / 36525;
+  const E = helio('earth', T);
+  const out = PLANETS.map(([k, name, col, size]) => {
+    const p = helio(k, T), g = eclToEq(p[0] - E[0], p[1] - E[1], p[2] - E[2]);
+    return { key: k, name, ra: g.ra, dec: g.dec, dist: g.r, col, size, type: 'planet', helioR: Math.hypot(...p) };
+  });
+  const sun = eclToEq(-E[0], -E[1], -E[2]);
+  out.push({ key: 'sun', name: 'Солнце', ra: sun.ra, dec: sun.dec, dist: sun.r, type: 'sun' });
+  // Луна: упрощённая теория с главными возмущениями (точность ~0,3°)
+  const d = J - 2451545.0;
+  const Lm = 218.316 + 13.176396 * d, Mm = (134.963 + 13.064993 * d) * D2R, F = (93.272 + 13.229350 * d) * D2R;
+  const Dm = (297.850 + 12.190749 * d) * D2R, Ms = (357.529 + 0.98560028 * d) * D2R;
+  const lam = (Lm + 6.289 * Math.sin(Mm) + 1.274 * Math.sin(2 * Dm - Mm) + 0.658 * Math.sin(2 * Dm) + 0.214 * Math.sin(2 * Mm) - 0.186 * Math.sin(Ms) - 0.114 * Math.sin(2 * F)) * D2R;
+  const bet = (5.128 * Math.sin(F) + 0.280 * Math.sin(Mm + F) + 0.277 * Math.sin(Mm - F) + 0.173 * Math.sin(2 * Dm - F)) * D2R;
+  const dist = 385001 - 20905 * Math.cos(Mm);
+  const mq = eclToEq(Math.cos(bet) * Math.cos(lam), Math.cos(bet) * Math.sin(lam), Math.sin(bet));
+  const sunLon = Math.atan2(-E[1], -E[0]);
+  const elong = Math.acos(Math.cos(bet) * Math.cos(lam - sunLon));
+  out.push({ key: 'moon', name: 'Луна', ra: mq.ra, dec: mq.dec, distKm: dist, type: 'moon', phase: (1 - Math.cos(elong)) / 2, waxing: Math.sin(lam - sunLon) > 0 });
+  return out;
+}
+
+/* ---------- цвет звезды по B−V ---------- */
+function bvToRGB(bv) {
+  const T = 4600 * (1 / (0.92 * bv + 1.7) + 1 / (0.92 * bv + 0.62));
+  const t = T / 100;
+  let r = t <= 66 ? 255 : 329.7 * Math.pow(t - 60, -0.1332);
+  let g = t <= 66 ? 99.47 * Math.log(t) - 161.12 : 288.12 * Math.pow(t - 60, -0.0755);
+  let b = t >= 66 ? 255 : t <= 19 ? 0 : 138.52 * Math.log(t - 10) - 305.04;
+  const c = [r, g, b].map(v => Math.max(0, Math.min(255, v)));
+  // немного разбавляем белым: глаз видит цвета звёзд бледнее, чем чёрное тело
+  return c.map(v => Math.round(v * 0.72 + 255 * 0.28));
+}
+STARS.forEach(s => { s.rgb = bvToRGB(s.bv); s.col = `rgb(${s.rgb.join(',')})`; });
+
+/* ---------- Млечный Путь: галактические → экваториальные ---------- */
+function galToEq(l, b) {
+  // полюс Галактики α = 192,85948°, δ = 27,12825°, долгота восходящего узла l = 122,93192°
+  const ap = 192.85948 * D2R, dp = 27.12825 * D2R, lNCP = 122.93192 * D2R;
+  const L = l * D2R, B = b * D2R;
+  const sd = Math.sin(dp) * Math.sin(B) + Math.cos(dp) * Math.cos(B) * Math.cos(lNCP - L);
+  const y = Math.cos(B) * Math.sin(lNCP - L);
+  const x = Math.cos(dp) * Math.sin(B) - Math.sin(dp) * Math.cos(B) * Math.cos(lNCP - L);
+  return { ra: norm360((ap + Math.atan2(y, x)) * R2D), dec: Math.asin(sd) * R2D };
+}
+const MILKY = (() => {
+  let a = 12345; const rnd = () => (a = (a * 16807) % 2147483647) / 2147483647;
+  const out = [];
+  for (let i = 0; i < 2600; i++) {
+    const l = rnd() * 360;
+    const core = Math.exp(-Math.pow(((l + 180) % 360 - 180) / 70, 2));        // ярче к центру Галактики (Стрелец)
+    const b = (rnd() + rnd() + rnd() - 1.5) * (7 + 6 * core) + (Math.sin(l * D2R * 3) * 1.5);
+    const eq = galToEq(l, b);
+    out.push({ ra: eq.ra, dec: eq.dec, w: 1.2 + rnd() * 2.6 + core * 1.4, a: 0.012 + 0.022 * core + rnd() * 0.01, dark: rnd() < 0.1 + 0.12 * core });
+  }
+  return out;
+})();
+
+/* =====================================================================
+   Места и состояние
+   ===================================================================== */
+const CITIES = [
+  ['Москва', 55.7558, 37.6173, 3], ['Санкт-Петербург', 59.9343, 30.3351, 3], ['Мурманск', 68.9585, 33.0827, 3],
+  ['Калининград', 54.7104, 20.4522, 2], ['Сочи', 43.6028, 39.7342, 3], ['Новосибирск', 55.0084, 82.9357, 7],
+  ['Якутск', 62.0355, 129.6755, 9], ['Владивосток', 43.1198, 131.8869, 10]
+];
+const S = {
+  city: 0, time: Date.now(), speed: 1, az: 180, alt: 34, fov: 118, sel: null,
+  layers: { lines: true, names: true, ecl: false, grid: false, trails: false }
+};
+const citySel = document.getElementById('city');
+CITIES.forEach((c, i) => { const o = document.createElement('option'); o.value = i; o.textContent = c[0]; citySel.appendChild(o); });
+citySel.addEventListener('change', () => { S.city = +citySel.value; clearTrails(); });
+
+/* =====================================================================
+   Проекция: стереографическая, как в планетариях
+   ===================================================================== */
+const cv = document.getElementById('sky'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() {
+  DPR = window.__SHOT__ ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  clearTrails();
+}
+addEventListener('resize', resize);
+let basis = null, projScale = 1;
+function setCamera() {
+  const a = S.az * D2R, h = S.alt * D2R;
+  const f = [Math.cos(h) * Math.sin(a), Math.sin(h), Math.cos(h) * Math.cos(a)];
+  const r = [Math.cos(a), 0, -Math.sin(a)];
+  const u = [f[1] * r[2] - f[2] * r[1], f[2] * r[0] - f[0] * r[2], f[0] * r[1] - f[1] * r[0]];
+  basis = { f, r, u };
+  // поле зрения задаёт большую сторону экрана: на телефоне небо не сжимается
+  projScale = (Math.max(W, H) / 2) / (2 * Math.tan(S.fov * D2R / 4));
+}
+function hv(az, alt) { const a = az * D2R, h = alt * D2R; return [Math.cos(h) * Math.sin(a), Math.sin(h), Math.cos(h) * Math.cos(a)]; }
+function proj(az, alt) {
+  const v = hv(az, alt), { f, r, u } = basis;
+  const cz = v[0] * f[0] + v[1] * f[1] + v[2] * f[2];
+  if (cz < -0.3) return null;
+  const cx = v[0] * r[0] + v[1] * r[1] + v[2] * r[2], cy = v[0] * u[0] + v[1] * u[1] + v[2] * u[2];
+  const k = 2 / (1 + cz);
+  return [W / 2 - cx * k * projScale, H / 2 - cy * k * projScale];
+}
+function unproj(x, y) {
+  // обратная стереографическая проекция
+  const X = -(x - W / 2) / projScale, Y = -(y - H / 2) / projScale;
+  const r2 = X * X + Y * Y, cz = (4 - r2) / (4 + r2), k = (1 + cz) / 2;
+  const cx = X * k, cy = Y * k, { f, r, u } = basis;
+  const v = [cx * r[0] + cy * u[0] + cz * f[0], cx * r[1] + cy * u[1] + cz * f[1], cx * r[2] + cy * u[2] + cz * f[2]];
+  return { az: norm360(Math.atan2(v[0], v[2]) * R2D), alt: Math.asin(Math.max(-1, Math.min(1, v[1]))) * R2D };
+}
+
+/* =====================================================================
+   Небо: цвет в зависимости от высоты Солнца
+   ===================================================================== */
+const mixc = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+const SKY = [ // высота Солнца: зенит, горизонт
+  [-18, [3, 7, 22], [10, 18, 42]],
+  [-12, [6, 13, 36], [20, 32, 66]],
+  [-6, [16, 34, 78], [74, 80, 118]],
+  [0, [40, 84, 150], [226, 160, 128]],
+  [8, [58, 118, 196], [170, 204, 232]],
+  [30, [52, 110, 190], [160, 198, 232]]
+];
+function skyColors(sunAlt) {
+  if (sunAlt <= SKY[0][0]) return [SKY[0][1], SKY[0][2]];
+  for (let i = 1; i < SKY.length; i++) if (sunAlt <= SKY[i][0]) {
+    const t = (sunAlt - SKY[i - 1][0]) / (SKY[i][0] - SKY[i - 1][0]);
+    return [mixc(SKY[i - 1][1], SKY[i][1], t), mixc(SKY[i - 1][2], SKY[i][2], t)];
+  }
+  return [SKY[SKY.length - 1][1], SKY[SKY.length - 1][2]];
+}
+const limitingMag = sunAlt => sunAlt > 0 ? -3.5 : sunAlt > -6 ? -1 + (-sunAlt / 6) * 2 : sunAlt > -12 ? 1 + (-sunAlt - 6) / 6 * 2.2 : sunAlt > -18 ? 3.2 + (-sunAlt - 12) / 6 * 1.3 : 4.6;
+
+/* ---------- силуэт горизонта: лес и дома ---------- */
+const SIL = (() => {
+  let a = 777; const rnd = () => (a = (a * 16807) % 2147483647) / 2147483647;
+  const h = new Float32Array(721);
+  let v = 1.2;
+  for (let i = 0; i < 721; i++) {
+    v += (rnd() - 0.5) * 0.35; v = Math.max(0.5, Math.min(2.4, v));
+    h[i] = v + (rnd() < 0.18 ? rnd() * 1.1 : 0);
+  }
+  for (let k = 0; k < 7; k++) { const c = (rnd() * 700) | 0, w = 3 + (rnd() * 6 | 0), hh = 2.4 + rnd() * 2.6; for (let i = c; i < c + w && i < 721; i++) h[i] = Math.max(h[i], hh); }
+  return h;
+})();
+const silAt = az => SIL[Math.round(norm360(az) * 2) % 720];
+
+/* =====================================================================
+   Отрисовка
+   ===================================================================== */
+const glowSprite = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.2, 'rgba(255,255,255,.35)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return c; })();
+const mwSprite = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(200,210,255,1)'); r.addColorStop(1, 'rgba(200,210,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return c; })();
+
+let lastBodies = null, hit = [], trailsDirty = true;
+function clearTrails() { trailsDirty = true; }
+const LOC = () => CITIES[S.city];
+
+function render() {
+  setCamera();
+  const J = jd(S.time), [, lat, lon] = LOC(), lst = norm360(gmst(J) + lon);
+  const B = bodies(J); lastBodies = B;
+  const sun = B.find(b => b.key === 'sun'), sunH = eqToHor(sun.ra, sun.dec, lst, lat);
+  const [zen, hor] = skyColors(sunH.alt), lim = limitingMag(sunH.alt);
+  const trails = S.layers.trails;
+
+  // фон неба: полосы по высоте в центре кадра
+  if (!trails || trailsDirty) {
+    const bands = 28;
+    for (let i = 0; i < bands; i++) {
+      const y0 = i / bands * H, y1 = (i + 1) / bands * H;
+      const p = unproj(W / 2, (y0 + y1) / 2), t = Math.max(0, Math.min(1, p.alt / 70));
+      const c = mixc(hor, zen, Math.pow(t, 0.55));
+      ctx.fillStyle = `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+      ctx.fillRect(0, y0, W, y1 - y0 + 1);
+    }
+    // засветка большого города у горизонта ночью
+    if (sunH.alt < -10) {
+      const hp = proj(S.az, 0);
+      if (hp) { const gy = hp[1]; const gg = ctx.createLinearGradient(0, gy - H * 0.22, 0, gy); gg.addColorStop(0, 'rgba(255,170,100,0)'); gg.addColorStop(1, 'rgba(255,170,110,.09)'); ctx.fillStyle = gg; ctx.fillRect(0, gy - H * 0.22, W, H * 0.22); }
+    }
+    trailsDirty = false;
+  } else {
+    ctx.fillStyle = 'rgba(4,8,23,0.02)'; ctx.fillRect(0, 0, W, H);
+  }
+
+  // солнечное сияние днём и в сумерки
+  const sp = proj(sunH.az, refract(sunH.alt));
+  if (sp && sunH.alt > -14) {
+    const k = Math.max(0, Math.min(1, (sunH.alt + 14) / 14));
+    const g = ctx.createRadialGradient(sp[0], sp[1], 0, sp[0], sp[1], Math.max(W, H) * 0.55);
+    g.addColorStop(0, `rgba(255,214,160,${0.55 * k})`); g.addColorStop(0.25, `rgba(255,170,120,${0.2 * k})`); g.addColorStop(1, 'rgba(255,170,120,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  const starVis = mag => Math.max(0, Math.min(1, (lim - mag) / 1.2 + 0.25));
+  // Млечный Путь
+  if (sunH.alt < -12 && !trails) {
+    ctx.globalCompositeOperation = 'lighter';
+    const k = Math.min(1, (-12 - sunH.alt) / 6) * 0.9;
+    for (const m of MILKY) {
+      const h = eqToHor(m.ra, m.dec, lst, lat); if (h.alt < -2) continue;
+      const p = proj(h.az, h.alt); if (!p) continue;
+      const r = m.w * D2R * projScale * 1.4;
+      ctx.globalAlpha = m.a * k * (m.dark ? 0.2 : 1) * Math.min(1, (h.alt + 2) / 12);
+      ctx.drawImage(mwSprite, p[0] - r, p[1] - r, r * 2, r * 2);
+    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // сетка и эклиптика
+  if (S.layers.grid && !trails) drawGrid();
+  if (S.layers.ecl && !trails) drawEcliptic(lst, lat);
+
+  // созвездия
+  const hcache = new Map();
+  const H_ = s => { let h = hcache.get(s); if (!h) { h = eqToHor(s.ra, s.dec, lst, lat); h.alt = refract(h.alt); hcache.set(s, h); } return h; };
+  if (S.layers.lines && !trails && sunH.alt < -4) {
+    ctx.strokeStyle = 'rgba(160,190,255,.32)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (const c of CONST) for (const [a, b] of c.segs) {
+      const ha = H_(a), hb = H_(b); if (ha.alt < -5 && hb.alt < -5) continue;
+      const pa = proj(ha.az, ha.alt), pb = proj(hb.az, hb.alt); if (!pa || !pb) continue;
+      if (Math.hypot(pa[0] - pb[0], pa[1] - pb[1]) > W * 0.6) continue;
+      const dx = pb[0] - pa[0], dy = pb[1] - pa[1], L = Math.hypot(dx, dy), gap = Math.min(6, L * 0.2);
+      ctx.moveTo(pa[0] + dx / L * gap, pa[1] + dy / L * gap); ctx.lineTo(pb[0] - dx / L * gap, pb[1] - dy / L * gap);
+    }
+    ctx.stroke();
+  }
+
+  // звёзды
+  hit = [];
+  const zoomK = Math.max(0.8, Math.min(2.2, 110 / S.fov));
+  for (const s of STARS) {
+    const h = H_(s); if (h.alt < -1) continue;
+    const vis = starVis(s.mag) * Math.min(1, (h.alt + 1) / 4); if (vis <= 0.01) continue;
+    const p = proj(h.az, h.alt); if (!p || p[0] < -20 || p[0] > W + 20 || p[1] < -20 || p[1] > H + 20) continue;
+    const ext = h.alt < 20 ? 0.6 + 0.4 * h.alt / 20 : 1;           // атмосферное поглощение
+    const r = Math.max(0.7, 3.3 * Math.pow(0.77, s.mag)) * zoomK;
+    const tw = trails ? 1 : 1 - (h.alt < 30 ? 0.18 * (1 - h.alt / 30) * (0.5 + 0.5 * Math.sin(S.tick * 9 + s.ra)) : 0);
+    ctx.globalAlpha = vis * ext * tw;
+    if (s.mag < 1.6 && !trails) { const g = r * 5.5; ctx.drawImage(glowSprite, p[0] - g, p[1] - g, g * 2, g * 2); }
+    ctx.fillStyle = s.col; ctx.beginPath(); ctx.arc(p[0], p[1], trails ? r * 0.55 : r, 0, TAU); ctx.fill();
+    ctx.globalAlpha = 1;
+    hit.push({ o: s, x: p[0], y: p[1], r: Math.max(8, r * 2.5), h });
+  }
+
+  // планеты, Луна, Солнце
+  for (const b of B) {
+    const h = eqToHor(b.ra, b.dec, lst, lat); h.alt = refract(h.alt);
+    if (h.alt < -1) continue;
+    const p = proj(h.az, h.alt); if (!p) continue;
+    if (b.type === 'sun') { drawSun(p); hit.push({ o: b, x: p[0], y: p[1], r: 18, h }); continue; }
+    if (b.type === 'moon') { drawMoon(p, b, sp); hit.push({ o: b, x: p[0], y: p[1], r: 18, h }); continue; }
+    const vis = b.key === 'venus' || b.key === 'jupiter' ? Math.min(1, (0 - sunH.alt + 4) / 6) : starVis(b.key === 'mars' || b.key === 'saturn' ? 0.8 : b.key === 'mercury' ? 0.2 : 5.5);
+    if (vis <= 0.02) continue;
+    ctx.globalAlpha = vis;
+    if (!trails) { const g = b.size * 5 * zoomK; ctx.drawImage(glowSprite, p[0] - g, p[1] - g, g * 2, g * 2); }
+    ctx.fillStyle = b.col; ctx.beginPath(); ctx.arc(p[0], p[1], b.size * 0.75 * zoomK, 0, TAU); ctx.fill();
+    if (b.key === 'saturn' && !trails) { ctx.strokeStyle = b.col; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(p[0], p[1], b.size * 1.9 * zoomK, b.size * 0.6 * zoomK, -0.35, 0, TAU); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    hit.push({ o: b, x: p[0], y: p[1], r: 12, h });
+  }
+
+  // земля и силуэт
+  drawGround(sunH.alt);
+
+  // подписи
+  if (S.layers.names && !trails) drawLabels(B, lst, lat, lim, H_);
+  drawCardinals(sunH.alt);
+  if (S.sel) drawSelection(lst, lat);
+}
+
+function drawSun(p) {
+  const g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], 60);
+  g.addColorStop(0, 'rgba(255,250,235,1)'); g.addColorStop(0.18, 'rgba(255,240,200,.9)'); g.addColorStop(1, 'rgba(255,220,160,0)');
+  ctx.fillStyle = g; ctx.fillRect(p[0] - 60, p[1] - 60, 120, 120);
+}
+function drawMoon(p, b, sunP) {
+  const r = Math.max(7, 0.26 * projScale * D2R * 2) * Math.max(1, 110 / S.fov);
+  const g = ctx.createRadialGradient(p[0], p[1], r, p[0], p[1], r * 5);
+  g.addColorStop(0, `rgba(220,228,255,${0.18 * b.phase + 0.03})`); g.addColorStop(1, 'rgba(220,228,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(p[0] - r * 5, p[1] - r * 5, r * 10, r * 10);
+  // тёмный диск и освещённая часть, повёрнутая к Солнцу
+  const ang = sunP ? Math.atan2(sunP[1] - p[1], sunP[0] - p[0]) : 0;
+  ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(ang);
+  ctx.fillStyle = '#20263a'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#eef0f6';
+  const k = b.phase * 2 - 1;           // −1 новолуние … 1 полнолуние
+  ctx.beginPath(); ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);
+  ctx.ellipse(0, 0, Math.abs(k) * r, r, 0, Math.PI / 2, -Math.PI / 2, k < 0);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(120,125,140,.25)';
+  [[0.3, -0.25, 0.22], [-0.2, 0.3, 0.16], [0.05, 0.05, 0.12]].forEach(([x, y, rr]) => { ctx.beginPath(); ctx.arc(x * r, y * r, rr * r, 0, TAU); ctx.fill(); });
+  ctx.restore();
+}
+function drawGround(sunAlt) {
+  const pts = [];
+  for (let az = S.az - 200; az <= S.az + 200; az += 1) {
+    const p = proj(az, silAt(az)); if (p) pts.push(p);
+  }
+  if (pts.length < 2) return;
+  const dayK = Math.max(0, Math.min(1, (sunAlt + 8) / 16));
+  const c = mixc([5, 8, 16], [40, 52, 44], dayK);
+  ctx.fillStyle = `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+  ctx.beginPath(); ctx.moveTo(pts[0][0], H + 50);
+  pts.forEach(p => ctx.lineTo(p[0], p[1]));
+  ctx.lineTo(pts[pts.length - 1][0], H + 50); ctx.closePath(); ctx.fill();
+  // тонкая линия настоящего горизонта
+  ctx.strokeStyle = 'rgba(233,238,252,.12)'; ctx.lineWidth = 1; ctx.beginPath();
+  let first = true;
+  for (let az = S.az - 200; az <= S.az + 200; az += 2) { const p = proj(az, 0); if (!p) { first = true; continue; } if (first) { ctx.moveTo(p[0], p[1]); first = false; } else ctx.lineTo(p[0], p[1]); }
+  ctx.stroke();
+}
+function drawGrid() {
+  ctx.strokeStyle = 'rgba(160,190,255,.1)'; ctx.lineWidth = 1;
+  for (let alt = 15; alt < 90; alt += 15) { ctx.beginPath(); let f = true; for (let az = 0; az <= 360; az += 3) { const p = proj(az, alt); if (!p) { f = true; continue; } f ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]); f = false; } ctx.stroke(); }
+  for (let az = 0; az < 360; az += 30) { ctx.beginPath(); let f = true; for (let alt = 0; alt <= 90; alt += 3) { const p = proj(az, alt); if (!p) { f = true; continue; } f ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]); f = false; } ctx.stroke(); }
+}
+function drawEcliptic(lst, lat) {
+  ctx.strokeStyle = 'rgba(243,207,122,.45)'; ctx.setLineDash([5, 6]); ctx.lineWidth = 1.2; ctx.beginPath();
+  let f = true;
+  for (let l = 0; l <= 360; l += 2) {
+    const q = eclToEq(Math.cos(l * D2R), Math.sin(l * D2R), 0), h = eqToHor(q.ra, q.dec, lst, lat);
+    const p = h.alt > -2 ? proj(h.az, h.alt) : null;
+    if (!p) { f = true; continue; } f ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]); f = false;
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+}
+function label(txt, x, y, font, col, align = 'left') {
+  ctx.font = font; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(4,8,23,.75)'; ctx.strokeText(txt, x, y);
+  ctx.fillStyle = col; ctx.fillText(txt, x, y);
+}
+function drawLabels(B, lst, lat, lim, H_) {
+  const small = Math.min(W, H) < 520;
+  const magLim = Math.min(lim - 0.4, S.fov > 90 ? (small ? 1.1 : 1.5) : S.fov > 50 ? 2.4 : 3.4);
+  for (const hh of hit) {
+    const o = hh.o;
+    if (o.type === 'star' && o.mag <= magLim && hh.h.alt > 2) label(o.name, hh.x + 8, hh.y - 1, '500 12px Manrope, sans-serif', 'rgba(233,238,252,.8)');
+    if (o.type === 'planet') label(o.name, hh.x + 10, hh.y - 1, '700 12.5px Manrope, sans-serif', '#f3cf7a');
+    if (o.type === 'moon') label('Луна', hh.x + 20, hh.y, '700 12.5px Manrope, sans-serif', '#dfe6ff');
+  }
+  if (S.layers.lines && lim > 1) {
+    for (const c of CONST) {
+      let sx = 0, sy = 0, n = 0;
+      for (const s of c.members) { const h = H_(s); if (h.alt < 3) continue; const p = proj(h.az, h.alt); if (!p) continue; sx += p[0]; sy += p[1]; n++; }
+      if (n >= Math.max(2, c.members.length * 0.6)) label(c.name.toUpperCase(), sx / n, sy / n + 16, '400 12px "Tenor Sans", serif', 'rgba(170,196,255,.62)', 'center');
+    }
+  }
+}
+function drawCardinals(sunAlt) {
+  const names = ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'];
+  names.forEach((n, i) => {
+    const p = proj(i * 45, -2.5); if (!p || p[1] > H - 70 && p[1] > H) return;
+    const y = Math.min(p[1], H - 96);
+    label(n, p[0], y + 14, (i % 2 ? '600 12px' : '700 15px') + ' Manrope, sans-serif', i === 0 ? '#ff9b8a' : 'rgba(233,238,252,.8)', 'center');
+  });
+}
+function drawSelection(lst, lat) {
+  const o = S.sel, h = eqToHor(o.ra, o.dec, lst, lat); h.alt = refract(h.alt);
+  const p = proj(h.az, h.alt); if (!p) return;
+  ctx.strokeStyle = '#f3cf7a'; ctx.lineWidth = 1.5;
+  const r = 14 + Math.sin(S.tick * 4) * 1.5;
+  ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, TAU); ctx.stroke();
+  updateCard(o, h);
+}
+
+/* =====================================================================
+   Карточка объекта
+   ===================================================================== */
+const card = document.getElementById('card');
+const dirName = az => ['С', 'ССВ', 'СВ', 'ВСВ', 'В', 'ВЮВ', 'ЮВ', 'ЮЮВ', 'Ю', 'ЮЮЗ', 'ЮЗ', 'ЗЮЗ', 'З', 'ЗСЗ', 'СЗ', 'ССЗ'][Math.round(az / 22.5) % 16];
+const num = (v, d = 1) => v.toFixed(d).replace('.', ',').replace('-', '−');
+const raStr = ra => { const h = ra / 15, hh = Math.floor(h), mm = Math.floor((h - hh) * 60); return `${hh} ч ${String(mm).padStart(2, '0')} мин`; };
+const decStr = d => { const s = d < 0 ? '−' : '+', a = Math.abs(d), dd = Math.floor(a), mm = Math.round((a - dd) * 60); return `${s}${dd}° ${String(mm).padStart(2, '0')}′`; };
+function constellationOf(s) { const c = CONST.find(c => c.members.includes(s)); return c ? c.name : null; }
+let cardKey = '';
+function updateCard(o, h) {
+  const rows = [];
+  let kind = '';
+  if (o.type === 'star') { kind = 'Звезда' + (constellationOf(o) ? ' · ' + constellationOf(o) : ''); rows.push(['Блеск', num(o.mag, 2) + ' m'], ['Цвет (B−V)', num(o.bv, 2)]); }
+  if (o.type === 'planet') { kind = 'Планета'; rows.push(['До Земли', num(o.dist, 2) + ' а. е.'], ['', Math.round(o.dist * 149.598).toLocaleString('ru-RU') + ' млн км'], ['Свет идёт', num(o.dist * 499 / 60, 1) + ' мин']); }
+  if (o.type === 'moon') { kind = 'Спутник Земли'; rows.push(['Фаза', Math.round(o.phase * 100) + ' % · ' + (o.waxing ? 'растёт' : 'убывает')], ['До Земли', Math.round(o.distKm).toLocaleString('ru-RU') + ' км']); }
+  if (o.type === 'sun') { kind = 'Звезда · центр Солнечной системы'; rows.push(['До Земли', num(o.dist, 4) + ' а. е.']); }
+  rows.push(['Высота', num(h.alt, 1) + '°' + (h.alt < 0 ? ' · за горизонтом' : '')], ['Азимут', Math.round(h.az) + '° · ' + dirName(h.az)], ['Прямое восхождение', raStr(o.ra)], ['Склонение', decStr(o.dec)]);
+  const key = o.name + rows.map(r => r[1]).join();
+  if (key === cardKey) return;
+  cardKey = key;
+  document.getElementById('cName').textContent = o.name;
+  document.getElementById('cKind').textContent = kind;
+  document.getElementById('cData').innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
+  card.classList.add('on');
+}
+document.getElementById('cardX').addEventListener('click', () => { S.sel = null; card.classList.remove('on'); });
+
+/* =====================================================================
+   Управление
+   ===================================================================== */
+let drag = null, moved = 0;
+const hint = document.getElementById('hint');
+cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, az: S.az, alt: S.alt }; moved = 0; cv.setPointerCapture(e.pointerId); cv.classList.add('drag'); hint.style.opacity = 0; });
+cv.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const k = S.fov / W * 1.2;
+  moved += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0);
+  S.az = norm360(drag.az + (e.clientX - drag.x) * k);
+  S.alt = Math.max(-10, Math.min(90, drag.alt + (e.clientY - drag.y) * k));
+  clearTrails();
+});
+cv.addEventListener('pointerup', e => {
+  cv.classList.remove('drag');
+  if (drag && moved < 6) {
+    const best = hit.reduce((m, h) => { const d = Math.hypot(h.x - e.clientX, h.y - e.clientY); return d < h.r && (!m || d < m.d) ? { h, d } : m; }, null);
+    if (best) { S.sel = best.h.o; cardKey = ''; } else { S.sel = null; card.classList.remove('on'); }
+  }
+  drag = null;
+});
+cv.addEventListener('wheel', e => { e.preventDefault(); S.fov = Math.max(20, Math.min(170, S.fov * Math.exp(e.deltaY * 0.0012))); clearTrails(); hint.style.opacity = 0; }, { passive: false });
+let pinch = null;
+cv.addEventListener('touchstart', e => { if (e.touches.length === 2) pinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }, { passive: true });
+cv.addEventListener('touchmove', e => { if (e.touches.length === 2 && pinch) { const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); S.fov = Math.max(20, Math.min(170, S.fov * pinch / d)); pinch = d; drag = null; } }, { passive: true });
+
+document.querySelectorAll('#bar [data-sp]').forEach(b => b.addEventListener('click', () => {
+  S.speed = +b.dataset.sp;
+  document.querySelectorAll('#bar [data-sp]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+}));
+document.getElementById('back').addEventListener('click', () => { S.time -= 3600e3; clearTrails(); });
+document.getElementById('fwd').addEventListener('click', () => { S.time += 3600e3; clearTrails(); });
+document.getElementById('now').addEventListener('click', () => { S.time = Date.now(); note.hidden = true; clearTrails(); });
+document.querySelectorAll('#layers button').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.l; S.layers[k] = !S.layers[k]; b.setAttribute('aria-pressed', String(S.layers[k]));
+  if (k === 'trails') { clearTrails(); if (S.layers.trails && S.speed < 600) { S.speed = 1800; document.querySelectorAll('#bar [data-sp]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.sp === '1800'))); } }
+}));
+
+/* ---------- часы ---------- */
+const clock = document.getElementById('clock');
+function tickClock() {
+  const tz = LOC()[3], d = new Date(S.time + tz * 3600e3);
+  const dd = String(d.getUTCDate()).padStart(2, '0'), mo = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'][d.getUTCMonth()];
+  clock.textContent = `${+dd} ${mo} ${d.getUTCFullYear()}, ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} · UTC+${tz}`;
+}
+
+/* ---------- старт: если сейчас светло — показываем ближайшую ночь ---------- */
+const note = document.getElementById('note');
+(function pickNight() {
+  const [, lat, lon, tz] = LOC();
+  const sunAlt = t => { const J = jd(t), b = bodies(J).find(x => x.key === 'sun'); return eqToHor(b.ra, b.dec, norm360(gmst(J) + lon), lat).alt; };
+  if (sunAlt(S.time) > -12) {
+    const d = new Date(S.time + tz * 3600e3);
+    let t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 30) - tz * 3600e3;
+    if (t < S.time) t += 86400e3;
+    S.time = t;
+    note.innerHTML = 'Сейчас у вас светло, поэтому показываю небо сегодняшней ночи. <button id="nowNote">Вернуть реальное время</button>';
+    note.hidden = false;
+    document.getElementById('nowNote').addEventListener('click', () => { S.time = Date.now(); note.hidden = true; clearTrails(); });
+  }
+})();
+
+/* ---------- цикл ---------- */
+let last = performance.now(), running = true;
+S.tick = 0;
+document.addEventListener('visibilitychange', () => { running = !document.hidden; if (running) { last = performance.now(); requestAnimationFrame(loop); } });
+function loop(now) {
+  if (!running) return;
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  S.time += dt * 1000 * S.speed;
+  S.tick += dt;
+  render();
+  if (Math.floor(S.tick * 4) !== Math.floor((S.tick - dt) * 4)) tickClock();
+  requestAnimationFrame(loop);
+}
+resize();
+tickClock();
+setTimeout(() => { hint.style.opacity = 0; }, 8000);
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

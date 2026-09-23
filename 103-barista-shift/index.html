@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Смена — киоск «Бодрячок», 6:00</title>
+<meta name="description" content="3D-киоск с кофе в спальном районе, шесть утра, бариста с похмелья. Клиенты и начальник — живые персонажи на нейросети.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Dela+Gothic+One&family=PT+Mono&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head>
+<body>
+<canvas id="cv" aria-label="Киоск с кофе: трёхмерная сцена"></canvas>
+<div id="fx-vig" aria-hidden="true"></div>
+<div id="fx-blink" aria-hidden="true"></div>
+<div id="bubbles" aria-live="polite"></div>
+
+<!-- ============ верхняя панель ============ -->
+<header id="hud" class="hud hide">
+  <div class="clock" title="Смена до 9:00">
+    <span class="clock__led" id="clk">06:00</span>
+    <span class="clock__sub" id="clkSub">до конца смены 3 ч</span>
+  </div>
+  <div class="chips">
+    <div class="chip" title="Касса: выручка за смену"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M7 7V4h10v3M8 13h8"/></svg><b id="cash">0&nbsp;₽</b><span class="chip__of" id="plan">из&nbsp;3&nbsp;500</span></div>
+    <div class="chip" title="Чаевые — это твоё"><svg viewBox="0 0 24 24"><path d="M6 8h12l-1.3 11.2a2 2 0 0 1-2 1.8H9.3a2 2 0 0 1-2-1.8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><b id="tips">0&nbsp;₽</b></div>
+    <button class="chip chip--btn" id="bReviews" title="Отзывы на картах"><svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><b id="rating">4,1</b><span class="chip__of" id="ratingN">23&nbsp;отзыва</span></button>
+  </div>
+  <div class="hud__right">
+    <span class="demo-tag hide" id="demoTag">демо-режим — нейросеть не&nbsp;подключена</span>
+    <span class="cost" id="cost" title="Сколько потрачено на нейросеть за эту партию">нейросеть: $0,0000</span>
+    <button class="icon-btn" id="bSound" aria-label="Звук" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="snd-on" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="snd-off" d="M17 9l5 6M22 9l-5 6"/></svg></button>
+  </div>
+</header>
+
+<!-- ============ чек заказа ============ -->
+<aside id="ticket" class="ticket hide" aria-label="Заказ">
+  <div class="ticket__paper">
+    <div class="ticket__head"><span>ЗАКАЗ</span><span id="tkNo">№&nbsp;1</span></div>
+    <div class="ticket__who" id="tkWho">—</div>
+    <div class="ticket__drink" id="tkDrink">—</div>
+    <div class="ticket__mods" id="tkMods"></div>
+    <ol class="ticket__steps" id="tkSteps"></ol>
+    <div class="ticket__cup" id="tkCup"></div>
+    <div class="ticket__foot"><span>ИТОГО</span><span id="tkPrice">0&nbsp;₽</span></div>
+    <div class="ticket__stamp hide" id="tkStamp">ПОВТОР</div>
+  </div>
+  <button class="ticket__fold" id="bFold" aria-label="Свернуть чек"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+</aside>
+
+<!-- ============ самочувствие ============ -->
+<aside id="meters" class="meters hide" aria-label="Самочувствие">
+  <div class="meter" data-k="hands"><div class="meter__row"><span>Руки дрожат</span><b id="vHands">70</b></div><i><em id="mHands"></em></i></div>
+  <div class="meter" data-k="drunk"><div class="meter__row"><span>Промилле</span><b id="vDrunk">0,0</b></div><i><em id="mDrunk"></em></i></div>
+  <div class="meter" data-k="nerves"><div class="meter__row"><span>Нервы</span><b id="vNerves">20</b></div><i><em id="mNerves"></em></i></div>
+  <div class="meter meter--boss" data-k="boss"><div class="meter__row"><span>Шеф</span><b id="vBoss">спокоен</b></div><i><em id="mBoss"></em></i></div>
+  <div class="meters__note" id="courage">Трезвый. Отвечать клиентам духу не&nbsp;хватает</div>
+  <div class="meters__cost" id="cost2" title="Сколько потрачено на нейросеть за эту партию">нейросеть: $0,0000</div>
+</aside>
+
+<!-- ============ станция: мини-игры шагов ============ -->
+<section id="station" class="station hide" aria-live="polite">
+  <div class="station__title" id="stTitle">Станция</div>
+  <div class="station__body" id="stBody"></div>
+</section>
+
+<!-- ============ нижняя панель ============ -->
+<nav id="dock" class="dock hide" aria-label="Действия">
+  <button class="dk" id="bNext"><span class="dk__k">Далее</span><b id="bNextL">Стакан</b></button>
+  <button class="dk dk--beer" id="bBeer"><svg viewBox="0 0 24 24"><path d="M10 2h4v4l1.5 3v11a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2V9L10 6z"/><path d="M8.5 13h7"/></svg><span>Пиво</span><em id="beerN">12</em></button>
+  <button class="dk dk--smoke" id="bSmoke"><svg viewBox="0 0 24 24"><path d="M3 16h14v3H3zM19 16v3M21 16v3"/><path d="M18 12c0-2 2-2 2-4s-2-2-2-4"/></svg><span>Перекур</span><em id="cigN">8</em></button>
+  <button class="dk dk--impro" id="bImpro"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/></svg><span>Всё остальное</span></button>
+  <button class="dk dk--serve" id="bServe"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg><span>Выдать</span></button>
+</nav>
+
+<!-- ============ импровизация ============ -->
+<div id="impro" class="drawer hide" role="dialog" aria-label="Всё остальное">
+  <div class="drawer__head"><b>Под рукой</b><button class="icon-btn" id="bImproX" aria-label="Закрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="drawer__grid" id="improGrid"></div>
+</div>
+
+<!-- ============ ответ клиенту ============ -->
+<div id="reply" class="reply hide">
+  <div class="reply__opts" id="replyOpts"></div>
+  <form class="reply__free hide" id="replyForm" autocomplete="off">
+    <input id="replyIn" maxlength="120" placeholder="Сказать как есть…" aria-label="Свой ответ">
+    <button type="submit" aria-label="Сказать"><svg viewBox="0 0 24 24"><path d="M4 12h14M13 6l6 6-6 6"/></svg></button>
+  </form>
+</div>
+
+<!-- ============ телефон ============ -->
+<div id="call" class="call hide" role="dialog" aria-label="Звонок">
+  <div class="call__top"><div class="call__ava">ВИ</div><div><b>Вадим Игоревич</b><span id="callSt">звонит…</span></div></div>
+  <div class="call__text" id="callText"></div>
+  <div class="call__opts" id="callOpts"></div>
+  <form class="reply__free call__free hide" id="callForm" autocomplete="off">
+    <input id="callIn" maxlength="120" placeholder="Ответить шефу…" aria-label="Ответ шефу">
+    <button type="submit" aria-label="Сказать"><svg viewBox="0 0 24 24"><path d="M4 12h14M13 6l6 6-6 6"/></svg></button>
+  </form>
+</div>
+
+<!-- ============ отзывы ============ -->
+<div id="toasts" class="toasts"></div>
+<div id="reviews" class="panel hide" role="dialog" aria-label="Отзывы">
+  <div class="drawer__head"><b>Отзывы о киоске «Бодрячок»</b><button class="icon-btn" id="bReviewsX" aria-label="Закрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="reviews__list" id="reviewsList"></div>
+</div>
+
+<!-- ============ перекур ============ -->
+<div id="smokeUi" class="smoke-ui hide">
+  <div class="smoke-ui__t">Перекур за&nbsp;киоском</div>
+  <div class="smoke-ui__s" id="smokeInfo">Время идёт втрое быстрее. Очередь ждёт.</div>
+  <form class="reply__free smoke-ui__free hide" id="smokeForm" autocomplete="off">
+    <input id="smokeIn" maxlength="120" placeholder="Ответить…" aria-label="Ответ">
+    <button type="submit" aria-label="Сказать"><svg viewBox="0 0 24 24"><path d="M4 12h14M13 6l6 6-6 6"/></svg></button>
+  </form>
+  <button class="btn btn--main" id="bBack">Вернуться за&nbsp;стойку</button>
+</div>
+
+<!-- ============ титульный экран ============ -->
+<section id="title" class="title">
+  <div class="title__card">
+    <div class="title__kick">Вторник, 6:00 · улица Строителей, 14</div>
+    <h1 class="title__h">Смена</h1>
+    <p class="title__p">Кофейный киоск «Бодрячок» в&nbsp;спальном районе. Голова раскалывается, руки трясутся, под прилавком ящик пива с&nbsp;запиской «НЕ&nbsp;ТРОГАТЬ». Очередь уже собирается. Каждый клиент и&nbsp;начальник — живые персонажи на&nbsp;нейросети, и&nbsp;они увидят, что ты им налил.</p>
+    <div class="title__btns">
+      <button class="btn btn--main" id="bStart">Открыть окошко</button>
+      <button class="btn btn--ghost" id="bHow">Как играть</button>
+    </div>
+    <div class="title__how hide" id="how">
+      <p><b>Заказ → приготовление → реакция.</b> Чек слева подсказывает шаги. Помол, темпер, пролив, молоко, пар — всё руками, всё можно испортить, в&nbsp;том числе нарочно: кефир, соль, пиво в&nbsp;стакан, кукиш на&nbsp;пенке.</p>
+      <p><b>Пиво</b> лечит тремор, но&nbsp;качает камеру и&nbsp;пахнет. Зато появляется смелость: можно отвечать клиентам своими словами. <b>Перекур</b> успокаивает нервы, пока очередь звереет. Среди клиентов — тайный покупатель.</p>
+      <p>Пробел или удержание кнопки — для «держи», Enter — «далее».</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ угадай тайного покупателя ============ -->
+<div id="guess" class="modal hide" role="dialog" aria-label="Тайный покупатель">
+  <div class="modal__card">
+    <h2>Кто был тайным покупателем?</h2>
+    <p>Шеф уже у&nbsp;окошка. Угадаешь — плюс 500&nbsp;₽ за&nbsp;бдительность.</p>
+    <div class="guess__list" id="guessList"></div>
+  </div>
+</div>
+
+<!-- ============ итог смены ============ -->
+<section id="final" class="final hide" aria-label="Итог смены">
+  <div class="final__receipt" id="finalBody"></div>
+</section>
+
+<div id="boot" class="boot"><div class="boot__t" id="bootT">Киоск открывается…</div></div>
+
+<script src="../_ai/ai.js"></script>
+<script src="data.js"></script>
+<script src="audio.js"></script>
+<script src="scene.js"></script>
+<script src="people.js"></script>
+<script src="props.js"></script>
+<script src="talk.js"></script>
+<script src="game.js"></script>
+<script type="module">
+  import * as THREE from 'three';
+  window.bootScene(THREE);
+</script>
+</body>
+</html>

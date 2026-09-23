@@ -1,0 +1,1674 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Занавеска у окна</title>
+<meta name="description" content="Ткань на интеграторе Верле у распахнутого окна: ветер с улицы, солнце сквозь шёлк, цветные тени на полу.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F4ECDF;
+    --paper-2:#EADFCD;
+    --ink:#34271E;
+    --ink-2:#6F5B4B;
+    --line:rgba(52,39,30,.13);
+    --accent:#B65A35;
+    --serif:"Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif;
+    --sans:Manrope, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#C8B59B;color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+  canvas.grabbing{cursor:grabbing}
+  canvas.cutting{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cg stroke='%23F4ECDF' stroke-width='4'%3E%3Cpath d='M4 4l13 11M4 13l13-4'/%3E%3Ccircle cx='22' cy='18' r='4.2'/%3E%3Ccircle cx='22' cy='6' r='4.2'/%3E%3C/g%3E%3Cg stroke='%2334271E' stroke-width='1.8'%3E%3Cpath d='M4 4l13 11M4 13l13-4'/%3E%3Ccircle cx='22' cy='18' r='4.2'/%3E%3Ccircle cx='22' cy='6' r='4.2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 4 8, crosshair}
+
+  .title{position:fixed;left:clamp(20px,3.2vw,48px);top:clamp(18px,3.4vh,40px);max-width:430px;pointer-events:none;
+    text-shadow:0 1px 0 rgba(255,245,230,.4)}
+  .title .kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#3B2D23;font-weight:700}
+  .title h1{font-family:var(--serif);font-style:italic;font-weight:500;font-size:clamp(40px,4.6vw,64px);line-height:.92;letter-spacing:-.012em;color:#2B1F17;margin-top:8px}
+  .title p{margin-top:14px;font-size:14px;line-height:1.55;color:#2E231B;max-width:330px;font-weight:500}
+
+  .panel{position:fixed;left:clamp(16px,2.4vw,32px);bottom:clamp(16px,2.6vh,32px);width:328px;
+    background:rgba(244,236,223,.95);border:1px solid var(--line);border-radius:20px;
+    box-shadow:0 24px 60px -28px rgba(58,32,12,.55),0 2px 8px rgba(58,32,12,.08);
+    padding:16px 18px 14px;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  .sheet-toggle{display:none}
+  .row{padding:10px 0 8px;border-bottom:1px solid var(--line)}
+  .row:first-child{padding-top:2px}
+  .lab{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px}
+  .lab span{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--ink-2)}
+  .lab output{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1;color:var(--ink);white-space:nowrap}
+
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;cursor:pointer;--p:50%}
+  input[type=range]:focus{outline:none}
+  input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:3px;
+    background:linear-gradient(to right,var(--ink) 0 var(--p),rgba(52,39,30,.16) var(--p) 100%)}
+  input[type=range]::-moz-range-track{height:3px;border-radius:3px;background:rgba(52,39,30,.16)}
+  input[type=range]::-moz-range-progress{height:3px;border-radius:3px;background:var(--ink)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-8.5px;border-radius:50%;
+    background:var(--paper);border:1.6px solid var(--ink);box-shadow:0 3px 8px rgba(58,32,12,.25);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+  input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--paper);border:1.6px solid var(--ink);box-shadow:0 3px 8px rgba(58,32,12,.25)}
+  input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.08)}
+  input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
+  input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px rgba(182,90,53,.28)}
+
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--paper-2);border-radius:999px;padding:3px;margin-top:6px;position:relative}
+  .seg button{position:relative;z-index:1;border:0;background:transparent;font:600 13px/1 var(--sans);color:var(--ink-2);padding:10px 0;border-radius:999px;cursor:pointer;transition:color .3s}
+  .seg button[aria-checked=true]{color:var(--paper)}
+  .seg .pill{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/3);border-radius:999px;background:var(--ink);transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+  .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .swatches{display:flex;gap:10px;margin-top:8px}
+  .sw{width:30px;height:30px;border-radius:50%;border:0;cursor:pointer;position:relative;box-shadow:inset 0 0 0 1px rgba(52,39,30,.18);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+  .sw:hover{transform:translateY(-2px)}
+  .sw[aria-checked=true]::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:1.5px solid var(--ink)}
+  .sw:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+
+  .tools{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding-top:12px}
+  .tool{display:flex;flex-direction:column;align-items:center;gap:5px;border:0;background:transparent;color:var(--ink);cursor:pointer;
+    padding:8px 2px 6px;border-radius:12px;font:600 12px/1.1 var(--sans);letter-spacing:0;transition:background .25s,color .25s,transform .2s}
+  .tool svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .tool:hover{background:var(--paper-2)}
+  .tool:active{transform:scale(.95)}
+  .tool[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+  .tool:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .tool .off{display:none}
+  .tool[aria-pressed=false] .on{display:none}
+  .tool[aria-pressed=false] .off{display:block}
+
+  .hint{position:fixed;right:clamp(16px,2.4vw,32px);bottom:clamp(16px,2.6vh,32px);font-size:12.5px;color:var(--ink-2);
+    background:rgba(244,236,223,.92);border:1px solid var(--line);border-radius:14px;padding:10px 14px;
+    box-shadow:0 12px 30px -18px rgba(58,32,12,.5);pointer-events:none;text-align:right;line-height:1.55;transition:opacity 1.2s}
+  .hint b{font-weight:700;color:#2B1F17}
+  .hint.faded{opacity:0}
+
+  .fallback[hidden]{display:none}
+  .fallback{position:fixed;inset:0;display:grid;place-items:center;padding:32px;background:#E9DECB;text-align:center}
+  .fallback h2{font-family:var(--serif);font-style:italic;font-weight:500;font-size:40px}
+  .fallback p{margin-top:10px;color:var(--ink-2);max-width:420px;line-height:1.6}
+
+  @media (max-width:720px){
+    .title{top:16px;left:18px;right:18px}
+    .title h1{font-size:38px}
+    .title p{display:none}
+    .hint{display:none}
+    .panel{left:10px;right:10px;bottom:10px;width:auto;padding:10px 12px 8px;border-radius:18px}
+    .sheet-toggle{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;border:0;background:transparent;color:var(--ink-2);
+      font:700 12px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;padding:6px 0 10px;cursor:pointer}
+    .sheet-toggle svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;transition:transform .4s}
+    .panel .controls{display:none}
+    .panel.open .controls{display:block;animation:sheetIn .45s cubic-bezier(.2,.8,.2,1)}
+    @keyframes sheetIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+    .panel.open .sheet-toggle svg{transform:rotate(180deg)}
+    .tools{padding-top:6px;border-top:1px solid var(--line)}
+    .tool{min-height:52px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .panel,.seg .pill,.sw,.tool{transition:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Занавеска у открытого окна, колышется от ветра"></canvas>
+
+<header class="title">
+  <div class="kicker">Опыт № 015 · ткань и ветер</div>
+  <h1>Занавеска у&nbsp;окна</h1>
+  <p id="sub">Ткань на интеграторе Верле. Ветер задувает с&nbsp;улицы, солнце светит сквозь неё и&nbsp;красит пол цветной тенью.</p>
+</header>
+
+<aside class="panel" id="panel">
+  <button class="sheet-toggle" id="sheetToggle" aria-expanded="false" aria-controls="controls">
+    Настройки
+    <svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+  </button>
+  <div class="controls" id="controls"><div>
+    <div class="row">
+      <div class="lab"><span>Ветер</span><output id="windOut">свежий ветер</output></div>
+      <input type="range" id="wind" min="0" max="1" step="0.001" value="0.64" aria-label="Сила ветра">
+    </div>
+    <div class="row">
+      <div class="lab"><span>Солнце</span><output id="sunOut">15:20</output></div>
+      <input type="range" id="sun" min="0" max="1" step="0.001" value="0.78" aria-label="Время суток">
+    </div>
+    <div class="row">
+      <div class="lab"><span>Ткань</span><output id="matOut">струится и&nbsp;светится</output></div>
+      <div class="seg" role="radiogroup" aria-label="Ткань" id="seg">
+        <div class="pill" id="pill"></div>
+        <button role="radio" aria-checked="true" data-mat="silk">Шёлк</button>
+        <button role="radio" aria-checked="false" data-mat="linen">Лён</button>
+        <button role="radio" aria-checked="false" data-mat="tulle">Тюль</button>
+      </div>
+    </div>
+    <div class="row" style="border-bottom:0">
+      <div class="lab"><span>Цвет</span><output id="colOut">шафран</output></div>
+      <div class="swatches" role="radiogroup" aria-label="Цвет ткани" id="swatches"></div>
+    </div>
+  </div></div>
+  <div class="tools">
+    <button class="tool" id="scissors" aria-pressed="false" title="Ножницы: резать ткань (или правая кнопка мыши)">
+      <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.2 7.9 20 17M8.2 16.1 20 7"/></svg>Ножницы</button>
+    <button class="tool" id="gust" title="Порыв ветра (двойной клик или пробел)">
+      <svg viewBox="0 0 24 24"><path d="M3 9h11.5a3 3 0 1 0-3-3"/><path d="M3 14h15.5a3 3 0 1 1-3 3"/><path d="M3 19h6"/></svg>Порыв</button>
+    <button class="tool" id="release" title="Отцепить занавеску от карниза">
+      <svg viewBox="0 0 24 24"><path d="M4 4h16"/><path d="M8 4v3a2 2 0 0 0 4 0"/><path d="M12 12v8M8.5 16.5 12 20l3.5-3.5"/></svg>Отцепить</button>
+    <button class="tool" id="reset" title="Сшить и повесить заново">
+      <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>Сшить</button>
+    <button class="tool" id="sound" aria-pressed="false" title="Звук ветра">
+      <svg class="on" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+      <svg class="off" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/></svg>Звук</button>
+  </div>
+</aside>
+
+<div class="hint" id="hint"><b>Тяните ткань</b> мышью · <b>правая кнопка</b> режет<br><b>двойной клик</b> — порыв ветра</div>
+
+<div class="fallback" id="fallback" hidden>
+  <div><h2>Окно не открылось</h2><p>Этому опыту нужен WebGL2. Откройте страницу в свежем Chrome, Safari или Firefox.</p></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Занавеска у окна — ткань на интеграторе Верле + сцена, трассируемая лучами.
+   Проходы кадра: карта пропускания ткани из позиции солнца → комната (raytrace)
+   → ткань (отсортированные треугольники с прозрачностью) → пылинки → дымка и виньетка.
+   ===================================================================== */
+
+// ---------- мелкая математика ----------
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const mix3 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+const scale3 = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+const DEG = Math.PI / 180;
+const srgbToLin = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => Math.pow(v / 255, 2.2));
+};
+
+const M4 = {
+  create() { const m = new Float32Array(16); m[0] = m[5] = m[10] = m[15] = 1; return m; },
+  perspective(o, fovy, asp, n, f) {
+    const t = 1 / Math.tan(fovy / 2), nf = 1 / (n - f); o.fill(0);
+    o[0] = t / asp; o[5] = t; o[10] = (f + n) * nf; o[11] = -1; o[14] = 2 * f * n * nf; return o;
+  },
+  ortho(o, l, r, b, t, n, f) {
+    o.fill(0); o[0] = 2 / (r - l); o[5] = 2 / (t - b); o[10] = -2 / (f - n);
+    o[12] = -(r + l) / (r - l); o[13] = -(t + b) / (t - b); o[14] = -(f + n) / (f - n); o[15] = 1; return o;
+  },
+  lookAt(o, e, c, up) {
+    let zx = e[0] - c[0], zy = e[1] - c[1], zz = e[2] - c[2]; let l = Math.hypot(zx, zy, zz); zx /= l; zy /= l; zz /= l;
+    let xx = up[1] * zz - up[2] * zy, xy = up[2] * zx - up[0] * zz, xz = up[0] * zy - up[1] * zx;
+    l = Math.hypot(xx, xy, xz); xx /= l; xy /= l; xz /= l;
+    const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+    o[0] = xx; o[1] = yx; o[2] = zx; o[3] = 0; o[4] = xy; o[5] = yy; o[6] = zy; o[7] = 0;
+    o[8] = xz; o[9] = yz; o[10] = zz; o[11] = 0;
+    o[12] = -(xx * e[0] + xy * e[1] + xz * e[2]); o[13] = -(yx * e[0] + yy * e[1] + yz * e[2]);
+    o[14] = -(zx * e[0] + zy * e[1] + zz * e[2]); o[15] = 1; return o;
+  },
+  mul(o, a, b) {
+    const r = new Float32Array(16);
+    for (let i = 0; i < 4; i++) {
+      const b0 = b[i * 4], b1 = b[i * 4 + 1], b2 = b[i * 4 + 2], b3 = b[i * 4 + 3];
+      r[i * 4] = a[0] * b0 + a[4] * b1 + a[8] * b2 + a[12] * b3;
+      r[i * 4 + 1] = a[1] * b0 + a[5] * b1 + a[9] * b2 + a[13] * b3;
+      r[i * 4 + 2] = a[2] * b0 + a[6] * b1 + a[10] * b2 + a[14] * b3;
+      r[i * 4 + 3] = a[3] * b0 + a[7] * b1 + a[11] * b2 + a[15] * b3;
+    }
+    o.set(r); return o;
+  },
+  invert(o, a) {
+    const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3], a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
+      a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11], a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+    const b00 = a00 * a11 - a01 * a10, b01 = a00 * a12 - a02 * a10, b02 = a00 * a13 - a03 * a10, b03 = a01 * a12 - a02 * a11,
+      b04 = a01 * a13 - a03 * a11, b05 = a02 * a13 - a03 * a12, b06 = a20 * a31 - a21 * a30, b07 = a20 * a32 - a22 * a30,
+      b08 = a20 * a33 - a23 * a30, b09 = a21 * a32 - a22 * a31, b10 = a21 * a33 - a23 * a31, b11 = a22 * a33 - a23 * a32;
+    let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+    if (!det) return o; det = 1 / det;
+    o[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det; o[1] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+    o[2] = (a31 * b05 - a32 * b04 + a33 * b03) * det; o[3] = (a22 * b04 - a21 * b05 - a23 * b03) * det;
+    o[4] = (a12 * b08 - a10 * b11 - a13 * b07) * det; o[5] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+    o[6] = (a32 * b02 - a30 * b05 - a33 * b01) * det; o[7] = (a20 * b05 - a22 * b02 + a23 * b01) * det;
+    o[8] = (a10 * b10 - a11 * b08 + a13 * b06) * det; o[9] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+    o[10] = (a30 * b04 - a31 * b02 + a33 * b00) * det; o[11] = (a21 * b02 - a20 * b04 - a23 * b00) * det;
+    o[12] = (a11 * b07 - a10 * b09 - a12 * b06) * det; o[13] = (a00 * b09 - a01 * b07 + a02 * b06) * det;
+    o[14] = (a31 * b01 - a30 * b03 - a32 * b00) * det; o[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
+    return o;
+  }
+};
+
+// ---------- геометрия комнаты (метры; x вправо, y вверх, z — от окна в комнату) ----------
+const WX0 = -0.85, WX1 = 0.85, WY0 = 0.78, WY1 = 2.5;
+const ROD_Y = 2.7, ROD_Z = 0.21;
+const SILL = { x0: WX0 - 0.09, x1: WX1 + 0.09, y0: WY0 - 0.045, y1: WY0, z1: 0.16 };
+
+// ---------- ткани и цвета ----------
+const MATERIALS = {
+  silk:  { density: 0.55, drag: 0.34, bend: 0.06, damp: 0.9, opacity: 0.8,  transl: 0.88, sheen: 1.0,  weave: 0, tear: 3.0, cover: 0.40, note: 'струится и светится' },
+  linen: { density: 1.30, drag: 0.33, bend: 0.32, damp: 1.3, opacity: 0.94, transl: 0.52, sheen: 0.10, weave: 1, tear: 3.4, cover: 0.62, note: 'плотный, живая фактура' },
+  tulle: { density: 0.30, drag: 0.17, bend: 0.03, damp: 0.8, opacity: 0.30, transl: 0.95, sheen: 0.35, weave: 2, tear: 2.6, cover: 0.14, note: 'сетка и кружево' },
+};
+const SWATCHES = [
+  { name: 'шафран', hex: '#E0A03C' },
+  { name: 'молоко', hex: '#F3ECE0' },
+  { name: 'терракота', hex: '#C4623D' },
+  { name: 'пыльная роза', hex: '#D7A19F' },
+  { name: 'индиго', hex: '#3B4F8C' },
+];
+
+const state = {
+  wind: 0.64, sun: 0.78, mat: 'silk', color: 0,
+  scissors: false, sound: false, gustBoost: 0, released: false,
+};
+
+// ======================================================================
+// Ткань
+// ======================================================================
+const COLS = 33, ROWS = 45, S = 0.058;
+const NP = COLS * ROWS;
+const TOP_Y = 2.66, X0 = -1.16;
+const DX_TOP = 0.0469, PLEAT = 0.034;
+const pos = new Float32Array(NP * 3), prev = new Float32Array(NP * 3), frc = new Float32Array(NP * 3);
+const invM = new Float32Array(NP), pinned = new Uint8Array(NP), home = new Float32Array(NP * 3);
+const wind = new Float32Array(NP * 3);
+const nor = new Float32Array(NP * 3);
+const uvs = new Float32Array(NP * 2);
+const scr = new Float32Array(NP * 2); // экранные координаты (CSS px) для захвата и ножниц
+const pid = (r, c) => r * COLS + c;
+
+// связи: 0 — основные, 1 — сдвиговые, 2 — изгибные
+let CA, CB, CR, CT, CBR, NC;
+const pairIndex = new Map();
+(function buildConstraints() {
+  const list = [];
+  const add = (a, b, t) => { pairIndex.set(Math.min(a, b) * NP + Math.max(a, b), list.length); list.push([a, b, t]); };
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (c < COLS - 1) add(pid(r, c), pid(r, c + 1), 0);
+    if (r < ROWS - 1) add(pid(r, c), pid(r + 1, c), 0);
+    if (c < COLS - 1 && r < ROWS - 1) { add(pid(r, c), pid(r + 1, c + 1), 1); add(pid(r, c + 1), pid(r + 1, c), 1); }
+    if (c < COLS - 2) add(pid(r, c), pid(r, c + 2), 2);
+    if (r < ROWS - 2) add(pid(r, c), pid(r + 2, c), 2);
+  }
+  NC = list.length;
+  CA = new Uint16Array(NC); CB = new Uint16Array(NC); CR = new Float32Array(NC); CT = new Uint8Array(NC); CBR = new Uint8Array(NC);
+  list.forEach(([a, b, t], i) => { CA[i] = a; CB[i] = b; CT[i] = t; CR[i] = t === 0 ? S : t === 1 ? S * Math.SQRT2 : 2 * S; });
+})();
+const cid = (a, b) => pairIndex.get(Math.min(a, b) * NP + Math.max(a, b));
+
+// треугольники и их рёбра (если любое ребро порвано — треугольник не рисуется)
+const NT = (ROWS - 1) * (COLS - 1) * 2;
+const TRI = new Uint16Array(NT * 3), TRIE = new Uint32Array(NT * 3);
+(function buildTris() {
+  let k = 0;
+  for (let r = 0; r < ROWS - 1; r++) for (let c = 0; c < COLS - 1; c++) {
+    const a = pid(r, c), b = pid(r, c + 1), d = pid(r + 1, c), e = pid(r + 1, c + 1);
+    TRI.set([a, d, b], k * 3); TRIE.set([cid(a, d), cid(d, b), cid(b, a)], k * 3); k++;
+    TRI.set([b, d, e], k * 3); TRIE.set([cid(b, d), cid(d, e), cid(e, b)], k * 3); k++;
+  }
+})();
+const triValid = new Uint8Array(NT);
+
+function resetCloth() {
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const i = pid(r, c);
+    const x = X0 + c * DX_TOP, z = ROD_Z + (c % 2 ? PLEAT : 0), y = TOP_Y - r * S;
+    pos[i * 3] = prev[i * 3] = home[i * 3] = x;
+    pos[i * 3 + 1] = prev[i * 3 + 1] = home[i * 3 + 1] = y;
+    pos[i * 3 + 2] = prev[i * 3 + 2] = home[i * 3 + 2] = z;
+    uvs[i * 2] = c / (COLS - 1); uvs[i * 2 + 1] = r / (ROWS - 1);
+    pinned[i] = r === 0 ? 1 : 0;
+  }
+  CBR.fill(0);
+  state.released = false;
+  applyMaterialMass();
+}
+function applyMaterialMass() {
+  const m = MATERIALS[state.mat];
+  for (let i = 0; i < NP; i++) invM[i] = pinned[i] ? 0 : 1 / m.density;
+  if (grab.index >= 0) invM[grab.index] = 0;
+}
+
+// ---------- ветер ----------
+function gustAt(t) {
+  const g = 0.58 + 0.30 * Math.sin(t * 0.41 + 2.0 * Math.sin(t * 0.13))
+    + 0.20 * Math.sin(t * 1.27 + 1.7) + 0.10 * Math.sin(t * 2.9 + Math.sin(t * 0.7));
+  return Math.max(0.08, g) + state.gustBoost;
+}
+let gustNow = 1;
+function computeWind(t) {
+  const V = state.wind * 8.4 * gustNow;
+  const drift = 0.12 * Math.sin(t * 0.31);
+  for (let i = 0; i < NP; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    const fx = smoothstep(WX0 - 0.5, WX0 + 0.12, x) * (1 - smoothstep(WX1 - 0.12, WX1 + 0.5, x));
+    const fy = smoothstep(WY0 - 0.45, WY0 + 0.2, y) * (1 - smoothstep(WY1 - 0.1, WY1 + 0.4, y));
+    const f = V * (0.14 + 0.86 * fx * fy * Math.exp(-Math.max(z - 0.15, 0) / 1.15));
+    const tx = Math.sin(1.9 * y + 2.3 * t + 1.3 * Math.sin(1.1 * x + 0.9 * t));
+    const ty = Math.sin(2.3 * x + 1.7 * t + 0.8 * Math.sin(1.7 * y - 1.3 * t));
+    const tz = Math.sin(2.7 * y + 1.1 * x + 2.9 * t);
+    wind[i * 3] = f * (drift + 0.33 * tx);
+    wind[i * 3 + 1] = f * (0.16 + 0.28 * ty);
+    wind[i * 3 + 2] = f * (1.0 + 0.3 * tz);
+  }
+}
+
+// ---------- шаг симуляции ----------
+const SIM_DT = 1 / 120, ITER = 6;
+let clothEnergy = 0;
+function simStep(t) {
+  const m = MATERIALS[state.mat];
+  const dt = SIM_DT, dt2 = dt * dt;
+  computeWind(t);
+  frc.fill(0);
+  // аэродинамика по треугольникам: F ~ k·A·(v·n)|v·n|·n
+  const k = m.drag;
+  for (let tr = 0; tr < NT; tr++) {
+    if (!triValid[tr]) continue;
+    const a = TRI[tr * 3], b = TRI[tr * 3 + 1], c = TRI[tr * 3 + 2];
+    const ax = pos[a * 3], ay = pos[a * 3 + 1], az = pos[a * 3 + 2];
+    const e1x = pos[b * 3] - ax, e1y = pos[b * 3 + 1] - ay, e1z = pos[b * 3 + 2] - az;
+    const e2x = pos[c * 3] - ax, e2y = pos[c * 3 + 1] - ay, e2z = pos[c * 3 + 2] - az;
+    let nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+    const l2 = Math.hypot(nx, ny, nz); if (l2 < 1e-9) continue;
+    const area = l2 * 0.5; nx /= l2; ny /= l2; nz /= l2;
+    let vx = 0, vy = 0, vz = 0;
+    for (const p of [a, b, c]) {
+      vx += wind[p * 3] - (pos[p * 3] - prev[p * 3]) / dt;
+      vy += wind[p * 3 + 1] - (pos[p * 3 + 1] - prev[p * 3 + 1]) / dt;
+      vz += wind[p * 3 + 2] - (pos[p * 3 + 2] - prev[p * 3 + 2]) / dt;
+    }
+    const vn = (vx * nx + vy * ny + vz * nz) / 3;
+    const f = k * area * (vn * Math.abs(vn) + 0.35 * vn) / (S * S) / 3 * 2;
+    frc[a * 3] += f * nx; frc[a * 3 + 1] += f * ny; frc[a * 3 + 2] += f * nz;
+    frc[b * 3] += f * nx; frc[b * 3 + 1] += f * ny; frc[b * 3 + 2] += f * nz;
+    frc[c * 3] += f * nx; frc[c * 3 + 1] += f * ny; frc[c * 3 + 2] += f * nz;
+  }
+  // интегрирование Верле
+  const damp = 1 - m.damp * dt;
+  let energy = 0;
+  for (let i = 0; i < NP; i++) {
+    const w = invM[i]; const j = i * 3;
+    if (w === 0) { prev[j] = pos[j]; prev[j + 1] = pos[j + 1]; prev[j + 2] = pos[j + 2]; continue; }
+    const vx = (pos[j] - prev[j]) * damp, vy = (pos[j + 1] - prev[j + 1]) * damp, vz = (pos[j + 2] - prev[j + 2]) * damp;
+    prev[j] = pos[j]; prev[j + 1] = pos[j + 1]; prev[j + 2] = pos[j + 2];
+    pos[j] += vx + frc[j] * w * dt2;
+    pos[j + 1] += vy + (frc[j + 1] * w - 9.81) * dt2;
+    pos[j + 2] += vz + frc[j + 2] * w * dt2;
+    energy += vx * vx + vy * vy + vz * vz;
+  }
+  clothEnergy = lerp(clothEnergy, energy / (dt * dt) / NP, 0.05);
+  // перетаскивание
+  if (grab.index >= 0) {
+    const j = grab.index * 3;
+    pos[j] = lerp(pos[j], grab.target[0], 0.5);
+    pos[j + 1] = lerp(pos[j + 1], grab.target[1], 0.5);
+    pos[j + 2] = lerp(pos[j + 2], grab.target[2], 0.5);
+  }
+  // связи
+  const bendK = m.bend, tearK = m.tear;
+  for (let it = 0; it < ITER; it++) {
+    const checkTear = it === 0;
+    for (let c = 0; c < NC; c++) {
+      if (CBR[c]) continue;
+      const a = CA[c], b = CB[c];
+      const wa = invM[a], wb = invM[b], ws = wa + wb;
+      if (ws === 0) continue;
+      const ja = a * 3, jb = b * 3;
+      const dx = pos[jb] - pos[ja], dy = pos[jb + 1] - pos[ja + 1], dz = pos[jb + 2] - pos[ja + 2];
+      const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-6;
+      const rest = CR[c], type = CT[c];
+      if (checkTear && len > rest * (type === 2 ? tearK * 1.15 : tearK)) { CBR[c] = 1; continue; }
+      const stiff = type === 0 ? 1 : type === 1 ? 0.85 : bendK;
+      if (type === 2 && len < rest * 0.999 === false && stiff < 0.01) continue;
+      const s = stiff * (len - rest) / (len * ws);
+      pos[ja] += dx * s * wa; pos[ja + 1] += dy * s * wa; pos[ja + 2] += dz * s * wa;
+      pos[jb] -= dx * s * wb; pos[jb + 1] -= dy * s * wb; pos[jb + 2] -= dz * s * wb;
+    }
+    // столкновения: пол, стена, подоконник
+    for (let i = 0; i < NP; i++) {
+      if (invM[i] === 0) continue;
+      const j = i * 3;
+      if (pos[j + 1] < 0.006) {
+        pos[j + 1] = 0.006;
+        prev[j] += (pos[j] - prev[j]) * 0.35; prev[j + 2] += (pos[j + 2] - prev[j + 2]) * 0.35;
+      }
+      if (pos[j + 2] < 0.03) pos[j + 2] = 0.03;
+      const x = pos[j], y = pos[j + 1], z = pos[j + 2];
+      if (x > SILL.x0 && x < SILL.x1 && y > SILL.y0 - 0.01 && y < SILL.y1 + 0.01 && z < SILL.z1 + 0.01) {
+        const pz = SILL.z1 + 0.01 - z, py = SILL.y1 + 0.01 - y;
+        if (pz < py) pos[j + 2] = SILL.z1 + 0.01; else pos[j + 1] = SILL.y1 + 0.01;
+      }
+    }
+  }
+  updateTriValid();
+}
+function updateTriValid() {
+  for (let t = 0; t < NT; t++) {
+    triValid[t] = CBR[TRIE[t * 3]] || CBR[TRIE[t * 3 + 1]] || CBR[TRIE[t * 3 + 2]] ? 0 : 1;
+  }
+}
+function computeNormals() {
+  nor.fill(0);
+  for (let t = 0; t < NT; t++) {
+    if (!triValid[t]) continue;
+    const a = TRI[t * 3], b = TRI[t * 3 + 1], c = TRI[t * 3 + 2];
+    const ax = pos[a * 3], ay = pos[a * 3 + 1], az = pos[a * 3 + 2];
+    const e1x = pos[b * 3] - ax, e1y = pos[b * 3 + 1] - ay, e1z = pos[b * 3 + 2] - az;
+    const e2x = pos[c * 3] - ax, e2y = pos[c * 3 + 1] - ay, e2z = pos[c * 3 + 2] - az;
+    const nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+    for (const p of [a, b, c]) { nor[p * 3] += nx; nor[p * 3 + 1] += ny; nor[p * 3 + 2] += nz; }
+  }
+  for (let i = 0; i < NP; i++) {
+    const j = i * 3, l = Math.hypot(nor[j], nor[j + 1], nor[j + 2]) || 1;
+    nor[j] /= l; nor[j + 1] /= l; nor[j + 2] /= l;
+  }
+}
+
+// ======================================================================
+// WebGL
+// ======================================================================
+const canvas = document.getElementById('gl');
+const gl = canvas.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'high-performance' });
+if (!gl) {
+  document.getElementById('fallback').hidden = false;
+  throw new Error('WebGL2 недоступен');
+}
+const hasFloatRT = !!gl.getExtension('EXT_color_buffer_float');
+
+const COMMON = `
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+#define PI 3.14159265
+uniform vec3 uSunDir;
+uniform vec3 uSunCol;
+uniform vec3 uSkyA;
+uniform vec3 uSkyB;
+uniform vec3 uAmb;
+uniform float uTime;
+uniform float uExposure;
+uniform mat4 uLightVP;
+uniform sampler2D uShadow;
+uniform float uCover;
+const float WX0 = -0.85;
+const float WX1 = 0.85;
+const float WY0 = 0.78;
+const float WY1 = 2.5;
+const float WT = 0.30;
+const float WTR = 2.02;
+const float WTR2 = 2.085;
+const float WFZ = -0.165;
+
+float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), u.x), mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float fbm(vec2 p){ float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ s += a * vnoise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; } return s; }
+float box2(vec2 p, vec2 lo, vec2 hi, float k){
+  vec2 a = smoothstep(lo - k, lo + k, p) * (1.0 - smoothstep(hi - k, hi + k, p));
+  return a.x * a.y;
+}
+float frameBlock(vec2 p, float k){
+  float inner = box2(p, vec2(WX0 + 0.045, WY0 + 0.045), vec2(WX1 - 0.045, WY1 - 0.045), k);
+  float transom = box2(p, vec2(WX0, WTR), vec2(WX1, WTR2), k);
+  float mull = box2(p, vec2(-0.018, WTR), vec2(0.018, WY1), k);
+  return clamp(1.0 - inner + transom + mull, 0.0, 1.0);
+}
+// доля прямого солнца, дошедшая до точки P через оконный проём (с учётом глубины откосов и рамы)
+float sunThrough(vec3 P){
+  vec3 L = uSunDir;
+  if (L.z > -0.03) return 0.0;
+  float v = 1.0;
+  if (P.z > 0.0){
+    float t0 = -P.z / L.z;
+    v *= box2(P.xy + L.xy * t0, vec2(WX0, WY0), vec2(WX1, WY1), 0.002 + t0 * 0.0065);
+  }
+  float t1 = (-WT - P.z) / L.z;
+  v *= box2(P.xy + L.xy * t1, vec2(WX0, WY0), vec2(WX1, WY1), 0.002 + t1 * 0.0065);
+  if (P.z > WFZ){
+    float tf = (WFZ - P.z) / L.z;
+    vec2 F = P.xy + L.xy * tf;
+    float kf = 0.002 + tf * 0.0065;
+    v *= 1.0 - frameBlock(F, kf);
+    v *= mix(1.0, 0.8, smoothstep(WTR2 - kf, WTR2 + kf, F.y));
+  }
+  return v;
+}
+// цветное пропускание ткани между точкой и солнцем (карта: rgb — произведение пропусканий, a — ближайшая глубина)
+vec3 clothShadow(vec3 P, float spread){
+  vec4 lp = uLightVP * vec4(P, 1.0);
+  vec3 s = lp.xyz * 0.5 + 0.5;
+  if (s.x <= 0.0 || s.y <= 0.0 || s.x >= 1.0 || s.y >= 1.0) return vec3(1.0);
+  vec2 tx = spread / vec2(textureSize(uShadow, 0));
+  vec2 o[5] = vec2[5](vec2(0.0), vec2(1.0, 0.4), vec2(-0.4, 1.0), vec2(-1.0, -0.4), vec2(0.4, -1.0));
+  vec3 acc = vec3(0.0);
+  for (int i = 0; i < 5; i++){
+    vec4 m = texture(uShadow, s.xy + o[i] * tx);
+    acc += (m.a < s.z - 0.0025) ? m.rgb : vec3(1.0);
+  }
+  return acc * 0.2;
+}
+vec3 clothShadow1(vec3 P){
+  vec4 lp = uLightVP * vec4(P, 1.0);
+  vec3 s = lp.xyz * 0.5 + 0.5;
+  if (s.x <= 0.0 || s.y <= 0.0 || s.x >= 1.0 || s.y >= 1.0) return vec3(1.0);
+  vec4 m = texture(uShadow, s.xy);
+  return (m.a < s.z - 0.0025) ? m.rgb : vec3(1.0);
+}
+// освещённость от прямоугольного окна — точная формула фактора формы для многоугольника
+float rectFF(vec3 P, vec3 N, vec3 a, vec3 b, vec3 c, vec3 d){
+  vec3 v0 = normalize(a - P), v1 = normalize(b - P), v2 = normalize(c - P), v3 = normalize(d - P);
+  float s = acos(clamp(dot(v0, v1), -1.0, 1.0)) * dot(N, normalize(cross(v0, v1)))
+          + acos(clamp(dot(v1, v2), -1.0, 1.0)) * dot(N, normalize(cross(v1, v2)))
+          + acos(clamp(dot(v2, v3), -1.0, 1.0)) * dot(N, normalize(cross(v2, v3)))
+          + acos(clamp(dot(v3, v0), -1.0, 1.0)) * dot(N, normalize(cross(v3, v0)));
+  return max(0.0, -s / (2.0 * PI));
+}
+vec3 windowLight(vec3 P, vec3 N){
+  if (P.z < -0.005) return (uSkyA + uSkyB) * 0.22;
+  float lo = rectFF(P, N, vec3(WX0, WY0, 0.0), vec3(WX1, WY0, 0.0), vec3(WX1, 1.75, 0.0), vec3(WX0, 1.75, 0.0));
+  float hi = rectFF(P, N, vec3(WX0, 1.75, 0.0), vec3(WX1, 1.75, 0.0), vec3(WX1, WY1, 0.0), vec3(WX0, WY1, 0.0));
+  return (uSkyB * lo + uSkyA * hi) * (1.0 - uCover);
+}
+vec3 tonemap(vec3 c){
+  c *= uExposure;
+  c = (c * (2.51 * c + 0.03)) / (c * (2.43 * c + 0.59) + 0.14);
+  c = pow(clamp(c, 0.0, 1.0), vec3(1.0 / 2.2));
+  return c;
+}
+`;
+
+const WEAVE = `
+uniform int uWeave;
+uniform vec2 uSize;
+// плотность переплетения: 1 — сплошная ткань; tex — яркость нитей
+float weave(vec2 m, bool fine, out float tex){
+  tex = 1.0;
+  if (uWeave == 0){
+    float band = abs(fract(m.x * 7.5) - 0.5) * 2.0;
+    tex = 0.965 + 0.05 * smoothstep(0.55, 0.62, band);
+    return 1.0;
+  } else if (uWeave == 1){
+    float slub = vnoise(vec2(m.x * 5.0, m.y * 150.0)) * 0.55 + vnoise(vec2(m.x * 160.0, m.y * 4.0)) * 0.45;
+    if (fine){
+      vec2 f = m * 95.0;
+      float aa = clamp(1.4 - fwidth(f.x) * 1.2, 0.0, 1.0);
+      float w = abs(sin(f.x * PI)) * abs(sin(f.y * PI));
+      tex = mix(1.0, 0.9 + 0.16 * w, aa) * (0.9 + 0.2 * slub);
+    } else tex = 0.9 + 0.2 * slub;
+    return 0.9 + 0.1 * slub;
+  } else {
+    float net = 0.24;
+    if (fine){
+      vec2 f = m / 0.0056;
+      float l1 = abs(fract(f.x + f.y * 0.5774) - 0.5);
+      float l2 = abs(fract(f.x - f.y * 0.5774) - 0.5);
+      float w = fwidth(f.x);
+      float thread = max(smoothstep(0.40, 0.47, l1), smoothstep(0.40, 0.47, l2));
+      net = mix(0.24, mix(0.05, 1.0, thread), clamp(1.2 - w * 1.6, 0.0, 1.0));
+    }
+    // кружевная кайма у подола
+    float y0 = uSize.y - 0.30;
+    vec2 g = vec2(m.x / 0.1, (m.y - y0) / 0.1);
+    vec2 gf = fract(g) - 0.5;
+    float r = length(gf);
+    float ring = 1.0 - smoothstep(0.02, 0.05, abs(r - 0.30));
+    float petal = 1.0 - smoothstep(0.03, 0.07, abs(r - 0.14 - 0.05 * cos(atan(gf.y, gf.x) * 6.0)));
+    float inBand = step(0.0, g.y) * step(g.y, 2.0);
+    float band2 = smoothstep(uSize.y - 0.34, uSize.y - 0.33, m.y) * (1.0 - smoothstep(uSize.y - 0.325, uSize.y - 0.315, m.y));
+    float lace = inBand * max(ring, petal * 0.8) + band2;
+    return clamp(net + lace * 0.55, 0.0, 1.0);
+  }
+}
+`;
+
+const VS_FULL = `#version 300 es
+const vec2 P[3] = vec2[3](vec2(-1.0, -1.0), vec2(3.0, -1.0), vec2(-1.0, 3.0));
+out vec2 vNdc;
+void main(){ vNdc = P[gl_VertexID]; gl_Position = vec4(P[gl_VertexID], 0.0, 1.0); }`;
+
+const FS_ROOM = `#version 300 es
+${COMMON}
+uniform mat4 uInvVP;
+uniform mat4 uVP;
+uniform vec3 uCam;
+uniform vec3 uRings[17];
+uniform float uWindU;
+uniform vec3 uHorizon;
+uniform vec3 uZenith;
+uniform float uSunI;
+in vec2 vNdc;
+out vec4 frag;
+
+const float RX0 = -2.6;
+const float RX1 = 2.8;
+const float RY1 = 3.1;
+const float RZ1 = 7.5;
+const vec3 SILL_LO = vec3(WX0 - 0.09, WY0 - 0.045, -WT + 0.02);
+const vec3 SILL_HI = vec3(WX1 + 0.09, WY0, 0.16);
+const float ROD_Y = 2.7;
+const float ROD_Z = 0.21;
+const float ROD_R = 0.0115;
+const float ROD_X0 = -1.28;
+const float ROD_X1 = 0.5;
+
+#define M_OUT 0
+#define M_FLOOR 1
+#define M_WALL 2
+#define M_CEIL 3
+#define M_REVEAL 4
+#define M_FRAME 5
+#define M_SILL 6
+#define M_ROD 7
+
+vec2 boxHit(vec3 ro, vec3 rd, vec3 lo, vec3 hi){
+  vec3 inv = 1.0 / rd;
+  vec3 t0 = (lo - ro) * inv, t1 = (hi - ro) * inv;
+  vec3 mn = min(t0, t1), mx = max(t0, t1);
+  return vec2(max(max(mn.x, mn.y), mn.z), min(min(mx.x, mx.y), mx.z));
+}
+vec3 boxNormal(vec3 p, vec3 lo, vec3 hi){
+  vec3 c = (lo + hi) * 0.5, h = (hi - lo) * 0.5;
+  vec3 q = (p - c) / h, a = abs(q);
+  if (a.x > a.y && a.x > a.z) return vec3(sign(q.x), 0.0, 0.0);
+  if (a.y > a.z) return vec3(0.0, sign(q.y), 0.0);
+  return vec3(0.0, 0.0, sign(q.z));
+}
+float sphereHit(vec3 ro, vec3 rd, vec3 c, float r){
+  vec3 oc = ro - c; float b = dot(oc, rd); float h = b * b - dot(oc, oc) + r * r;
+  if (h < 0.0) return -1.0;
+  return -b - sqrt(h);
+}
+
+float trace(vec3 ro, vec3 rd, out vec3 n, out int mid){
+  float tx = rd.x > 0.0 ? (RX1 - ro.x) / rd.x : (RX0 - ro.x) / rd.x;
+  float ty = rd.y > 0.0 ? (RY1 - ro.y) / rd.y : (-ro.y) / rd.y;
+  float tz = rd.z > 0.0 ? (RZ1 - ro.z) / rd.z : (-ro.z) / rd.z;
+  float t;
+  if (tx < ty && tx < tz){ t = tx; n = vec3(-sign(rd.x), 0.0, 0.0); mid = M_WALL; }
+  else if (ty < tz){ t = ty; n = vec3(0.0, -sign(rd.y), 0.0); mid = rd.y > 0.0 ? M_CEIL : M_FLOOR; }
+  else {
+    t = tz; n = vec3(0.0, 0.0, -sign(rd.z)); mid = M_WALL;
+    if (rd.z < 0.0){
+      vec3 p = ro + rd * t;
+      if (p.x > WX0 && p.x < WX1 && p.y > WY0 && p.y < WY1){
+        float ex = rd.x > 0.0 ? (WX1 - ro.x) / rd.x : (WX0 - ro.x) / rd.x;
+        float ey = rd.y > 0.0 ? (WY1 - ro.y) / rd.y : (WY0 - ro.y) / rd.y;
+        float ez = (-WT - ro.z) / rd.z;
+        float ef = (WFZ - ro.z) / rd.z;
+        float em = min(ex, min(ey, ez));
+        vec3 pf = ro + rd * ef;
+        if (ef < em && frameBlock(pf.xy, 0.0008) > 0.5){ t = ef; n = vec3(0.0, 0.0, 1.0); mid = M_FRAME; }
+        else if (ex < ey && ex < ez){ t = ex; n = vec3(-sign(rd.x), 0.0, 0.0); mid = M_REVEAL; }
+        else if (ey < ez){ t = ey; n = vec3(0.0, -sign(rd.y), 0.0); mid = M_REVEAL; }
+        else { t = 1e4; mid = M_OUT; }
+      }
+    }
+  }
+  vec2 sb = boxHit(ro, rd, SILL_LO, SILL_HI);
+  if (sb.x < sb.y && sb.x > 0.0 && sb.x < t){ t = sb.x; n = boxNormal(ro + rd * t, SILL_LO, SILL_HI); mid = M_SILL; }
+  vec2 rb = boxHit(ro, rd, vec3(ROD_X0 - 0.06, ROD_Y - 0.05, 0.0), vec3(ROD_X1 + 0.06, ROD_Y + 0.05, ROD_Z + 0.05));
+  if (rb.x < rb.y && rb.y > 0.0 && rb.x < t){
+    vec2 oc = ro.yz - vec2(ROD_Y, ROD_Z);
+    float a = dot(rd.yz, rd.yz), b = dot(oc, rd.yz), c2 = dot(oc, oc) - ROD_R * ROD_R;
+    float disc = b * b - a * c2;
+    if (disc > 0.0){
+      float tc = (-b - sqrt(disc)) / a;
+      vec3 pc = ro + rd * tc;
+      if (tc > 0.0 && tc < t && pc.x > ROD_X0 && pc.x < ROD_X1){ t = tc; n = normalize(vec3(0.0, pc.y - ROD_Y, pc.z - ROD_Z)); mid = M_ROD; }
+    }
+    for (int k = 0; k < 2; k++){
+      vec3 c = vec3(k == 0 ? ROD_X0 - 0.02 : ROD_X1 + 0.02, ROD_Y, ROD_Z);
+      float ts = sphereHit(ro, rd, c, 0.027);
+      if (ts > 0.0 && ts < t){ t = ts; n = normalize(ro + rd * ts - c); mid = M_ROD; }
+      float bx = k == 0 ? ROD_X0 + 0.08 : ROD_X1 - 0.08;
+      vec3 lo = vec3(bx - 0.011, ROD_Y - 0.03, 0.0), hi = vec3(bx + 0.011, ROD_Y - 0.008, ROD_Z);
+      vec2 bb = boxHit(ro, rd, lo, hi);
+      if (bb.x < bb.y && bb.x > 0.0 && bb.x < t){ t = bb.x; n = boxNormal(ro + rd * t, lo, hi); mid = M_ROD; }
+    }
+    for (int k = 0; k < 17; k++){
+      float ts = sphereHit(ro, rd, uRings[k], 0.0175);
+      if (ts > 0.0 && ts < t){ t = ts; n = normalize(ro + rd * ts - uRings[k]); mid = M_ROD; }
+    }
+  }
+  return t;
+}
+
+vec3 outside(vec3 ro, vec3 rd){
+  vec3 sky = mix(uHorizon, uZenith, smoothstep(-0.05, 0.55, rd.y));
+  float sd = max(dot(rd, uSunDir), 0.0);
+  sky += uSunCol * (0.06 * pow(sd, 5.0) + 0.25 * pow(sd, 60.0));
+  // дальние крыши в дымке
+  float tr = (-38.0 - ro.z) / rd.z;
+  vec3 q = ro + rd * tr;
+  float cell = floor(q.x / 7.0);
+  float hgt = 2.5 + 6.5 * hash12(vec2(cell, 1.3));
+  float fx = fract(q.x / 7.0);
+  float roofY = hgt + (1.0 - abs(fx * 2.0 - 1.0)) * 2.4 * step(0.45, hash12(vec2(cell, 7.7)));
+  float roofM = 1.0 - smoothstep(roofY - 0.3, roofY + 0.3, q.y);
+  vec3 col = mix(sky, mix(sky, vec3(0.86, 0.66, 0.55) * (0.6 + uSunI), 0.42), roofM);
+  // крона дерева в расфокусе
+  float tt = (-6.5 - ro.z) / rd.z;
+  vec3 c = ro + rd * tt;
+  vec2 uv = c.xy + vec2(0.16 * uWindU * sin(uTime * 0.9 + c.y * 0.4), 0.05 * uWindU * sin(uTime * 1.3));
+  float can = fbm(uv * 0.6 + vec2(2.0, 5.0)) + 0.16 - 0.05 * c.x - 0.10 * max(c.y - 4.6, 0.0);
+  float mask = smoothstep(0.50, 0.63, can);
+  float trunk = (1.0 - smoothstep(0.16, 0.32, abs(c.x + 2.7 + 0.2 * sin(c.y * 0.8)))) * (1.0 - smoothstep(2.4, 3.6, c.y));
+  mask = max(mask, trunk);
+  float litN = fbm(uv * 1.5 + vec2(9.0, 1.0));
+  float lit = smoothstep(0.38, 0.78, litN + (can - 0.56) * 1.2);
+  vec3 leaf = mix(vec3(0.03, 0.06, 0.025), vec3(0.36, 0.50, 0.12), lit);
+  leaf = mix(leaf, vec3(0.09, 0.065, 0.045), trunk);
+  leaf *= 0.35 + 1.05 * uSunI;
+  col = mix(col, leaf, mask);
+  // блики-боке в просветах листвы
+  vec2 g = uv / 0.42;
+  vec2 gi = floor(g);
+  float bsum = 0.0;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++){
+    vec2 id = gi + vec2(float(i), float(j));
+    float h1 = hash12(id), h2 = hash12(id + 17.3);
+    if (h1 > 0.5) continue;
+    vec2 cen = id + vec2(h2, fract(h1 * 13.1));
+    float r = 0.30 + 0.24 * fract(h2 * 7.3);
+    float d = length(g - cen);
+    float disk = smoothstep(r, r - 0.05, d) * (0.7 + 0.3 * smoothstep(r * 0.5, r, d));
+    float tw = 0.5 + 0.5 * sin(uTime * (1.2 + 2.5 * h2) + h1 * 40.0);
+    bsum += disk * tw;
+  }
+  float gap = smoothstep(0.40, 0.58, can) * (1.0 - smoothstep(0.62, 0.76, can));
+  col += bsum * gap * uSunCol * 0.2;
+  return col;
+}
+
+vec3 wood(vec2 p, out float gloss){
+  float W = 0.145;
+  float col = floor(p.x / W);
+  float off = hash12(vec2(col, 7.0)) * 2.0;
+  float L = 1.6;
+  float row = floor((p.y + off) / L);
+  float id = hash12(vec2(col, row));
+  vec2 lp = vec2(fract(p.x / W), fract((p.y + off) / L));
+  float grain = vnoise(vec2(p.x * 34.0 + id * 20.0, p.y * 2.0)) * 0.55 + vnoise(vec2(p.x * 110.0 + id * 9.0, p.y * 8.0)) * 0.45;
+  vec3 c = mix(vec3(0.30, 0.165, 0.085), vec3(0.50, 0.30, 0.16), id * 0.75 + 0.1);
+  c *= 0.8 + 0.38 * grain;
+  float seam = smoothstep(0.0, 0.014, lp.x) * smoothstep(0.0, 0.014, 1.0 - lp.x) * smoothstep(0.0, 0.004, lp.y) * smoothstep(0.0, 0.004, 1.0 - lp.y);
+  c *= mix(0.42, 1.0, seam);
+  gloss = (0.55 + 0.45 * id) * mix(0.3, 1.0, seam);
+  return c;
+}
+vec3 plaster(vec3 P){
+  float n = fbm(P.xy * 2.2 + P.z * 1.7) * 0.6 + vnoise(P.xy * 55.0 + P.z * 41.0) * 0.4;
+  return vec3(0.79, 0.72, 0.62) * (0.95 + 0.09 * n);
+}
+float aoRoom(vec3 P, vec3 n){
+  float a = 1.0;
+  if (abs(n.y) < 0.5) a *= mix(0.55, 1.0, smoothstep(0.0, 0.55, P.y));
+  if (abs(n.y) < 0.5) a *= mix(0.8, 1.0, smoothstep(0.0, 0.45, RY1 - P.y));
+  if (abs(n.z) < 0.5) a *= mix(0.58, 1.0, smoothstep(0.0, 0.6, P.z));
+  if (abs(n.x) < 0.5) a *= mix(0.6, 1.0, smoothstep(0.0, 0.5, P.x - RX0)) * mix(0.6, 1.0, smoothstep(0.0, 0.5, RX1 - P.x));
+  // под подоконником
+  if (n.z > 0.5 && P.y < WY0 && P.x > WX0 - 0.2 && P.x < WX1 + 0.2) a *= mix(0.62, 1.0, smoothstep(0.0, 0.28, (WY0 - 0.045) - P.y));
+  return a;
+}
+
+void main(){
+  vec4 a = uInvVP * vec4(vNdc, -1.0, 1.0), b = uInvVP * vec4(vNdc, 1.0, 1.0);
+  vec3 ro = uCam;
+  vec3 rd = normalize(b.xyz / b.w - a.xyz / a.w);
+  vec3 n; int mid;
+  float t = trace(ro, rd, n, mid);
+  vec3 col;
+  if (mid == M_OUT){
+    col = outside(ro, rd);
+    gl_FragDepth = 0.99999;
+  } else {
+    vec3 P = ro + rd * t;
+    vec3 alb; float gloss = 0.0; bool metal = false;
+    if (mid == M_FLOOR) alb = wood(P.xz, gloss);
+    else if (mid == M_WALL){
+      alb = plaster(P);
+      if (P.y < 0.1){ alb = vec3(0.84, 0.81, 0.76); }
+      alb *= mix(0.62, 1.0, smoothstep(0.0, 0.006, abs(P.y - 0.1)));
+    }
+    else if (mid == M_CEIL) alb = vec3(0.84, 0.80, 0.74);
+    else if (mid == M_REVEAL) alb = vec3(0.86, 0.83, 0.78) * (0.97 + 0.05 * vnoise(P.zy * 40.0));
+    else if (mid == M_FRAME) alb = vec3(0.90, 0.88, 0.85);
+    else if (mid == M_SILL){ alb = vec3(0.88, 0.86, 0.82); gloss = 0.4; }
+    else { alb = vec3(0.72, 0.52, 0.26); metal = true; }
+    float ao = aoRoom(P, n);
+    float sunF = sunThrough(P) * max(dot(n, uSunDir), 0.0);
+    vec3 tr = vec3(1.0);
+    if (sunF > 0.001) tr = clothShadow(P, 1.7);
+    vec3 E = uSunCol * sunF * tr + windowLight(P, n) * ao + uAmb * ao;
+    col = alb * E;
+    if (mid == M_FLOOR){
+      vec3 R = reflect(rd, n);
+      if (R.z < 0.0){
+        float tr2 = -P.z / R.z;
+        vec3 Q = P + R * tr2;
+        float wob = (vnoise(P.xz * vec2(60.0, 4.0)) - 0.5) * 0.05;
+        float blur = 0.03 + tr2 * 0.07;
+        float inW = box2(Q.xy + vec2(wob, 0.0), vec2(WX0, WY0), vec2(WX1, WY1), blur);
+        float fres = 0.035 + 0.5 * pow(1.0 - max(dot(-rd, n), 0.0), 5.0);
+        col += inW * mix(uSkyB, uSkyA, smoothstep(1.2, 2.2, Q.y)) * fres * gloss * (1.0 - uCover * 0.6);
+      }
+    }
+    if (metal){
+      vec3 R = reflect(rd, n);
+      float env = 0.0;
+      if (R.z < 0.0){ float t3 = -P.z / R.z; env = box2((P + R * t3).xy, vec2(WX0, WY0), vec2(WX1, WY1), 0.05); }
+      col = alb * (uAmb * 1.4 + windowLight(P, n) * 0.6) + alb * (uSkyA + uSkyB) * 0.5 * env
+          + uSunCol * sunThrough(P) * pow(max(dot(R, uSunDir), 0.0), 60.0) * 0.8;
+      col += alb * 0.25 * pow(1.0 - max(dot(-rd, n), 0.0), 3.0);
+    }
+    if (mid == M_SILL){
+      vec3 R = reflect(rd, n);
+      col += uSunCol * sunThrough(P) * pow(max(dot(R, uSunDir), 0.0), 30.0) * 0.12;
+    }
+    // ореол света вокруг окна
+    if (mid == M_WALL && P.z < 0.01){
+      vec2 d2 = max(vec2(WX0, WY0) - P.xy, P.xy - vec2(WX1, WY1));
+      float dist = length(max(d2, 0.0));
+      col += (uSkyA + uSkyB) * 0.5 * exp(-dist * 8.0) * 0.16 * (1.0 - uCover * 0.5);
+    }
+    vec4 clip = uVP * vec4(P, 1.0);
+    gl_FragDepth = clamp(clip.z / clip.w * 0.5 + 0.5, 0.0, 0.99999);
+  }
+  col = col * 0.975 + vec3(0.012, 0.008, 0.004);
+  frag = vec4(tonemap(col), 1.0);
+}`;
+
+const VS_CLOTH = `#version 300 es
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec3 aNor;
+layout(location = 2) in vec2 aUv;
+uniform mat4 uMVP;
+out vec3 vPos; out vec3 vNor; out vec2 vUv;
+void main(){ vPos = aPos; vNor = aNor; vUv = aUv; gl_Position = uMVP * vec4(aPos, 1.0); }`;
+
+const FS_CLOTH = `#version 300 es
+${COMMON}
+${WEAVE}
+uniform vec3 uCam;
+uniform vec3 uAlb;
+uniform vec3 uTrans;
+uniform float uOpacity;
+uniform float uTransl;
+uniform float uSheen;
+in vec3 vPos; in vec3 vNor; in vec2 vUv;
+out vec4 frag;
+void main(){
+  vec2 m = vUv * uSize;
+  float tex;
+  float wop = weave(m, true, tex);
+  float header = 1.0 - smoothstep(0.075, 0.085, m.y);
+  float hem = smoothstep(uSize.y - 0.06, uSize.y - 0.05, m.y);
+  float dbl = max(header, hem);
+  float opac = clamp(uOpacity * wop + dbl * 0.38, 0.0, 0.985);
+  vec3 N = normalize(vNor);
+  vec3 V = normalize(uCam - vPos);
+  if (dot(N, V) < 0.0) N = -N;
+  float beam = sunThrough(vPos);
+  float ndl = dot(N, uSunDir);
+  vec3 sunC = uSunCol * beam;
+  vec3 alb = uAlb * tex * mix(1.0, 0.86, dbl);
+  float thick = mix(1.0, 0.5, dbl);
+  vec3 wF = windowLight(vPos, N), wB = windowLight(vPos, -N);
+  vec3 col = alb * sunC * max(ndl, 0.0);
+  col += uTrans * sunC * max(-ndl, 0.0) * uTransl * thick * 1.15;
+  col += alb * wF * 0.9 + uTrans * wB * uTransl * thick * 0.8;
+  col += alb * uAmb;
+  float nv = max(dot(N, V), 0.0);
+  col += uSheen * pow(1.0 - nv, 4.0) * (uAmb * 1.6 + wF * 0.5) * mix(alb, vec3(1.0), 0.35);
+  vec3 H = normalize(uSunDir + V);
+  col += uSheen * sunC * pow(max(dot(N, H), 0.0), 56.0) * 0.55 * step(0.0, ndl);
+  frag = vec4(tonemap(col) * opac, opac);
+}`;
+
+const VS_SHADOW = `#version 300 es
+layout(location = 0) in vec3 aPos;
+layout(location = 2) in vec2 aUv;
+uniform mat4 uMVP;
+out vec2 vUv;
+void main(){ vUv = aUv; gl_Position = uMVP * vec4(aPos, 1.0); }`;
+
+const FS_SHADOW = `#version 300 es
+${COMMON}
+${WEAVE}
+uniform vec3 uTrans;
+uniform float uOpacity;
+uniform float uTransl;
+in vec2 vUv;
+out vec4 frag;
+void main(){
+  vec2 m = vUv * uSize;
+  float tex;
+  float wop = weave(m, false, tex);
+  float header = 1.0 - smoothstep(0.075, 0.085, m.y);
+  float hem = smoothstep(uSize.y - 0.06, uSize.y - 0.05, m.y);
+  float dbl = max(header, hem);
+  float opac = clamp(uOpacity * wop + dbl * 0.38, 0.0, 0.985);
+  vec3 T = vec3(1.0 - opac) + opac * uTransl * mix(1.0, 0.5, dbl) * uTrans;
+  frag = vec4(T, gl_FragCoord.z);
+}`;
+
+const VS_DUST = `#version 300 es
+${COMMON}
+layout(location = 0) in vec4 aP;
+uniform mat4 uMVP;
+uniform float uProj;
+out float vB;
+out vec3 vCol;
+void main(){
+  vec4 clip = uMVP * vec4(aP.xyz, 1.0);
+  gl_Position = clip;
+  float w = max(clip.w, 0.1);
+  float size = clamp(0.0042 * uProj / w + abs(w - 3.6) * 2.4, 1.3, 24.0);
+  gl_PointSize = size;
+  float s = sunThrough(aP.xyz);
+  vec3 sh = s > 0.002 ? clothShadow1(aP.xyz) : vec3(0.0);
+  float tw = 0.55 + 0.45 * sin(uTime * (0.7 + aP.w * 2.3) + aP.w * 50.0);
+  vB = s * tw * 7.0 / (size * size);
+  vCol = uSunCol * sh;
+}`;
+
+const FS_DUST = `#version 300 es
+precision highp float;
+in float vB; in vec3 vCol;
+out vec4 frag;
+void main(){
+  vec2 c = gl_PointCoord * 2.0 - 1.0;
+  float d = dot(c, c);
+  if (d > 1.0) discard;
+  float a = 1.0 - d; a *= a;
+  frag = vec4(vCol * vB * a * 0.5, 0.0);
+}`;
+
+const FS_HAZE = `#version 300 es
+${COMMON}
+uniform mat4 uInvVP;
+uniform vec3 uCam;
+uniform float uHaze;
+in vec2 vNdc;
+out vec4 frag;
+void main(){
+  vec4 a = uInvVP * vec4(vNdc, -1.0, 1.0), b = uInvVP * vec4(vNdc, 1.0, 1.0);
+  vec3 ro = uCam;
+  vec3 rd = normalize(b.xyz / b.w - a.xyz / a.w);
+  float tx = rd.x > 0.0 ? (2.8 - ro.x) / rd.x : (-2.6 - ro.x) / rd.x;
+  float ty = rd.y > 0.0 ? (3.1 - ro.y) / rd.y : (-ro.y) / rd.y;
+  float tz = rd.z > 0.0 ? (7.5 - ro.z) / rd.z : (-ro.z) / rd.z;
+  float tEnd = min(tx, min(ty, tz));
+  float jit = fract(52.9829189 * fract(dot(gl_FragCoord.xy + vec2(5.588, 7.02) * floor(fract(uTime * 0.5) * 8.0), vec2(0.06711056, 0.00583715))));
+  vec3 acc = vec3(0.0);
+  const int N = 14;
+  for (int i = 0; i < N; i++){
+    float t = tEnd * (float(i) + jit) / float(N);
+    vec3 P = ro + rd * t;
+    float s = sunThrough(P);
+    if (s > 0.002){
+      float dens = 0.75 + 0.5 * vnoise(P.xz * 2.5 + vec2(uTime * 0.06, P.y * 1.3));
+      acc += s * clothShadow1(P) * dens;
+    }
+  }
+  float cosT = dot(rd, uSunDir);
+  float g = 0.6;
+  float hg = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * cosT, 1.5) / (4.0 * PI);
+  vec3 L = acc * (tEnd / float(N)) * uHaze * uSunCol * hg * uExposure;
+  frag = vec4(pow(1.0 - exp(-L), vec3(0.8)) * 0.8, 1.0);
+}`;
+
+// итоговое сведение: дымка из буфера в четверть разрешения + виньетка + зерно
+const FS_POST = `#version 300 es
+precision highp float;
+uniform sampler2D uHazeTex;
+uniform float uTime;
+in vec2 vNdc;
+out vec4 frag;
+float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+void main(){
+  vec2 uv = vNdc * 0.5 + 0.5;
+  vec2 px = 1.0 / vec2(textureSize(uHazeTex, 0));
+  vec3 add = vec3(0.0);
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    float w = (i == 0 ? 2.0 : 1.0) * (j == 0 ? 2.0 : 1.0);
+    add += texture(uHazeTex, uv + vec2(float(i), float(j)) * px * 1.25).rgb * w;
+  }
+  add /= 16.0;
+  vec2 q = vNdc;
+  float vig = clamp(1.0 - 0.22 * dot(q * vec2(0.8, 1.0), q * vec2(0.8, 1.0)), 0.0, 1.0);
+  float gr = hash12(gl_FragCoord.xy * 1.37 + fract(uTime * 3.7) * 57.0);
+  frag = vec4(add * vig, clamp(vig * (0.972 + 0.056 * gr), 0.0, 1.0));
+}`;
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    const log = gl.getShaderInfoLog(s);
+    console.error('Шейдер не собрался:', log);
+    throw new Error(log);
+  }
+  return s;
+}
+function program(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { const log = gl.getProgramInfoLog(p); console.error(log); throw new Error(log); }
+  const cache = {};
+  return { p, u: (n) => (n in cache ? cache[n] : (cache[n] = gl.getUniformLocation(p, n))) };
+}
+const progRoom = program(VS_FULL, FS_ROOM);
+const progCloth = program(VS_CLOTH, FS_CLOTH);
+const progShadow = program(VS_SHADOW, FS_SHADOW);
+const progDust = program(VS_DUST, FS_DUST);
+const progHaze = program(VS_FULL, FS_HAZE);
+const progPost = program(VS_FULL, FS_POST);
+
+const emptyVAO = gl.createVertexArray();
+
+// буферы ткани
+const clothVAO = gl.createVertexArray();
+gl.bindVertexArray(clothVAO);
+const bPos = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bPos); gl.bufferData(gl.ARRAY_BUFFER, pos.byteLength, gl.DYNAMIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+const bNor = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bNor); gl.bufferData(gl.ARRAY_BUFFER, nor.byteLength, gl.DYNAMIC_DRAW);
+gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+const bUv = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bUv);
+gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
+const bIdx = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bIdx);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, NT * 3 * 2, gl.DYNAMIC_DRAW);
+gl.bindVertexArray(null);
+const idxSorted = new Uint16Array(NT * 3);
+const triOrder = new Uint32Array(NT), triKey = new Float32Array(NT);
+
+// пылинки в луче
+const DUST_N = 520;
+const dust = new Float32Array(DUST_N * 4), dustV = new Float32Array(DUST_N * 3);
+function seedDust(i) {
+  dust[i * 4] = lerp(-1.6, 1.9, Math.random());
+  dust[i * 4 + 1] = lerp(0.05, 2.9, Math.random());
+  dust[i * 4 + 2] = lerp(0.05, 3.2, Math.pow(Math.random(), 1.3));
+  dust[i * 4 + 3] = Math.random();
+}
+for (let i = 0; i < DUST_N; i++) seedDust(i);
+const dustVAO = gl.createVertexArray();
+gl.bindVertexArray(dustVAO);
+const bDust = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bDust); gl.bufferData(gl.ARRAY_BUFFER, dust.byteLength, gl.DYNAMIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
+gl.bindVertexArray(null);
+
+// карта пропускания ткани из позиции солнца
+const SH = 1024;
+const shadowTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, shadowTex);
+if (hasFloatRT) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, SH, SH, 0, gl.RGBA, gl.HALF_FLOAT, null);
+else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, SH, SH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+const shadowFB = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, shadowFB);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, shadowTex, 0);
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+// буфер дымки в четверть разрешения
+const hazeTex = gl.createTexture();
+const hazeFB = gl.createFramebuffer();
+let hazeW = 0, hazeH = 0;
+function ensureHazeTarget() {
+  const w = Math.max(1, Math.round(W / 2)), h = Math.max(1, Math.round(H / 2));
+  if (w === hazeW && h === hazeH) return;
+  hazeW = w; hazeH = h;
+  gl.bindTexture(gl.TEXTURE_2D, hazeTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, hazeFB);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, hazeTex, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+
+// ======================================================================
+// Камера, солнце, кадр
+// ======================================================================
+const view = M4.create(), proj = M4.create(), VP = M4.create(), invVP = M4.create();
+const lightView = M4.create(), lightProj = M4.create(), lightVP = M4.create();
+let eye = [1.75, 1.42, 4.05], fovY = 44 * DEG;
+const mouseN = { x: 0, y: 0 }, sway = { x: 0, y: 0 };
+let W = 1, H = 1, cssW = 1, cssH = 1, quality = 1;
+const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+const rendererName = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+const softwareGL = /swiftshader|llvmpipe|software|basic render/i.test(rendererName);
+const SHOT = !!window.__SHOT__; // съёмка обложки: полное разрешение, без адаптивного понижения
+if (softwareGL && !SHOT) quality = 0.7;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function resize() {
+  cssW = innerWidth; cssH = innerHeight;
+  const dpr = SHOT ? 1 : Math.min(devicePixelRatio || 1, 1.5) * quality;
+  W = Math.max(1, Math.round(cssW * dpr)); H = Math.max(1, Math.round(cssH * dpr));
+  canvas.width = W; canvas.height = H;
+}
+addEventListener('resize', resize);
+resize();
+
+function updateCamera(dt) {
+  const asp = cssW / cssH;
+  const k = smoothstep(0.5, 1.45, asp);
+  const basePos = mix3([0.3, 1.45, 5.4], [1.32, 1.4, 3.45], k);
+  const tgt = mix3([-0.3, 1.52, 0.0], [-0.42, 1.3, 0.25], k);
+  fovY = lerp(60, 50, k) * DEG;
+  const f = reduceMotion ? 0 : 1;
+  sway.x = lerp(sway.x, mouseN.x * f, Math.min(1, dt * 1.6));
+  sway.y = lerp(sway.y, mouseN.y * f, Math.min(1, dt * 1.6));
+  eye = [basePos[0] + sway.x * 0.24, basePos[1] - sway.y * 0.13, basePos[2]];
+  M4.lookAt(view, eye, tgt, [0, 1, 0]);
+  M4.perspective(proj, fovY, asp, 0.05, 40);
+  M4.mul(VP, proj, view);
+  M4.invert(invVP, VP);
+}
+
+const sun = { dir: [0, 0.7, -0.7], col: [1, 1, 1], skyA: [1, 1, 1], skyB: [1, 1, 1], hor: [1, 1, 1], zen: [1, 1, 1], amb: [0.1, 0.1, 0.1], I: 1 };
+function updateSun() {
+  const hour = 7 + state.sun * 13;
+  const x = (hour - 13.4) / 6.9;
+  const elev = (7 + 45 * (1 - x * x)) * DEG;
+  const az = x * 57 * DEG;
+  sun.dir = [Math.sin(az) * Math.cos(elev), Math.sin(elev), -Math.cos(az) * Math.cos(elev)];
+  const warm = 1 - smoothstep(6 * DEG, 32 * DEG, elev);
+  sun.I = lerp(1.0, 0.75, warm);
+  sun.col = scale3(mix3([1.0, 0.92, 0.80], [1.0, 0.56, 0.30], warm), lerp(4.6, 3.4, warm));
+  sun.skyA = mix3([1.00, 1.28, 1.75], [1.55, 1.05, 0.85], warm);
+  sun.skyB = mix3([0.78, 0.98, 0.58], [1.05, 0.72, 0.45], warm);
+  sun.hor = mix3([2.9, 3.0, 3.1], [3.2, 2.2, 1.5], warm);
+  sun.zen = mix3([1.2, 1.75, 2.8], [1.45, 1.2, 1.7], warm);
+  sun.amb = mix3([0.15, 0.13, 0.11], [0.15, 0.108, 0.082], warm);
+  // ортогональная «камера солнца» для карты пропускания
+  const c = [-0.3, 1.45, 0.9];
+  const e = [c[0] + sun.dir[0] * 8, c[1] + sun.dir[1] * 8, c[2] + sun.dir[2] * 8];
+  M4.lookAt(lightView, e, c, Math.abs(sun.dir[1]) > 0.97 ? [0, 0, -1] : [0, 1, 0]);
+  M4.ortho(lightProj, -2.6, 2.6, -2.6, 2.6, 1.0, 16);
+  M4.mul(lightVP, lightProj, lightView);
+}
+
+const RINGS = new Float32Array(17 * 3);
+for (let k = 0; k < 17; k++) { RINGS[k * 3] = X0 + k * 2 * DX_TOP; RINGS[k * 3 + 1] = ROD_Y; RINGS[k * 3 + 2] = ROD_Z; }
+
+function setCommon(pr, t) {
+  gl.uniform3fv(pr.u('uSunDir'), sun.dir);
+  gl.uniform3fv(pr.u('uSunCol'), sun.col);
+  gl.uniform3fv(pr.u('uSkyA'), sun.skyA);
+  gl.uniform3fv(pr.u('uSkyB'), sun.skyB);
+  gl.uniform3fv(pr.u('uAmb'), sun.amb);
+  gl.uniform1f(pr.u('uTime'), t);
+  gl.uniform1f(pr.u('uExposure'), 1.75);
+  gl.uniformMatrix4fv(pr.u('uLightVP'), false, lightVP);
+  gl.uniform1f(pr.u('uCover'), MATERIALS[state.mat].cover);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, shadowTex);
+  gl.uniform1i(pr.u('uShadow'), 0);
+}
+function setFabric(pr) {
+  const m = MATERIALS[state.mat];
+  const alb = srgbToLin(SWATCHES[state.color].hex);
+  const mx = Math.max(...alb);
+  const tr = alb.map(v => Math.pow(v / mx, 0.75));
+  gl.uniform3fv(pr.u('uTrans'), tr);
+  gl.uniform1f(pr.u('uOpacity'), m.opacity);
+  gl.uniform1f(pr.u('uTransl'), m.transl);
+  gl.uniform1i(pr.u('uWeave'), m.weave);
+  gl.uniform2f(pr.u('uSize'), (COLS - 1) * S, (ROWS - 1) * S);
+  return alb;
+}
+
+function sortTriangles() {
+  const fx = view[2], fy = view[6], fz = view[10]; // строка z матрицы вида
+  let n = 0;
+  for (let t = 0; t < NT; t++) {
+    if (!triValid[t]) continue;
+    const a = TRI[t * 3], b = TRI[t * 3 + 1], c = TRI[t * 3 + 2];
+    const cx = pos[a * 3] + pos[b * 3] + pos[c * 3], cy = pos[a * 3 + 1] + pos[b * 3 + 1] + pos[c * 3 + 1], cz = pos[a * 3 + 2] + pos[b * 3 + 2] + pos[c * 3 + 2];
+    triKey[t] = cx * fx + cy * fy + cz * fz; // чем меньше — тем дальше от камеры
+    triOrder[n++] = t;
+  }
+  const ord = Array.from(triOrder.subarray(0, n));
+  ord.sort((p, q) => triKey[p] - triKey[q]);
+  for (let i = 0; i < n; i++) {
+    const t = ord[i];
+    idxSorted[i * 3] = TRI[t * 3]; idxSorted[i * 3 + 1] = TRI[t * 3 + 1]; idxSorted[i * 3 + 2] = TRI[t * 3 + 2];
+  }
+  return n;
+}
+
+function updateDust(dt, t) {
+  const V = state.wind * gustNow;
+  for (let i = 0; i < DUST_N; i++) {
+    const j = i * 4, v = i * 3;
+    const x = dust[j], y = dust[j + 1], z = dust[j + 2], s = dust[j + 3];
+    dustV[v] += (Math.sin(t * 0.7 + s * 30 + y * 2) * 0.02 - dustV[v] * 0.8) * dt;
+    dustV[v + 1] += (0.012 + Math.sin(t * 0.5 + s * 17 + x * 3) * 0.018 - dustV[v + 1] * 0.8) * dt;
+    const nearWin = Math.exp(-z / 1.2) * smoothstep(WX0 - 0.4, WX0, x) * (1 - smoothstep(WX1, WX1 + 0.4, x));
+    dustV[v + 2] += (V * nearWin * 0.12 + Math.sin(t * 0.6 + s * 11) * 0.015 - dustV[v + 2] * 0.8) * dt;
+    dust[j] += dustV[v] * dt; dust[j + 1] += dustV[v + 1] * dt; dust[j + 2] += dustV[v + 2] * dt;
+    if (dust[j + 1] > 3.0 || dust[j + 1] < 0.02 || dust[j + 2] > 3.4 || dust[j + 2] < 0.03 || dust[j] < -1.8 || dust[j] > 2.1) seedDust(i);
+  }
+}
+
+let time = 0;
+function render() {
+  const t = time;
+  // 1. карта пропускания ткани
+  computeNormals();
+  gl.bindBuffer(gl.ARRAY_BUFFER, bPos); gl.bufferSubData(gl.ARRAY_BUFFER, 0, pos);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bNor); gl.bufferSubData(gl.ARRAY_BUFFER, 0, nor);
+  const nTri = sortTriangles();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bIdx);
+  gl.bindVertexArray(clothVAO);
+  gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, idxSorted.subarray(0, nTri * 3));
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, shadowFB);
+  gl.viewport(0, 0, SH, SH);
+  gl.clearColor(1, 1, 1, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
+  gl.enable(gl.BLEND);
+  gl.blendEquationSeparate(gl.FUNC_ADD, gl.MIN);
+  gl.blendFuncSeparate(gl.DST_COLOR, gl.ZERO, gl.ONE, gl.ONE);
+  gl.useProgram(progShadow.p);
+  setCommon(progShadow, t);
+  setFabric(progShadow);
+  gl.uniformMatrix4fv(progShadow.u('uMVP'), false, lightVP);
+  gl.drawElements(gl.TRIANGLES, nTri * 3, gl.UNSIGNED_SHORT, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
+
+  // 2. световые столбы в дымке — в четверть разрешения
+  ensureHazeTarget();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, hazeFB);
+  gl.viewport(0, 0, hazeW, hazeH);
+  gl.disable(gl.BLEND);
+  gl.useProgram(progHaze.p);
+  setCommon(progHaze, t);
+  gl.uniformMatrix4fv(progHaze.u('uInvVP'), false, invVP);
+  gl.uniform3fv(progHaze.u('uCam'), eye);
+  gl.uniform1f(progHaze.u('uHaze'), 1.15);
+  gl.bindVertexArray(emptyVAO);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+  // 3. комната
+  gl.viewport(0, 0, W, H);
+  gl.disable(gl.BLEND);
+  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.ALWAYS); gl.depthMask(true);
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(progRoom.p);
+  setCommon(progRoom, t);
+  gl.uniformMatrix4fv(progRoom.u('uInvVP'), false, invVP);
+  gl.uniformMatrix4fv(progRoom.u('uVP'), false, VP);
+  gl.uniform3fv(progRoom.u('uCam'), eye);
+  gl.uniform3fv(progRoom.u('uRings'), RINGS);
+  gl.uniform1f(progRoom.u('uWindU'), state.wind * gustNow);
+  gl.uniform3fv(progRoom.u('uHorizon'), sun.hor);
+  gl.uniform3fv(progRoom.u('uZenith'), sun.zen);
+  gl.uniform1f(progRoom.u('uSunI'), sun.I);
+  gl.bindVertexArray(emptyVAO);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  // 4. ткань (от дальних треугольников к ближним)
+  gl.depthFunc(gl.LESS); gl.depthMask(false);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  gl.useProgram(progCloth.p);
+  setCommon(progCloth, t);
+  const alb = setFabric(progCloth);
+  gl.uniform3fv(progCloth.u('uAlb'), alb);
+  gl.uniform1f(progCloth.u('uSheen'), MATERIALS[state.mat].sheen);
+  gl.uniform3fv(progCloth.u('uCam'), eye);
+  gl.uniformMatrix4fv(progCloth.u('uMVP'), false, VP);
+  gl.bindVertexArray(clothVAO);
+  gl.drawElements(gl.TRIANGLES, nTri * 3, gl.UNSIGNED_SHORT, 0);
+
+  // 5. пылинки
+  gl.blendFunc(gl.ONE, gl.ONE);
+  gl.useProgram(progDust.p);
+  setCommon(progDust, t);
+  gl.uniformMatrix4fv(progDust.u('uMVP'), false, VP);
+  gl.uniform1f(progDust.u('uProj'), H / (2 * Math.tan(fovY / 2)));
+  gl.bindVertexArray(dustVAO);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bDust); gl.bufferSubData(gl.ARRAY_BUFFER, 0, dust);
+  gl.drawArrays(gl.POINTS, 0, DUST_N);
+
+  // 6. сведение: дымка + виньетка и зерно
+  gl.disable(gl.DEPTH_TEST);
+  gl.blendFunc(gl.ONE, gl.SRC_ALPHA);
+  gl.useProgram(progPost.p);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, hazeTex);
+  gl.uniform1i(progPost.u('uHazeTex'), 1);
+  gl.uniform1f(progPost.u('uTime'), t);
+  gl.bindVertexArray(emptyVAO);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.disable(gl.BLEND);
+  gl.depthMask(true);
+}
+
+// ======================================================================
+// Взаимодействие: захват ткани, ножницы, порыв
+// ======================================================================
+const grab = { index: -1, target: [0, 0, 0], plane: [0, 0, 0], normal: [0, 0, 1], wasPinned: 0, pointer: -1 };
+let cutting = null;
+
+function projectParticles() {
+  for (let i = 0; i < NP; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    const cx = VP[0] * x + VP[4] * y + VP[8] * z + VP[12];
+    const cy = VP[1] * x + VP[5] * y + VP[9] * z + VP[13];
+    const cw = VP[3] * x + VP[7] * y + VP[11] * z + VP[15];
+    scr[i * 2] = (cx / cw * 0.5 + 0.5) * cssW;
+    scr[i * 2 + 1] = (1 - (cy / cw * 0.5 + 0.5)) * cssH;
+  }
+}
+function rayAt(px, py) {
+  const nx = px / cssW * 2 - 1, ny = 1 - py / cssH * 2;
+  const unp = (z) => {
+    const x = invVP[0] * nx + invVP[4] * ny + invVP[8] * z + invVP[12];
+    const y = invVP[1] * nx + invVP[5] * ny + invVP[9] * z + invVP[13];
+    const zz = invVP[2] * nx + invVP[6] * ny + invVP[10] * z + invVP[14];
+    const w = invVP[3] * nx + invVP[7] * ny + invVP[11] * z + invVP[15];
+    return [x / w, y / w, zz / w];
+  };
+  const a = unp(-1), b = unp(1);
+  const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]; const l = Math.hypot(...d);
+  return { o: a, d: [d[0] / l, d[1] / l, d[2] / l] };
+}
+function updateGrabTarget(px, py) {
+  const r = rayAt(px, py), n = grab.normal, p = grab.plane;
+  const den = r.d[0] * n[0] + r.d[1] * n[1] + r.d[2] * n[2];
+  if (Math.abs(den) < 1e-5) return;
+  const tt = ((p[0] - r.o[0]) * n[0] + (p[1] - r.o[1]) * n[1] + (p[2] - r.o[2]) * n[2]) / den;
+  grab.target = [r.o[0] + r.d[0] * tt, Math.max(0.02, r.o[1] + r.d[1] * tt), Math.max(0.04, r.o[2] + r.d[2] * tt)];
+}
+function segIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+  const d1 = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+  const d2 = (bx - ax) * (dy - ay) - (by - ay) * (dx - ax);
+  const d3 = (dx - cx) * (ay - cy) - (dy - cy) * (ax - cx);
+  const d4 = (dx - cx) * (by - cy) - (dy - cy) * (bx - cx);
+  return (d1 * d2 < 0) && (d3 * d4 < 0);
+}
+function cutAlong(x0, y0, x1, y1) {
+  projectParticles();
+  let cutCount = 0;
+  for (let c = 0; c < NC; c++) {
+    if (CBR[c]) continue;
+    const a = CA[c], b = CB[c];
+    if (segIntersect(x0, y0, x1, y1, scr[a * 2], scr[a * 2 + 1], scr[b * 2], scr[b * 2 + 1])) { CBR[c] = 1; cutCount++; }
+  }
+  if (cutCount) { updateTriValid(); playSnip(); }
+}
+
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+canvas.addEventListener('pointerdown', (e) => {
+  hideHint();
+  ensureAudioResumed();
+  canvas.setPointerCapture(e.pointerId);
+  if (e.button === 2 || state.scissors) {
+    cutting = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    canvas.classList.add('cutting');
+    return;
+  }
+  projectParticles();
+  let best = -1, bd = (e.pointerType === 'touch' ? 56 : 40) ** 2;
+  for (let i = 0; i < NP; i++) {
+    const dx = scr[i * 2] - e.clientX, dy = scr[i * 2 + 1] - e.clientY, d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = i; }
+  }
+  if (best < 0) return;
+  grab.index = best; grab.pointer = e.pointerId;
+  grab.plane = [pos[best * 3], pos[best * 3 + 1], pos[best * 3 + 2]];
+  const f = [-view[2], -view[6], -view[10]];
+  grab.normal = f;
+  grab.target = grab.plane.slice();
+  invM[best] = 0;
+  canvas.classList.add('grabbing');
+});
+canvas.addEventListener('pointermove', (e) => {
+  mouseN.x = e.clientX / cssW * 2 - 1; mouseN.y = e.clientY / cssH * 2 - 1;
+  if (cutting && e.pointerId === cutting.id) {
+    cutAlong(cutting.x, cutting.y, e.clientX, e.clientY);
+    cutting.x = e.clientX; cutting.y = e.clientY;
+  } else if (grab.index >= 0 && e.pointerId === grab.pointer) {
+    updateGrabTarget(e.clientX, e.clientY);
+  }
+});
+function endPointer(e) {
+  if (cutting && e.pointerId === cutting.id) { cutting = null; if (!state.scissors) canvas.classList.remove('cutting'); }
+  if (grab.index >= 0 && e.pointerId === grab.pointer) {
+    const i = grab.index;
+    invM[i] = pinned[i] ? 0 : 1 / MATERIALS[state.mat].density;
+    grab.index = -1;
+    canvas.classList.remove('grabbing');
+  }
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('dblclick', () => gust());
+addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); gust(); }
+});
+function gust() { state.gustBoost = 1.15; playWhoosh(); }
+
+// ======================================================================
+// Интерфейс
+// ======================================================================
+const $ = (id) => document.getElementById(id);
+const windLabels = [[0.06, 'штиль'], [0.3, 'лёгкий бриз'], [0.58, 'свежий ветер'], [0.84, 'порывистый'], [1.01, 'шквал']];
+function setRangeFill(el) { el.style.setProperty('--p', (el.value * 100) + '%'); }
+function syncWind() {
+  const v = state.wind;
+  $('windOut').textContent = windLabels.find(([k]) => v < k)[1];
+  setRangeFill($('wind'));
+}
+function syncSun() {
+  const hour = 7 + state.sun * 13;
+  const h = Math.floor(hour), m = Math.floor((hour - h) * 60 / 10) * 10;
+  const word = hour < 11 ? 'утро' : hour < 16.5 ? 'день' : 'вечер';
+  $('sunOut').textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} · ${word}`;
+  setRangeFill($('sun'));
+}
+$('wind').addEventListener('input', (e) => { state.wind = +e.target.value; syncWind(); });
+$('sun').addEventListener('input', (e) => { state.sun = +e.target.value; syncSun(); });
+$('wind').value = state.wind; $('sun').value = state.sun;
+syncWind(); syncSun();
+
+const segBtns = [...document.querySelectorAll('#seg button')];
+function selectMaterial(mat) {
+  state.mat = mat;
+  segBtns.forEach((b, i) => {
+    const on = b.dataset.mat === mat;
+    b.setAttribute('aria-checked', on);
+    if (on) $('pill').style.transform = `translateX(${i * 100}%)`;
+  });
+  $('matOut').innerHTML = MATERIALS[mat].note;
+  applyMaterialMass();
+}
+segBtns.forEach((b) => b.addEventListener('click', () => selectMaterial(b.dataset.mat)));
+
+const swWrap = $('swatches');
+SWATCHES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'sw'; b.style.background = s.hex; b.setAttribute('role', 'radio');
+  b.setAttribute('aria-label', s.name); b.setAttribute('aria-checked', i === state.color);
+  b.addEventListener('click', () => {
+    state.color = i;
+    [...swWrap.children].forEach((c, k) => c.setAttribute('aria-checked', k === i));
+    $('colOut').textContent = s.name;
+  });
+  swWrap.appendChild(b);
+});
+
+$('scissors').addEventListener('click', () => {
+  state.scissors = !state.scissors;
+  $('scissors').setAttribute('aria-pressed', state.scissors);
+  canvas.classList.toggle('cutting', state.scissors);
+});
+$('gust').addEventListener('click', () => { ensureAudioResumed(); gust(); });
+$('release').addEventListener('click', () => {
+  for (let c = 0; c < COLS; c++) pinned[pid(0, c)] = 0;
+  state.released = true;
+  applyMaterialMass();
+});
+$('reset').addEventListener('click', () => { resetCloth(); updateTriValid(); for (let i = 0; i < 90; i++) simStep(time + i * SIM_DT); });
+$('sound').addEventListener('click', () => {
+  state.sound = !state.sound;
+  $('sound').setAttribute('aria-pressed', state.sound);
+  if (state.sound) startAudio(); else if (audio) audio.master.gain.setTargetAtTime(0, audio.ctx.currentTime, 0.3);
+});
+$('sheetToggle').addEventListener('click', () => {
+  const open = !$('panel').classList.contains('open');
+  $('panel').classList.toggle('open', open);
+  $('sheetToggle').setAttribute('aria-expanded', open);
+});
+let hintHidden = false;
+function hideHint() { if (!hintHidden) { hintHidden = true; setTimeout(() => $('hint').classList.add('faded'), 2500); } }
+
+$('sub').innerHTML = `Ткань на&nbsp;интеграторе Верле: ${fmt(NP)}&nbsp;узла и&nbsp;${fmt(NC)}&nbsp;связей. Ветер задувает с&nbsp;улицы, солнце светит сквозь неё и&nbsp;красит пол цветной тенью.`;
+function fmt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+
+// ======================================================================
+// Звук: ветер, шелест листвы, хлопки ткани, изредка птицы
+// ======================================================================
+let audio = null;
+function startAudio() {
+  if (!audio) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    const master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+    const len = ctx.sampleRate * 3;
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < len; i++) { // розовый шум
+      const w = Math.random() * 2 - 1;
+      b0 = 0.99765 * b0 + w * 0.099; b1 = 0.963 * b1 + w * 0.2965; b2 = 0.57 * b2 + w * 1.0526;
+      d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.2;
+    }
+    const mk = (type, f, q) => { const n = ctx.createBiquadFilter(); n.type = type; n.frequency.value = f; n.Q.value = q; return n; };
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const src2 = ctx.createBufferSource(); src2.buffer = buf; src2.loop = true; src2.playbackRate.value = 0.83;
+    const windBP = mk('bandpass', 420, 0.6), windG = ctx.createGain(); windG.gain.value = 0;
+    const leafHP = mk('highpass', 2600, 0.5), leafG = ctx.createGain(); leafG.gain.value = 0;
+    const flapLP = mk('lowpass', 700, 0.9), flapG = ctx.createGain(); flapG.gain.value = 0;
+    src.connect(windBP).connect(windG).connect(master);
+    src.connect(leafHP).connect(leafG).connect(master);
+    src2.connect(flapLP).connect(flapG).connect(master);
+    src.start(); src2.start();
+    audio = { ctx, master, windBP, windG, leafG, flapG, flapLP, nextBird: 3 };
+  }
+  audio.ctx.resume();
+  audio.master.gain.setTargetAtTime(0.55, audio.ctx.currentTime, 0.6);
+}
+function ensureAudioResumed() { if (audio && state.sound) audio.ctx.resume(); }
+function updateAudio(dt) {
+  if (!audio || !state.sound) return;
+  const now = audio.ctx.currentTime;
+  const w = state.wind * gustNow;
+  audio.windG.gain.setTargetAtTime(Math.min(0.9, w * 0.55), now, 0.25);
+  audio.windBP.frequency.setTargetAtTime(260 + w * 520, now, 0.3);
+  audio.leafG.gain.setTargetAtTime(Math.min(0.25, w * 0.09), now, 0.3);
+  const flap = clamp(Math.sqrt(clothEnergy) * 0.025 - 0.02, 0, 0.5);
+  audio.flapG.gain.setTargetAtTime(flap, now, 0.06);
+  audio.flapLP.frequency.setTargetAtTime(400 + flap * 1600, now, 0.1);
+  audio.nextBird -= dt;
+  if (audio.nextBird < 0) { audio.nextBird = 5 + Math.random() * 9; playBird(); }
+}
+function playBird() {
+  const { ctx, master } = audio; const t0 = ctx.currentTime;
+  const notes = 2 + Math.floor(Math.random() * 3);
+  const base = 2600 + Math.random() * 1400;
+  for (let i = 0; i < notes; i++) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    const t = t0 + i * (0.11 + Math.random() * 0.05);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(base * (1 + Math.random() * 0.2), t);
+    o.frequency.exponentialRampToValueAtTime(base * (1.35 + Math.random() * 0.3), t + 0.05);
+    o.frequency.exponentialRampToValueAtTime(base * 0.9, t + 0.09);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.018, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+    o.connect(g).connect(master); o.start(t); o.stop(t + 0.12);
+  }
+}
+function playSnip() {
+  if (!audio || !state.sound) return;
+  const { ctx, master } = audio; const t = ctx.currentTime;
+  const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  o.type = 'square'; o.frequency.setValueAtTime(2200, t); o.frequency.exponentialRampToValueAtTime(900, t + 0.03);
+  f.type = 'highpass'; f.frequency.value = 1500;
+  g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+  o.connect(f).connect(g).connect(master); o.start(t); o.stop(t + 0.05);
+}
+function playWhoosh() {
+  if (!audio || !state.sound) return;
+  audio.windG.gain.setTargetAtTime(0.9, audio.ctx.currentTime, 0.15);
+}
+
+// ======================================================================
+// Главный цикл
+// ======================================================================
+resetCloth();
+// UV-координаты ткани постоянны: загружаем их один раз после первой раскладки.
+// Без этого буфер атрибута aUv пуст: на Metal (MacBook) WebGL отбрасывает такой вызов отрисовки и ткани не видно,
+// а на Vulkan-реализациях чтение за границей даёт нули — ткань рисуется, но без узора и кромок.
+gl.bindBuffer(gl.ARRAY_BUFFER, bUv); gl.bufferData(gl.ARRAY_BUFFER, uvs, gl.STATIC_DRAW);
+updateTriValid();
+updateSun();
+updateCamera(1);
+// ткань заранее «повисела» на ветру — первый кадр уже живой
+for (let i = 0; i < 260; i++) { time += SIM_DT; gustNow = gustAt(time); simStep(time); }
+selectMaterial(state.mat);
+
+let last = performance.now(), simAcc = 0, frames = 0, slowAcc = 0, clock = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.min((now - last) / 1000, 0.1); last = now;
+  clock += dt;
+  state.gustBoost = Math.max(0, state.gustBoost - dt * 0.55);
+  simAcc += dt;
+  let steps = 0;
+  while (simAcc >= SIM_DT && steps < 3) {
+    time += SIM_DT; gustNow = gustAt(time);
+    simStep(time);
+    simAcc -= SIM_DT; steps++;
+  }
+  if (steps === 3) simAcc = 0;
+  updateSun();
+  updateCamera(dt);
+  updateDust(dt, time);
+  render();
+  updateAudio(dt);
+  // адаптивное разрешение
+  frames++; slowAcc += dt;
+  if (frames >= 45 && !SHOT) {
+    const avg = slowAcc / frames; frames = 0; slowAcc = 0;
+    if (clock > 5 && avg > 1 / 32 && quality > 0.55) { quality = Math.max(0.55, quality * 0.86); resize(); }
+    else if (avg < 1 / 57 && quality < 1) { quality = Math.min(1, quality * 1.08); resize(); }
+  }
+}
+requestAnimationFrame(frame);
+
+canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); console.warn('WebGL: контекст потерян'); document.getElementById('fallback').hidden = false; });
+</script>
+</body>
+</html>

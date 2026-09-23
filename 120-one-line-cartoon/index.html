@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Мультфильм из одной фразы</title>
+<meta name="description" content="Пишешь сюжет одной строкой — нейросеть пишет сценарий, движок снимает мультфильм с куклами, музыкой и репликами.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pangolin&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+        <rect x="5" y="17" width="38" height="25" rx="4" fill="#fbf2de" stroke="#2a1f1b" stroke-width="3"/>
+        <path d="M6 17 L40 8 L42 15 L8 24 Z" fill="#ff6a3d" stroke="#2a1f1b" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M14 13.5 L19 20 M23 11 L28 17.5 M32 8.8 L37 15" stroke="#2a1f1b" stroke-width="3"/>
+        <circle cx="18" cy="31" r="3" fill="#2a1f1b"/><circle cx="29" cy="31" r="3" fill="#2a1f1b"/>
+        <path d="M17 36 Q23.5 40 30 36" fill="none" stroke="#2a1f1b" stroke-width="2.6" stroke-linecap="round"/>
+      </svg>
+      <div class="brand-text">
+        <h1>Мультфильм из&nbsp;одной фразы</h1>
+        <p>Нейросеть пишет сценарий, движок снимает кино</p>
+      </div>
+    </div>
+
+    <form class="prompt" id="promptForm" autocomplete="off">
+      <div class="modes" role="tablist" aria-label="Что делаем">
+        <button type="button" class="mode on" data-mode="new" role="tab" aria-selected="true">Новый сюжет</button>
+        <button type="button" class="mode" data-mode="edit" role="tab" aria-selected="false">Правка</button>
+      </div>
+      <label class="sr" for="phrase">Сюжет одной строкой</label>
+      <input id="phrase" maxlength="140" spellcheck="false" placeholder="О чём мультфильм? Например: медведь боится темноты">
+      <button class="go" id="go" type="submit"><span class="go-label">Снять</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 L19 12 L5 19 Z" fill="currentColor"/></svg></button>
+    </form>
+
+    <div class="status">
+      <span class="badge" id="demoBadge" hidden>демо-режим — нейросеть не&nbsp;подключена</span>
+      <span class="cost" id="cost" title="Сколько потрачено на нейросеть в этой сессии">$0.0000</span>
+    </div>
+  </header>
+
+  <main class="stage-area">
+    <div class="screen" id="screen">
+      <canvas id="film" aria-label="Мультфильм"></canvas>
+      <div class="writing" id="writing" hidden>
+        <div class="clap" id="clap">
+          <div class="clap-top"></div>
+          <div class="clap-body">
+            <div class="clap-row"><span>Сюжет</span><b id="wPhrase">…</b></div>
+            <div class="clap-row"><span>Сцена</span><b id="wStep">Сценарист грызёт карандаш</b></div>
+            <div class="clap-row"><span>Дубль</span><b id="wTime">0 с</b></div>
+            <div class="clap-fail" id="wFail" role="alert" hidden>
+              <p id="wErr">Нейросеть не&nbsp;ответила.</p>
+              <div class="clap-actions">
+                <button type="button" class="go small" id="retry">Повторить дубль</button>
+                <button type="button" class="line-btn" id="keepOld">Оставить прежний</button>
+              </div>
+            </div>
+          </div>
+          <svg class="pencil" viewBox="0 0 120 40" aria-hidden="true"><path id="scribble" d="M4 30 C 20 6, 30 36, 44 18 S 70 8, 78 26 S 100 34, 116 10" fill="none" stroke="#2a1f1b" stroke-width="3" stroke-linecap="round"/></svg>
+        </div>
+      </div>
+      <button class="with-sound" id="withSound" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="currentColor"/><path d="M16 8.5 Q19 12 16 15.5 M18.5 6 Q23 12 18.5 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Смотреть со&nbsp;звуком
+      </button>
+    </div>
+
+    <div class="player" id="player">
+      <button class="pbtn" id="play" type="button" aria-label="Пауза">
+        <svg viewBox="0 0 24 24" class="i-pause" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.2" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.2" fill="currentColor"/></svg>
+        <svg viewBox="0 0 24 24" class="i-play" aria-hidden="true"><path d="M7 5 L19 12 L7 19 Z" fill="currentColor"/></svg>
+      </button>
+      <button class="pbtn" id="replay" type="button" aria-label="Смотреть сначала">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12 A7 7 0 1 0 8 6.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M8.5 2.5 L8.5 7 L4 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="timeline" id="timeline" role="slider" tabindex="0" aria-label="Перемотка" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="track"><div class="fill" id="fill"></div></div>
+        <div class="marks" id="marks"></div>
+        <div class="knob" id="knob"></div>
+      </div>
+      <span class="time" id="time">0:00 / 0:00</span>
+      <button class="pbtn" id="sound" type="button" aria-label="Включить звук" aria-pressed="false">
+        <svg viewBox="0 0 24 24" class="i-on" aria-hidden="true"><path d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="currentColor"/><path d="M16 8.5 Q19 12 16 15.5 M18.5 6 Q23 12 18.5 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 24 24" class="i-off" aria-hidden="true"><path d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="currentColor"/><path d="M16.5 9.5 L21 14.5 M21 9.5 L16.5 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="pbtn wide" id="scriptBtn" type="button" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3 H15 L19 7 V21 H6 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 11 H16 M9 14.5 H16 M9 18 H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>Сценарий</span>
+      </button>
+      <button class="pbtn" id="full" type="button" aria-label="Во весь экран">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9 V4 H9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <div class="shelf">
+      <div class="chips" id="chips" aria-label="Подсказки"></div>
+      <div class="demos"><span class="shelf-label">Готовые мультфильмы</span><div class="demo-list" id="demoList"></div></div>
+    </div>
+  </main>
+</div>
+
+<aside class="script" id="script" aria-hidden="true" aria-label="Сценарий">
+  <div class="script-head">
+    <h2>Сценарий</h2>
+    <div class="script-tabs" role="tablist">
+      <button type="button" class="stab on" data-tab="text" role="tab" aria-selected="true">Текст</button>
+      <button type="button" class="stab" data-tab="json" role="tab" aria-selected="false">Язык сцен</button>
+    </div>
+    <button type="button" class="pbtn close" id="scriptClose" aria-label="Закрыть сценарий">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="check" id="check"></div>
+  <div class="script-body" id="scriptText"></div>
+  <div class="script-json" id="scriptJsonWrap" hidden>
+    <textarea id="scriptJson" spellcheck="false" aria-label="Сценарий на языке сцен"></textarea>
+    <div class="json-actions"><span id="jsonMsg"></span><button type="button" class="go small" id="applyJson">Снять по этому тексту</button></div>
+  </div>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="../_ai/ai.js"></script>
+<script src="lang.js"></script>
+<script src="puppets.js"></script>
+<script src="stage.js"></script>
+<script src="music.js"></script>
+<script src="demos.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

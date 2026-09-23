@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Сапёр без угадывания</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=PT+Mono&family=Sofia+Sans+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --case: #23271c;         /* полевой планшет */
+    --case-2: #2c3123;
+    --paper: #e8e1c9;        /* топокарта */
+    --ink: #ece5cf;
+    --ink-2: #bdb79f;
+    --ink-3: #9a9580;
+    --olive: #5d6a3a;
+    --olive-hi: #75844a;
+    --olive-lo: #454f2b;
+    --brown: #8e6238;
+    --red: #b8412c;
+    --line: rgba(236, 229, 207, .16);
+    --stencil: "Oswald", "Arial Narrow", Impact, sans-serif;
+    --cond: "Sofia Sans Condensed", "Arial Narrow", sans-serif;
+    --mono: "PT Mono", "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: var(--case); color: var(--ink); font-family: var(--cond); }
+  body {
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, .035), transparent 60%),
+      repeating-linear-gradient(45deg, rgba(0, 0, 0, .05) 0 2px, transparent 2px 5px),
+      var(--case);
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: clamp(16px, 2.6vw, 34px) clamp(14px, 2.6vw, 36px) 28px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px 30px; grid-template-areas: "head head" "board side"; }
+  header { grid-area: head; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; }
+  .title h1 {
+    margin: 0; font-family: var(--stencil); font-weight: 700; font-size: clamp(30px, 3.6vw, 50px); letter-spacing: .04em; text-transform: uppercase; line-height: .95;
+    /* трафаретные перемычки: тонкие просветы поперёк букв */
+    -webkit-mask-image: linear-gradient(to bottom, #000 0 47%, transparent 47% 53%, #000 53% 100%);
+            mask-image: linear-gradient(to bottom, #000 0 47%, transparent 47% 53%, #000 53% 100%);
+  }
+  .title p { margin: 8px 0 0; color: var(--ink-2); font-size: 16px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 3px; background: rgba(0, 0, 0, .18); }
+  .seg button, .btn {
+    appearance: none; border: 0; background: transparent; color: var(--ink-2); font: 500 14px/1 var(--cond); letter-spacing: .02em;
+    padding: 9px 12px; min-height: 36px; border-radius: 6px; cursor: pointer; transition: background .2s ease, color .2s ease;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .seg button:hover, .btn:hover { color: var(--ink); background: rgba(236, 229, 207, .06); }
+  .seg button[aria-pressed=true] { background: var(--olive); color: #f6f1de; }
+  .seg button svg, .btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linejoin: round; }
+  .btn.primary { background: var(--paper); color: #2a2a1e; font-weight: 600; padding: 10px 16px; }
+  .btn.primary:hover { background: #f3edd8; color: #1f1f16; }
+  button:focus-visible { outline: 2px solid #d9b56b; outline-offset: 2px; }
+
+  .board-wrap { grid-area: board; position: relative; min-width: 0; }
+  .sheet {
+    position: relative; padding: 26px 26px 22px; border-radius: 6px;
+    background: #2f3526; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35), 0 18px 40px rgba(0, 0, 0, .35);
+  }
+  .sheet::before { content: ""; position: absolute; inset: 8px; border: 1.5px dashed rgba(236, 229, 207, .18); border-radius: 4px; pointer-events: none; }
+  svg#board { display: block; width: 100%; height: auto; max-height: calc(100vh - 190px); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  .gen { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(35, 39, 28, .78); font: 500 16px var(--cond); color: var(--ink-2); opacity: 0; pointer-events: none; transition: opacity .3s ease; border-radius: 6px; }
+  .gen.on { opacity: 1; }
+
+  aside { grid-area: side; display: flex; flex-direction: column; gap: 14px; }
+  .card { border: 1px solid var(--line); border-radius: 8px; background: rgba(0, 0, 0, .16); padding: 14px 16px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat .k { font-size: 13px; color: var(--ink-3); letter-spacing: .04em; }
+  .stat .v { font-family: var(--mono); font-size: 30px; line-height: 1.1; color: var(--ink); }
+  .card h2 { margin: 0 0 10px; font: 600 13px var(--cond); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+  .hintbtn { width: 100%; justify-content: center; }
+  .log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 360px; overflow: auto; }
+  .log li { font-size: 15px; line-height: 1.45; color: var(--ink-2); padding-left: 16px; position: relative; }
+  .log li::before { content: ""; position: absolute; left: 0; top: .5em; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+  .log li.safe::before { background: #8fbf6a; }
+  .log li.mine::before { background: #d4674d; }
+  .log li:first-child { color: var(--ink); }
+  .log li.empty { color: var(--ink-3); padding-left: 0; }
+  .log li.empty::before { display: none; }
+  .legend { font-size: 13.5px; color: var(--ink-3); line-height: 1.5; }
+  .legend b { color: var(--ink-2); font-weight: 500; }
+  .flagmode { display: none; }
+
+  .toast {
+    position: fixed; left: 50%; top: 22px; transform: translate(-50%, -12px); opacity: 0; pointer-events: none; z-index: 5;
+    background: var(--paper); color: #26261b; padding: 12px 18px; border-radius: 8px; font: 500 16px var(--cond);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .35); transition: opacity .35s ease, transform .35s ease; max-width: calc(100vw - 32px); text-align: center;
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* SVG */
+  .tile { cursor: pointer; transition: fill .15s ease; }
+  .tile:hover { filter: brightness(1.12); }
+  .num { font-family: var(--stencil); font-weight: 600; pointer-events: none; text-anchor: middle; dominant-baseline: central; }
+  .flag { pointer-events: none; transform-box: fill-box; transform-origin: 50% 100%; animation: plant .28s cubic-bezier(.3, 1.6, .5, 1); }
+  @keyframes plant { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .open-anim { animation: reveal .35s ease both; }
+  @keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
+  .hl-src { fill: none; stroke: #e0a93f; stroke-width: 2.6; animation: pulse 1.2s ease-in-out infinite; pointer-events: none; }
+  .hl-safe { fill: rgba(143, 191, 106, .45); stroke: #7fb35a; stroke-width: 2; pointer-events: none; animation: pulse 1.2s ease-in-out infinite; }
+  .hl-mine { fill: rgba(212, 103, 77, .45); stroke: #d4674d; stroke-width: 2; pointer-events: none; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .45; } }
+
+  @media (max-width: 980px) {
+    .wrap { grid-template-columns: 1fr; grid-template-areas: "head" "board" "side"; }
+    svg#board { max-height: none; }
+    aside { display: grid; grid-template-columns: 1fr 1fr; }
+    aside .card.logcard { grid-column: 1 / -1; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 14px 10px 24px; gap: 14px; }
+    .sheet { padding: 14px 10px 12px; }
+    .sheet::before { inset: 4px; }
+    .controls { width: 100%; }
+    .seg { flex: 1; }
+    .seg button { flex: 1; justify-content: center; padding: 9px 6px; }
+    .btn.primary { flex: 1; justify-content: center; }
+    aside { grid-template-columns: 1fr; }
+    .flagmode { display: inline-flex; }
+    .title p { font-size: 15px; }
+    .legend { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">
+      <h1>Сапёр без угадывания</h1>
+      <p>Каждое поле проверено решателем: до последней клетки хватает логики.</p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Форма клеток">
+        <button data-grid="square" aria-pressed="true" title="Квадраты"><svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11"/></svg>Квадраты</button>
+        <button data-grid="hex" aria-pressed="false" title="Соты"><svg viewBox="0 0 16 16"><path d="M8 1.8l5.4 3.1v6.2L8 14.2l-5.4-3.1V4.9z"/></svg>Соты</button>
+        <button data-grid="tri" aria-pressed="false" title="Треугольники"><svg viewBox="0 0 16 16"><path d="M8 2.2l6.2 11H1.8z"/></svg>Треугольники</button>
+      </div>
+      <div class="seg" role="group" aria-label="Сложность">
+        <button data-level="0" aria-pressed="false">Новичок</button>
+        <button data-level="1" aria-pressed="true">Любитель</button>
+        <button data-level="2" aria-pressed="false">Профи</button>
+      </div>
+      <button class="btn primary" id="newgame"><svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.6 2.2v2.4h-2.4"/></svg>Новое поле</button>
+    </div>
+  </header>
+
+  <div class="board-wrap">
+    <div class="sheet">
+      <svg id="board" role="grid" aria-label="Минное поле"></svg>
+      <div class="gen" id="gen">Решатель проверяет поле…</div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="card stats">
+      <div class="stat"><div class="k">Мин осталось</div><div class="v" id="left">40</div></div>
+      <div class="stat"><div class="k">Время</div><div class="v" id="time">0:00</div></div>
+    </div>
+    <div class="card">
+      <button class="btn primary hintbtn" id="hint"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.6"/><path d="M10.4 10.4l3.6 3.6"/></svg>Подсказка с объяснением</button>
+      <button class="btn flagmode" id="flagmode" aria-pressed="false" style="width:100%;justify-content:center;margin-top:8px"><svg viewBox="0 0 16 16"><path d="M4 14.5V2"/><path d="M4 2.5h8l-2.2 3 2.2 3H4"/></svg>Ставить флажки</button>
+    </div>
+    <div class="card logcard">
+      <h2>Журнал разведки</h2>
+      <ul class="log" id="log"><li class="empty">Нажмите «Подсказку» — решатель покажет следующий логический шаг и объяснит его.</li></ul>
+    </div>
+    <div class="card legend">
+      <b>Левая кнопка</b> — открыть, <b>правая</b> — флажок, клик по&nbsp;числу с&nbsp;нужным числом флажков открывает соседей. <b>H</b> — подсказка, <b>N</b> — новое поле.
+    </div>
+  </aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+// ─────────────────────────────────────────────────────────────
+// Решатель. Одна функция — работает и в основном потоке (подсказки), и в воркере (генерация).
+// ─────────────────────────────────────────────────────────────
+function SOLVER() {
+  function buildCons(nbrs, num, known) {
+    const cons = [];
+    for (let c = 0; c < num.length; c++) {
+      if (num[c] < 0) continue;
+      let k = 0; const U = [];
+      for (const nb of nbrs[c]) { if (num[nb] >= 0) continue; if (known[nb]) k++; else U.push(nb); }
+      if (U.length) cons.push({ c, U, need: num[c] - k, k });
+    }
+    return cons;
+  }
+
+  // Полный перебор расстановок в одном участке (с отсечениями)
+  function enumerate(C, Q, maxNodes) {
+    const idx = new Map(C.map((c, i) => [c, i]));
+    const cellCons = C.map(() => []);
+    const need = Q.map((q) => q.need), rem = Q.map((q) => q.U.length), got = Q.map(() => 0);
+    Q.forEach((q, qi) => q.U.forEach((u) => { const i = idx.get(u); if (i !== undefined) cellCons[i].push(qi); }));
+    const assign = new Int8Array(C.length), cnt = new Float64Array(C.length);
+    let sol = 0, nodes = 0, aborted = false;
+    (function rec(i) {
+      if (aborted) return;
+      if (++nodes > maxNodes) { aborted = true; return; }
+      if (i === C.length) { sol++; for (let k = 0; k < C.length; k++) if (assign[k]) cnt[k]++; return; }
+      for (let v = 0; v <= 1; v++) {
+        let ok = true;
+        for (const qi of cellCons[i]) { rem[qi]--; got[qi] += v; if (got[qi] > need[qi] || got[qi] + rem[qi] < need[qi]) ok = false; }
+        if (ok) { assign[i] = v; rec(i + 1); }
+        for (const qi of cellCons[i]) { rem[qi]++; got[qi] -= v; }
+        if (aborted) return;
+      }
+    })(0);
+    return aborted ? null : { sol, cnt };
+  }
+
+  // Первый логический вывод (от простого к сложному). null — логика бессильна.
+  function deduce(nbrs, num, known, totalMines) {
+    const cons = buildCons(nbrs, num, known);
+    // 1. одно число
+    for (const q of cons) {
+      if (q.need === 0) return { kind: 'allSafe', safe: q.U.slice(), mines: [], src: [q.c], d: { n: num[q.c], k: q.k, u: q.U.length } };
+      if (q.need === q.U.length) return { kind: 'allMines', safe: [], mines: q.U.slice(), src: [q.c], d: { n: num[q.c], k: q.k, need: q.need } };
+    }
+    // 2. пара чисел с общими клетками
+    const byCell = new Map();
+    cons.forEach((q, i) => q.U.forEach((u) => { let a = byCell.get(u); if (!a) byCell.set(u, (a = [])); a.push(i); }));
+    for (let i = 0; i < cons.length; i++) {
+      const A = cons[i], seen = new Set();
+      for (const u of A.U) for (const j of byCell.get(u)) {
+        if (j === i || seen.has(j)) continue;
+        seen.add(j);
+        const B = cons[j], setB = new Set(B.U);
+        const I = A.U.filter((x) => setB.has(x)), onlyA = A.U.filter((x) => !setB.has(x));
+        if (!onlyA.length) continue;
+        const onlyB = B.U.length - I.length;
+        const maxI = Math.min(I.length, A.need, B.need);
+        const minI = Math.max(0, A.need - onlyA.length, B.need - onlyB);
+        const d = { nA: num[A.c], nB: num[B.c], needA: A.need, needB: B.need, shared: I.length, onlyA: onlyA.length, maxI, minI };
+        if (A.need - maxI === onlyA.length) return { kind: 'pairMines', safe: [], mines: onlyA, src: [A.c, B.c], d };
+        if (A.need - minI === 0) return { kind: 'pairSafe', safe: onlyA, mines: [], src: [A.c, B.c], d };
+      }
+    }
+    // 3. общий счёт мин
+    let knownCount = 0; const unknown = [];
+    for (let c = 0; c < num.length; c++) { if (num[c] >= 0) continue; if (known[c]) knownCount++; else unknown.push(c); }
+    const remaining = totalMines - knownCount;
+    if (unknown.length && remaining === 0) return { kind: 'noneLeft', safe: unknown, mines: [], src: [], d: {} };
+    if (unknown.length && remaining === unknown.length) return { kind: 'allLeft', safe: [], mines: unknown, src: [], d: { r: remaining } };
+    // 4. перебор участков фронта
+    const parent = new Map();
+    const find = (x) => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+    cons.forEach((q) => q.U.forEach((u) => { if (!parent.has(u)) parent.set(u, u); }));
+    cons.forEach((q) => { for (let t = 1; t < q.U.length; t++) { const a = find(q.U[0]), b = find(q.U[t]); if (a !== b) parent.set(a, b); } });
+    const groups = new Map();
+    for (const u of parent.keys()) { const r = find(u); let g = groups.get(r); if (!g) groups.set(r, (g = [])); g.push(u); }
+    const comps = [...groups.values()].sort((a, b) => a.length - b.length);
+    for (const C of comps) {
+      if (C.length > 26) continue;
+      const set = new Set(C);
+      const Q = cons.filter((q) => set.has(q.U[0]));
+      // порядок обхода — по ограничениям, чтобы отсечения срабатывали раньше
+      const order = [], used = new Set();
+      Q.forEach((q) => q.U.forEach((u) => { if (!used.has(u)) { used.add(u); order.push(u); } }));
+      const r = enumerate(order, Q, 120000);
+      if (!r || !r.sol) continue;
+      const safe = [], mines = [];
+      order.forEach((c, i) => { if (r.cnt[i] === 0) safe.push(c); else if (r.cnt[i] === r.sol) mines.push(c); });
+      if (safe.length || mines.length) return { kind: 'enum', safe, mines, src: Q.map((q) => q.c), d: { sol: r.sol, cells: order.length } };
+    }
+    // 5. эндшпиль: перебор всех закрытых клеток с учётом общего числа мин
+    if (unknown.length <= 24 && unknown.length) {
+      const Q = cons.concat([{ c: -1, U: unknown, need: remaining }]);
+      const r = enumerate(unknown, Q, 250000);
+      if (r && r.sol) {
+        const safe = [], mines = [];
+        unknown.forEach((c, i) => { if (r.cnt[i] === 0) safe.push(c); else if (r.cnt[i] === r.sol) mines.push(c); });
+        if (safe.length || mines.length) return { kind: 'global', safe, mines, src: cons.map((q) => q.c), d: { sol: r.sol, r: remaining, cells: unknown.length } };
+      }
+    }
+    return null;
+  }
+
+  function counts(nbrs, mine) {
+    return nbrs.map((ns, c) => (mine[c] ? -1 : ns.reduce((s, n) => s + mine[n], 0)));
+  }
+  // Открыть клетку с каскадом по нулям (на копии знаний решателя)
+  function open(nbrs, cnt, num, c) {
+    const stack = [c], opened = [];
+    while (stack.length) {
+      const x = stack.pop();
+      if (num[x] >= 0) continue;
+      num[x] = cnt[x]; opened.push(x);
+      if (cnt[x] === 0) for (const n of nbrs[x]) if (num[n] < 0) stack.push(n);
+    }
+    return opened;
+  }
+  // Решается ли поле с первой клетки без единой догадки
+  function solvable(nbrs, mine, first, total) {
+    const n = mine.length, cnt = counts(nbrs, mine);
+    const num = new Int8Array(n).fill(-1), known = new Uint8Array(n);
+    open(nbrs, cnt, num, first);
+    let openCount = num.reduce((s, v) => s + (v >= 0), 0);
+    const target = n - total;
+    let steps = 0;
+    while (openCount < target) {
+      if (++steps > 4000) return false;
+      const d = deduce(nbrs, num, known, total);
+      if (!d) return false;
+      for (const m of d.mines) known[m] = 1;
+      for (const s of d.safe) { if (mine[s]) return false; openCount += open(nbrs, cnt, num, s).length; }
+    }
+    return true;
+  }
+  function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function generate(nbrs, total, first, seed, maxTries, onTry) {
+    const n = nbrs.length, R = rng(seed);
+    const forbidden = new Set([first, ...nbrs[first]]);
+    const pool = []; for (let c = 0; c < n; c++) if (!forbidden.has(c)) pool.push(c);
+    for (let t = 1; t <= maxTries; t++) {
+      for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+      const mine = new Uint8Array(n);
+      for (let i = 0; i < total; i++) mine[pool[i]] = 1;
+      if (onTry && t % 10 === 0) onTry(t);
+      if (solvable(nbrs, mine, first, total)) return { mine, tries: t };
+    }
+    return null;
+  }
+  return { deduce, counts, open, solvable, generate };
+}
+const S = SOLVER();
+
+// Генерация в воркере (воркер собран из той же функции SOLVER)
+let worker = null;
+try {
+  const src = `const S = (${SOLVER.toString()})();
+  onmessage = (e) => {
+    const { nbrs, total, first, seed, id } = e.data;
+    let res = null, tot = 0, extra = 0;
+    for (let round = 0; round < 6 && !res; round++) {
+      res = S.generate(nbrs, total - extra, first, seed + round * 7919, 260, (t) => postMessage({ id, progress: tot + t }));
+      tot += 260; if (!res) extra += 1;
+    }
+    postMessage({ id, done: true, mine: res ? Array.from(res.mine) : null, tries: res ? res.tries : 0, total: total - extra });
+  };`;
+  worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+} catch (e) { worker = null; }
+
+// ─────────────────────────────────────────────────────────────
+// Сетки: многоугольники; соседи — все клетки с общей вершиной
+// ─────────────────────────────────────────────────────────────
+function makeGrid(kind, W, H) {
+  const cells = [];
+  if (kind === 'square') {
+    const s = 40;
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) cells.push({ poly: [[i * s, j * s], [(i + 1) * s, j * s], [(i + 1) * s, (j + 1) * s], [i * s, (j + 1) * s]], col: i, row: j });
+  } else if (kind === 'hex') {
+    const r = 23, w = Math.sqrt(3) * r;
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const cx = w * (i + 0.5 + (j % 2) * 0.5), cy = r + j * 1.5 * r;
+      const poly = [];
+      for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 30); poly.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
+      cells.push({ poly, col: i, row: j });
+    }
+  } else {
+    const a = 46, h = a * Math.sqrt(3) / 2;
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const x0 = i * a / 2, y0 = j * h, up = (i + j) % 2 === 0;
+      const poly = up ? [[x0, y0 + h], [x0 + a / 2, y0], [x0 + a, y0 + h]] : [[x0, y0], [x0 + a, y0], [x0 + a / 2, y0 + h]];
+      cells.push({ poly, col: i, row: j, up });
+    }
+  }
+  const key = (p) => `${Math.round(p[0] * 10)},${Math.round(p[1] * 10)}`;
+  const byVert = new Map();
+  cells.forEach((c, id) => {
+    c.id = id;
+    c.cx = c.poly.reduce((s, p) => s + p[0], 0) / c.poly.length;
+    c.cy = c.poly.reduce((s, p) => s + p[1], 0) / c.poly.length;
+    if (kind === 'tri') c.cy = c.up ? c.poly[0][1] - (46 * Math.sqrt(3) / 2) / 3 : c.poly[0][1] + (46 * Math.sqrt(3) / 2) / 3;
+    c.poly.forEach((p) => { const k = key(p); let a = byVert.get(k); if (!a) byVert.set(k, (a = [])); a.push(id); });
+  });
+  const nbrs = cells.map((c) => { const s = new Set(); c.poly.forEach((p) => byVert.get(key(p)).forEach((o) => { if (o !== c.id) s.add(o); })); return [...s]; });
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  cells.forEach((c) => c.poly.forEach(([x, y]) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); }));
+  return { kind, cells, nbrs, box: { minX, minY, maxX, maxY }, size: kind === 'square' ? 40 : kind === 'hex' ? 40 : 34 };
+}
+
+const LEVELS = {
+  square: [[9, 9, 10], [16, 16, 40], [24, 16, 72]],
+  hex: [[10, 9, 10], [16, 13, 30], [22, 14, 50]],
+  tri: [[17, 8, 13], [27, 11, 42], [35, 13, 70]],
+};
+
+// ─────────────────────────────────────────────────────────────
+// Топокарта под полем: шум → изолинии (marching squares) → SVG
+// ─────────────────────────────────────────────────────────────
+function valueNoise(seed) {
+  const R = ((s) => () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; })(seed);
+  const perm = new Float32Array(512 * 512);
+  for (let i = 0; i < perm.length; i++) perm[i] = R();
+  const g = (x, y) => perm[((y & 511) << 9) | (x & 511)];
+  const sm = (t) => t * t * (3 - 2 * t);
+  const n = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = sm(x - xi), yf = sm(y - yi);
+    return (g(xi, yi) * (1 - xf) + g(xi + 1, yi) * xf) * (1 - yf) + (g(xi, yi + 1) * (1 - xf) + g(xi + 1, yi + 1) * xf) * yf; };
+  return (x, y) => n(x, y) * 0.55 + n(x * 2.1 + 17, y * 2.1 + 3) * 0.28 + n(x * 4.3 + 5, y * 4.3 + 41) * 0.17;
+}
+function topoMap(box, seed) {
+  const step = 7, pad = 30;
+  const x0 = box.minX - pad, y0 = box.minY - pad;
+  const W = Math.ceil((box.maxX - box.minX + pad * 2) / step) + 1, H = Math.ceil((box.maxY - box.minY + pad * 2) / step) + 1;
+  const noise = valueNoise(seed);
+  const f = new Float32Array(W * H);
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) f[j * W + i] = noise(i * step / 210, j * step / 210);
+  const levels = [];
+  for (let l = 0.2; l < 0.85; l += 0.035) levels.push(l);
+  const paths = levels.map((lv, li) => {
+    let d = '';
+    for (let j = 0; j < H - 1; j++) for (let i = 0; i < W - 1; i++) {
+      const a = f[j * W + i], b = f[j * W + i + 1], c = f[(j + 1) * W + i + 1], e = f[(j + 1) * W + i];
+      const code = (a > lv) | ((b > lv) << 1) | ((c > lv) << 2) | ((e > lv) << 3);
+      if (code === 0 || code === 15) continue;
+      const X = (t) => (x0 + (i + t) * step).toFixed(1), Y = (t) => (y0 + (j + t) * step).toFixed(1);
+      const top = [X((lv - a) / (b - a)), Y(0)], right = [X(1), Y((lv - b) / (c - b))], bot = [X((lv - e) / (c - e)), Y(1)], left = [X(0), Y((lv - a) / (e - a))];
+      const seg = (p, q) => { d += `M${p[0]} ${p[1]}L${q[0]} ${q[1]}`; };
+      switch (code) {
+        case 1: case 14: seg(left, top); break;
+        case 2: case 13: seg(top, right); break;
+        case 3: case 12: seg(left, right); break;
+        case 4: case 11: seg(right, bot); break;
+        case 6: case 9: seg(top, bot); break;
+        case 7: case 8: seg(left, bot); break;
+        case 5: seg(left, top); seg(right, bot); break;
+        case 10: seg(top, right); seg(bot, left); break;
+      }
+    }
+    return { d, index: li % 5 === 0 };
+  });
+  // вершины холмов с отметками высот
+  const peaks = [];
+  for (let j = 3; j < H - 3; j += 2) for (let i = 3; i < W - 3; i += 2) {
+    const v = f[j * W + i];
+    let top = v > 0.62;
+    for (let dj = -3; dj <= 3 && top; dj++) for (let di = -3; di <= 3; di++) if (f[(j + dj) * W + i + di] > v) { top = false; break; }
+    if (top) peaks.push({ x: x0 + i * step, y: y0 + j * step, h: (96 + v * 180).toFixed(1).replace('.', ',') });
+  }
+  // речка: спуск по склону из верхней части карты
+  let rx = W * 0.2 + (seed % 7) * W * 0.08, ry = 1, river = '';
+  for (let k = 0; k < 400; k++) {
+    const i = Math.round(rx), j = Math.round(ry);
+    if (i < 1 || j < 1 || i >= W - 1 || j >= H - 1) break;
+    river += (k ? 'L' : 'M') + (x0 + rx * step).toFixed(1) + ' ' + (y0 + ry * step).toFixed(1);
+    const gx = f[j * W + i + 1] - f[j * W + i - 1], gy = f[(j + 1) * W + i] - f[(j - 1) * W + i];
+    rx += -gx * 18 + Math.sin(k * 0.3) * 0.35; ry += Math.max(0.35, -gy * 18 + 0.5);
+  }
+  return { paths, peaks, river, frame: { x: x0, y: y0, w: (W - 1) * step, h: (H - 1) * step } };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Состояние игры
+// ─────────────────────────────────────────────────────────────
+const game = { kind: 'square', level: 1, grid: null, mine: null, cnt: null, total: 0, revealed: null, flag: null, over: false, won: false, t0: 0, elapsed: 0, genId: 0, flagMode: false };
+const board = $('board');
+
+function el(name, attrs, parent) {
+  const e = document.createElementNS(SVGNS, name);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const polyStr = (poly, inset, cx, cy) => poly.map(([x, y]) => `${(cx + (x - cx) * inset).toFixed(2)},${(cy + (y - cy) * inset).toFixed(2)}`).join(' ');
+
+const NUM_COLORS = ['', '#2d4f8c', '#3f6b2a', '#a13a25', '#5b3a82', '#7a2a2a', '#1f6b6b', '#222', '#555'];
+let layers = {};
+
+function renderBoard(mapSeed) {
+  const g = game.grid;
+  board.innerHTML = '';
+  const b = g.box, pad = 34;
+  board.setAttribute('viewBox', `${b.minX - pad} ${b.minY - pad} ${b.maxX - b.minX + pad * 2} ${b.maxY - b.minY + pad * 2}`);
+  const defs = el('defs', {}, board);
+  const pat = el('pattern', { id: 'hatch', width: 7, height: 7, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, defs);
+  el('rect', { width: 7, height: 7, fill: '#5d6a3a' }, pat);
+  el('line', { x1: 0, y1: 0, x2: 0, y2: 7, stroke: '#52602f', 'stroke-width': 3 }, pat);
+  const clip = el('clipPath', { id: 'boardclip' }, defs);
+  g.cells.forEach((c) => el('polygon', { points: polyStr(c.poly, 1, c.cx, c.cy) }, clip));
+
+  // карта
+  const map = el('g', {}, board);
+  const tm = topoMap(b, mapSeed);
+  el('rect', { x: b.minX - pad, y: b.minY - pad, width: b.maxX - b.minX + pad * 2, height: b.maxY - b.minY + pad * 2, fill: '#e8e1c9' }, map);
+  tm.paths.forEach((p) => el('path', { d: p.d, fill: 'none', stroke: '#9a6a3c', 'stroke-width': p.index ? 1.5 : 0.7, 'stroke-opacity': p.index ? 0.7 : 0.45 }, map));
+  el('path', { d: tm.river, fill: 'none', stroke: '#7ea3b3', 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-opacity': 0.75 }, map);
+  el('path', { d: tm.river, fill: 'none', stroke: '#b9d2da', 'stroke-width': 1.6, 'stroke-linecap': 'round', 'stroke-opacity': 0.8 }, map);
+  // километровая сетка
+  const gridStep = g.kind === 'square' ? 160 : 150;
+  for (let x = Math.ceil((b.minX - pad) / gridStep) * gridStep; x < b.maxX + pad; x += gridStep) el('line', { x1: x, y1: b.minY - pad, x2: x, y2: b.maxY + pad, stroke: '#3c4a6a', 'stroke-width': 0.6, 'stroke-opacity': 0.35 }, map);
+  for (let y = Math.ceil((b.minY - pad) / gridStep) * gridStep; y < b.maxY + pad; y += gridStep) el('line', { x1: b.minX - pad, y1: y, x2: b.maxX + pad, y2: y, stroke: '#3c4a6a', 'stroke-width': 0.6, 'stroke-opacity': 0.35 }, map);
+  // цифровка километровой сетки по краям и стрелка севера — как на настоящем листе карты
+  const kmBase = 40 + (mapSeed % 50);
+  let k = 0;
+  for (let x = Math.ceil((b.minX - pad) / gridStep) * gridStep; x < b.maxX + pad; x += gridStep, k++) {
+    const t = el('text', { x: x + 3, y: b.minY - pad + 11, 'font-family': 'PT Mono, monospace', 'font-size': 10, fill: '#3c4a6a', 'fill-opacity': 0.75 }, map);
+    t.textContent = String(kmBase + k).padStart(2, '0');
+  }
+  k = 0;
+  for (let y = Math.ceil((b.minY - pad) / gridStep) * gridStep; y < b.maxY + pad; y += gridStep, k++) {
+    const t = el('text', { x: b.minX - pad + 3, y: y - 3, 'font-family': 'PT Mono, monospace', 'font-size': 10, fill: '#3c4a6a', 'fill-opacity': 0.75 }, map);
+    t.textContent = String(kmBase + 17 - k).padStart(2, '0');
+  }
+  const nx = b.maxX + pad - 16, ny = b.minY - pad + 8;
+  el('path', { d: `M${nx} ${ny}l6 17l-6 -4l-6 4z`, fill: '#2b2a22' }, map);
+  const nt = el('text', { x: nx, y: ny + 29, 'text-anchor': 'middle', 'font-family': 'Oswald, sans-serif', 'font-weight': 600, 'font-size': 10, fill: '#2b2a22' }, map);
+  nt.textContent = 'С';
+  tm.peaks.forEach((p) => {
+    el('path', { d: `M${p.x - 3} ${p.y + 2}L${p.x} ${p.y - 3}L${p.x + 3} ${p.y + 2}Z`, fill: '#6b4a2a' }, map);
+    const t = el('text', { x: p.x + 5, y: p.y - 3, 'font-family': 'PT Mono, monospace', 'font-size': 8.5, fill: '#6b4a2a' }, map);
+    t.textContent = p.h;
+  });
+
+  layers.open = el('g', {}, board);
+  layers.tiles = el('g', {}, board);
+  layers.nums = el('g', {}, board);
+  layers.flags = el('g', {}, board);
+  layers.fx = el('g', {}, board);
+  layers.hl = el('g', {}, board);
+
+  game.tileEls = g.cells.map((c) => {
+    const p = el('polygon', { points: polyStr(c.poly, g.kind === 'tri' ? 0.9 : 0.93, c.cx, c.cy), fill: 'url(#hatch)', stroke: '#3b4424', 'stroke-width': 1, class: 'tile', 'data-id': c.id }, layers.tiles);
+    return p;
+  });
+  game.flagEls = new Array(g.cells.length).fill(null);
+}
+
+function cellSize() { return game.kind === 'square' ? 40 : game.kind === 'hex' ? 40 : 30; }
+
+function drawOpened(ids, animate) {
+  const g = game.grid;
+  ids.forEach((id, k) => {
+    const c = g.cells[id];
+    const tile = game.tileEls[id];
+    if (tile) { tile.remove(); game.tileEls[id] = null; }
+    const shade = el('polygon', { points: polyStr(c.poly, 1, c.cx, c.cy), fill: 'rgba(240, 233, 212, .5)', stroke: 'rgba(90, 80, 50, .22)', 'stroke-width': 0.8 }, layers.open);
+    if (animate) { shade.classList.add('open-anim'); shade.style.animationDelay = Math.min(k * 6, 380) + 'ms'; }
+    const n = game.cnt[id];
+    if (n > 0) {
+      const fs = cellSize() * (game.kind === 'tri' ? 0.5 : 0.6);
+      const t = el('text', { x: c.cx, y: c.cy + (game.kind === 'tri' ? (c.up ? 2 : -2) : 1), class: 'num', 'font-size': fs, fill: NUM_COLORS[n] || '#222' }, layers.nums);
+      t.textContent = n;
+      if (animate) { t.classList.add('open-anim'); t.style.animationDelay = Math.min(k * 6, 380) + 'ms'; }
+    }
+  });
+}
+
+function drawFlag(id, on) {
+  const c = game.grid.cells[id];
+  if (game.flagEls[id]) { game.flagEls[id].remove(); game.flagEls[id] = null; }
+  if (!on) return;
+  const s = cellSize() * (game.kind === 'tri' ? 0.72 : 0.9);
+  const g = el('g', { class: 'flag' }, layers.flags);
+  const x = c.cx - s * 0.12, y = c.cy + s * 0.3;
+  el('line', { x1: x, y1: y, x2: x, y2: y - s * 0.58, stroke: '#2b2a22', 'stroke-width': 1.6, 'stroke-linecap': 'round' }, g);
+  el('path', { d: `M${x} ${y - s * 0.58}L${x + s * 0.38} ${y - s * 0.44}L${x} ${y - s * 0.3}Z`, fill: '#c2412a', stroke: '#8d2a1a', 'stroke-width': 0.8 }, g);
+  el('ellipse', { cx: x, cy: y, rx: s * 0.13, ry: s * 0.04, fill: 'rgba(0,0,0,.35)' }, g);
+  game.flagEls[id] = g;
+}
+
+function drawMine(id, exploded) {
+  const c = game.grid.cells[id], s = cellSize() * (game.kind === 'tri' ? 0.28 : 0.34);
+  const g = el('g', {}, layers.fx);
+  if (exploded) el('circle', { cx: c.cx, cy: c.cy, r: s * 2.1, fill: '#d25a3a', 'fill-opacity': 0.55 }, g);
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4;
+    el('line', { x1: c.cx, y1: c.cy, x2: c.cx + Math.cos(a) * s * 1.35, y2: c.cy + Math.sin(a) * s * 1.35, stroke: '#1d1d17', 'stroke-width': 2, 'stroke-linecap': 'round' }, g);
+  }
+  el('circle', { cx: c.cx, cy: c.cy, r: s, fill: '#1d1d17' }, g);
+  el('circle', { cx: c.cx - s * 0.3, cy: c.cy - s * 0.3, r: s * 0.25, fill: '#eee' , 'fill-opacity': 0.7 }, g);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Новая игра
+// ─────────────────────────────────────────────────────────────
+function newGame() {
+  const [W, H, total] = LEVELS[game.kind][game.level];
+  const grid = makeGrid(game.kind, W, H);
+  Object.assign(game, { grid, total, over: false, won: false, t0: 0, elapsed: 0, mine: null });
+  game.revealed = new Uint8Array(grid.cells.length);
+  game.flag = new Uint8Array(grid.cells.length);
+  // первая клетка — ближайшая к центру поля
+  const cx = (grid.box.minX + grid.box.maxX) / 2, cy = (grid.box.minY + grid.box.maxY) / 2;
+  let first = 0, best = Infinity;
+  grid.cells.forEach((c) => { const d = (c.cx - cx) ** 2 + (c.cy - cy) ** 2; if (d < best) { best = d; first = c.id; } });
+  game.first = first;
+  const seed = (Math.random() * 1e9) | 0;
+  renderBoard(seed);
+  clearHighlights();
+  setLog(null);
+  updateStats();
+  const id = ++game.genId;
+  $('gen').classList.add('on');
+  $('gen').textContent = 'Решатель проверяет поле…';
+  const finish = (mineArr, usedTotal, tries) => {
+    if (id !== game.genId) return;
+    $('gen').classList.remove('on');
+    if (!mineArr) { toast('Не удалось собрать поле без догадок — попробуйте ещё раз'); return; }
+    game.mine = Uint8Array.from(mineArr);
+    game.total = usedTotal;
+    game.cnt = S.counts(grid.nbrs, game.mine);
+    game.t0 = performance.now();
+    // первый ход делаем сами: с него начинается логическая цепочка
+    openCell(first, true);
+    updateStats();
+    logLine(`Поле собрано с ${tries}-й попытки: решатель прошёл его целиком без догадок. Первая клетка открыта за вас.`, '');
+  };
+  if (worker) {
+    worker.onmessage = (e) => {
+      if (e.data.id !== id) return;
+      if (e.data.progress) { $('gen').textContent = `Решатель проверяет поле… попытка ${e.data.progress}`; return; }
+      if (e.data.done) finish(e.data.mine, e.data.total, e.data.tries);
+    };
+    worker.postMessage({ nbrs: grid.nbrs, total, first, seed, id });
+  } else {
+    setTimeout(() => { const r = S.generate(grid.nbrs, total, first, seed, 800); finish(r && Array.from(r.mine), total, r ? r.tries : 0); }, 30);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Ходы
+// ─────────────────────────────────────────────────────────────
+function openCell(id, animate) {
+  if (game.over || !game.mine || game.revealed[id] || game.flag[id]) return;
+  if (game.mine[id]) { lose(id); return; }
+  const stack = [id], opened = [];
+  while (stack.length) {
+    const x = stack.pop();
+    if (game.revealed[x] || game.flag[x]) continue;
+    game.revealed[x] = 1; opened.push(x);
+    if (game.cnt[x] === 0) for (const n of game.grid.nbrs[x]) if (!game.revealed[n]) stack.push(n);
+  }
+  drawOpened(opened, animate);
+  clearHighlights();
+  checkWin();
+}
+function toggleFlag(id) {
+  if (game.over || !game.mine || game.revealed[id]) return;
+  game.flag[id] ^= 1;
+  drawFlag(id, game.flag[id]);
+  clearHighlights();
+  updateStats();
+}
+function chord(id) {
+  if (!game.revealed[id] || game.cnt[id] <= 0) return;
+  const ns = game.grid.nbrs[id];
+  const f = ns.filter((n) => game.flag[n]).length;
+  if (f !== game.cnt[id]) return;
+  ns.forEach((n) => { if (!game.revealed[n] && !game.flag[n]) openCell(n, true); });
+}
+function lose(id) {
+  game.over = true;
+  drawMine(id, true);
+  game.mine.forEach((m, i) => { if (m && i !== id && !game.flag[i]) drawMine(i, false); });
+  // можно ли было вычислить?
+  const why = explainCell(id);
+  toast('Мина. ' + (why ? 'Но её можно было вычислить — смотрите журнал.' : 'Нажмите «Новое поле».'));
+  if (why) logLine('Почему здесь мина: ' + why, 'mine');
+}
+function checkWin() {
+  const n = game.grid.cells.length;
+  let open = 0; for (let i = 0; i < n; i++) open += game.revealed[i];
+  if (open === n - game.total) {
+    game.over = true; game.won = true;
+    game.mine.forEach((m, i) => { if (m && !game.flag[i]) { game.flag[i] = 1; drawFlag(i, true); } });
+    updateStats();
+    toast(`Поле разминировано за ${fmtTime(game.elapsed)}. Ни одной догадки.`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Подсказки: решатель идёт по цепочке выводов и останавливается на первом, которого ещё нет на доске
+// ─────────────────────────────────────────────────────────────
+const pl = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? b : c; };
+function explain(d) {
+  const q = (n) => `«${n}»`;
+  switch (d.kind) {
+    case 'allSafe': return `Вокруг ${q(d.d.n)} уже ${d.d.k} ${pl(d.d.k, 'мина', 'мины', 'мин')} под флажками — ровно столько, сколько требует число. Остальные закрытые клетки рядом безопасны.`;
+    case 'allMines': return `${q(d.d.n)} требует ещё ${d.d.need} ${pl(d.d.need, 'мину', 'мины', 'мин')}, а закрытых клеток рядом ровно столько же. Все они — мины.`;
+    case 'pairMines': return `Сравните ${q(d.d.nA)} и ${q(d.d.nB)}. В их ${d.d.shared} ${pl(d.d.shared, 'общей клетке', 'общих клетках', 'общих клетках')} поместится не больше ${d.d.maxI} ${pl(d.d.maxI, 'мины', 'мин', 'мин')}, а ${q(d.d.nA)} ждёт ещё ${d.d.needA}. Значит, ${d.d.onlyA === 1 ? 'клетка только у' : `все ${d.d.onlyA} ${pl(d.d.onlyA, 'клетка', 'клетки', 'клеток')} только у`} ${q(d.d.nA)} — ${d.d.onlyA === 1 ? 'мина' : 'мины'}.`;
+    case 'pairSafe': return `${q(d.d.nA)} и ${q(d.d.nB)} делят ${d.d.shared} ${pl(d.d.shared, 'клетку', 'клетки', 'клеток')}. Там точно не меньше ${d.d.minI} ${pl(d.d.minI, 'мины', 'мин', 'мин')} — этого уже хватает ${q(d.d.nA)}. Остальные его клетки безопасны.`;
+    case 'noneLeft': return 'Все мины уже найдены — оставшиеся закрытые клетки безопасны.';
+    case 'allLeft': return `Мин осталось ровно столько, сколько закрытых клеток (${d.d.r}). Все они — мины.`;
+    case 'enum': return `Простых правил не хватает — нужен перебор. На этом участке ${d.d.cells} ${pl(d.d.cells, 'клетка', 'клетки', 'клеток')} и ${d.d.sol} ${pl(d.d.sol, 'допустимая расстановка', 'допустимые расстановки', 'допустимых расстановок')} мин. В каждой из них ${d.safe.length ? 'отмеченные клетки пусты' : 'в отмеченных клетках мины'}.`;
+    case 'global': return `Эндшпиль: осталось ${d.d.r} ${pl(d.d.r, 'мина', 'мины', 'мин')} на ${d.d.cells} ${pl(d.d.cells, 'клетку', 'клетки', 'клеток')}. С учётом общего счёта из ${d.d.sol} ${pl(d.d.sol, 'варианта', 'вариантов', 'вариантов')} следует единственный вывод.`;
+  }
+  return '';
+}
+function playerNum() {
+  const n = game.grid.cells.length, num = new Int8Array(n).fill(-1);
+  for (let i = 0; i < n; i++) if (game.revealed[i]) num[i] = game.cnt[i];
+  return num;
+}
+function nextHint() {
+  const nbrs = game.grid.nbrs, num = playerNum(), known = new Uint8Array(num.length);
+  for (let guard = 0; guard < 2000; guard++) {
+    const d = S.deduce(nbrs, num, known, game.total);
+    if (!d) return null;
+    const wrongFlags = d.safe.filter((c) => game.flag[c]);
+    const newSafe = d.safe.filter((c) => !game.revealed[c]);
+    const newMines = d.mines.filter((c) => !game.flag[c]);
+    if (wrongFlags.length || newSafe.length || newMines.length) return { d, wrongFlags };
+    d.mines.forEach((m) => { known[m] = 1; });
+  }
+  return null;
+}
+function explainCell(target) {
+  const nbrs = game.grid.nbrs, num = playerNum(), known = new Uint8Array(num.length);
+  for (let guard = 0; guard < 2000; guard++) {
+    const d = S.deduce(nbrs, num, known, game.total);
+    if (!d) return null;
+    if (d.mines.includes(target)) return explain(d);
+    d.mines.forEach((m) => { known[m] = 1; });
+    if (!d.mines.length) return null; // дальше нужны открытия — прямого вывода нет
+  }
+  return null;
+}
+function clearHighlights() { if (layers.hl) layers.hl.innerHTML = ''; }
+function highlight(d) {
+  clearHighlights();
+  const g = game.grid;
+  d.src.forEach((c) => { const cell = g.cells[c]; el('polygon', { points: polyStr(cell.poly, 0.84, cell.cx, cell.cy), class: 'hl-src' }, layers.hl); });
+  d.safe.forEach((c) => { const cell = g.cells[c]; el('polygon', { points: polyStr(cell.poly, 0.8, cell.cx, cell.cy), class: 'hl-safe' }, layers.hl); });
+  d.mines.forEach((c) => { const cell = g.cells[c]; el('polygon', { points: polyStr(cell.poly, 0.8, cell.cx, cell.cy), class: 'hl-mine' }, layers.hl); });
+}
+function hint() {
+  if (!game.mine || game.over) return;
+  const h = nextHint();
+  if (!h) { logLine('Логических шагов не осталось — поле почти решено.', ''); return; }
+  highlight(h.d);
+  let text = explain(h.d);
+  if (h.wrongFlags.length) text = `Флажок стоит зря: эта клетка безопасна. ${text}`;
+  logLine(text, h.d.safe.length ? 'safe' : 'mine');
+}
+
+// ─────────────────────────────────────────────────────────────
+// Интерфейс
+// ─────────────────────────────────────────────────────────────
+function setLog(msg) { $('log').innerHTML = msg ? '' : '<li class="empty">Нажмите «Подсказку» — решатель покажет следующий логический шаг и объяснит его.</li>'; }
+function logLine(text, cls) {
+  const log = $('log');
+  const empty = log.querySelector('.empty');
+  if (empty) empty.remove();
+  const li = document.createElement('li');
+  li.className = cls || '';
+  li.textContent = text;
+  log.prepend(li);
+  while (log.children.length > 12) log.lastChild.remove();
+}
+let toastTm;
+function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toastTm); toastTm = setTimeout(() => e.classList.remove('on'), 4200); }
+const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+function updateStats() {
+  const flags = game.flag ? game.flag.reduce((s, v) => s + v, 0) : 0;
+  $('left').textContent = Math.max(0, game.total - flags);
+  $('time').textContent = fmtTime(game.elapsed);
+}
+setInterval(() => {
+  if (game.t0 && !game.over) { game.elapsed = (performance.now() - game.t0) / 1000; $('time').textContent = fmtTime(game.elapsed); }
+}, 250);
+
+function tileFrom(e) { const t = e.target.closest('.tile'); return t ? +t.dataset.id : -1; }
+function numFrom(e) {
+  // клик по открытой клетке: ищем ближайшую открытую по координатам
+  const pt = board.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const p = pt.matrixTransform(board.getScreenCTM().inverse());
+  let best = -1, bd = Infinity;
+  game.grid.cells.forEach((c) => { const d = (c.cx - p.x) ** 2 + (c.cy - p.y) ** 2; if (d < bd) { bd = d; best = c.id; } });
+  return best;
+}
+let press = null;
+board.addEventListener('contextmenu', (e) => e.preventDefault());
+board.addEventListener('pointerdown', (e) => {
+  if (!game.grid) return;
+  press = { id: tileFrom(e), x: e.clientX, y: e.clientY, t: performance.now(), btn: e.button, type: e.pointerType };
+  if (e.pointerType === 'touch') press.timer = setTimeout(() => { if (press && press.id >= 0) { toggleFlag(press.id); press.done = true; if (navigator.vibrate) navigator.vibrate(18); } }, 420);
+});
+board.addEventListener('pointerup', (e) => {
+  if (!press) return;
+  clearTimeout(press.timer);
+  const p = press; press = null;
+  if (p.done) return;
+  const id = tileFrom(e);
+  if (id >= 0 && id === p.id) {
+    if (p.btn === 2 || game.flagMode) toggleFlag(id); else openCell(id, true);
+  } else if (id < 0) {
+    const c = numFrom(e);
+    if (c >= 0 && game.revealed[c]) chord(c);
+  }
+});
+board.addEventListener('pointercancel', () => { if (press) clearTimeout(press.timer); press = null; });
+
+document.querySelectorAll('[data-grid]').forEach((b) => b.addEventListener('click', () => {
+  game.kind = b.dataset.grid;
+  document.querySelectorAll('[data-grid]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  newGame();
+}));
+document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => {
+  game.level = +b.dataset.level;
+  document.querySelectorAll('[data-level]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  newGame();
+}));
+$('newgame').addEventListener('click', newGame);
+$('hint').addEventListener('click', hint);
+$('flagmode').addEventListener('click', () => { game.flagMode = !game.flagMode; $('flagmode').setAttribute('aria-pressed', String(game.flagMode)); $('flagmode').style.background = game.flagMode ? 'var(--olive)' : ''; });
+addEventListener('keydown', (e) => {
+  if (e.key === 'h' || e.key === 'H' || e.key === 'р' || e.key === 'Р') hint();
+  if (e.key === 'n' || e.key === 'N' || e.key === 'т' || e.key === 'Т') newGame();
+});
+
+newGame();
+})();
+</script>
+</body>
+</html>

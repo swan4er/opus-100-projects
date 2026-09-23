@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Гиперболический кафель</title>
+<meta name="description" content="Замощения {p, q} плоскости Лобачевского в диске Пуанкаре — как на гравюрах Эшера «Предел круга».">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,500;0,700;1,500&family=Alegreya+Sans:wght@400;500;700&family=Alegreya+Sans+SC:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#efe6d0;
+  --ink:#1d1a16;
+  --ochre:#b8792a;
+  --teal:#2e6b66;
+  --soft:#6b5f4f;
+  --line:rgba(29,26,22,.2);
+  --serif:'Alegreya',Georgia,'Times New Roman',serif;
+  --sans:'Alegreya Sans','Helvetica Neue',Arial,sans-serif;
+  --sc:'Alegreya Sans SC','Alegreya Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--paper);color:var(--ink);overflow:hidden;font-family:var(--sans);-webkit-font-smoothing:antialiased}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#gl.dragging{cursor:grabbing}
+#gl.pointing{cursor:pointer}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--ochre);outline-offset:2px}
+#fade{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity .55s ease}
+
+/* ── правая колонка: каталожная карточка ── */
+.card{position:fixed;top:0;right:0;bottom:0;width:420px;padding:36px 40px 28px 38px;display:flex;flex-direction:column;gap:18px;overflow:auto;scrollbar-width:thin;border-left:1px solid var(--line);background:linear-gradient(to right,rgba(239,230,208,0),rgba(239,230,208,.55) 22px)}
+.kicker{font-family:var(--sc);font-size:14px;letter-spacing:.08em;color:var(--soft)}
+h1{font-family:var(--serif);font-weight:700;font-size:40px;line-height:.98;letter-spacing:-.01em;margin-top:8px}
+.pq{display:flex;align-items:baseline;gap:18px;border-top:1px solid var(--ink);border-bottom:1px solid var(--line);padding:14px 0 16px}
+.pq .sym{font-family:var(--serif);font-style:italic;font-weight:500;font-size:66px;line-height:.9;letter-spacing:-.02em;white-space:nowrap}
+.pq .sym b{font-weight:500;color:var(--ochre)}
+.pq .desc{font-size:16px;line-height:1.3;color:var(--ink)}
+.steppers{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stepper{display:flex;flex-direction:column;border:1px solid var(--line);padding:8px 4px 4px}
+.stepper span{font-size:14px;color:var(--soft);padding-left:8px;white-space:nowrap}
+.stepper span i{font-family:var(--serif);font-style:italic;font-size:19px;color:var(--ink);margin-right:4px}
+.stepper .ctl{display:flex;align-items:center;justify-content:space-between}
+.stepper output{font-family:var(--serif);font-size:22px;min-width:30px;text-align:center;font-variant-numeric:lining-nums}
+.stepper button{width:40px;height:40px;display:grid;place-items:center;transition:background .2s}
+.stepper button:hover:not(:disabled){background:rgba(29,26,22,.07)}
+.stepper button:disabled{opacity:.25;cursor:not-allowed}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;font-size:14px;line-height:1.35;color:var(--soft)}
+.facts b{display:block;font-family:var(--serif);font-weight:500;font-size:22px;color:var(--ink);font-variant-numeric:lining-nums}
+.text{font-family:var(--serif);font-size:16px;line-height:1.42;color:#2c2721}
+.label{font-family:var(--sc);font-size:14px;letter-spacing:.06em;color:var(--soft);margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font-size:14px;padding:8px 11px;border:1px solid var(--line);transition:background .2s,border-color .2s,color .2s}
+.chips button:hover{border-color:rgba(29,26,22,.55)}
+.chips button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chips.pqchips button{font-family:var(--serif);font-style:italic;font-size:16px;padding:6px 11px}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.swatches button{display:flex;align-items:center;gap:8px;font-size:14px;padding:6px 10px 6px 6px;border:1px solid var(--line);transition:border-color .2s}
+.swatches button.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.swatches i{width:22px;height:22px;border-radius:50%;display:block;border:1px solid rgba(29,26,22,.35)}
+.toggles{display:flex;flex-wrap:wrap;gap:6px}
+.toggles button{font-size:14px;padding:8px 11px 8px 30px;border:1px solid var(--line);position:relative}
+.toggles button::before{content:'';position:absolute;left:10px;top:50%;width:12px;height:12px;margin-top:-6px;border:1.5px solid var(--ink)}
+.toggles button.on::before{background:var(--ink);box-shadow:inset 0 0 0 2px var(--paper)}
+.actions{display:flex;gap:8px;margin-top:auto;padding-top:6px}
+.actions button{flex:1;font-size:15px;padding:11px 12px;border:1px solid var(--ink);display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s,color .2s}
+.actions button:hover{background:var(--ink);color:var(--paper)}
+.hint{font-size:14px;line-height:1.5;color:var(--soft)}
+.hint b{font-weight:500;color:var(--ink)}
+
+.fail{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:32px;background:var(--paper);z-index:9}
+.fail h2{font-family:var(--serif);font-size:40px;margin-bottom:10px}
+.fail p{font-size:18px;color:var(--soft);max-width:34ch}
+
+/* ── мобильная раскладка: диск сверху, карточка — шторка снизу ── */
+@media (max-width:900px){
+  .card{top:auto;left:0;width:auto;max-height:44vh;padding:18px 20px calc(18px + env(safe-area-inset-bottom));gap:16px;border-left:0;border-top:1px solid var(--ink);background:rgba(239,230,208,.97)}
+  .head{position:fixed;left:20px;right:20px;top:16px}
+  h1{font-size:30px}
+  .kicker{font-size:13px}
+  .pq{padding:6px 0 10px;border-top:0}
+  .pq .sym{font-size:52px}
+  .text,.hint.desk{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Гиперболическое замощение. Тяните, чтобы идти по плоскости; клик по плитке приводит её в центр."></canvas>
+<canvas id="fade"></canvas>
+
+<aside class="card">
+  <div class="head">
+    <div class="kicker">геометрия Лобачевского · диск Пуанкаре</div>
+    <h1>Гиперболический кафель</h1>
+  </div>
+  <div class="pq">
+    <div class="sym" id="sym">{7,&nbsp;3}</div>
+    <div class="desc" id="pqdesc"></div>
+  </div>
+  <div class="steppers">
+    <div class="stepper"><span><i>p</i> сторон у&nbsp;плитки</span><div class="ctl"><button id="pm" aria-label="Меньше сторон"><svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.6"><path d="M2 6h8"/></svg></button><output id="pv">7</output><button id="pp" aria-label="Больше сторон"><svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.6"><path d="M2 6h8M6 2v8"/></svg></button></div></div>
+    <div class="stepper"><span><i>q</i> плиток в&nbsp;вершине</span><div class="ctl"><button id="qm" aria-label="Меньше плиток в вершине"><svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.6"><path d="M2 6h8"/></svg></button><output id="qv">3</output><button id="qp" aria-label="Больше плиток в вершине"><svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.6"><path d="M2 6h8M6 2v8"/></svg></button></div></div>
+  </div>
+  <div class="facts" id="facts"></div>
+  <p class="text" id="explain"></p>
+  <div>
+    <div class="label">Готовые узоры</div>
+    <div class="chips pqchips" id="presets"></div>
+  </div>
+  <div>
+    <div class="label">Модель</div>
+    <div class="chips" id="models">
+      <button data-m="0" class="on">Диск Пуанкаре</button>
+      <button data-m="3">Диск Клейна</button>
+      <button data-m="1">Полуплоскость</button>
+      <button data-m="2">Полоса</button>
+    </div>
+  </div>
+  <div>
+    <div class="label">Оттиск</div>
+    <div class="swatches" id="palettes"></div>
+  </div>
+  <div class="toggles" id="toggles">
+    <button data-t="motif" class="on">Розетки</button>
+    <button data-t="hatch" class="on">Штриховка</button>
+    <button data-t="tri">Треугольники</button>
+  </div>
+  <p class="hint desk"><b>Тяните</b> — идти по&nbsp;плоскости. <b>Клик по&nbsp;плитке</b> — привести её&nbsp;в&nbsp;центр. <b>Колесо</b> — поворот. <b>Стрелки</b> — шаг.</p>
+  <div class="actions">
+    <button id="home"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="7" cy="7" r="5.5"/><circle cx="7" cy="7" r="1.4" fill="currentColor"/></svg>В начало</button>
+    <button id="snap"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7 1.5v8M3.8 6.5L7 9.7l3.2-3.2M2 12.5h10"/></svg>Оттиск PNG</button>
+  </div>
+</aside>
+<div class="fail" id="fail"><div><h2>Нужен WebGL2</h2><p>Откройте страницу в свежем Chrome, Safari или Firefox.</p></div></div>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════════
+   Гиперболический кафель: замощение {p, q} плоскости Лобачевского.
+   Шейдер переводит пиксель в диск Пуанкаре, применяет «вид»
+   (автоморфизм диска z → (az + b)/(b̄z + ā)) и отражениями сворачивает
+   точку в фундаментальный треугольник с углами π/p, π/q, π/2.
+   Число отражений даёт раскраску, обратный путь — центр плитки.
+   ════════════════════════════════════════════════════════════════ */
+const $ = (s) => document.querySelector(s);
+const canvas = $('#gl');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: false });
+if (!gl) { $('#fail').style.display = 'grid'; throw new Error('WebGL2 недоступен'); }
+const SHOT = !!window.__SHOT__;
+
+const FS = `#version 300 es
+precision highp float;
+uniform vec2 uRes, uC;
+uniform float uS, uDpr, uTime;
+uniform int uModel, uColorMode;
+uniform vec4 uM;
+uniform float uP, uD, uR, uMid, uVtx;
+uniform vec3 uPal[6];
+uniform vec3 uHov;
+uniform float uTri, uHatch, uMotif;
+out vec4 o;
+#define PI 3.14159265359
+#define MAXIT 44
+vec2 cmul(vec2 a, vec2 b){ return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x); }
+vec2 cdiv(vec2 a, vec2 b){ return vec2(a.x*b.x + a.y*b.y, a.y*b.x - a.x*b.y)/dot(b, b); }
+vec2 cconj(vec2 a){ return vec2(a.x, -a.y); }
+float h12(vec2 p){ vec3 q = fract(vec3(p.xyx)*.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y)*q.z); }
+float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3. - 2.*f);
+  return mix(mix(h12(i), h12(i + vec2(1, 0)), f.x), mix(h12(i + vec2(0, 1)), h12(i + vec2(1, 1)), f.x), f.y); }
+
+/* экран → диск Пуанкаре; edge — расстояние до края модели в её единицах */
+bool toDisk(vec2 px, out vec2 z, out float edge){
+  vec2 w = (px - uC)/uS;
+  if (uModel == 0 || uModel == 3){
+    float r2 = dot(w, w);
+    edge = 1. - sqrt(r2);
+    if (r2 >= 1.) return false;
+    z = uModel == 0 ? w : w/(1. + sqrt(1. - r2));
+    return true;
+  }
+  if (uModel == 1){
+    edge = w.y;
+    if (w.y <= 0.) return false;
+    z = cdiv(w - vec2(0., 1.), w + vec2(0., 1.));
+    return true;
+  }
+  edge = PI*.5 - abs(w.y);
+  if (edge <= 0. || abs(w.x) > 40.) return false;
+  z = vec2(sinh(w.x), sin(w.y))/(cosh(w.x) + cos(w.y));
+  return true;
+}
+
+/* линия толщиной w по полю расстояний d с честным сглаживанием */
+float ink(float d, float w){
+  float fw = max(fwidth(d), 1e-7);
+  float a = 1. - smoothstep(w - fw*.7, w + fw*.7, d);
+  return a*clamp(w*1.6/fw, 0., 1.);
+}
+float sdSeg(vec2 p, vec2 a, vec2 b){ vec2 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba)/dot(ba, ba), 0., 1.); return length(pa - ba*h); }
+
+vec3 flow(float f){
+  f = fract(f)*4.;
+  int i = int(floor(f)); float t = smoothstep(0., 1., fract(f));
+  vec3 a = uPal[2 + i], b = uPal[2 + (i + 1)%4];
+  return mix(a, b, t);
+}
+
+void main(){
+  vec2 px = gl_FragCoord.xy;
+  vec3 paper = uPal[0], inkc = uPal[1];
+  /* бумага: волокна и зерно */
+  float grain = vnoise(px/uDpr*.9)*.5 + vnoise(px/uDpr*.23)*.5;
+  float fib = vnoise(vec2(px.x/uDpr*.06, px.y/uDpr*1.6));
+  vec3 bg = paper*(.955 + .05*grain) - .025*smoothstep(.62, .9, fib);
+
+  vec2 z; float edge;
+  bool inside = toDisk(px, z, edge);
+  float edgePx = edge*uS/uDpr;
+  vec3 col = bg;
+
+  if (inside){
+    /* вид: автоморфизм диска */
+    vec2 a = uM.xy, b = uM.zw;
+    z = cdiv(cmul(a, z) + b, cmul(cconj(b), z) + cconj(a));
+
+    float sector = 2.*PI/uP, half_ = sector*.5;
+    float ks[MAXIT]; int fl[MAXIT];
+    int n = 0, refl = 0, inv = 0;
+    for (int i = 0; i < MAXIT; i++){
+      float ang = atan(z.y, z.x);
+      float k = floor(ang/sector);
+      float an = ang - k*sector;
+      int f = 0;
+      if (an > half_){ an = sector - an; f = 1; refl++; }
+      z = length(z)*vec2(cos(an), sin(an));
+      vec2 w = z - vec2(uD, 0.);
+      float l2 = dot(w, w);
+      bool doInv = l2 < uR*uR;
+      if (doInv){ z = vec2(uD, 0.) + w*(uR*uR/l2); f += 2; inv++; refl++; }
+      ks[i] = k; fl[i] = f; n = i + 1;
+      if (!doInv) break;
+    }
+    /* центр плитки: обратный путь для точки 0 */
+    vec2 c = vec2(0.);
+    for (int i = MAXIT - 1; i >= 0; i--){
+      if (i >= n) continue;
+      int f = fl[i];
+      if (f >= 2){ vec2 w = c - vec2(uD, 0.); c = vec2(uD, 0.) + w*(uR*uR/dot(w, w)); f -= 2; }
+      if (f == 1){ float th = half_*2.; c = cmul(vec2(cos(th), sin(th)), cconj(c)); }
+      float r = ks[i]*sector; c = cmul(vec2(cos(r), sin(r)), c);
+    }
+
+    /* расстояния в фундаментальном треугольнике */
+    float jitter = (vnoise(px/uDpr*.45) - .5)*.006*uMid;
+    float dEdge = length(z - vec2(uD, 0.)) - uR + jitter;
+    float dM0 = z.y;
+    float dM1 = dot(z, vec2(-sin(half_), cos(half_)));
+
+    /* цвет плитки */
+    vec3 tile;
+    if (uColorMode == 0){
+      float rho = 2.*atanh(min(length(c), .9999999));
+      tile = flow(atan(c.y, c.x)/(2.*PI) + rho*.085);
+    } else if (uColorMode == 1){
+      tile = inv == 0 ? uPal[4] : (inv % 2 == 1 ? uPal[3] : uPal[2]);
+    } else {
+      float h = h12(floor(c*8192.) + 3.);
+      tile = h < .25 ? uPal[2] : h < .5 ? uPal[3] : h < .75 ? uPal[4] : uPal[5];
+    }
+    float par = float(refl % 2);
+    tile *= 1. - .085*par;
+
+    /* подсветка плитки под курсором */
+    vec2 hv = uHov.xy;
+    float pd = length(c - hv)/length(vec2(1., 0.) - cmul(cconj(hv), c));
+    float hl = uHov.z*(1. - smoothstep(.0006, .002, pd));
+    tile = mix(tile, mix(paper, vec3(1.), .35), hl*.55);
+    col = tile;
+
+    /* штриховка гравюры: линии вдоль рёбер и тон на нечётных гранях */
+    if (uHatch > .5){
+      float hh = ink(abs(dEdge - uMid*.075), uMid*.0065) + ink(abs(dEdge - uMid*.135), uMid*.005)*.85 + ink(abs(dEdge - uMid*.19), uMid*.004)*.65;
+      col = mix(col, inkc, min(hh, 1.)*.8);
+      float stripe = abs(fract(dEdge/(uMid*.05)) - .5)*uMid*.05;
+      col = mix(col, inkc, ink(stripe, uMid*.0045)*par*.32*smoothstep(uMid*.22, uMid*.3, dEdge));
+    }
+    /* розетка: p-лучевая звезда и кольцо */
+    if (uMotif > .5){
+      vec2 A = vec2(uMid*.8, 0.), B = uVtx*.42*vec2(cos(half_), sin(half_));
+      float star = ink(sdSeg(z, A, B), uMid*.012);
+      float ring = ink(abs(length(z) - uMid*.24), uMid*.009);
+      float dot_ = 1. - smoothstep(uMid*.05, uMid*.05 + fwidth(length(z)), length(z));
+      col = mix(col, inkc, max(max(star, ring), dot_)*.92);
+    }
+    if (uTri > .5){
+      float tl = min(ink(dM0, uMid*.004), 1.) + ink(dM1, uMid*.004);
+      col = mix(col, inkc, min(tl, 1.)*.55);
+    }
+    /* ребро плитки — главная линия гравюры */
+    float e = ink(dEdge, uMid*(.021 + .018*hl));
+    col = mix(col, inkc, e);
+
+    /* у самого края плитки мельче пикселя — сводим к среднему тону */
+    float tilePx = uMid/max(fwidth(dEdge), 1e-7)/uDpr;
+    vec3 avg = mix(mix(uPal[2], uPal[3], .5), inkc, .38);
+    col = mix(avg, col, smoothstep(2.5, 7., tilePx));
+    if (n >= MAXIT) col = avg;
+    col *= .96 + .06*grain;
+  }
+  /* рамка модели: двойная линия */
+  float fr = 1. - smoothstep(.7, 1.6, abs(edgePx));
+  float fr2 = 1. - smoothstep(.45, 1.15, abs(edgePx + 7.));
+  if (!inside) col = bg;
+  col = mix(col, inkc, max(fr, fr2*.8));
+  o = vec4(col, 1.);
+}`;
+const VS = `#version 300 es
+const vec2 P[3] = vec2[3](vec2(-1., -1.), vec2(3., -1.), vec2(-1., 3.));
+void main(){ gl_Position = vec4(P[gl_VertexID], 0., 1.); }`;
+
+function compile(type, src) {
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const U = {};
+['uRes','uC','uS','uDpr','uTime','uModel','uColorMode','uM','uP','uD','uR','uMid','uVtx','uPal','uHov','uTri','uHatch','uMotif']
+  .forEach((n) => (U[n] = gl.getUniformLocation(prog, n)));
+gl.bindVertexArray(gl.createVertexArray());
+
+/* ── палитры оттиска ─────────────────────────────────────────── */
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+const PALETTES = [
+  { name: 'Гравюра', mode: 0, cols: ['#efe6d0', '#1d1a16', '#c98b35', '#2e6b66', '#a24a2a', '#e6d6b0'] },
+  { name: 'Гжель', mode: 1, cols: ['#f3f1ea', '#1c3a8f', '#f6f4ee', '#cdd9f1', '#8fa6de', '#3d5fbe'] },
+  { name: 'Медь', mode: 0, cols: ['#e7e1d3', '#22302b', '#5f9c8a', '#b8693d', '#2f4f47', '#d8dccb'] },
+  { name: 'Ночь', mode: 2, cols: ['#15161b', '#e2c276', '#1f2533', '#2b3550', '#3b2b3c', '#172030'] },
+];
+
+/* ── состояние ───────────────────────────────────────────────── */
+let p = 7, q = 3, model = 0, pal = 0;
+const toggles = { motif: true, hatch: true, tri: false };
+let M = { a: [1, 0], b: [0, 0] };          // вид: z → (az + b)/(b̄z + ā)
+let geom = null;
+let W = 0, H = 0, DPR = 1, renderScale = 1;
+let layout = null;
+const hov = { c: [0, 0], k: 0, target: 0 };
+
+/* геометрия фундаментального треугольника: ребро-зеркало — окружность (D, 0), радиус R */
+function computeGeom() {
+  const ch = Math.cos(Math.PI / q) / Math.sin(Math.PI / p);
+  const rin = Math.acosh(ch);
+  const mid = Math.tanh(rin / 2);
+  const R = (1 - mid * mid) / (2 * mid), D = (1 + mid * mid) / (2 * mid);
+  const chR = 1 / (Math.tan(Math.PI / p) * Math.tan(Math.PI / q));
+  const vtx = Math.tanh(Math.acosh(chR) / 2);
+  geom = { D, R, mid, vtx };
+}
+const hyperbolic = (pp, qq) => (pp - 2) * (qq - 2) > 4;
+
+/* ── комплексная арифметика и автоморфизмы диска ─────────────── */
+const cmul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+const cdiv = (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
+const conj = (a) => [a[0], -a[1]];
+const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+const abs2 = (a) => a[0] * a[0] + a[1] * a[1];
+const apply = (m, z) => cdiv(add(cmul(m.a, z), m.b), add(cmul(conj(m.b), z), conj(m.a)));
+function compose(m1, m2) { // сначала m2, потом m1
+  const a = add(cmul(m1.a, m2.a), cmul(m1.b, conj(m2.b)));
+  const b = add(cmul(m1.a, m2.b), cmul(m1.b, conj(m2.a)));
+  const s = Math.sqrt(Math.max(1e-12, abs2(a) - abs2(b)));
+  return { a: [a[0] / s, a[1] / s], b: [b[0] / s, b[1] / s] };
+}
+const inverse = (m) => ({ a: conj(m.a), b: [-m.b[0], -m.b[1]] });
+const translate = (u) => ({ a: [1, 0], b: [u[0], u[1]] });  // 0 → u
+const rotation = (t) => ({ a: [Math.cos(t / 2), Math.sin(t / 2)], b: [0, 0] });
+
+/* ── экран ↔ модель ──────────────────────────────────────────── */
+function computeLayout() {
+  const mobile = W <= 900;
+  const stageW = mobile ? W : W - 420;
+  const sheet = mobile ? H * 0.44 : 0;          // высота нижней шторки на мобильном
+  const top = mobile ? 88 : 0;
+  const stageH = mobile ? H - sheet - top - 10 : H;
+  let cx = stageW / 2, cy, S;
+  if (model === 0 || model === 3) {
+    const r = mobile ? Math.min(W / 2 - 12, stageH / 2) : Math.min(stageW, H) * 0.455;
+    cy = mobile ? top + stageH / 2 : H / 2; S = r;
+  } else if (model === 1) {
+    S = mobile ? W * 0.3 : H * 0.3;
+    cy = mobile ? top + stageH - 6 : H - 46;       // вещественная ось у нижнего края
+  } else {
+    S = (mobile ? stageH * 0.42 : H * 0.4) / (Math.PI / 2);
+    cy = mobile ? top + stageH / 2 : H / 2;
+  }
+  layout = { cx, cy, S, mobile };
+}
+function screenToDisk(x, y) {
+  const w = [(x - layout.cx) / layout.S, (layout.cy - y) / layout.S];
+  if (model === 0 || model === 3) {
+    const r2 = abs2(w); if (r2 >= 1) return null;
+    return model === 0 ? w : [w[0] / (1 + Math.sqrt(1 - r2)), w[1] / (1 + Math.sqrt(1 - r2))];
+  }
+  if (model === 1) { if (w[1] <= 0) return null; return cdiv([w[0], w[1] - 1], [w[0], w[1] + 1]); }
+  if (Math.abs(w[1]) >= Math.PI / 2) return null;
+  const den = Math.cosh(w[0]) + Math.cos(w[1]);
+  return [Math.sinh(w[0]) / den, Math.sin(w[1]) / den];
+}
+
+/* тот же фолдинг, что в шейдере: центр плитки в мировых координатах */
+function tileCenter(z) {
+  const sector = (2 * Math.PI) / p, half = sector / 2, { D, R } = geom;
+  const ops = [];
+  for (let i = 0; i < 60; i++) {
+    const ang = Math.atan2(z[1], z[0]);
+    const k = Math.floor(ang / sector);
+    let an = ang - k * sector, f = 0;
+    if (an > half) { an = sector - an; f = 1; }
+    const len = Math.hypot(z[0], z[1]);
+    z = [len * Math.cos(an), len * Math.sin(an)];
+    const wx = z[0] - D, wy = z[1], l2 = wx * wx + wy * wy;
+    const inv = l2 < R * R;
+    if (inv) { z = [D + (wx * R * R) / l2, (wy * R * R) / l2]; f += 2; }
+    ops.push([k, f]);
+    if (!inv) break;
+  }
+  let c = [0, 0];
+  for (let i = ops.length - 1; i >= 0; i--) {
+    let [k, f] = ops[i];
+    if (f >= 2) { const wx = c[0] - D, wy = c[1], l2 = wx * wx + wy * wy; c = [D + (wx * R * R) / l2, (wy * R * R) / l2]; f -= 2; }
+    if (f === 1) c = cmul([Math.cos(sector), Math.sin(sector)], conj(c));
+    c = cmul([Math.cos(k * sector), Math.sin(k * sector)], c);
+  }
+  return c;
+}
+
+/* ── рендер ──────────────────────────────────────────────────── */
+function resize() {
+  W = window.innerWidth; H = window.innerHeight;
+  DPR = SHOT ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+  applyScale();
+  computeLayout();
+}
+function applyScale() {
+  canvas.width = Math.max(1, Math.round(W * DPR * renderScale));
+  canvas.height = Math.max(1, Math.round(H * DPR * renderScale));
+}
+function draw(t) {
+  const k = canvas.width / W;          // пикселей холста на CSS-пиксель
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.uniform2f(U.uRes, canvas.width, canvas.height);
+  gl.uniform2f(U.uC, layout.cx * k, (H - layout.cy) * k);
+  gl.uniform1f(U.uS, layout.S * k);
+  gl.uniform1f(U.uDpr, k);
+  gl.uniform1f(U.uTime, t / 1000);
+  gl.uniform1i(U.uModel, model);
+  gl.uniform4f(U.uM, M.a[0], M.a[1], M.b[0], M.b[1]);
+  gl.uniform1f(U.uP, p);
+  gl.uniform1f(U.uD, geom.D); gl.uniform1f(U.uR, geom.R);
+  gl.uniform1f(U.uMid, geom.mid); gl.uniform1f(U.uVtx, geom.vtx);
+  const P = PALETTES[pal];
+  gl.uniform3fv(U.uPal, P.cols.flatMap(hex));
+  gl.uniform1i(U.uColorMode, P.mode);
+  gl.uniform3f(U.uHov, hov.c[0], hov.c[1], hov.k);
+  gl.uniform1f(U.uTri, toggles.tri ? 1 : 0);
+  gl.uniform1f(U.uHatch, toggles.hatch ? 1 : 0);
+  gl.uniform1f(U.uMotif, toggles.motif ? 1 : 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+/* плавная смена узора: снимок старого кадра гаснет поверх нового */
+const fadeCanvas = $('#fade');
+function crossfade() {
+  draw(performance.now());
+  fadeCanvas.width = canvas.width; fadeCanvas.height = canvas.height;
+  fadeCanvas.getContext('2d').drawImage(canvas, 0, 0);
+  fadeCanvas.style.transition = 'none';
+  fadeCanvas.style.opacity = '1';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fadeCanvas.style.transition = 'opacity .55s ease';
+    fadeCanvas.style.opacity = '0';
+  }));
+}
+
+/* ── движение: перетаскивание, инерция, полёт к плитке, дрейф ─── */
+let drag = null, vel = [0, 0], flight = null, lastInput = -1e9;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+canvas.addEventListener('pointerdown', (e) => {
+  const w = screenToDisk(e.clientX, e.clientY);
+  if (!w) return;
+  canvas.setPointerCapture(e.pointerId);
+  drag = { w, x: e.clientX, y: e.clientY, moved: false, t: performance.now() };
+  flight = null; vel = [0, 0]; lastInput = performance.now();
+  canvas.classList.add('dragging');
+});
+canvas.addEventListener('pointermove', (e) => {
+  const w = screenToDisk(e.clientX, e.clientY);
+  if (drag) {
+    if (!w) return;
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4) drag.moved = true;
+    // перенос, который переводит точку w в прежнюю w1: T = T_{w1}⁻¹ ∘ T_{w}
+    const w1 = drag.w;
+    const T = compose({ a: [1, 0], b: w1 }, { a: [1, 0], b: [-w[0], -w[1]] });
+    M = compose(M, T);
+    const now = performance.now(), dt = Math.max(8, now - drag.t);
+    const t0 = apply(T, [0, 0]);
+    vel = [(t0[0] / dt) * 0.8 + vel[0] * 0.2, (t0[1] / dt) * 0.8 + vel[1] * 0.2];
+    drag.w = w; drag.t = now; lastInput = now;
+    return;
+  }
+  if (w) {
+    const c = tileCenter(apply(M, w));
+    hov.c = c; hov.target = 1;
+    canvas.classList.add('pointing');
+  } else { hov.target = 0; canvas.classList.remove('pointing'); }
+});
+canvas.addEventListener('pointerleave', () => { if (!drag) hov.target = 0; });
+canvas.addEventListener('pointerup', (e) => {
+  canvas.classList.remove('dragging');
+  if (!drag) return;
+  const wasClick = !drag.moved;
+  drag = null;
+  if (performance.now() - lastInput > 60) vel = [0, 0];
+  if (wasClick) {
+    const w = screenToDisk(e.clientX, e.clientY);
+    if (w) flyTo(tileCenter(apply(M, w)));
+  }
+});
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  M = compose(M, rotation(e.deltaY * 0.0022));
+  lastInput = performance.now(); flight = null;
+}, { passive: false });
+
+/* привести мировую точку c в центр модели по геодезической */
+function flyTo(c) {
+  const wc = apply(inverse(M), c);
+  const r = Math.hypot(wc[0], wc[1]);
+  if (r < 1e-6) return;
+  flight = { M0: M, dir: [wc[0] / r, wc[1] / r], dist: Math.atanh(Math.min(r, 0.999999)), t0: performance.now(), dur: reduceMotion ? 1 : 1100 };
+  hov.c = c; hov.target = 1; vel = [0, 0]; lastInput = performance.now();
+}
+function goHome() {
+  const c = apply(M, [0, 0]);
+  flight = null;
+  const start = M, t0 = performance.now();
+  flight = { custom: (k) => { M = compose(start, slerpToIdentity(start, k)); }, t0, dur: reduceMotion ? 1 : 900 };
+  function slerpToIdentity(m, k) {  // сначала убрать сдвиг, потом поворот
+    const inv = inverse(m);
+    const u = apply(inv, [0, 0]), r = Math.hypot(u[0], u[1]);
+    const rr = Math.tanh(Math.atanh(Math.min(r, 0.999999)) * k);
+    const step = r > 1e-9 ? translate([(u[0] / r) * rr, (u[1] / r) * rr]) : { a: [1, 0], b: [0, 0] };
+    return step;
+  }
+  void c;
+}
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+
+function stepMotion(now, dt) {
+  if (flight) {
+    const k = Math.min(1, (now - flight.t0) / flight.dur), e = ease(k);
+    if (flight.custom) flight.custom(e);
+    else {
+      const rr = Math.tanh(flight.dist * e);
+      M = compose(flight.M0, translate([flight.dir[0] * rr, flight.dir[1] * rr]));
+    }
+    if (k >= 1) { if (flight.custom) M = { a: [1, 0], b: [0, 0] }; flight = null; }
+    return;
+  }
+  if (!drag && abs2(vel) > 1e-12) {
+    const u = [vel[0] * dt, vel[1] * dt];
+    if (abs2(u) < 0.25) M = compose(M, translate(u));
+    const decay = Math.pow(0.992, dt);
+    vel = [vel[0] * decay, vel[1] * decay];
+  }
+  // дрейф: медленная прогулка по плоскости, пока никто не трогает
+  if (!drag && !reduceMotion && now - lastInput > 7000) {
+    const ph = now * 0.00004;
+    const s = 0.000055 * dt;
+    M = compose(M, translate([Math.cos(ph) * s, Math.sin(ph * 0.7 + 1) * s]));
+    M = compose(M, rotation(0.00002 * dt));
+  }
+}
+
+/* ── интерфейс ───────────────────────────────────────────────── */
+const STEMS = { 3: 'треугольник', 4: 'четырёхугольник', 5: 'пятиугольник', 6: 'шестиугольник', 7: 'семиугольник', 8: 'восьмиугольник', 9: 'девятиугольник', 10: 'десятиугольник', 11: 'одиннадцатиугольник', 12: 'двенадцатиугольник' };
+const NAMES = { 3: 'треугольники', 4: 'четырёхугольники', 5: 'пятиугольники', 6: 'шестиугольники', 7: 'семиугольники', 8: 'восьмиугольники', 9: 'девятиугольники', 10: 'десятиугольники', 11: 'одиннадцатиугольники', 12: 'двенадцатиугольники' };
+const PRESETS = [[7, 3], [6, 4], [5, 4], [4, 5], [8, 3], [3, 8], [5, 5], [4, 6]];
+const nf = (x, d = 1) => x.toFixed(d).replace('.', ',').replace(/,0+$/, '');
+function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+
+function updateUI() {
+  $('#sym').innerHTML = `{<b>${p}</b>,&nbsp;<b>${q}</b>}`;
+  $('#pv').textContent = p; $('#qv').textContent = q;
+  $('#pqdesc').innerHTML = `${NAMES[p][0].toUpperCase() + NAMES[p].slice(1)}, по&nbsp;${q}&nbsp;в&nbsp;каждой вершине`;
+  const hypAngle = 360 / q, eucAngle = (180 * (p - 2)) / p;
+  const num = p * q - 2 * p - 2 * q, g = gcd(num, q), nn = num / g, dd = q / g;
+  const area = dd === 1 ? (nn === 1 ? 'π' : `${nn}π`) : `${nn === 1 ? '' : nn}π/${dd}`;
+  $('#facts').innerHTML =
+    `<div><b>${nf(hypAngle)}°</b>угол плитки здесь</div>` +
+    `<div><b>${nf(eucAngle)}°</b>у&nbsp;такого&nbsp;же евклидова</div>` +
+    `<div><b>${area}</b>площадь плитки (≈&nbsp;${nf((Math.PI * num) / q, 3)})</div>` +
+    `<div><b>+${nf(q * eucAngle - 360)}°</b>наложение в&nbsp;вершине, будь плоскость евклидовой</div>`;
+  $('#explain').innerHTML = `${q}&nbsp;${STEMS[p]}${q <= 4 ? 'а' : 'ов'} в&nbsp;одной вершине на&nbsp;обычной плоскости наложились&nbsp;бы. На&nbsp;плоскости Лобачевского углы меньше&nbsp;— и&nbsp;замощение уходит в&nbsp;бесконечность. Все плитки одинаковы, к&nbsp;краю диска они лишь кажутся мельче&nbsp;— как на&nbsp;гравюрах Эшера «Предел круга».`;
+  $('#pm').disabled = p <= 3 || !hyperbolic(p - 1, q);
+  $('#pp').disabled = p >= 12;
+  $('#qm').disabled = q <= 3 || !hyperbolic(p, q - 1);
+  $('#qp').disabled = q >= 12;
+  document.querySelectorAll('#presets button').forEach((b) => b.classList.toggle('on', b.dataset.pq === `${p},${q}`));
+}
+function setPQ(np, nq) {
+  if (!hyperbolic(np, nq)) return;
+  crossfade();
+  p = np; q = nq;
+  computeGeom();
+  hov.target = 0;
+  updateUI();
+}
+$('#presets').innerHTML = PRESETS.map(([a, b]) => `<button data-pq="${a},${b}">{${a},&nbsp;${b}}</button>`).join('');
+$('#presets').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { const [a, c] = b.dataset.pq.split(',').map(Number); setPQ(a, c); } });
+$('#pm').onclick = () => setPQ(p - 1, q);
+$('#pp').onclick = () => setPQ(p + 1, q);
+$('#qm').onclick = () => setPQ(p, q - 1);
+$('#qp').onclick = () => setPQ(p, q + 1);
+$('#models').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  crossfade();
+  model = +b.dataset.m; computeLayout();
+  document.querySelectorAll('#models button').forEach((x) => x.classList.toggle('on', x === b));
+});
+$('#palettes').innerHTML = PALETTES.map((P, i) =>
+  `<button data-i="${i}" class="${i === pal ? 'on' : ''}"><i style="background:conic-gradient(${P.cols[2]} 0 25%,${P.cols[3]} 0 50%,${P.cols[4]} 0 75%,${P.cols[1]} 0)"></i>${P.name}</button>`).join('');
+$('#palettes').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  crossfade();
+  pal = +b.dataset.i;
+  document.querySelectorAll('#palettes button').forEach((x) => x.classList.toggle('on', x === b));
+  const P = PALETTES[pal];
+  document.documentElement.style.setProperty('--paper', P.cols[0]);
+  document.body.classList.toggle('night', pal === 3);
+});
+$('#toggles').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  toggles[b.dataset.t] = !toggles[b.dataset.t];
+  b.classList.toggle('on', toggles[b.dataset.t]);
+});
+$('#home').onclick = goHome;
+$('#snap').onclick = () => {
+  draw(performance.now());
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `kafel-${p}-${q}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+};
+window.addEventListener('keydown', (e) => {
+  const s = 0.06;
+  const moves = { ArrowLeft: [s, 0], ArrowRight: [-s, 0], ArrowUp: [0, -s], ArrowDown: [0, s] };
+  if (moves[e.key]) {
+    e.preventDefault();
+    flight = { M0: M, dir: moves[e.key].map((v) => Math.sign(v) * (v ? 1 : 0)), dist: Math.atanh(s * 2.2), t0: performance.now(), dur: 380 };
+    lastInput = performance.now();
+  }
+});
+
+/* ── цикл с подстройкой разрешения ───────────────────────────── */
+let last = performance.now(), slow = 0, fast = 0;
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.min(50, now - last); last = now;
+  stepMotion(now, dt);
+  hov.k += (hov.target - hov.k) * Math.min(1, dt / 120);
+  draw(now);
+  if (!SHOT) {
+    if (dt > 30) { slow++; fast = 0; } else if (dt < 18) { fast++; slow = 0; }
+    if (slow > 20 && renderScale > 0.55) { renderScale = Math.max(0.55, renderScale * 0.85); applyScale(); slow = 0; }
+    if (fast > 120 && renderScale < 1) { renderScale = Math.min(1, renderScale / 0.9); applyScale(); fast = 0; }
+  }
+}
+window.addEventListener('resize', resize);
+computeGeom();
+resize();
+updateUI();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

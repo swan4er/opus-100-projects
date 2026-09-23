@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Орган — десять регистров и акустика собора</title>
+<meta name="description" content="Духовой орган в браузере: аддитивный синтез лабиальных и язычковых труб, регистры, педаль и синтезированная акустика собора.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oranienbaum&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#120C08;
+    --wood:#3A2416;
+    --wood-2:#2A190F;
+    --wood-hi:#6A4328;
+    --gold:#C9A24E;
+    --gold-hi:#EBD08A;
+    --ivory:#F2E8D0;
+    --ivory-2:#DCCFAE;
+    --ebony:#1B1310;
+    --text:#EFE3C8;
+    --text-dim:#C8B89A;
+    --serif-d:"Oranienbaum", "Old Standard TT", Georgia, serif;
+    --serif:"Old Standard TT", Georgia, "Times New Roman", serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--night);color:var(--text);font-family:var(--serif);-webkit-font-smoothing:antialiased;overflow:hidden}
+  .stage{position:fixed;inset:0;display:grid;grid-template-rows:minmax(0,1fr) auto}
+  .facade{position:relative;min-height:0}
+  #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .title{position:absolute;left:clamp(20px,3vw,48px);top:clamp(18px,3.4vh,40px);max-width:230px;pointer-events:none}
+  .title h1{font-family:var(--serif-d);font-weight:400;font-size:clamp(46px,5.4vw,78px);line-height:.9;color:var(--gold-hi);letter-spacing:.01em}
+  .title p{margin-top:12px;font-size:15px;line-height:1.5;color:var(--text-dim)}
+  .now{position:absolute;right:clamp(20px,3vw,48px);top:clamp(22px,3.8vh,44px);text-align:right;max-width:210px;pointer-events:none}
+  .now .lbl{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-dim)}
+  .now .val{font-family:var(--serif-d);font-size:26px;color:var(--gold-hi);margin-top:6px;line-height:1.1;min-height:1.1em}
+  .now .sub{font-size:14px;font-style:italic;color:var(--text-dim);margin-top:4px}
+
+  /* пульт */
+  .console{position:relative;padding:14px clamp(12px,2.4vw,36px) 16px;
+    background:
+      linear-gradient(180deg,rgba(0,0,0,.35),transparent 18px),
+      repeating-linear-gradient(90deg,rgba(255,220,170,.018) 0 2px,transparent 2px 7px),
+      linear-gradient(180deg,#3E2717,#2B1A0F 60%,#23150C);
+    border-top:3px solid #1C110A;box-shadow:0 -1px 0 #7A5534 inset}
+  .console::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:linear-gradient(90deg,transparent,rgba(201,162,78,.55),transparent)}
+  .deskrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);gap:18px;align-items:end}
+  .jamb{display:grid;grid-template-columns:repeat(3,auto);gap:10px 12px;justify-content:center;align-content:end}
+  .jamb.left{justify-content:end}
+  .jamb.right{justify-content:start}
+  .knob{position:relative;width:76px;height:76px;border:0;background:transparent;cursor:pointer;transition:transform .35s cubic-bezier(.2,1.3,.3,1)}
+  .knob .face{position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;text-align:center;padding:4px;
+    background:radial-gradient(circle at 38% 32%,#FFF8E6,var(--ivory) 45%,var(--ivory-2) 100%);
+    border:3px solid #6B4527;outline:1px solid #2A190F;
+    box-shadow:0 6px 10px rgba(0,0,0,.55),inset 0 -3px 6px rgba(120,90,40,.25);
+    font:700 11.5px/1.12 var(--serif);color:#3A2416;transition:box-shadow .35s,filter .3s;hyphens:manual}
+  .knob .face small{display:block;font:400 12px/1 var(--serif);color:#7A2E1E;margin-top:2px}
+  .knob[aria-pressed=true]{transform:translateY(-3px) scale(1.08)}
+  .knob[aria-pressed=true] .face{border-color:#8A5A30;box-shadow:0 14px 18px rgba(0,0,0,.6),inset 0 -3px 6px rgba(120,90,40,.25);filter:brightness(1.05)}
+  .knob[aria-pressed=false] .face{filter:brightness(.8) saturate(.8)}
+  .knob:focus-visible{outline:2px solid var(--gold-hi);outline-offset:6px;border-radius:50%}
+  .knob.pedal .face small{color:#1F3F6B}
+
+  .center{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .desk{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+  .plaque{display:flex;align-items:center;gap:12px;border:0;cursor:pointer;padding:9px 16px 9px 10px;border-radius:4px;color:#2A190F;
+    background:linear-gradient(180deg,#F0D995,#C9A24E 55%,#A9853A);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 3px 8px rgba(0,0,0,.5);
+    font:700 13.5px/1.2 var(--serif);text-align:left;transition:transform .15s,filter .2s}
+  .plaque:hover{filter:brightness(1.06)}
+  .plaque:active{transform:translateY(1px)}
+  .plaque:focus-visible{outline:2px solid var(--ivory);outline-offset:3px}
+  .plaque .ic{width:30px;height:30px;border-radius:50%;background:#2A190F;display:grid;place-items:center;flex:none}
+  .plaque .ic svg{width:14px;height:14px;fill:var(--gold-hi)}
+  .plaque em{display:block;font-weight:400;font-size:12.5px}
+  .pistons{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+  .pistons span{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-right:2px}
+  .piston{width:40px;height:40px;border-radius:50%;border:0;cursor:pointer;font:700 13px/1 var(--serif);color:#2A190F;
+    background:radial-gradient(circle at 40% 35%,#FFF6DD,#D8C8A2);border:2px solid #1C110A;box-shadow:0 3px 5px rgba(0,0,0,.5);transition:transform .12s}
+  .piston:active{transform:scale(.92)}
+  .piston.wide{width:auto;border-radius:20px;padding:0 14px;font-size:13px;white-space:nowrap}
+  .piston:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+
+  .kbwrap{max-width:100%;overflow-x:auto;padding:6px 8px 8px;background:linear-gradient(#0E0906,#080503);border-radius:4px;box-shadow:inset 0 2px 6px rgba(0,0,0,.7)}
+  .kb{position:relative;height:120px;display:flex;user-select:none;touch-action:none;background:#6B5039;border-radius:2px}
+  .kb .w{position:relative;width:27px;flex:none;height:100%;margin-right:1px;border-radius:0 0 3px 3px;cursor:pointer;
+    background:linear-gradient(180deg,#3A2C22,#1E1610 80%,#120C08);box-shadow:inset 0 -4px 0 #070403,inset 1px 0 0 rgba(255,235,210,.07),inset 0 1px 0 rgba(255,235,210,.08);transition:transform .06s}
+  .kb .b{position:absolute;top:0;width:17px;height:64%;z-index:2;border-radius:0 0 2px 2px;cursor:pointer;
+    background:linear-gradient(180deg,#F4EAD2,#D9CBA8 85%,#B9A882);box-shadow:0 3px 4px rgba(0,0,0,.6),inset 0 -3px 0 #9F8E68;transition:transform .06s}
+  .kb .on.w{transform:translateY(2px);background:linear-gradient(180deg,#4A3524,#2A1C12 85%)}
+  .kb .on.b{transform:translateY(2px);filter:brightness(.92)}
+  .kb .lab{position:absolute;bottom:8px;left:0;right:0;text-align:center;font:400 12px/1 var(--serif);color:rgba(239,227,200,.55);pointer-events:none}
+  .help{font-size:13px;color:var(--text-dim);text-align:center;margin-top:8px}
+  .help kbd{font:700 12px/1 var(--serif);border:1px solid rgba(200,184,154,.4);border-radius:3px;padding:2px 5px;color:var(--text)}
+
+  @media (max-width:900px){
+    .deskrow{grid-template-columns:1fr}
+    .jamb{grid-template-columns:repeat(10,auto);justify-content:start !important;overflow-x:auto;padding:8px 4px 10px;gap:10px}
+    .jamb.right{display:none}
+    .knob{width:68px;height:68px}
+    .knob .face{font-size:11px}
+    .now{display:none}
+    .title p{display:none}
+    .title h1{font-size:38px}
+    .title{left:14px;top:12px}
+    .help{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){ .knob,.plaque,.piston{transition:none} }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="facade">
+    <canvas id="cv" aria-label="Фасад органа: трубы загораются, когда звучат"></canvas>
+    <div class="title">
+      <h1>Орган</h1>
+      <p>Десять регистров, синтез каждой трубы и&nbsp;эхо собора длиной в&nbsp;пять секунд.</p>
+    </div>
+    <div class="now" aria-live="polite">
+      <div class="lbl">Звучит</div>
+      <div class="val" id="nowVal">тишина</div>
+      <div class="sub" id="nowSub">нажмите клавишу или&nbsp;табличку</div>
+    </div>
+  </div>
+
+  <div class="console">
+    <div class="deskrow">
+      <div class="jamb left" id="jambL" role="group" aria-label="Регистры мануала"></div>
+      <div class="center">
+        <div class="desk">
+          <button class="plaque" id="toccata" aria-pressed="false">
+            <span class="ic"><svg viewBox="0 0 14 14" id="playIc"><path d="M3 1.5 12 7 3 12.5Z"/></svg></span>
+            <span>Токката ре минор, BWV&nbsp;565<em>вступление: три проведения мотива</em></span>
+          </button>
+          <div class="pistons" role="group" aria-label="Комбинации регистров">
+            <span>Комбинации</span>
+            <button class="piston" data-combo="0" title="Тихо: Бурдон 8′ и Флейта 4′">I</button>
+            <button class="piston" data-combo="1" title="Хор принципалов: 8′, 4′, 2′">II</button>
+            <button class="piston" data-combo="2" title="Тутти: полный орган">Т</button>
+            <button class="piston" data-combo="3" title="Снять все регистры">0</button>
+            <button class="piston wide" id="rev" title="Акустика: собор, зал или сухо">Эхо: собор</button>
+          </div>
+        </div>
+        <div class="kbwrap"><div class="kb" id="kb" aria-label="Клавиатура мануала"></div></div>
+        <div class="help">Клавиатура компьютера: ряды <kbd>Z</kbd>…<kbd>M</kbd> и&nbsp;<kbd>Q</kbd>…<kbd>P</kbd> · педаль звучит под нижней нотой</div>
+      </div>
+      <div class="jamb right" id="jambR" role="group" aria-label="Регистры мануала и педали"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Орган: аддитивный синтез труб (PeriodicWave), «чифф» атаки, свёртка
+   с синтезированной импульсной характеристикой собора. Фасад рисуется
+   процедурно; звучащие трубы загораются.
+   ===================================================================== */
+
+// ---------------- регистры ----------------
+// ratio — высота относительно 8′; kind — тембр; pedal — только для педали
+const STOPS = [
+  { id: 'p8', name: 'Принципал', foot: '8′', ratio: 1, kind: 'principal', gain: 0.9, side: 'L' },
+  { id: 'b8', name: 'Бурдон', foot: '8′', ratio: 1, kind: 'gedackt', gain: 0.8, side: 'L' },
+  { id: 'o4', name: 'Октава', foot: '4′', ratio: 2, kind: 'principal', gain: 0.62, side: 'L' },
+  { id: 'f4', name: 'Флейта', foot: '4′', ratio: 2, kind: 'flute', gain: 0.55, side: 'L' },
+  { id: 'q3', name: 'Квинта', foot: '2⅔′', ratio: 3, kind: 'principal', gain: 0.32, side: 'L' },
+  { id: 's2', name: 'Супер­октава', foot: '2′', ratio: 4, kind: 'principal', gain: 0.4, side: 'R' },
+  { id: 'mx', name: 'Микстура', foot: 'IV', ratio: 0, kind: 'mixture', gain: 0.26, side: 'R' },
+  { id: 't8', name: 'Труба', foot: '8′', ratio: 1, kind: 'reed', gain: 0.5, side: 'R' },
+  { id: 'sb', name: 'Суббас', foot: '16′', ratio: 0.5, kind: 'gedackt', gain: 1.0, side: 'R', pedal: true },
+  { id: 'tb', name: 'Тромбон', foot: '16′', ratio: 0.5, kind: 'reed', gain: 0.55, side: 'R', pedal: true },
+];
+const COMBOS = [
+  ['b8', 'f4', 'sb'],
+  ['p8', 'o4', 's2', 'sb'],
+  ['p8', 'o4', 'q3', 's2', 'mx', 't8', 'sb', 'tb'],
+  [],
+];
+const on = new Set(['p8', 'o4', 'sb']);
+
+// ---------------- звук ----------------
+let AC = null, bus, waves, noiseBuf, dryG, wetG;
+const REVERB = [{ name: 'собор', wet: 0.72, dry: 0.5 }, { name: 'зал', wet: 0.3, dry: 0.7 }, { name: 'сухо', wet: 0, dry: 0.95 }];
+let revMode = 0;
+function initAudio() {
+  if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (!Ctor) return;
+  AC = new Ctor();
+  const comp = AC.createDynamicsCompressor();
+  comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 3.5; comp.attack.value = 0.012; comp.release.value = 0.3;
+  const master = AC.createGain(); master.gain.value = 0.75;
+  bus = AC.createGain(); bus.gain.value = 0.9;
+  const dry = AC.createGain(); dry.gain.value = 0.5;
+  const wet = AC.createGain(); wet.gain.value = 0.72;
+  const conv = AC.createConvolver(); conv.buffer = makeIR(5.2);
+  const lowcut = AC.createBiquadFilter(); lowcut.type = 'highpass'; lowcut.frequency.value = 28;
+  bus.connect(dry).connect(comp);
+  bus.connect(conv).connect(wet).connect(comp);
+  dryG = dry; wetG = wet;
+  dry.gain.value = REVERB[revMode].dry; wet.gain.value = REVERB[revMode].wet;
+  comp.connect(lowcut).connect(master).connect(AC.destination);
+  const pw = (amps) => {
+    const re = new Float32Array(amps.length + 1), im = new Float32Array(amps.length + 1);
+    amps.forEach((a, k) => (im[k + 1] = a));
+    return AC.createPeriodicWave(re, im);
+  };
+  waves = {
+    principal: pw([1, 0.55, 0.36, 0.22, 0.16, 0.1, 0.075, 0.05, 0.035, 0.025, 0.018, 0.012]),
+    gedackt: pw([1, 0.02, 0.3, 0.015, 0.08, 0.01, 0.03, 0.005, 0.01]),
+    flute: pw([1, 0.22, 0.09, 0.04, 0.02, 0.01]),
+    reed: pw(Array.from({ length: 28 }, (_, k) => 1 / Math.pow(k + 1, 0.58) * (k === 0 ? 0.8 : 1))),
+  };
+  noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+  const nd = noiseBuf.getChannelData(0);
+  for (let k = 0; k < nd.length; k++) nd[k] = Math.random() * 2 - 1;
+  // едва слышный шум воздуходувки
+  const blow = AC.createBufferSource(); blow.buffer = noiseBuf; blow.loop = true;
+  const bf = AC.createBiquadFilter(); bf.type = 'lowpass'; bf.frequency.value = 180;
+  const bg = AC.createGain(); bg.gain.value = 0.012;
+  blow.connect(bf).connect(bg).connect(master); blow.start();
+}
+// импульсная характеристика собора: плотный хвост с затуханием ВЧ и ранними отражениями
+function makeIR(sec) {
+  const rate = AC.sampleRate, len = Math.floor(rate * sec);
+  const buf = AC.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    let lp = 0;
+    for (let i = 0; i < len; i++) {
+      const t = i / rate;
+      const env = Math.exp(-t * 6.9 / (sec * 0.92)) * (t < 0.02 ? t / 0.02 : 1);
+      const a = 0.18 + 0.78 * Math.min(1, t / (sec * 0.7));
+      lp += ((Math.random() * 2 - 1) - lp) * (1 - a);
+      d[i] = lp * env * (1.6 + 0.8 * a);
+    }
+    for (let k = 0; k < 18; k++) {
+      const idx = Math.floor(rate * (0.012 + k * 0.007 + Math.random() * 0.02));
+      if (idx < len) d[idx] += (0.9 - k * 0.04) * (Math.random() < 0.5 ? -1 : 1);
+    }
+  }
+  return buf;
+}
+const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+
+// голоса: одна «труба» = осциллятор + огибающая (+ шум атаки у лабиальных)
+function pipeVoice(freq, kind, gain, when) {
+  const t = when ?? AC.currentTime;
+  const o = AC.createOscillator();
+  o.setPeriodicWave(waves[kind === 'mixture' ? 'principal' : kind]);
+  o.frequency.value = freq;
+  o.detune.value = (Math.random() - 0.5) * 3.5;
+  const g = AC.createGain();
+  g.gain.value = 0;
+  const peak = gain * 0.075 * Math.min(1.4, Math.pow(261.6 / freq, 0.18));
+  const att = kind === 'reed' ? 0.03 : kind === 'gedackt' ? 0.07 : 0.05;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(peak, t + att);
+  let out = g;
+  if (kind === 'reed') {
+    const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = Math.min(freq * 14, 7500); f.Q.value = 0.9;
+    o.connect(f).connect(g);
+  } else o.connect(g);
+  out.connect(bus);
+  o.start(t);
+  const parts = [{ o, g }];
+  if (kind !== 'reed' && freq < 2400) { // «чифф» — короткий призвук атаки
+    const n = AC.createBufferSource(); n.buffer = noiseBuf;
+    const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = Math.min(freq * (kind === 'gedackt' ? 3 : 2), 8000); bp.Q.value = 7;
+    const ng = AC.createGain(); ng.gain.setValueAtTime(0, t); ng.gain.linearRampToValueAtTime(peak * 0.9, t + 0.012); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    n.connect(bp).connect(ng).connect(bus); n.start(t, Math.random() * 0.5); n.stop(t + 0.12);
+  }
+  return parts;
+}
+function stopVoices(parts, when) {
+  const t = when ?? AC.currentTime;
+  for (const p of parts) {
+    p.g.gain.cancelScheduledValues(t);
+    p.g.gain.setTargetAtTime(0, t, 0.045);
+    p.o.stop(t + 0.5);
+  }
+}
+// все трубы одной ноты для одного регистра
+function stopRanks(stop, midi) {
+  const f0 = mtof(midi);
+  if (stop.kind === 'mixture') {
+    return [3, 4, 6, 8].map((r) => { let f = f0 * r; while (f > 4600) f /= 2; return f; });
+  }
+  return [f0 * stop.ratio];
+}
+const held = new Map(); // midi → { voices: Map(stopId → parts), pedal }
+function lowestHeld() { let m = Infinity; for (const k of held.keys()) m = Math.min(m, k); return m; }
+function noteOn(midi, when, source = 'user') {
+  initAudio();
+  if (!AC || held.has(midi)) return;
+  const entry = { voices: new Map(), source };
+  held.set(midi, entry);
+  for (const s of STOPS) if (on.has(s.id) && !s.pedal) entry.voices.set(s.id, stopRanks(s, midi).flatMap((f) => pipeVoice(f, s.kind, s.gain, when)));
+  refreshPedal(when);
+  light(midi, 1);
+  keyVisual(midi, true);
+}
+function noteOff(midi, when) {
+  const e = held.get(midi);
+  if (!e) return;
+  for (const parts of e.voices.values()) stopVoices(parts, when);
+  held.delete(midi);
+  refreshPedal(when);
+  keyVisual(midi, false);
+}
+// педаль: басовый голос берётся от нижней звучащей ноты (октавой ниже)
+let pedal = { midi: null, parts: [] };
+function refreshPedal(when) {
+  const low = lowestHeld();
+  const want = held.size && [...STOPS].some((s) => s.pedal && on.has(s.id)) ? low : null;
+  if (want === pedal.midi) return;
+  if (pedal.parts.length) stopVoices(pedal.parts, when);
+  pedal = { midi: want, parts: [] };
+  if (want !== null) {
+    for (const s of STOPS) if (s.pedal && on.has(s.id)) pedal.parts.push(...pipeVoice(mtof(want) * s.ratio, s.kind, s.gain, when));
+    light(want - 12, 0.9);
+  }
+}
+// вытянули регистр при зажатых нотах — ряд труб вступает сразу
+function stopChanged(id) {
+  if (!AC) return;
+  const s = STOPS.find((x) => x.id === id);
+  if (s.pedal) { pedal.midi = null; if (pedal.parts.length) stopVoices(pedal.parts); pedal.parts = []; refreshPedal(); return; }
+  for (const [midi, e] of held) {
+    if (on.has(id) && !e.voices.has(id)) e.voices.set(id, stopRanks(s, midi).flatMap((f) => pipeVoice(f, s.kind, s.gain)));
+    if (!on.has(id) && e.voices.has(id)) { stopVoices(e.voices.get(id)); e.voices.delete(id); }
+  }
+}
+
+// ---------------- регистровые рукоятки ----------------
+const $ = (id) => document.getElementById(id);
+function renderKnobs() {
+  const L = $('jambL'), R = $('jambR');
+  const mobile = matchMedia('(max-width:900px)').matches;
+  L.innerHTML = ''; R.innerHTML = '';
+  STOPS.forEach((s) => {
+    const b = document.createElement('button');
+    b.className = 'knob' + (s.pedal ? ' pedal' : '');
+    b.setAttribute('aria-pressed', on.has(s.id));
+    b.setAttribute('aria-label', `${s.name} ${s.foot}${s.pedal ? ', педаль' : ''}`);
+    b.innerHTML = `<span class="face"><span>${s.name}<small>${s.foot}${s.pedal ? ' П' : ''}</small></span></span>`;
+    b.addEventListener('click', () => { initAudio(); toggleStop(s.id); });
+    (mobile || s.side === 'L' ? L : R).appendChild(b);
+    s.el = b;
+  });
+}
+function toggleStop(id, force) {
+  const want = force ?? !on.has(id);
+  if (want) on.add(id); else on.delete(id);
+  const s = STOPS.find((x) => x.id === id);
+  s.el && s.el.setAttribute('aria-pressed', want);
+  stopChanged(id);
+  updateNow();
+}
+function applyCombo(k) {
+  const set = new Set(COMBOS[k]);
+  STOPS.forEach((s) => toggleStop(s.id, set.has(s.id)));
+}
+document.querySelectorAll('.piston[data-combo]').forEach((p) => p.addEventListener('click', () => { initAudio(); applyCombo(+p.dataset.combo); }));
+$('rev').addEventListener('click', () => {
+  revMode = (revMode + 1) % REVERB.length;
+  $('rev').textContent = 'Эхо: ' + REVERB[revMode].name;
+  initAudio();
+  if (AC && wetG) { wetG.gain.setTargetAtTime(REVERB[revMode].wet, AC.currentTime, 0.15); dryG.gain.setTargetAtTime(REVERB[revMode].dry, AC.currentTime, 0.15); }
+});
+renderKnobs();
+let lastMobile = matchMedia('(max-width:900px)').matches;
+
+// ---------------- клавиатура ----------------
+const NAMES = ['до', 'до♯', 'ре', 'ре♯', 'ми', 'фа', 'фа♯', 'соль', 'соль♯', 'ля', 'ля♯', 'си'];
+const LATIN = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+const isBlack = (m) => [1, 3, 6, 8, 10].includes(m % 12);
+const keyEls = new Map();
+function buildKeyboard() {
+  const kb = $('kb');
+  kb.innerHTML = ''; keyEls.clear();
+  const mobile = innerWidth < 700;
+  const lo = mobile ? 48 : 36, hi = mobile ? 72 : 84;
+  let x = 0;
+  const W = 28;
+  for (let m = lo; m <= hi; m++) {
+    const el = document.createElement('div');
+    if (isBlack(m)) { el.className = 'b'; el.style.left = (x - 9.5) + 'px'; }
+    else { el.className = 'w'; x += W; if (m % 12 === 0) { const lab = document.createElement('span'); lab.className = 'lab'; lab.textContent = 'C' + (Math.floor(m / 12) - 1); el.appendChild(lab); } }
+    el.dataset.m = m;
+    kb.appendChild(el);
+    keyEls.set(m, el);
+  }
+  kb.style.width = x + 'px';
+}
+buildKeyboard();
+function keyVisual(m, down) { const el = keyEls.get(m); if (el) el.classList.toggle('on', down); updateNow(); }
+// мышь и касания: скольжение по клавишам
+const pointerNote = new Map();
+$('kb').addEventListener('pointerdown', (e) => {
+  const el = e.target.closest('[data-m]');
+  if (!el) return;
+  e.preventDefault();
+  $('kb').setPointerCapture(e.pointerId);
+  const m = +el.dataset.m;
+  pointerNote.set(e.pointerId, m);
+  noteOn(m);
+});
+$('kb').addEventListener('pointermove', (e) => {
+  if (!pointerNote.has(e.pointerId)) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const k = el && el.closest && el.closest('[data-m]');
+  if (!k) return;
+  const m = +k.dataset.m, prev = pointerNote.get(e.pointerId);
+  if (m !== prev) { noteOff(prev); pointerNote.set(e.pointerId, m); noteOn(m); }
+});
+const endPtr = (e) => { if (pointerNote.has(e.pointerId)) { noteOff(pointerNote.get(e.pointerId)); pointerNote.delete(e.pointerId); } };
+$('kb').addEventListener('pointerup', endPtr);
+$('kb').addEventListener('pointercancel', endPtr);
+// клавиатура компьютера (по физическим клавишам — работает в любой раскладке)
+const CODES = {};
+['KeyZ', 'KeyS', 'KeyX', 'KeyD', 'KeyC', 'KeyV', 'KeyG', 'KeyB', 'KeyH', 'KeyN', 'KeyJ', 'KeyM', 'Comma'].forEach((c, k) => (CODES[c] = 48 + k));
+['KeyQ', 'Digit2', 'KeyW', 'Digit3', 'KeyE', 'KeyR', 'Digit5', 'KeyT', 'Digit6', 'KeyY', 'Digit7', 'KeyU', 'KeyI', 'Digit9', 'KeyO', 'Digit0', 'KeyP'].forEach((c, k) => (CODES[c] = 60 + k));
+addEventListener('keydown', (e) => {
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+  const m = CODES[e.code];
+  if (m !== undefined) { e.preventDefault(); noteOn(m); }
+});
+addEventListener('keyup', (e) => { const m = CODES[e.code]; if (m !== undefined) noteOff(m); });
+addEventListener('blur', () => { for (const m of [...held.keys()]) noteOff(m); });
+
+function updateNow() {
+  const notes = [...held.keys()].sort((a, b) => a - b);
+  const reg = STOPS.filter((s) => on.has(s.id));
+  $('nowVal').textContent = notes.length ? notes.map((m) => NAMES[m % 12] + (Math.floor(m / 12) - 1)).slice(0, 4).join(' · ') + (notes.length > 4 ? ' …' : '') : (playing ? 'Бах' : 'тишина');
+  $('nowSub').textContent = reg.length ? reg.map((s) => `${s.name} ${s.foot}`).join(', ') : 'все регистры задвинуты';
+}
+
+// ---------------- Токката: вступительные такты ----------------
+// три проведения мотива (октавами), каждое на октаву ниже; затем педаль ре
+function toccataEvents() {
+  const ev = [];
+  let t = 0.25;
+  const put = (notes, dur, gap = 0) => { for (const n of notes) ev.push({ t, n, on: true }, { t: t + dur, n, on: false }); t += dur + gap; };
+  [81, 69, 57].forEach((A, k) => {
+    const oct = (m) => [m, m - 12];
+    put(oct(A), 0.095);
+    put(oct(A - 2), 0.095);
+    put(oct(A), 1.55, 0.42);
+    put(oct(A - 2), 0.085); put(oct(A - 4), 0.085); put(oct(A - 5), 0.085); put(oct(A - 7), 0.085);
+    put(oct(A - 8), 0.42);
+    if (k < 2) put(oct(A - 7), 1.9, 0.5);
+    else { ev.push({ t: t + 0.12, stops: ['sb', 'tb'] }); put(oct(A - 7), 4.2, 0); }
+  });
+  // при равном времени: сначала снять ноты, потом регистры, потом взять новые
+  const rank = (e) => (e.stops ? 1 : e.on ? 2 : 0);
+  return ev.sort((a, b) => a.t - b.t || rank(a) - rank(b));
+}
+let playing = null;
+function playToccata() {
+  initAudio();
+  if (!AC) return;
+  if (playing) { stopToccata(); return; }
+  // вступление играется на мануалах; педаль вступит на последнем «ре»
+  const reg = new Set(['p8', 'o4', 'q3', 's2', 'mx', 't8']);
+  STOPS.forEach((s) => toggleStop(s.id, reg.has(s.id)));
+  const events = toccataEvents();
+  const start = AC.currentTime + 0.35;
+  playing = { start, events, i: 0 };
+  $('toccata').setAttribute('aria-pressed', 'true');
+  $('playIc').innerHTML = '<path d="M3 2h3v10H3zM8 2h3v10H8z"/>';
+  updateNow();
+}
+function stopToccata() {
+  if (!playing) return;
+  for (const m of [...held.keys()]) if (held.get(m).source === 'bach') noteOff(m);
+  playing = null;
+  $('toccata').setAttribute('aria-pressed', 'false');
+  $('playIc').innerHTML = '<path d="M3 1.5 12 7 3 12.5Z"/>';
+  updateNow();
+}
+// секвенсор: события подаются заранее с точным временем звука
+function pumpToccata() {
+  if (!playing || !AC) return;
+  const horizon = AC.currentTime + 0.12;
+  while (playing.i < playing.events.length) {
+    const e = playing.events[playing.i];
+    const at = playing.start + e.t;
+    if (at > horizon) break;
+    // и взятие, и снятие ноты планируются точно по времени звука
+    if (e.stops) e.stops.forEach((id) => toggleStop(id, true));
+    else if (e.on) noteOn(e.n, at, 'bach');
+    else noteOff(e.n, at);
+    playing.i++;
+  }
+  if (playing && playing.i >= playing.events.length && AC.currentTime > playing.start + playing.events[playing.events.length - 1].t + 0.3) {
+    playing = null;
+    $('toccata').setAttribute('aria-pressed', 'false');
+    $('playIc').innerHTML = '<path d="M3 1.5 12 7 3 12.5Z"/>';
+    updateNow();
+  }
+}
+$('toccata').addEventListener('click', playToccata);
+
+// =====================================================================
+// Фасад
+// =====================================================================
+const cv = $('cv');
+const g = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+let facade = null; // { img, pipes }
+const glow = new Map(); // индекс трубы → яркость
+const rnd = (() => { let s = 7; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })();
+
+function layoutPipes(W, H) {
+  const caseW = Math.min(W * 0.66, H * 1.62, 1100);
+  const cx = W / 2;
+  const shelf = H * 0.8;
+  // секции: плоские поля, башни, центральная башня
+  const S = [
+    { kind: 'flat', n: 7, f: 0.17, lmax: 0.36, dir: 1 },
+    { kind: 'tower', n: 5, f: 0.15, lmax: 0.5 },
+    { kind: 'center', n: 7, f: 0.24, lmax: 0.62 },
+    { kind: 'tower', n: 5, f: 0.15, lmax: 0.5 },
+    { kind: 'flat', n: 7, f: 0.17, lmax: 0.36, dir: -1 },
+  ];
+  const gap = caseW * 0.024;
+  const inner = caseW - gap * (S.length + 1);
+  const totalF = S.reduce((s, x) => s + x.f, 0);
+  // высота труб подбирается так, чтобы корона центральной башни поместилась в кадр
+  const swC = inner * S[2].f / totalF, rC = swC / 2 + 10, footC = swC / S[2].n * 0.8 * 2.1;
+  const lC = Math.min(0.62, Math.max(0.3, (shelf - footC - H * 0.1 - rC * 0.8 - H * 0.03) / H));
+  S[2].lmax = lC; S[1].lmax = S[3].lmax = lC * 0.8; S[0].lmax = S[4].lmax = lC * 0.58;
+  let x = cx - caseW / 2 + gap;
+  const pipes = [], sections = [];
+  for (const sec of S) {
+    const sw = inner * sec.f / totalF;
+    const pw = sw / sec.n;
+    const w = pw * 0.8;
+    const sp = { ...sec, x0: x, x1: x + sw, pipes: [] };
+    for (let k = 0; k < sec.n; k++) {
+      let rel;
+      if (sec.kind === 'flat') { const u = sec.dir > 0 ? k / (sec.n - 1) : 1 - k / (sec.n - 1); rel = 0.6 + 0.4 * u; }
+      else { const u = 1 - Math.abs(k - (sec.n - 1) / 2) / ((sec.n - 1) / 2); rel = 0.8 + 0.2 * u; }
+      const len = H * sec.lmax * rel;
+      const pwid = w * (0.82 + 0.18 * rel);
+      const foot = pwid * 2.1;
+      const px = x + pw * (k + 0.5);
+      const p = { x: px, w: pwid, bottom: shelf, mouth: shelf - foot, top: shelf - foot - len, len, sec: sections.length };
+      pipes.push(p); sp.pipes.push(p);
+    }
+    sections.push(sp);
+    x += sw + gap;
+  }
+  // соответствие нот трубам: длинные трубы — низкие ноты
+  const order = pipes.map((p, i) => i).sort((a, b) => pipes[b].len - pipes[a].len);
+  order.forEach((pi, rank) => (pipes[pi].rank = rank));
+  return { pipes, sections, caseW, cx, shelf, gap };
+}
+function noteToPipe(m) {
+  if (!facade) return -1;
+  const n = facade.pipes.length;
+  const lo = 24, hi = 96;
+  const rank = Math.round((1 - (Math.min(hi, Math.max(lo, m)) - lo) / (hi - lo)) * (n - 1));
+  return facade.pipes.findIndex((p) => p.rank === rank);
+}
+function light(m, a) {
+  const i = noteToPipe(m);
+  if (i >= 0) glow.set(i, Math.max(glow.get(i) || 0, a));
+}
+
+function drawPipe(c, p, light) {
+  const { x, w } = p;
+  const l = x - w / 2;
+  // тело
+  const body = c.createLinearGradient(l, 0, l + w, 0);
+  body.addColorStop(0, '#3B342B');
+  body.addColorStop(0.18, '#8E8573');
+  body.addColorStop(0.34, '#E9E2CF');
+  body.addColorStop(0.46, '#C2B9A3');
+  body.addColorStop(0.72, '#7A7162');
+  body.addColorStop(1, '#2A241D');
+  c.fillStyle = body;
+  c.fillRect(l, p.top, w, p.mouth - p.top);
+  // верхний срез
+  c.fillStyle = '#1B1510';
+  c.beginPath(); c.ellipse(x, p.top, w / 2, Math.max(1.5, w * 0.12), 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = 'rgba(240,230,205,.55)'; c.lineWidth = 1; c.beginPath(); c.ellipse(x, p.top, w / 2 - 0.5, Math.max(1.5, w * 0.12), 0, 0, Math.PI); c.stroke();
+  // ножка — сужающийся конус
+  const tip = w * 0.3;
+  const foot = c.createLinearGradient(l, 0, l + w, 0);
+  foot.addColorStop(0, '#2E2820'); foot.addColorStop(0.35, '#CFC6B0'); foot.addColorStop(0.5, '#A39A86'); foot.addColorStop(1, '#231E18');
+  c.fillStyle = foot;
+  c.beginPath(); c.moveTo(l, p.mouth); c.lineTo(l + w, p.mouth); c.lineTo(x + tip / 2, p.bottom); c.lineTo(x - tip / 2, p.bottom); c.closePath(); c.fill();
+  // рот и верхняя губа — остроконечная «митра»
+  const mw = w * 0.62, mh = w * 0.26;
+  c.fillStyle = '#0E0A07';
+  c.fillRect(x - mw / 2, p.mouth - mh, mw, mh);
+  c.beginPath();
+  c.moveTo(x - mw / 2, p.mouth - mh); c.lineTo(x, p.mouth - mh - w * 0.55); c.lineTo(x + mw / 2, p.mouth - mh); c.closePath();
+  const lip = c.createLinearGradient(x - mw / 2, 0, x + mw / 2, 0);
+  lip.addColorStop(0, '#6E6555'); lip.addColorStop(0.4, '#F4EEDD'); lip.addColorStop(1, '#6A6152');
+  c.fillStyle = lip; c.fill();
+  c.strokeStyle = 'rgba(20,15,10,.6)'; c.lineWidth = 0.8; c.stroke();
+}
+function fretwork(c, x0, x1, yTopFn, yBottom) {
+  // золочёная резьба: круги и завитки, обрезанные по огибающей верхов труб
+  c.save();
+  c.beginPath();
+  c.moveTo(x0, yBottom);
+  for (let x = x0; x <= x1; x += 2) c.lineTo(x, yTopFn(x));
+  c.lineTo(x1, yBottom);
+  c.closePath();
+  c.fillStyle = '#23150C'; c.fill();
+  c.clip();
+  const step = 15;
+  c.strokeStyle = '#C9A24E'; c.lineWidth = 1.3;
+  for (let x = x0 - step; x < x1 + step; x += step) for (let y = yBottom - step; y > yBottom - 240; y -= step) {
+    c.beginPath(); c.arc(x + ((y / step) % 2 ? step / 2 : 0), y, step * 0.36, 0, Math.PI * 2); c.stroke();
+  }
+  c.restore();
+  c.beginPath();
+  for (let x = x0; x <= x1; x += 2) (x === x0 ? c.moveTo(x, yTopFn(x)) : c.lineTo(x, yTopFn(x)));
+  c.strokeStyle = '#E3C379'; c.lineWidth = 2; c.stroke();
+}
+function buildFacade() {
+  const off = document.createElement('canvas');
+  off.width = Math.round(W * DPR); off.height = Math.round(H * DPR);
+  const c = off.getContext('2d');
+  c.scale(DPR, DPR);
+  const L = layoutPipes(W, H);
+  // каменная стена
+  const wall = c.createLinearGradient(0, 0, 0, H);
+  wall.addColorStop(0, '#2A2019'); wall.addColorStop(1, '#140E0A');
+  c.fillStyle = wall; c.fillRect(0, 0, W, H);
+  c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 1;
+  for (let y = 0; y < H; y += 46) {
+    c.beginPath(); c.moveTo(0, y + 0.5); c.lineTo(W, y + 0.5); c.stroke();
+    for (let x = ((y / 46) % 2) * 60; x < W; x += 120) { c.beginPath(); c.moveTo(x + 0.5, y); c.lineTo(x + 0.5, y + 46); c.stroke(); }
+  }
+  for (let k = 0; k < 900; k++) { c.fillStyle = `rgba(${rnd() < 0.5 ? '255,235,210' : '0,0,0'},${rnd() * 0.05})`; c.fillRect(rnd() * W, rnd() * H, 2 + rnd() * 6, 1 + rnd() * 3); }
+  // арочная ниша за органом
+  const nw = L.caseW * 1.12, nx = L.cx - nw / 2, ny = H * 0.06;
+  c.beginPath(); c.moveTo(nx, H); c.lineTo(nx, ny + nw / 2); c.arc(L.cx, ny + nw / 2, nw / 2, Math.PI, 0); c.lineTo(nx + nw, H); c.closePath();
+  const niche = c.createRadialGradient(L.cx, H * 0.5, 10, L.cx, H * 0.5, nw * 0.7);
+  niche.addColorStop(0, '#3A2B1F'); niche.addColorStop(1, '#1A120C');
+  c.fillStyle = niche; c.fill();
+  c.strokeStyle = 'rgba(201,162,78,.25)'; c.lineWidth = 2; c.stroke();
+
+  const caseL = L.cx - L.caseW / 2, caseR = L.cx + L.caseW / 2;
+  // нижний корпус
+  const lower = c.createLinearGradient(0, L.shelf, 0, H);
+  lower.addColorStop(0, '#4A2E1B'); lower.addColorStop(1, '#23150C');
+  c.fillStyle = lower; c.fillRect(caseL - 8, L.shelf, L.caseW + 16, H - L.shelf);
+  const panels = 6, pwid = (L.caseW - 40) / panels;
+  for (let k = 0; k < panels; k++) {
+    const px = caseL + 20 + k * pwid + 6, py = L.shelf + 24;
+    c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 2; c.strokeRect(px, py, pwid - 12, H - py - 10);
+    c.strokeStyle = 'rgba(255,210,150,.12)'; c.lineWidth = 1; c.strokeRect(px + 3, py + 3, pwid - 18, H - py - 16);
+  }
+  // полка импоста с золотой кромкой
+  c.fillStyle = '#5A3820'; c.fillRect(caseL - 14, L.shelf - 4, L.caseW + 28, 16);
+  c.fillStyle = '#C9A24E'; c.fillRect(caseL - 14, L.shelf - 4, L.caseW + 28, 2.5);
+  c.fillRect(caseL - 14, L.shelf + 10, L.caseW + 28, 1.5);
+
+  // секции: фон, резьба, карниз, трубы
+  L.sections.forEach((s, si) => {
+    const topMin = Math.min(...s.pipes.map((p) => p.top));
+    const corn = topMin - H * (s.kind === 'center' ? 0.1 : 0.07);
+    // задняя стенка секции
+    c.fillStyle = '#1A100A';
+    c.fillRect(s.x0 - 4, corn, s.x1 - s.x0 + 8, L.shelf - corn);
+    // огибающая верхов труб
+    const tops = s.pipes.map((p) => ({ x: p.x, y: p.top }));
+    const envelope = (x) => {
+      if (x <= tops[0].x) return tops[0].y - 4;
+      for (let k = 1; k < tops.length; k++) if (x <= tops[k].x) { const u = (x - tops[k - 1].x) / (tops[k].x - tops[k - 1].x); return tops[k - 1].y + (tops[k].y - tops[k - 1].y) * u - 4; }
+      return tops[tops.length - 1].y - 4;
+    };
+    fretwork(c, s.x0, s.x1, envelope, corn + 10);
+    s.pipes.forEach((p) => drawPipe(c, p));
+    // карниз
+    const cg = c.createLinearGradient(0, corn - 14, 0, corn + 10);
+    cg.addColorStop(0, '#6A4328'); cg.addColorStop(0.5, '#3E2616'); cg.addColorStop(1, '#2A190F');
+    c.fillStyle = cg;
+    if (s.kind === 'center') {
+      const r = (s.x1 - s.x0) / 2 + 10, ry = r * 0.5;
+      c.beginPath(); c.moveTo(s.x0 - 10, corn + 10); c.lineTo(s.x0 - 10, corn); c.ellipse((s.x0 + s.x1) / 2, corn, r, ry, 0, Math.PI, 0); c.lineTo(s.x1 + 10, corn + 10); c.closePath(); c.fill();
+      c.strokeStyle = '#C9A24E'; c.lineWidth = 2; c.beginPath(); c.ellipse((s.x0 + s.x1) / 2, corn, r - 4, ry - 4, 0, Math.PI, 0); c.stroke();
+      // золотое сияние над центральной башней
+      const gx = (s.x0 + s.x1) / 2, gy = corn - ry * 0.62;
+      c.save(); c.translate(gx, gy);
+      for (let k = 0; k < 24; k++) {
+        c.rotate(Math.PI * 2 / 24);
+        c.beginPath(); c.moveTo(0, -r * 0.13); c.lineTo(3, -r * (k % 2 ? 0.3 : 0.4)); c.lineTo(-3, -r * (k % 2 ? 0.3 : 0.4)); c.closePath();
+        c.fillStyle = k % 2 ? '#B8903F' : '#E3C379'; c.fill();
+      }
+      const disc = c.createRadialGradient(-3, -3, 2, 0, 0, r * 0.15);
+      disc.addColorStop(0, '#FFF1C4'); disc.addColorStop(1, '#B8903F');
+      c.fillStyle = disc; c.beginPath(); c.arc(0, 0, r * 0.14, 0, Math.PI * 2); c.fill();
+      c.restore();
+    } else {
+      const slope = s.kind === 'flat' ? (s.dir > 0 ? 1 : -1) : 0;
+      const yl = corn + (slope < 0 ? -H * 0.05 : 0), yr = corn + (slope > 0 ? -H * 0.05 : 0);
+      c.beginPath(); c.moveTo(s.x0 - 10, yl + 12); c.lineTo(s.x0 - 10, yl - 8); c.lineTo(s.x1 + 10, yr - 8); c.lineTo(s.x1 + 10, yr + 12); c.closePath(); c.fill();
+      c.fillStyle = '#C9A24E'; c.fillRect(Math.min(s.x0, s.x1) - 10, Math.min(yl, yr) - 9, 0, 0);
+      c.strokeStyle = '#C9A24E'; c.lineWidth = 2; c.beginPath(); c.moveTo(s.x0 - 10, yl - 8); c.lineTo(s.x1 + 10, yr - 8); c.stroke();
+      if (s.kind === 'tower') { // навершие-ваза
+        const vx = (s.x0 + s.x1) / 2, vy = corn - 12;
+        c.fillStyle = '#C9A24E';
+        c.beginPath(); c.ellipse(vx, vy - 10, 9, 12, 0, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.moveTo(vx - 3, vy - 22); c.lineTo(vx, vy - 34); c.lineTo(vx + 3, vy - 22); c.fill();
+        c.fillRect(vx - 10, vy, 20, 4);
+      }
+    }
+    // пилястры между секциями
+    if (si < L.sections.length) {
+      const px = s.x1 + L.gap / 2;
+      if (si < L.sections.length - 1) {
+        const pg = c.createLinearGradient(px - L.gap / 2, 0, px + L.gap / 2, 0);
+        pg.addColorStop(0, '#2A190F'); pg.addColorStop(0.5, '#6A4328'); pg.addColorStop(1, '#2A190F');
+        c.fillStyle = pg;
+        const top = Math.min(topMin, Math.min(...L.sections[si + 1].pipes.map((p) => p.top))) - H * 0.06;
+        c.fillRect(px - L.gap / 2 + 2, top, L.gap - 4, L.shelf - top);
+        c.fillStyle = '#C9A24E'; c.fillRect(px - 1, top + 6, 2, L.shelf - top - 12);
+      }
+    }
+  });
+  // боковые стенки корпуса
+  for (const side of [-1, 1]) {
+    const x = side < 0 ? caseL - 18 : caseR + 4;
+    const cg = c.createLinearGradient(x, 0, x + 14, 0);
+    cg.addColorStop(0, '#2A190F'); cg.addColorStop(0.5, '#5A3820'); cg.addColorStop(1, '#2A190F');
+    c.fillStyle = cg; c.fillRect(x, H * 0.38, 14, H);
+  }
+  facade = { img: off, pipes: L.pipes, L };
+}
+
+// ---------------- лучи света и пыль ----------------
+const motes = Array.from({ length: 180 }, () => ({ x: rnd(), y: rnd(), s: 0.5 + rnd() * 1.6, v: 0.2 + rnd(), ph: rnd() * 6.28 }));
+const rays = [
+  { a: 0.44, w: 0.07, i: 0.22 }, { a: 0.5, w: 0.035, i: 0.16 }, { a: 0.56, w: 0.1, i: 0.12 }, { a: 0.63, w: 0.05, i: 0.1 },
+];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function rayDist(px, py, r) {
+  // расстояние точки до оси луча, идущего из левого верхнего угла
+  const ox = -W * 0.15, oy = -H * 0.35;
+  const ang = r.a * Math.PI / 2 * 0.72;
+  const dx = Math.cos(ang), dy = Math.sin(ang);
+  const vx = px - ox, vy = py - oy;
+  const along = vx * dx + vy * dy;
+  const perp = Math.abs(vx * dy - vy * dx);
+  return { perp, along, width: r.w * W * (0.4 + along / (W + H)) };
+}
+function drawFrame(now) {
+  const t = now / 1000;
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.drawImage(facade.img, 0, 0, W, H);
+  // медленный блик, скользящий по трубам
+  const sweep = ((t * 0.035) % 1.6) - 0.3;
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  for (const [i, p] of facade.pipes.entries()) {
+    const d = Math.abs(p.x / W - sweep);
+    if (d < 0.08) {
+      const a = (1 - d / 0.08) * 0.13;
+      const gr = g.createLinearGradient(p.x - p.w / 2, 0, p.x + p.w / 2, 0);
+      gr.addColorStop(0.2, 'rgba(255,230,180,0)'); gr.addColorStop(0.36, `rgba(255,236,196,${a})`); gr.addColorStop(0.5, 'rgba(255,230,180,0)');
+      g.fillStyle = gr; g.fillRect(p.x - p.w / 2, p.top, p.w, p.mouth - p.top);
+    }
+    // звучащая труба: тёплый свет изо рта и вдоль тела
+    const gl = glow.get(i) || 0;
+    if (gl > 0.01) {
+      const h = p.mouth - p.top;
+      const body = g.createLinearGradient(0, p.mouth, 0, p.top);
+      body.addColorStop(0, `rgba(255,190,90,${0.42 * gl})`); body.addColorStop(0.6, `rgba(255,170,70,${0.14 * gl})`); body.addColorStop(1, 'rgba(255,170,70,0)');
+      g.fillStyle = body; g.fillRect(p.x - p.w / 2, p.top, p.w, h);
+      const rg = g.createRadialGradient(p.x, p.mouth - p.w * 0.3, 1, p.x, p.mouth - p.w * 0.3, p.w * 2.4);
+      rg.addColorStop(0, `rgba(255,220,150,${0.75 * gl})`); rg.addColorStop(1, 'rgba(255,160,60,0)');
+      g.fillStyle = rg; g.fillRect(p.x - p.w * 2.5, p.mouth - p.w * 2.8, p.w * 5, p.w * 5);
+    }
+  }
+  // лучи из высокого окна
+  const ox = -W * 0.15, oy = -H * 0.35;
+  for (const r of rays) {
+    const ang = r.a * Math.PI / 2 * 0.72;
+    const len = (W + H) * 1.4;
+    const dx = Math.cos(ang), dy = Math.sin(ang);
+    const flick = reduce ? 1 : 0.85 + 0.15 * Math.sin(t * 0.4 + r.a * 20);
+    const w0 = r.w * W * 0.3, w1 = r.w * W * 1.8;
+    g.beginPath();
+    g.moveTo(ox - dy * w0, oy + dx * w0); g.lineTo(ox + dx * len - dy * w1, oy + dy * len + dx * w1);
+    g.lineTo(ox + dx * len + dy * w1, oy + dy * len - dx * w1); g.lineTo(ox + dy * w0, oy - dx * w0); g.closePath();
+    const gr = g.createLinearGradient(ox, oy, ox + dx * len, oy + dy * len);
+    gr.addColorStop(0, `rgba(255,226,170,${r.i * flick})`); gr.addColorStop(0.55, `rgba(255,210,150,${r.i * 0.45 * flick})`); gr.addColorStop(1, 'rgba(255,200,140,0)');
+    g.fillStyle = gr; g.fill();
+  }
+  // пылинки: видны только в луче
+  for (const m of motes) {
+    if (!reduce) { m.y -= 0.00004 * m.v * 16; m.x += Math.sin(t * 0.3 + m.ph) * 0.00005; if (m.y < -0.02) { m.y = 1.02; m.x = rnd(); } }
+    const px = m.x * W, py = m.y * H;
+    let a = 0;
+    for (const r of rays) { const d = rayDist(px, py, r); if (d.perp < d.width) a = Math.max(a, (1 - d.perp / d.width) * r.i * 4); }
+    if (a < 0.02) continue;
+    const tw = 0.6 + 0.4 * Math.sin(t * 2 + m.ph * 5);
+    g.fillStyle = `rgba(255,236,200,${Math.min(0.9, a * tw)})`;
+    g.beginPath(); g.arc(px, py, m.s, 0, Math.PI * 2); g.fill();
+  }
+  g.restore();
+  // виньетка
+  const vg = g.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.3, W / 2, H * 0.55, Math.max(W, H) * 0.8);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)');
+  g.fillStyle = vg; g.fillRect(0, 0, W, H);
+}
+
+function resize() {
+  const box = cv.getBoundingClientRect();
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  W = Math.max(1, box.width); H = Math.max(1, box.height);
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  buildFacade();
+  const mobile = matchMedia('(max-width:900px)').matches;
+  if (mobile !== lastMobile) { lastMobile = mobile; renderKnobs(); }
+  buildKeyboard();
+  for (const m of held.keys()) keyVisual(m, true);
+}
+let rt;
+addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(resize, 120); });
+
+let lastT = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (document.hidden) { lastT = now; return; }
+  const dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  pumpToccata();
+  // звучащие трубы держат свет, отпущенные — гаснут
+  const active = new Set();
+  for (const [m, e] of held) {
+    active.add(noteToPipe(m));
+    for (const id of e.voices.keys()) { const s = STOPS.find((x) => x.id === id); if (s.ratio >= 2) active.add(noteToPipe(m + 12 * Math.round(Math.log2(s.ratio)))); if (s.kind === 'mixture') { active.add(noteToPipe(m + 19)); active.add(noteToPipe(m + 24)); } }
+  }
+  if (pedal.midi !== null) active.add(noteToPipe(pedal.midi - 12));
+  for (const i of active) if (i >= 0) glow.set(i, Math.min(1, (glow.get(i) || 0) + dt * 9));
+  for (const [i, v] of glow) if (!active.has(i)) { const nv = v - dt * 2.2; if (nv <= 0) glow.delete(i); else glow.set(i, nv); }
+  drawFrame(now);
+}
+
+const start = () => { resize(); updateNow(); requestAnimationFrame(loop); };
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(start); else start();
+</script>
+</body>
+</html>

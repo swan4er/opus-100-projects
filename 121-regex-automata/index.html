@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Автоматы регулярок</title>
+<meta name="description" content="Регулярное выражение превращается в автомат Томпсона, затем в ДКА и минимизируется алгоритмом Хопкрофта. Цианотипия, анимация сопоставления и катастрофа отката.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#efe8d8;
+  --paper-2:#e6ddc8;
+  --ink:#16375e;
+  --ink-2:#34557c;
+  --ink-3:#4a6283;
+  --print:#1a4b7d;
+  --print-deep:#0e3560;
+  --white:#f2f7ff;
+  --stamp:#a8392b;
+  --serif:'Old Standard TT','Times New Roman',serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.22,.7,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:var(--paper);color:var(--ink);font-family:var(--serif);-webkit-font-smoothing:antialiased}
+body{background-image:var(--grain);overflow-x:hidden}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--stamp);outline-offset:3px}
+
+.app{display:grid;grid-template-columns:372px 1fr;gap:36px;height:100vh;height:100dvh;padding:34px 40px 30px 44px}
+/* ---------- левая колонка ---------- */
+.side{display:flex;flex-direction:column;min-height:0;overflow-y:auto;scrollbar-width:none;padding-right:4px}
+.side::-webkit-scrollbar{display:none}
+.over{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+h1{font-weight:400;font-size:46px;line-height:1;letter-spacing:-.01em;margin:12px 0 14px}
+h1 i{font-style:italic}
+.lead{font-size:16px;line-height:1.45;color:var(--ink-2);max-width:360px}
+.lbl{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 7px;font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.06em}
+.lbl b{font-weight:400;color:var(--ink-3)}
+.field{position:relative;border-bottom:1.5px solid var(--ink);height:46px}
+.field pre,.field input{position:absolute;inset:0;font-family:var(--mono);font-size:22px;line-height:46px;white-space:pre;padding:0 2px;letter-spacing:.01em;overflow:hidden}
+.field input{background:transparent;border:0;outline:0;color:transparent;caret-color:var(--stamp);width:100%}
+.field input::selection{background:rgba(26,75,125,.18);color:transparent}
+.field.small pre,.field.small input{font-size:18px}
+.field:focus-within{border-bottom-color:var(--stamp)}
+.hl-op{color:var(--stamp)}
+.hl-par{color:#2f6fa7;font-weight:600}
+.hl-cls{color:#2e7a78}
+.hl-esc{color:#2e7a78;font-weight:600}
+.err{min-height:20px;margin-top:6px;font-family:var(--mono);font-size:12px;color:var(--stamp)}
+.chips{display:flex;flex-wrap:wrap;gap:6px 6px;margin-top:4px}
+.chip{font-family:var(--mono);font-size:13px;padding:6px 10px;border:1px solid rgba(22,55,94,.28);border-radius:2px;color:var(--ink);background:rgba(255,255,255,.25);
+  transition:background .2s,border-color .2s,color .2s;min-height:34px;text-align:left}
+.chip:hover{border-color:var(--ink);background:rgba(255,255,255,.55)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip small{display:block;font-family:var(--serif);font-style:italic;font-size:13px;opacity:.75;margin-top:1px;letter-spacing:0}
+.verdict{position:relative;margin-top:22px;min-height:84px;display:flex;align-items:center;gap:18px}
+.stamp{flex:0 0 auto;font-family:var(--mono);font-weight:600;font-size:20px;letter-spacing:.14em;padding:8px 14px 7px;border:2.5px dashed currentColor;border-radius:3px;
+  transform:rotate(-4deg) scale(1);transition:opacity .3s var(--ease),transform .35s var(--ease),color .3s;opacity:.4;color:var(--ink-3);
+  -webkit-mask-image:var(--stampmask);mask-image:var(--stampmask)}
+.stamp.on{opacity:.92;transform:rotate(-4deg) scale(1);border-style:solid;color:var(--ink)}
+.stamp.pop{transform:rotate(-4deg) scale(1.12)}
+.stamp.no{color:var(--stamp)}
+.reading{font-family:var(--mono);font-size:13px;color:var(--ink-3);line-height:1.5}
+.stats{margin-top:auto;padding-top:20px;border-top:1px solid rgba(22,55,94,.2);display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{font-family:var(--mono);font-size:12px;color:var(--ink-3);line-height:1.35}
+.stat b{display:block;font-family:var(--serif);font-weight:400;font-size:32px;color:var(--ink);line-height:1.05}
+.stat.arrow b::after{content:"→";font-size:18px;margin-left:8px;color:var(--ink-3);vertical-align:6px}
+
+/* ---------- правая часть: отпечаток ---------- */
+.plate{display:grid;grid-template-rows:auto 1fr auto;min-height:0;min-width:0}
+.tabs{display:flex;gap:4px;align-items:flex-end;padding-left:18px}
+.tab{font-family:var(--serif);font-size:17px;padding:8px 14px 10px;color:var(--ink-3);border-bottom:1.5px solid transparent;transition:color .2s,border-color .2s;min-height:40px}
+.tab i{font-style:normal;font-family:var(--mono);font-size:12px;margin-right:6px;letter-spacing:.06em}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.tab .n{font-family:var(--mono);font-size:12px;margin-left:6px;color:var(--ink-3)}
+.stage{position:relative;min-height:0}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#cv.drag{cursor:grabbing}
+.tapebar{position:absolute;left:44px;right:44px;bottom:36px;display:flex;align-items:center;gap:18px;pointer-events:none}
+.ctrls{display:flex;gap:6px;pointer-events:auto}
+.cbtn{width:40px;height:40px;border-radius:50%;border:1px solid rgba(242,247,255,.45);display:grid;place-items:center;color:var(--white);transition:background .2s,border-color .2s}
+.cbtn:hover{background:rgba(242,247,255,.12);border-color:var(--white)}
+.cbtn svg{width:14px;height:14px;fill:currentColor}
+.tape{display:flex;flex-wrap:nowrap;overflow:hidden;font-family:var(--mono);font-size:19px;color:var(--white);pointer-events:auto;min-width:0}
+.cell{width:30px;height:40px;display:grid;place-items:center;border:1px solid rgba(242,247,255,.28);margin-left:-1px;flex:0 0 auto;transition:background .25s,color .25s,opacity .25s}
+.cell.done{color:rgba(242,247,255,.5)}
+.cell.cur{background:var(--white);color:var(--print-deep)}
+.cell.dead{opacity:.28}
+.cell.end{width:auto;padding:0 10px;font-size:12px;letter-spacing:.08em;color:rgba(242,247,255,.62);border-style:dashed}
+.fitbtn{position:absolute;right:44px;top:34px;font-family:var(--mono);font-size:12px;color:rgba(242,247,255,.72);padding:8px 10px;border:1px solid rgba(242,247,255,.3);border-radius:2px;transition:color .2s,border-color .2s}
+.fitbtn:hover{color:var(--white);border-color:var(--white)}
+.caption{padding:12px 18px 0;font-size:16px;font-style:italic;color:var(--ink-2);line-height:1.4;max-width:900px;min-height:52px}
+.caption b{font-style:normal;font-weight:700;margin-right:6px;font-family:var(--serif)}
+.bt{position:absolute;left:44px;top:34px;display:none;align-items:center;gap:12px;font-family:var(--mono);font-size:13px;color:var(--white);pointer-events:auto}
+.bt.on{display:flex}
+.bt input[type=range]{-webkit-appearance:none;appearance:none;width:170px;height:20px;background:transparent}
+.bt input[type=range]::-webkit-slider-runnable-track{height:1px;background:rgba(242,247,255,.5)}
+.bt input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--print);border:1.5px solid var(--white);margin-top:-7px}
+.bt input[type=range]::-moz-range-track{height:1px;background:rgba(242,247,255,.5)}
+.bt input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--print);border:1.5px solid var(--white)}
+.tip{position:fixed;z-index:10;pointer-events:none;font-family:var(--mono);font-size:12px;background:var(--paper);color:var(--ink);padding:6px 9px;border:1px solid var(--ink);
+  border-radius:2px;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;max-width:320px;line-height:1.45}
+.tip.on{opacity:1;transform:none}
+
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;height:auto;padding:22px 18px 28px;gap:18px}
+  h1{font-size:36px}
+  .lead{font-size:15px}
+  .side{overflow:visible}
+  .stats{margin-top:18px}
+  .stat b{font-size:26px}
+  .plate{height:78vh;min-height:520px}
+  .tabs{overflow-x:auto;padding-left:0;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;font-size:15px;padding:8px 10px}
+  .tapebar{left:22px;right:22px;bottom:22px;gap:10px;flex-direction:column;align-items:stretch}
+  .tape{justify-content:flex-start}
+  .ctrls{justify-content:center}
+  .fitbtn{right:22px;top:22px}
+  .bt{left:22px;top:22px;flex-wrap:wrap}
+  .caption{padding:10px 2px 0;font-size:15px}
+}
+@media (prefers-reduced-motion:reduce){ .stamp,.cell{transition:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="over">Теория вычислений · лист I</div>
+    <h1>Автоматы <i>регулярок</i></h1>
+    <p class="lead">Регулярное выражение — маленькая программа. Здесь видно, как она становится машиной: сначала автоматом Томпсона, затем — детерминированным автоматом подмножеств, и наконец алгоритм Хопкрофта сжимает его до минимума.</p>
+
+    <label class="lbl" for="re"><span>Регулярное выражение</span><b>полное совпадение</b></label>
+    <div class="field"><pre id="reHl" aria-hidden="true"></pre><input id="re" spellcheck="false" autocomplete="off" autocapitalize="off" value="(a|b)*abb"></div>
+    <div class="err" id="err" role="status"></div>
+
+    <div class="chips" id="chips"></div>
+
+    <label class="lbl" for="str"><span>Строка для проверки</span><b id="strInfo"></b></label>
+    <div class="field small"><pre id="strHl" aria-hidden="true"></pre><input id="str" spellcheck="false" autocomplete="off" autocapitalize="off" value="babaabb"></div>
+
+    <div class="verdict"><div class="stamp" id="stamp">ЧТЕНИЕ</div><div class="reading" id="reading"></div></div>
+
+    <div class="stats">
+      <div class="stat arrow"><b id="sN">—</b>состояний НКА</div>
+      <div class="stat arrow"><b id="sD">—</b>ДКА</div>
+      <div class="stat"><b id="sM">—</b>минимальный</div>
+    </div>
+  </aside>
+
+  <section class="plate">
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-v="nfa" aria-selected="true"><i>I</i>НКА Томпсона</button>
+      <button class="tab" role="tab" data-v="dfa" aria-selected="false"><i>II</i>ДКА подмножеств</button>
+      <button class="tab" role="tab" data-v="min" aria-selected="false"><i>III</i>Минимальный ДКА</button>
+      <button class="tab" role="tab" data-v="bt" aria-selected="false"><i>IV</i>Катастрофа отката</button>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="Граф автомата"></canvas>
+      <button class="fitbtn" id="fit" title="Вписать граф в кадр">вписать</button>
+      <div class="bt" id="bt"><label for="btn">длина строки n</label><input type="range" id="btn" min="2" max="13" value="10"><span id="btnv">10</span></div>
+      <div class="tapebar" id="tapebar">
+        <div class="ctrls">
+          <button class="cbtn" id="bReset" aria-label="В начало" title="В начало"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="2" height="12"/><path d="M14 2.5v11L5 8z"/></svg></button>
+          <button class="cbtn" id="bBack" aria-label="Шаг назад" title="Шаг назад (←)"><svg viewBox="0 0 16 16"><path d="M12 2.5v11L3.5 8z"/></svg></button>
+          <button class="cbtn" id="bPlay" aria-label="Пауза" title="Пуск / пауза (пробел)"><svg viewBox="0 0 16 16" id="playIco"></svg></button>
+          <button class="cbtn" id="bFwd" aria-label="Шаг вперёд" title="Шаг вперёд (→)"><svg viewBox="0 0 16 16"><path d="M4 2.5v11L12.5 8z"/></svg></button>
+        </div>
+        <div class="tape" id="tape"></div>
+      </div>
+    </div>
+    <p class="caption" id="caption"></p>
+  </section>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+(() => {
+'use strict';
+const SHOT = !!window.__SHOT__;
+const $ = id => document.getElementById(id);
+const MAXCP = 0x10ffff;
+
+/* =========================================================================
+   1. Разбор регулярного выражения → дерево
+   ========================================================================= */
+const CYR = [[0x430, 0x44f], [0x451, 0x451], [0x410, 0x42f], [0x401, 0x401]];
+const ESC = {
+  d: [[48, 57]],
+  w: [[48, 57], [65, 90], [95, 95], [97, 122], ...CYR],
+  s: [[9, 13], [32, 32], [0xa0, 0xa0]]
+};
+function normRanges(rs) {
+  const a = rs.map(r => [r[0], r[1]]).sort((x, y) => x[0] - y[0]), out = [];
+  for (const r of a) { const l = out[out.length - 1]; if (l && r[0] <= l[1] + 1) l[1] = Math.max(l[1], r[1]); else out.push(r); }
+  return out;
+}
+function complement(rs) {
+  const out = []; let c = 0;
+  for (const [a, b] of normRanges(rs)) { if (a > c) out.push([c, a - 1]); c = b + 1; }
+  if (c <= MAXCP) out.push([c, MAXCP]);
+  return out;
+}
+const chShow = cp => cp === 32 ? '␣' : cp === 10 ? '\\n' : cp === 9 ? '\\t' : String.fromCodePoint(cp);
+function fmtRanges(rs) {
+  rs = normRanges(rs);
+  const size = rs.reduce((s, [a, b]) => s + b - a + 1, 0);
+  if (size === MAXCP) return '·';
+  if (size > 0x8000) { const c = complement(rs); if (c.length <= 3) return '¬' + fmtRanges(c); return 'почти всё'; }
+  const parts = rs.map(([a, b]) => a === b ? chShow(a) : b === a + 1 ? chShow(a) + ',' + chShow(b) : chShow(a) + '–' + chShow(b));
+  let s = parts.join(',');
+  if (s.length > 15) s = s.slice(0, 14) + '…';
+  return s;
+}
+function mkSet(ranges, label) { ranges = normRanges(ranges); return { t: 'set', ranges, label: label || fmtRanges(ranges) }; }
+
+function parse(src) {
+  let i = 0;
+  const err = (msg, at = i) => { const e = new Error(msg); e.pos = at; throw e; };
+  const peek = () => src[i];
+  function alt() {
+    const items = [cat()];
+    while (peek() === '|') { i++; items.push(cat()); }
+    return items.length === 1 ? items[0] : { t: 'alt', items };
+  }
+  function cat() {
+    const items = [];
+    while (i < src.length && peek() !== '|' && peek() !== ')') items.push(rep());
+    if (!items.length) return { t: 'eps' };
+    return items.length === 1 ? items[0] : { t: 'cat', items };
+  }
+  function rep() {
+    let a = atom();
+    for (;;) {
+      const c = peek();
+      if (c === '*') { i++; a = { t: 'star', a }; }
+      else if (c === '+') { i++; a = { t: 'plus', a }; }
+      else if (c === '?') { i++; a = { t: 'opt', a }; }
+      else if (c === '{') {
+        const m = /^\{(\d+)(,(\d*))?\}/.exec(src.slice(i));
+        if (!m) err('Фигурные скобки: нужно {n}, {n,} или {n,m}');
+        const lo = +m[1], hi = m[2] ? (m[3] === '' ? Infinity : +m[3]) : lo;
+        if (hi < lo) err('В {n,m} верхняя граница меньше нижней');
+        if (lo > 12 || (hi !== Infinity && hi > 12)) err('Повтор больше 12 раз раздует автомат — сократите');
+        i += m[0].length; a = repeat(a, lo, hi);
+      } else break;
+    }
+    return a;
+  }
+  function atom() {
+    const c = peek(), at = i;
+    if (c === '(') {
+      i++; if (src.startsWith('?:', i)) i += 2;
+      const e = alt();
+      if (peek() !== ')') err('Не хватает закрывающей скобки «)»', at);
+      i++; return e;
+    }
+    if (c === ')') err('Лишняя закрывающая скобка «)»');
+    if (c === '*' || c === '+' || c === '?' || c === '{') err(`«${c}» не к чему применить`);
+    if (c === '[') return cls();
+    if (c === '.') { i++; return mkSet([[0, 9], [11, MAXCP]], '·'); }
+    if (c === '\\') return esc(false);
+    if (c === '^' && i === 0) { i++; return { t: 'eps' }; }
+    if (c === '$' && i === src.length - 1) { i++; return { t: 'eps' }; }
+    const cp = src.codePointAt(i); i += cp > 0xffff ? 2 : 1;
+    return mkSet([[cp, cp]], chShow(cp));
+  }
+  function esc(inClass) {
+    i++;
+    if (i >= src.length) err('Обратная косая черта в конце');
+    const c = src[i++];
+    const low = c.toLowerCase();
+    if (ESC[low]) {
+      const r = c === low ? ESC[low] : complement(ESC[low]);
+      return inClass ? r : mkSet(r, '\\' + c);
+    }
+    const map = { n: 10, t: 9, r: 13, f: 12, v: 11 };
+    const cp = map[c] != null ? map[c] : c.codePointAt(0);
+    return inClass ? [[cp, cp]] : mkSet([[cp, cp]], chShow(cp));
+  }
+  function cls() {
+    const at = i; i++;
+    let neg = false; if (peek() === '^') { neg = true; i++; }
+    const rs = []; let first = true;
+    while (i < src.length && (peek() !== ']' || first)) {
+      first = false;
+      let lo;
+      if (peek() === '\\') { const r = esc(true); if (r.length > 1 || r[0][0] !== r[0][1]) { rs.push(...r); continue; } lo = r[0][0]; }
+      else { lo = src.codePointAt(i); i += lo > 0xffff ? 2 : 1; }
+      if (peek() === '-' && src[i + 1] && src[i + 1] !== ']') {
+        i++;
+        let hi;
+        if (peek() === '\\') { const r = esc(true); hi = r[0][1]; } else { hi = src.codePointAt(i); i += hi > 0xffff ? 2 : 1; }
+        if (hi < lo) err('Диапазон задом наперёд', at);
+        rs.push([lo, hi]);
+      } else rs.push([lo, lo]);
+    }
+    if (peek() !== ']') err('Не закрыт класс символов «]»', at);
+    i++;
+    const r = neg ? complement(rs) : normRanges(rs);
+    if (!r.length) err('Пустой класс символов', at);
+    const raw = src.slice(at, i);
+    return mkSet(r, raw.length <= 9 ? raw.slice(1, -1).replace(/-/g, '–').replace(/^\^/, '¬') : fmtRanges(r));
+  }
+  const clone = n => JSON.parse(JSON.stringify(n));
+  function repeat(a, lo, hi) {
+    const items = [];
+    for (let k = 0; k < lo; k++) items.push(clone(a));
+    if (hi === Infinity) items.push({ t: 'star', a: clone(a) });
+    else { let tail = null; for (let k = lo; k < hi; k++) tail = { t: 'opt', a: tail ? { t: 'cat', items: [clone(a), tail] } : clone(a) }; if (tail) items.push(tail); }
+    if (!items.length) return { t: 'eps' };
+    return items.length === 1 ? items[0] : { t: 'cat', items };
+  }
+  const tree = alt();
+  if (i < src.length) err(src[i] === ')' ? 'Лишняя закрывающая скобка «)»' : 'Неожиданный символ');
+  return tree;
+}
+
+/* =========================================================================
+   2. Алфавит: разбиваем все символы на классы, которые выражение не различает
+   ========================================================================= */
+function collectSets(n, out = []) {
+  if (!n) return out;
+  if (n.t === 'set') out.push(n);
+  if (n.items) n.items.forEach(x => collectSets(x, out));
+  if (n.a) collectSets(n.a, out);
+  return out;
+}
+function makeAlphabet(sets) {
+  const b = new Set([0, MAXCP + 1]);
+  sets.forEach(s => s.ranges.forEach(([lo, hi]) => { b.add(lo); b.add(hi + 1); }));
+  const bounds = [...b].sort((x, y) => x - y);
+  const K = bounds.length - 1;
+  const classOf = cp => { let lo = 0, hi = K - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (bounds[m] <= cp) lo = m; else hi = m - 1; } return lo; };
+  sets.forEach(s => {
+    s.cls = new Set();
+    s.ranges.forEach(([lo, hi]) => { for (let k = classOf(lo); k < K && bounds[k] <= hi; k++) s.cls.add(k); });
+  });
+  return { bounds, K, classOf };
+}
+
+/* =========================================================================
+   3. Конструкция Томпсона (как в «Книге дракона»: конкатенация склеивает состояния)
+   ========================================================================= */
+function thompson(tree) {
+  let n = 0; const edges = [];
+  const ns = () => n++;
+  const add = (from, to, set) => edges.push({ from, to, set: set || null });
+  function build(node, s) {
+    switch (node.t) {
+      case 'set': { const e = ns(); add(s, e, node); return e; }
+      case 'eps': { const e = ns(); add(s, e, null); return e; }
+      case 'cat': { let cur = s; for (const it of node.items) cur = build(it, cur); return cur; }
+      case 'alt': {
+        const ends = node.items.map(it => { const si = ns(); add(s, si, null); return build(it, si); });
+        const f = ns(); ends.forEach(e => add(e, f, null)); return f;
+      }
+      case 'star': { const si = ns(); add(s, si, null); const e1 = build(node.a, si); const f = ns(); add(e1, si, null); add(e1, f, null); add(s, f, null); return f; }
+      case 'plus': { const si = ns(); add(s, si, null); const e1 = build(node.a, si); const f = ns(); add(e1, si, null); add(e1, f, null); return f; }
+      case 'opt': { const si = ns(); add(s, si, null); const e1 = build(node.a, si); const f = ns(); add(e1, f, null); add(s, f, null); return f; }
+    }
+  }
+  const start = ns(), fin = build(tree, start);
+  return { n, edges, start, fin };
+}
+function closure(nfa, set) {
+  const st = [...set], out = new Set(set);
+  while (st.length) { const u = st.pop(); for (const e of nfa.out[u]) if (!e.set && !out.has(e.to)) { out.add(e.to); st.push(e.to); } }
+  return out;
+}
+function move(nfa, set, k) {
+  const out = new Set();
+  for (const u of set) for (const e of nfa.out[u]) if (e.set && e.set.cls.has(k)) out.add(e.to);
+  return out;
+}
+
+/* =========================================================================
+   4. Алгоритм подмножеств → ДКА
+   ========================================================================= */
+const LET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const SUBS = '₀₁₂₃₄₅₆₇₈₉';
+const dName = i => i < 26 ? LET[i] : LET[i % 26] + String(Math.floor(i / 26)).split('').map(d => SUBS[d]).join('');
+function subsets(nfa, A, cap = 300) {
+  const key = s => [...s].sort((a, b) => a - b).join(',');
+  const st = [closure(nfa, [nfa.start])], idx = new Map([[key(st[0]), 0]]), trans = [];
+  for (let q = 0; q < st.length; q++) {
+    if (st.length > cap) return null;
+    const row = new Int32Array(A.K).fill(-1);
+    for (let k = 0; k < A.K; k++) {
+      const m = move(nfa, st[q], k); if (!m.size) continue;
+      const c = closure(nfa, m), kk = key(c);
+      if (!idx.has(kk)) { idx.set(kk, st.length); st.push(c); }
+      row[k] = idx.get(kk);
+    }
+    trans.push(row);
+  }
+  return { n: st.length, K: A.K, trans, sets: st, acc: st.map(s => s.has(nfa.fin)), start: 0, names: st.map((_, i) => dName(i)) };
+}
+
+/* =========================================================================
+   5. Минимизация Хопкрофта
+   ========================================================================= */
+function hopcroft(d) {
+  const K = d.K; let N = d.n, dead = -1;
+  if (d.trans.some(r => r.some(t => t < 0))) { dead = N; N++; }
+  const T = Array.from({ length: N }, (_, q) => q === dead ? new Int32Array(K).fill(dead) : d.trans[q].map(t => t < 0 ? dead : t));
+  const acc = q => q !== dead && d.acc[q];
+  const inv = Array.from({ length: N * K }, () => []);
+  for (let q = 0; q < N; q++) for (let k = 0; k < K; k++) inv[T[q][k] * K + k].push(q);
+  const blocks = [], blockOf = new Int32Array(N);
+  const F = [], R = []; for (let q = 0; q < N; q++) (acc(q) ? F : R).push(q);
+  [F, R].filter(x => x.length).forEach(x => { blocks.push(new Set(x)); x.forEach(q => blockOf[q] = blocks.length - 1); });
+  const W = [blocks.length === 2 && blocks[1].size < blocks[0].size ? 1 : 0], inW = new Set(W);
+  while (W.length) {
+    const a = W.pop(); inW.delete(a);
+    const Aset = [...blocks[a]];
+    for (let k = 0; k < K; k++) {
+      const X = new Set(); for (const t of Aset) for (const q of inv[t * K + k]) X.add(q);
+      if (!X.size) continue;
+      const touched = new Map();
+      for (const q of X) { const b = blockOf[q]; if (!touched.has(b)) touched.set(b, []); touched.get(b).push(q); }
+      for (const [b, qs] of touched) {
+        if (qs.length === blocks[b].size) continue;
+        const nb = blocks.length, ns = new Set(qs);
+        qs.forEach(q => { blocks[b].delete(q); blockOf[q] = nb; });
+        blocks.push(ns);
+        if (inW.has(b)) { W.push(nb); inW.add(nb); }
+        else { const sm = blocks[b].size <= ns.size ? b : nb; W.push(sm); inW.add(sm); }
+      }
+    }
+  }
+  // блоки-ловушки (из них не добраться до принятия) не рисуем
+  const nb = blocks.length, btrans = blocks.map(B => { const q = [...B][0]; return T[q].map(t => blockOf[t]); });
+  const bacc = blocks.map(B => [...B].some(acc));
+  const alive = new Array(nb).fill(false); let ch = true;
+  bacc.forEach((a, i) => { if (a) alive[i] = true; });
+  while (ch) { ch = false; for (let b = 0; b < nb; b++) if (!alive[b] && btrans[b].some(t => alive[t])) { alive[b] = true; ch = true; } }
+  // нумерация в порядке обхода от старта
+  const startB = blockOf[d.start], order = [], seen = new Map();
+  if (alive[startB]) { order.push(startB); seen.set(startB, 0); }
+  for (let i = 0; i < order.length; i++) for (let k = 0; k < K; k++) { const t = btrans[order[i]][k]; if (alive[t] && !seen.has(t)) { seen.set(t, order.length); order.push(t); } }
+  const names = order.map(b => [...blocks[b]].filter(q => q !== dead).sort((x, y) => x - y).map(q => d.names[q]).join(''));
+  const trans = order.map(b => Int32Array.from(btrans[b].map(t => seen.has(t) ? seen.get(t) : -1)));
+  return { n: order.length, K, trans, acc: order.map(b => bacc[b]), start: 0, names, members: order.map(b => [...blocks[b]].filter(q => q !== dead)) };
+}
+
+/* =========================================================================
+   6. Движок с откатами (для главы IV) — считает шаги
+   ========================================================================= */
+function backtrack(tree, str, limit) {
+  let steps = 0, aborted = false;
+  const cps = Array.from(str, c => c.codePointAt(0));
+  const inSet = (s, cp) => s.ranges.some(([a, b]) => cp >= a && cp <= b);
+  function m(node, i, k) {
+    if (++steps > limit) { aborted = true; return false; }
+    switch (node.t) {
+      case 'set': return i < cps.length && inSet(node, cps[i]) && k(i + 1);
+      case 'eps': return k(i);
+      case 'cat': { const go = (j, x) => x === node.items.length ? k(j) : m(node.items[x], j, jj => go(jj, x + 1)); return go(i, 0); }
+      case 'alt': for (const it of node.items) { if (m(it, i, k)) return true; if (aborted) return false; } return false;
+      case 'star': { const loop = j => { if (m(node.a, j, jj => jj !== j && loop(jj))) return true; if (aborted) return false; return k(j); }; return loop(i); }
+      case 'plus': { const loop = j => { if (m(node.a, j, jj => jj !== j && loop(jj))) return true; if (aborted) return false; return k(j); }; return m(node.a, i, jj => loop(jj)); }
+      case 'opt': return m(node.a, i, k) || (!aborted && k(i));
+    }
+    return false;
+  }
+  const ok = m(tree, 0, j => j === cps.length);
+  return { ok, steps, aborted };
+}
+
+/* =========================================================================
+   7. Раскладка графа слоями (Сугияма «на минималках»)
+   ========================================================================= */
+function layoutGraph(n, edges, start, DX = 104, DY = 100) {
+  // слой = длиннейший путь по «прямым» рёбрам (в порядке создания состояний)
+  const layer = new Array(n).fill(-1); layer[start] = 0;
+  const order = [...Array(n).keys()];
+  for (let pass = 0; pass < n; pass++) {
+    let changed = false;
+    for (const e of edges) if (e.to > e.from && layer[e.from] >= 0 && layer[e.to] < layer[e.from] + 1) { layer[e.to] = layer[e.from] + 1; changed = true; }
+    if (!changed) break;
+  }
+  const maxL = Math.max(0, ...layer);
+  order.forEach(v => { if (layer[v] < 0) layer[v] = maxL + 1; });
+  const L = Math.max(...layer) + 1, rows = Array.from({ length: L }, () => []);
+  order.forEach(v => rows[layer[v]].push(v));
+  const pos = new Array(n).fill(0);
+  rows.forEach(r => r.forEach((v, i) => pos[v] = i));
+  const preds = Array.from({ length: n }, () => []);
+  edges.forEach(e => { if (layer[e.from] < layer[e.to]) preds[e.to].push(e.from); if (layer[e.to] < layer[e.from]) preds[e.from].push(e.to); });
+  for (let it = 0; it < 6; it++) {
+    for (let l = 1; l < L; l++) {
+      const r = rows[l];
+      const bc = v => { const p = preds[v].filter(u => layer[u] < l); return p.length ? p.reduce((s, u) => s + pos[u] - (rows[layer[u]].length - 1) / 2, 0) / p.length : pos[v] - (r.length - 1) / 2; };
+      const score = new Map(r.map(v => [v, bc(v)]));
+      r.sort((a, b) => score.get(a) - score.get(b) || a - b);
+      r.forEach((v, i) => pos[v] = i);
+    }
+  }
+  const xy = new Array(n);
+  rows.forEach((r, l) => r.forEach((v, i) => { xy[v] = { x: l * DX, y: (i - (r.length - 1) / 2) * DY, layer: l }; }));
+  return xy;
+}
+
+function buildView(kind, n, rawEdges, start, accSet, names, subs) {
+  // склеиваем параллельные рёбра
+  const map = new Map();
+  rawEdges.forEach(e => {
+    const key = e.from + '>' + e.to;
+    if (!map.has(key)) map.set(key, { from: e.from, to: e.to, eps: e.eps, cls: new Set(), labels: [] });
+    const m = map.get(key);
+    if (e.cls) e.cls.forEach(k => m.cls.add(k));
+    if (e.label && !m.labels.includes(e.label)) m.labels.push(e.label);
+    if (!e.eps) m.eps = false;
+  });
+  const edges = [...map.values()];
+  const wide = kind !== 'nfa', xy = layoutGraph(n, edges, start, wide ? (subs ? 178 : 150) : 104, wide ? 150 : 100);
+  const nodes = xy.map((p, i) => ({ id: i, x: p.x, y: p.y, layer: p.layer, label: names ? names[i] : String(i), acc: accSet(i), sub: subs ? subs[i] : null }));
+  edges.forEach(e => {
+    e.label = e.eps ? 'ε' : e.labels.join(',');
+    if (e.label.length > 16) e.label = e.label.slice(0, 15) + '…';
+    e.rev = map.has(e.to + '>' + e.from) && e.to !== e.from;
+    geom(e, nodes);
+  });
+  const xs = nodes.map(p => p.x), ys = nodes.map(p => p.y);
+  let minY = Math.min(...ys), maxY = Math.max(...ys);
+  edges.forEach(e => { if (e.g) { minY = Math.min(minY, e.g.lab.y - 14); maxY = Math.max(maxY, e.g.lab.y + 14); } });
+  return { kind, nodes, edges, start, bbox: { x0: Math.min(...xs) - 70, x1: Math.max(...xs) + 40, y0: minY - 44, y1: maxY + 40 } };
+}
+
+const R = 21;
+function geom(e, nodes) {
+  const A = nodes[e.from], B = nodes[e.to];
+  let c1, c2, p0, p3;
+  if (A === B) {
+    const a0 = -Math.PI / 2 - .55, a1 = -Math.PI / 2 + .55;
+    p0 = { x: A.x + Math.cos(a0) * R, y: A.y + Math.sin(a0) * R }; p3 = { x: A.x + Math.cos(a1) * R, y: A.y + Math.sin(a1) * R };
+    c1 = { x: A.x - 34, y: A.y - 76 }; c2 = { x: A.x + 34, y: A.y - 76 };
+  } else {
+    const dx = B.x - A.x, dy = B.y - A.y, adj = B.layer === A.layer + 1;
+    if (adj && !e.rev) { c1 = { x: A.x + dx * .45, y: A.y }; c2 = { x: B.x - dx * .45, y: B.y }; }
+    else if (Math.abs(dx) < 1) { const s = dy > 0 ? 1 : -1, off = 58; c1 = { x: A.x + off, y: A.y + dy * .25 }; c2 = { x: B.x + off, y: B.y - dy * .25 }; void s; }
+    else {
+      const fwd = dx > 0, h = (fwd ? -1 : 1) * (34 + Math.abs(dx) * .26 + Math.abs(dy) * .15) * (e.rev && fwd ? .7 : 1);
+      c1 = { x: A.x + dx * .22, y: A.y + h }; c2 = { x: B.x - dx * .22, y: B.y + h };
+    }
+    const n0 = norm2(c1.x - A.x, c1.y - A.y), n3 = norm2(c2.x - B.x, c2.y - B.y);
+    p0 = { x: A.x + n0.x * R, y: A.y + n0.y * R }; p3 = { x: B.x + n3.x * (R + 2), y: B.y + n3.y * (R + 2) };
+  }
+  const lab = bez(p0, c1, c2, p3, .5);
+  e.g = { p0, c1, c2, p3, lab };
+}
+const norm2 = (x, y) => { const l = Math.hypot(x, y) || 1; return { x: x / l, y: y / l }; };
+function bez(p0, c1, c2, p3, t) {
+  const u = 1 - t;
+  return { x: u * u * u * p0.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * p3.x, y: u * u * u * p0.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * p3.y };
+}
+
+/* =========================================================================
+   8. Состояние приложения
+   ========================================================================= */
+const EXAMPLES = [
+  { re: '(a|b)*abb', s: 'babaabb', note: 'из «Книги дракона»' },
+  { re: '(0|1(01*0)*1)*', s: '1001', note: 'двоичные, кратные 3' },
+  { re: '[А-ЯЁ][а-яё]*(ов|ев|ин)а?', s: 'Пушкин', note: 'русские фамилии' },
+  { re: '-?\\d+(,\\d+)?', s: '-3,14', note: 'число с запятой' },
+  { re: '(ab|a)(bc|c)', s: 'abc', note: 'два пути к одному' },
+  { re: '(a+)+b', s: 'aaaaab', note: 'опасная для откатов' }
+];
+let S = null;               // текущий разбор: nfa, dfa, min, alphabet
+let view = 'nfa', views = {};
+let str = [], pos = 0, playing = !matchMedia('(prefers-reduced-motion: reduce)').matches, runs = null;
+let anim = null, lastStepT = 0;
+const cam = { s: 1, x: 0, y: 0, ts: 1, tx: 0, ty: 0, user: false };
+
+function rebuild() {
+  const src = $('re').value;
+  hl(src);
+  let tree;
+  try { tree = parse(src); $('err').textContent = ''; }
+  catch (e) { $('err').textContent = e.message + (e.pos != null ? ` — позиция ${e.pos + 1}` : ''); markErr(e.pos); return; }
+  const sets = collectSets(tree), A = makeAlphabet(sets);
+  const nfa = thompson(tree);
+  nfa.out = Array.from({ length: nfa.n }, () => []);
+  nfa.edges.forEach(e => nfa.out[e.from].push(e));
+  const dfa = subsets(nfa, A);
+  const min = dfa ? hopcroft(dfa) : null;
+  S = { tree, A, nfa, dfa, min, sets };
+  // подписи рёбер ДКА: если набор классов совпадает с исходным множеством — берём его подпись
+  const labelFor = cls => {
+    const sig = [...cls].sort((a, b) => a - b).join(',');
+    for (const s of sets) if ([...s.cls].sort((a, b) => a - b).join(',') === sig) return s.label;
+    const rs = [...cls].map(k => [A.bounds[k], A.bounds[k + 1] - 1]);
+    return fmtRanges(rs);
+  };
+  views = {};
+  views.nfa = buildView('nfa', nfa.n, nfa.edges.map(e => ({ from: e.from, to: e.to, eps: !e.set, cls: e.set ? e.set.cls : null, label: e.set ? e.set.label : null })),
+    nfa.start, i => i === nfa.fin, null, null);
+  const dfaEdges = d => {
+    const out = [];
+    d.trans.forEach((row, q) => {
+      const byT = new Map();
+      row.forEach((t, k) => { if (t >= 0) { if (!byT.has(t)) byT.set(t, new Set()); byT.get(t).add(k); } });
+      byT.forEach((cls, t) => out.push({ from: q, to: t, eps: false, cls, label: labelFor(cls) }));
+    });
+    return out;
+  };
+  if (dfa) views.dfa = buildView('dfa', dfa.n, dfaEdges(dfa), 0, i => dfa.acc[i], dfa.names, dfa.sets.map(s => '{' + [...s].sort((a, b) => a - b).join(',') + '}'));
+  if (min) views.min = buildView('min', min.n, dfaEdges(min), 0, i => min.acc[i], min.names, null);
+  $('sN').textContent = nfa.n;
+  $('sD').textContent = dfa ? dfa.n : '>300';
+  $('sM').textContent = min ? min.n : '—';
+  resetRun();
+  fitView(true);
+  updateCaption();
+  document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c.dataset.re === src));
+}
+
+function resetRun() {
+  const s = $('str').value;
+  str = Array.from(s);
+  hlStr();
+  pos = 0; anim = null;
+  if (!S) return;
+  // заранее прогоняем все три машины по строке
+  const { nfa, dfa, min, A } = S;
+  const N = [closure(nfa, [nfa.start])], D = [dfa ? 0 : -1], M = [min && min.n ? 0 : -1];
+  str.forEach((ch, i) => {
+    const k = A.classOf(ch.codePointAt(0));
+    N.push(closure(nfa, move(nfa, N[i], k)));
+    D.push(D[i] >= 0 && dfa ? dfa.trans[D[i]][k] : -1);
+    M.push(M[i] >= 0 && min ? min.trans[M[i]][k] : -1);
+  });
+  runs = { N, D, M, ok: N[str.length].has(nfa.fin) };
+  lastStepT = performance.now() + 600;
+  renderTape(); updateVerdict();
+}
+
+/* =========================================================================
+   9. Интерфейс: подсветка, примеры, вкладки, лента
+   ========================================================================= */
+function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+function hl(src) {
+  let out = '', depth = 0, inCls = false;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (c === '\\' && i + 1 < src.length) { out += `<span class="hl-esc">${escHtml(c + src[i + 1])}</span>`; i++; continue; }
+    if (inCls) { out += `<span class="hl-cls">${escHtml(c)}</span>`; if (c === ']') inCls = false; continue; }
+    if (c === '[') { inCls = true; out += `<span class="hl-cls">[</span>`; continue; }
+    if (c === '(' || c === ')') { if (c === ')') depth--; out += `<span class="hl-par" style="opacity:${1 - Math.min(3, Math.max(0, depth)) * .18}">${c}</span>`; if (c === '(') depth++; continue; }
+    if ('|*+?{}'.includes(c)) { out += `<span class="hl-op">${escHtml(c)}</span>`; continue; }
+    out += escHtml(c);
+  }
+  $('reHl').innerHTML = out + ' ';
+}
+function markErr(p) {
+  const src = $('re').value;
+  if (p == null) return;
+  $('reHl').innerHTML = escHtml(src.slice(0, p)) + `<span style="background:rgba(168,57,43,.2);color:var(--stamp)">${escHtml(src[p] || ' ')}</span>` + escHtml(src.slice(p + 1));
+}
+function hlStr() { $('strHl').textContent = $('str').value + ' '; $('strInfo').textContent = str.length + ' ' + plural(str.length, 'символ', 'символа', 'символов'); }
+const plural = (n, a, b, c) => { const m = n % 100, k = n % 10; return m > 10 && m < 20 ? c : k === 1 ? a : k >= 2 && k <= 4 ? b : c; };
+['re', 'str'].forEach(id => {
+  const inp = $(id), pre = $(id + 'Hl');
+  inp.addEventListener('scroll', () => { pre.scrollLeft = inp.scrollLeft; });
+  inp.addEventListener('input', () => { pre.scrollLeft = inp.scrollLeft; if (id === 're') rebuild(); else resetRun(); playing = true; syncPlay(); });
+});
+const chips = $('chips');
+EXAMPLES.forEach(ex => {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.dataset.re = ex.re;
+  b.innerHTML = `${escHtml(ex.re)}<small>${ex.note}</small>`;
+  b.onclick = () => { $('re').value = ex.re; $('str').value = ex.s; rebuild(); playing = true; syncPlay(); if (ex.re === '(a+)+b') setView('bt'); };
+  chips.appendChild(b);
+});
+
+const CAPTIONS = {
+  nfa: ['Рис. I.', 'Недетерминированный автомат Томпсона. Пунктир — ε-переходы: по ним машина идёт, не читая символа. Поэтому активно сразу множество состояний — все подсвеченные.'],
+  dfa: ['Рис. II.', 'Детерминированный автомат. Каждое его состояние — множество состояний НКА (подписано под кружком). В любой момент активно ровно одно, и на каждый символ — один переход.'],
+  min: ['Рис. III.', 'Минимальный ДКА. Алгоритм Хопкрофта склеил неотличимые состояния (буквы в имени — какие именно). Меньшей машины для этого языка не существует.'],
+  bt: ['Рис. IV.', 'Катастрофа отката. Движок с возвратами перебирает все способы разбить строку «aaa…a» на группы для (a+)+b — примерно 2ⁿ попыток; каждая веточка папоротника — одна неудача. Автомат проходит строку один раз.']
+};
+function updateCaption() {
+  let [b, t] = CAPTIONS[view];
+  if (view === 'dfa' && !views.dfa) t = 'ДКА получился слишком большим: больше 300 состояний. Это и есть экспоненциальный взрыв подмножеств — поэтому движки строят ДКА лениво, по мере чтения строки.';
+  if (view === 'nfa' && $('re').value === '(a|b)*abb') t += ' Нумерация совпадает с классическим рисунком из «Книги дракона».';
+  $('caption').innerHTML = `<b>${b}</b>${t}`;
+}
+function setView(v) {
+  view = v;
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.v === v));
+  $('bt').classList.toggle('on', v === 'bt');
+  $('tapebar').style.display = v === 'bt' ? 'none' : '';
+  $('fit').style.display = v === 'bt' ? 'none' : '';
+  if (v === 'bt') startFern();
+  fitView(true); updateCaption();
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => setView(t.dataset.v));
+
+function renderTape() {
+  const tape = $('tape'); tape.innerHTML = '';
+  const dead = deadAt();
+  str.forEach((c, i) => {
+    const d = document.createElement('div');
+    d.className = 'cell' + (i < pos ? ' done' : '') + (i === pos && pos < str.length ? ' cur' : '') + (dead >= 0 && i >= dead ? ' dead' : '');
+    d.textContent = c === ' ' ? '␣' : c;
+    tape.appendChild(d);
+  });
+  const e = document.createElement('div'); e.className = 'cell end' + (pos === str.length ? ' cur' : ''); e.textContent = 'конец';
+  tape.appendChild(e);
+  const cur = tape.children[Math.min(pos, str.length)];
+  if (cur) { const off = cur.offsetLeft - tape.clientWidth / 2 + 15; tape.scrollLeft = Math.max(0, off); }
+}
+function deadAt() {
+  if (!runs) return -1;
+  for (let i = 0; i <= str.length; i++) if (!runs.N[i].size) return i;
+  return -1;
+}
+function updateVerdict() {
+  const st = $('stamp'), rd = $('reading');
+  if (!runs) return;
+  const dead = deadAt();
+  if (pos >= str.length || (dead >= 0 && pos >= dead)) {
+    const ok = runs.ok;
+    st.textContent = ok ? 'ПРИНЯТО' : 'ОТВЕРГНУТО';
+    st.classList.toggle('no', !ok);
+    if (!st.classList.contains('on')) { st.classList.add('on', 'pop'); setTimeout(() => st.classList.remove('pop'), 180); }
+    rd.innerHTML = ok ? 'Машина дочитала строку<br>и стоит в принимающем состоянии.' : dead >= 0 && dead < str.length ? `Тупик на символе №${dead}:<br>переходов больше нет.` : 'Строка кончилась,<br>но принимающего состояния нет.';
+  } else {
+    st.classList.remove('on', 'no'); st.textContent = 'ЧТЕНИЕ';
+    const nset = runs.N[pos];
+    rd.innerHTML = `Прочитано ${pos} из ${str.length}.<br>Активно состояний НКА: ${nset.size}.`;
+  }
+}
+function syncPlay() { $('playIco').innerHTML = playing ? '<rect x="3" y="2" width="3.4" height="12"/><rect x="9.6" y="2" width="3.4" height="12"/>' : '<path d="M4 2.5v11L12.5 8z"/>'; $('bPlay').setAttribute('aria-label', playing ? 'Пауза' : 'Пуск'); }
+function step(dir) {
+  if (!runs) return;
+  const dead = deadAt(), maxPos = dead >= 0 ? Math.min(dead, str.length) : str.length;
+  const np = Math.max(0, Math.min(maxPos, pos + dir));
+  if (np === pos) return false;
+  if (dir > 0) anim = { from: pos, to: np, t0: performance.now(), dur: 720 };
+  else anim = null;
+  pos = np; renderTape(); updateVerdict();
+  return true;
+}
+$('bFwd').onclick = () => { playing = false; syncPlay(); step(1); };
+$('bBack').onclick = () => { playing = false; syncPlay(); step(-1); };
+$('bReset').onclick = () => { pos = 0; anim = null; renderTape(); updateVerdict(); lastStepT = performance.now(); };
+$('bPlay').onclick = () => { playing = !playing; syncPlay(); if (playing && pos >= str.length) { pos = 0; renderTape(); updateVerdict(); } lastStepT = performance.now(); };
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+  if (e.code === 'Space') { e.preventDefault(); $('bPlay').click(); }
+  if (e.key === 'ArrowRight') $('bFwd').click();
+  if (e.key === 'ArrowLeft') $('bBack').click();
+});
+
+/* =========================================================================
+   10. Холст: отпечаток-цианотипия
+   ========================================================================= */
+const cv = $('cv'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1, printCanvas = null, inner = { x: 0, y: 0, w: 0, h: 0 };
+function rnd(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function makePrint() {
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), r = rnd(1842);
+  const pad = 14 * DPR, x0 = pad, y0 = pad, x1 = W - pad, y1 = H - pad;
+  // неровный край, как у кисти с раствором
+  const pts = [];
+  const edge = (ax, ay, bx, by, nx, ny) => {
+    const len = Math.hypot(bx - ax, by - ay), n = Math.ceil(len / (7 * DPR));
+    let drift = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / n; drift = drift * .86 + (r() - .5) * 2.4 * DPR;
+      const tongue = r() < .025 ? r() * 12 * DPR : 0;
+      pts.push([ax + (bx - ax) * t + nx * (drift + tongue), ay + (by - ay) * t + ny * (drift + tongue)]);
+    }
+  };
+  edge(x0, y0, x1, y0, 0, -1); edge(x1, y0, x1, y1, 1, 0); edge(x1, y1, x0, y1, 0, 1); edge(x0, y1, x0, y0, -1, 0);
+  g.save();
+  g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.clip();
+  const grd = g.createRadialGradient(W * .45, H * .42, 0, W * .5, H * .5, Math.max(W, H) * .75);
+  grd.addColorStop(0, '#1d5388'); grd.addColorStop(.6, '#184a7c'); grd.addColorStop(1, '#0f375f');
+  g.fillStyle = grd; g.fillRect(0, 0, W, H);
+  // пятна неровной засветки
+  for (let i = 0; i < 70; i++) {
+    const x = r() * W, y = r() * H, rr = (40 + r() * 220) * DPR, dark = r() < .55;
+    const gg = g.createRadialGradient(x, y, 0, x, y, rr);
+    gg.addColorStop(0, dark ? 'rgba(8,30,58,.16)' : 'rgba(60,110,160,.12)'); gg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gg; g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+  }
+  // мазки кисти вдоль краёв
+  g.globalAlpha = .2; g.strokeStyle = '#0c2f55';
+  for (let i = 0; i < 90; i++) {
+    const side = Math.floor(r() * 4), t = r();
+    const x = side < 2 ? x0 + (x1 - x0) * t : side === 2 ? x0 + r() * 30 * DPR : x1 - r() * 30 * DPR;
+    const y = side >= 2 ? y0 + (y1 - y0) * t : side === 0 ? y0 + r() * 26 * DPR : y1 - r() * 26 * DPR;
+    g.lineWidth = (1 + r() * 5) * DPR; g.beginPath(); g.moveTo(x, y);
+    const L = (40 + r() * 160) * DPR;
+    if (side < 2) g.lineTo(x + L, y + (r() - .5) * 4 * DPR); else g.lineTo(x + (r() - .5) * 4 * DPR, y + L);
+    g.stroke();
+  }
+  g.globalAlpha = 1;
+  // зерно бумаги
+  const id = g.getImageData(0, 0, W, H), d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const n = (r() - .5) * 16;
+    d[i] = Math.max(0, d[i] + n * .6); d[i + 1] = Math.max(0, d[i + 1] + n * .8); d[i + 2] = Math.max(0, d[i + 2] + n);
+  }
+  g.putImageData(id, 0, 0);
+  g.restore();
+  // тонкие «волокна» бумаги поверх
+  g.globalAlpha = .07; g.strokeStyle = '#cfe2ff'; g.lineWidth = DPR * .6;
+  for (let i = 0; i < 260; i++) { const x = r() * W, y = r() * H, a = r() * Math.PI, L = (6 + r() * 26) * DPR; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a) * L * .5 + r() * 4, y + Math.sin(a) * L * .5, x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke(); }
+  g.globalAlpha = 1;
+  printCanvas = c;
+  inner = { x: 30 * DPR, y: 26 * DPR, w: W - 60 * DPR, h: H - 52 * DPR };
+}
+function resize() {
+  const r = cv.getBoundingClientRect();
+  DPR = Math.min(devicePixelRatio || 1, SHOT ? 1 : 2);
+  const w = Math.round(r.width * DPR), h = Math.round(r.height * DPR);
+  if (w === W && h === H) return;
+  W = cv.width = w; H = cv.height = h;
+  makePrint(); fitView(true);
+}
+new ResizeObserver(resize).observe(cv);
+
+/* камера графа */
+function fitView(snap) {
+  const v = views[view]; if (!v || !W) return;
+  const b = v.bbox, bottomPad = (view === 'bt' ? 0 : (matchMedia('(max-width:900px)').matches ? 150 : 110)) * DPR;
+  const aw = inner.w - 40 * DPR, ah = inner.h - bottomPad - 30 * DPR;
+  const s = Math.min(1.6 * DPR, aw / (b.x1 - b.x0), ah / (b.y1 - b.y0));
+  cam.ts = s; cam.tx = inner.x + inner.w / 2 - (b.x0 + b.x1) / 2 * s; cam.ty = inner.y + 12 * DPR + ah / 2 - (b.y0 + b.y1) / 2 * s + 10 * DPR;
+  if (snap) { cam.s = cam.ts; cam.x = cam.tx; cam.y = cam.ty; }
+  cam.user = false;
+}
+$('fit').onclick = () => fitView(false);
+let drag = null;
+cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); cv.classList.add('drag'); });
+cv.addEventListener('pointermove', e => {
+  if (drag) { cam.tx += (e.clientX - drag.x) * DPR; cam.ty += (e.clientY - drag.y) * DPR; cam.x = cam.tx; cam.y = cam.ty; drag.x = e.clientX; drag.y = e.clientY; cam.user = true; hideTip(); return; }
+  hover(e);
+});
+cv.addEventListener('pointerup', () => { drag = null; cv.classList.remove('drag'); });
+cv.addEventListener('pointerleave', hideTip);
+cv.addEventListener('wheel', e => {
+  if (view === 'bt') return;
+  e.preventDefault();
+  const r = cv.getBoundingClientRect(), mx = (e.clientX - r.left) * DPR, my = (e.clientY - r.top) * DPR;
+  const f = Math.exp(-e.deltaY * .0015), ns = Math.max(.15 * DPR, Math.min(3 * DPR, cam.ts * f));
+  cam.tx = mx - (mx - cam.tx) * ns / cam.ts; cam.ty = my - (my - cam.ty) * ns / cam.ts; cam.ts = ns; cam.user = true;
+}, { passive: false });
+
+/* подсказка при наведении на состояние */
+const tip = $('tip');
+function hideTip() { tip.classList.remove('on'); hoverNode = -1; }
+let hoverNode = -1;
+function hover(e) {
+  const v = views[view]; if (!v || view === 'bt') return;
+  const r = cv.getBoundingClientRect(), mx = ((e.clientX - r.left) * DPR - cam.x) / cam.s, my = ((e.clientY - r.top) * DPR - cam.y) / cam.s;
+  const n = v.nodes.find(p => Math.hypot(p.x - mx, p.y - my) < R + 4);
+  if (!n) { hideTip(); return; }
+  hoverNode = n.id;
+  let t = `<b>${view === 'nfa' ? 'Состояние ' + n.id : 'Состояние ' + n.label}</b>`;
+  if (view === 'dfa') t += `<br>= множество НКА ${n.sub}`;
+  if (view === 'min') t += `<br>склеены состояния ДКА: ${n.label.split('').filter(c => /[A-Z]/.test(c)).join(', ') || n.label}`;
+  if (n.id === v.start) t += '<br>стартовое';
+  if (n.acc) t += '<br>принимающее';
+  tip.innerHTML = t; tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; tip.classList.add('on');
+}
+
+/* =========================================================================
+   11. Рисование графа и анимации
+   ========================================================================= */
+const WHITE = '242,247,255';
+function activeFor(v, p) {
+  if (!runs) return new Set();
+  if (v === 'nfa') return runs.N[p] || new Set();
+  const a = v === 'dfa' ? runs.D[p] : runs.M[p];
+  return a >= 0 ? new Set([a]) : new Set();
+}
+function drawArrow(g, x, y, ang, s) {
+  g.beginPath(); g.moveTo(x, y);
+  g.lineTo(x - Math.cos(ang - .38) * 9 * s, y - Math.sin(ang - .38) * 9 * s);
+  g.lineTo(x - Math.cos(ang + .38) * 9 * s, y - Math.sin(ang + .38) * 9 * s);
+  g.closePath(); g.fill();
+}
+function drawGraph(now) {
+  const v = views[view]; if (!v) return;
+  const g = ctx, s = cam.s;
+  const T = p => ({ x: cam.x + p.x * s, y: cam.y + p.y * s });
+  const us = s / DPR; // масштаб относительно CSS-пикселей
+  const act = activeFor(view, pos);
+  let prevAct = null, at = 1;
+  if (anim && anim.to === pos) { at = Math.min(1, (now - anim.t0) / anim.dur); prevAct = activeFor(view, anim.from); }
+  const ch = anim && pos > 0 ? str[pos - 1] : null, k = ch != null && S ? S.A.classOf(ch.codePointAt(0)) : -1;
+  // какие рёбра «горят» в текущем переходе
+  const firing = new Set(), epsFiring = new Set();
+  if (prevAct && at < 1) {
+    v.edges.forEach((e, i) => {
+      if (!e.eps && prevAct.has(e.from) && act.has(e.to) && e.cls && e.cls.has(k)) firing.add(i);
+      if (e.eps && act.has(e.from) && act.has(e.to)) epsFiring.add(i);
+    });
+  }
+  g.save();
+  g.beginPath(); g.rect(inner.x, inner.y, inner.w, inner.h); g.clip();
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  // рёбра
+  v.edges.forEach((e, i) => {
+    const { p0, c1, c2, p3 } = e.g, a = T(p0), b = T(c1), c = T(c2), d = T(p3);
+    const hot = firing.has(i) || (epsFiring.has(i) && at > .55);
+    const hov = hoverNode >= 0 && (e.from === hoverNode || e.to === hoverNode);
+    g.strokeStyle = `rgba(${WHITE},${hot ? .95 : hov ? .9 : .62})`;
+    g.lineWidth = (hot ? 2.2 : 1.35) * DPR * Math.min(1.2, Math.max(.7, us));
+    g.setLineDash(e.eps ? [5 * DPR, 5 * DPR] : []);
+    g.beginPath(); g.moveTo(a.x, a.y); g.bezierCurveTo(b.x, b.y, c.x, c.y, d.x, d.y); g.stroke();
+    g.setLineDash([]);
+    g.fillStyle = g.strokeStyle;
+    drawArrow(g, d.x, d.y, Math.atan2(d.y - c.y, d.x - c.x), DPR * Math.min(1.2, Math.max(.7, us)));
+  });
+  // подписи рёбер
+  const fs = Math.max(11, Math.min(15, 13 * us)) * DPR;
+  g.font = `${fs}px "JetBrains Mono", monospace`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  v.edges.forEach((e, i) => {
+    const p = T(e.g.lab), w = g.measureText(e.label).width + 8 * DPR, h = fs + 5 * DPR;
+    g.fillStyle = '#184a7c'; g.globalAlpha = .92; g.fillRect(p.x - w / 2, p.y - h / 2, w, h); g.globalAlpha = 1;
+    const hot = firing.has(i);
+    g.fillStyle = `rgba(${WHITE},${e.eps ? .75 : hot ? 1 : .92})`;
+    if (e.eps) g.font = `italic ${fs * 1.08}px "Old Standard TT", serif`;
+    g.fillText(e.label, p.x, p.y + .5 * DPR);
+    if (e.eps) g.font = `${fs}px "JetBrains Mono", monospace`;
+  });
+  // бегущие «фотоны» по рёбрам перехода
+  if (prevAct && at < 1) {
+    const ph1 = Math.min(1, at / .6), ph2 = Math.max(0, (at - .55) / .45);
+    const dot = (e, t, r) => {
+      const { p0, c1, c2, p3 } = e.g, q = T(bez(p0, c1, c2, p3, t));
+      const gr = g.createRadialGradient(q.x, q.y, 0, q.x, q.y, r * 3);
+      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.35, 'rgba(230,242,255,.55)'); gr.addColorStop(1, 'rgba(230,242,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(q.x, q.y, r * 3, 0, 7); g.fill();
+    };
+    firing.forEach(i => dot(v.edges[i], ease(ph1), 4.5 * DPR));
+    if (ph2 > 0) epsFiring.forEach(i => dot(v.edges[i], ease(ph2), 3.2 * DPR));
+  }
+  // вершины
+  const nr = R * s;
+  const nf = Math.max(12, Math.min(20, 15 * us)) * DPR;
+  v.nodes.forEach(n => {
+    const p = T(n);
+    const wasOn = prevAct && prevAct.has(n.id), isOn = act.has(n.id);
+    let lit = isOn ? 1 : 0;
+    if (prevAct && at < 1) lit = isOn ? (view === 'nfa' && !wasOn ? Math.max(0, (at - .5) / .5) : Math.max(wasOn ? 1 - at : 0, at > .55 ? (at - .55) / .45 : 0)) : wasOn ? 1 - Math.min(1, at * 1.6) : 0;
+    if (!isOn && !(prevAct && wasOn)) lit = 0;
+    if (lit > 0) {
+      const gr = g.createRadialGradient(p.x, p.y, nr * .6, p.x, p.y, nr * 2.6);
+      gr.addColorStop(0, `rgba(255,255,255,${.34 * lit})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, nr * 2.6, 0, 7); g.fill();
+    }
+    g.fillStyle = lit > 0 ? `rgba(242,247,255,${.1 + .85 * lit})` : 'rgba(15,53,96,.9)';
+    g.beginPath(); g.arc(p.x, p.y, nr, 0, 7); g.fill();
+    g.strokeStyle = `rgba(${WHITE},${n.id === hoverNode ? 1 : .9})`; g.lineWidth = 1.6 * DPR;
+    g.beginPath(); g.arc(p.x, p.y, nr, 0, 7); g.stroke();
+    if (n.acc) { g.beginPath(); g.arc(p.x, p.y, nr - 4.5 * DPR * Math.min(1, us + .2), 0, 7); g.stroke(); }
+    g.fillStyle = lit > .5 ? '#0e3560' : `rgb(${WHITE})`;
+    g.font = `${view === 'nfa' ? '' : ''}${nf}px ${view === 'nfa' ? '"JetBrains Mono", monospace' : '"Old Standard TT", serif'}`;
+    let lab = n.label; if (lab.length > 4) lab = lab.slice(0, 3) + '…';
+    g.fillText(lab, p.x, p.y + 1 * DPR);
+    if (n.sub && us > .45) {
+      const sf = Math.max(11, Math.min(13, 12 * us)) * DPR;
+      g.font = `${sf}px "JetBrains Mono", monospace`;
+      let sub = n.sub; if (sub.length > 20) sub = sub.slice(0, 19) + '…}';
+      const sw = g.measureText(sub).width + 10 * DPR, sy = p.y + nr + 15 * DPR;
+      g.fillStyle = 'rgba(14,53,96,.92)'; g.fillRect(p.x - sw / 2, sy - sf * .72, sw, sf * 1.44);
+      g.fillStyle = lit > .5 ? `rgb(${WHITE})` : `rgba(${WHITE},.72)`;
+      g.fillText(sub, p.x, sy + .5 * DPR);
+    }
+    if (n.id === v.start) {
+      g.strokeStyle = `rgba(${WHITE},.85)`; g.lineWidth = 1.4 * DPR;
+      g.beginPath(); g.moveTo(p.x - nr - 34 * DPR, p.y); g.lineTo(p.x - nr - 3 * DPR, p.y); g.stroke();
+      g.fillStyle = `rgba(${WHITE},.85)`; drawArrow(g, p.x - nr - 2 * DPR, p.y, 0, DPR);
+      g.font = `italic ${13 * DPR}px "Old Standard TT", serif`; g.fillText('старт', p.x - nr - 24 * DPR, p.y - 12 * DPR);
+    }
+  });
+  g.restore();
+}
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+/* =========================================================================
+   12. Глава IV: папоротник откатов и график
+   ========================================================================= */
+let fern = null;
+const btCache = [];
+function btSteps(n) {
+  if (btCache[n] != null) return btCache[n];
+  const tree = parse('(a+)+b');
+  const r = backtrack(tree, 'a'.repeat(n), 4e6);
+  btCache[n] = r.aborted ? null : r.steps;
+  return btCache[n];
+}
+function nfaSteps(n) {
+  const tree = parse('(a+)+b'), sets = collectSets(tree), A = makeAlphabet(sets), nfa = thompson(tree);
+  nfa.out = Array.from({ length: nfa.n }, () => []); nfa.edges.forEach(e => nfa.out[e.from].push(e));
+  let cur = closure(nfa, [nfa.start]), steps = cur.size; const k = A.classOf(97);
+  for (let i = 0; i < n; i++) { cur = closure(nfa, move(nfa, cur, k)); steps += cur.size; }
+  return steps;
+}
+function startFern() {
+  const n = +$('btn').value; $('btnv').textContent = n;
+  // дерево разбиений: из позиции p можно «съесть» k = n−p … 1 букв
+  const nodes = [{ p: 0, parent: -1, depth: 0, k: 0 }];
+  const grow = (idx) => { const p = nodes[idx].p; for (let k = n - p; k >= 1; k--) { nodes.push({ p: p + k, parent: idx, depth: nodes[idx].depth + 1, k }); grow(nodes.length - 1); } };
+  grow(0);
+  fern = { n, nodes, t0: performance.now() };
+  // раскладка: побег закручивается, как вайя папоротника
+  nodes.forEach((nd, i) => {
+    if (i === 0) { nd.x = 0; nd.y = 0; nd.a = -Math.PI / 2; return; }
+    const par = nodes[nd.parent], sib = nodes.filter(x => x.parent === nd.parent), si = sib.indexOf(nd), m = sib.length;
+    const spread = Math.min(1.25, .32 + m * .1) * Math.pow(.86, nd.depth);
+    const off = m > 1 ? (si / (m - 1) - .5) * 2 * spread : 0;
+    nd.a = par.a + off + .1;
+    const L = (22 + nd.k * 9) * Math.pow(.83, nd.depth);
+    nd.x = par.x + Math.cos(nd.a) * L; nd.y = par.y + Math.sin(nd.a) * L;
+  });
+  const xs = nodes.map(p => p.x), ys = nodes.map(p => p.y);
+  fern.bb = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+}
+$('btn').addEventListener('input', startFern);
+function fmtN(x) { return x.toLocaleString('ru-RU').replace(/ | /g, ' '); }
+function drawBt(now) {
+  if (!fern) return;
+  // шаги считаем постепенно, по одному n за кадр, — так вкладка не подвисает
+  for (let m = 1; m <= 18; m++) if (btCache[m] === undefined) { btSteps(m); break; }
+  if (btCache[fern.n] === undefined) btSteps(fern.n);
+  const g = ctx; g.save();
+  g.beginPath(); g.rect(inner.x, inner.y, inner.w, inner.h); g.clip();
+  const mobile = W / DPR < 700;
+  // --- папоротник ---
+  const area = mobile ? { x: inner.x + 10 * DPR, y: inner.y + 70 * DPR, w: inner.w - 20 * DPR, h: inner.h * .5 - 70 * DPR }
+                      : { x: inner.x + 30 * DPR, y: inner.y + 80 * DPR, w: inner.w * .46, h: inner.h - 130 * DPR };
+  const b = fern.bb, sc = Math.min(area.w / (b.x1 - b.x0 + 40), area.h / (b.y1 - b.y0 + 40));
+  const ox = area.x + area.w / 2 - (b.x0 + b.x1) / 2 * sc, oy = area.y + area.h / 2 - (b.y0 + b.y1) / 2 * sc;
+  const shown = Math.min(fern.nodes.length, Math.floor(((now - fern.t0) / 2600) ** 1.4 * fern.nodes.length) + 1);
+  g.lineCap = 'round';
+  for (let i = 1; i < shown; i++) {
+    const nd = fern.nodes[i], par = fern.nodes[nd.parent];
+    g.strokeStyle = `rgba(${WHITE},${Math.max(.25, .85 - nd.depth * .06)})`;
+    g.lineWidth = Math.max(.6, 2.4 - nd.depth * .28) * DPR;
+    g.beginPath(); g.moveTo(ox + par.x * sc, oy + par.y * sc);
+    const mx = (par.x + nd.x) / 2 + Math.cos(nd.a + Math.PI / 2) * 3, my = (par.y + nd.y) / 2 + Math.sin(nd.a + Math.PI / 2) * 3;
+    g.quadraticCurveTo(ox + mx * sc, oy + my * sc, ox + nd.x * sc, oy + nd.y * sc); g.stroke();
+    // неудачная попытка прочитать «b» — крошечный листок
+    const la = nd.a + .9, ll = 4.5 * DPR;
+    g.lineWidth = .8 * DPR; g.beginPath(); g.moveTo(ox + nd.x * sc, oy + nd.y * sc); g.lineTo(ox + nd.x * sc + Math.cos(la) * ll, oy + nd.y * sc + Math.sin(la) * ll); g.stroke();
+    if (nd.p === fern.n) { g.fillStyle = `rgba(${WHITE},.8)`; g.beginPath(); g.arc(ox + nd.x * sc, oy + nd.y * sc, 1.5 * DPR, 0, 7); g.fill(); }
+  }
+  g.fillStyle = `rgb(${WHITE})`; g.font = `italic ${15 * DPR}px "Old Standard TT", serif`; g.textAlign = 'left';
+  g.fillText(`${fmtN(shown)} ${plural(shown, 'попытка', 'попытки', 'попыток')} из ${fmtN(fern.nodes.length)}`, area.x, area.y + area.h + 26 * DPR);
+  g.font = `${12 * DPR}px "JetBrains Mono", monospace`; g.fillStyle = `rgba(${WHITE},.72)`;
+  g.fillText(`(a+)+b против «${'a'.repeat(Math.min(fern.n, 13))}»`, area.x, area.y - 18 * DPR);
+
+  // --- график шагов: откат против автомата ---
+  const C = mobile ? { x: inner.x + 58 * DPR, y: inner.y + inner.h * .55 + 30 * DPR, w: inner.w - 90 * DPR, h: inner.h * .45 - 90 * DPR }
+                   : { x: inner.x + inner.w * .56, y: inner.y + 110 * DPR, w: inner.w * .38, h: inner.h - 230 * DPR };
+  const NMAX = 26, YMAX = 8;
+  const X = n => C.x + (n - 1) / (NMAX - 1) * C.w, Y = v => C.y + C.h - Math.log10(Math.max(1, v)) / YMAX * C.h;
+  g.strokeStyle = `rgba(${WHITE},.35)`; g.lineWidth = DPR; g.font = `${12 * DPR}px "JetBrains Mono", monospace`; g.fillStyle = `rgba(${WHITE},.7)`;
+  for (let e = 0; e <= YMAX; e += 2) {
+    const y = Y(10 ** e); g.beginPath(); g.moveTo(C.x, y); g.lineTo(C.x + C.w, y); g.setLineDash([2 * DPR, 5 * DPR]); g.stroke(); g.setLineDash([]);
+    g.textAlign = 'right'; g.fillText(e === 0 ? '1' : '10' + '⁰¹²³⁴⁵⁶⁷⁸'[e], C.x - 8 * DPR, y + 4 * DPR);
+  }
+  g.textAlign = 'center';
+  [1, 5, 10, 15, 20, 25].forEach(n => g.fillText(n, X(n), C.y + C.h + 20 * DPR));
+  g.fillText('длина строки n', C.x + C.w / 2, C.y + C.h + 40 * DPR);
+  g.textAlign = 'left'; g.font = `italic ${15 * DPR}px "Old Standard TT", serif`; g.fillStyle = `rgb(${WHITE})`;
+  g.fillText('шаги сопоставления', C.x, C.y - 22 * DPR);
+  // кривая отката
+  g.lineWidth = 2 * DPR; g.strokeStyle = `rgb(${WHITE})`; g.beginPath();
+  let lastKnown = 0, lastV = 1;
+  for (let n = 1; n <= NMAX; n++) { const v = btCache[n]; if (v == null) break; lastKnown = n; lastV = v; n === 1 ? g.moveTo(X(n), Y(v)) : g.lineTo(X(n), Y(v)); }
+  g.stroke();
+  if (lastKnown < NMAX) { g.setLineDash([3 * DPR, 5 * DPR]); g.beginPath(); g.moveTo(X(lastKnown), Y(lastV)); g.lineTo(X(NMAX), Y(lastV * 2 ** (NMAX - lastKnown))); g.stroke(); g.setLineDash([]); }
+  // кривая автомата
+  g.strokeStyle = 'rgba(255,236,196,.95)'; g.beginPath();
+  for (let n = 1; n <= NMAX; n++) { const v = nfaSteps(n); n === 1 ? g.moveTo(X(n), Y(v)) : g.lineTo(X(n), Y(v)); }
+  g.stroke();
+  g.font = `${13 * DPR}px "JetBrains Mono", monospace`;
+  g.fillStyle = `rgb(${WHITE})`; g.fillText('с откатами', X(13), Y(btCache[13] || 1e4) - 14 * DPR);
+  g.fillStyle = 'rgba(255,236,196,.95)'; g.fillText('автомат', X(18), Y(nfaSteps(18)) - 12 * DPR);
+  // выноска для текущего n
+  const n = fern.n, bv = btCache[n], av = nfaSteps(n);
+  g.fillStyle = `rgb(${WHITE})`; g.beginPath(); g.arc(X(n), Y(bv), 4 * DPR, 0, 7); g.fill();
+  g.fillStyle = 'rgba(255,236,196,1)'; g.beginPath(); g.arc(X(n), Y(av), 4 * DPR, 0, 7); g.fill();
+  g.font = `italic ${15 * DPR}px "Old Standard TT", serif`; g.fillStyle = `rgb(${WHITE})`;
+  const ratio = bv / av;
+  const line = `При n = ${n}: ${fmtN(bv)} шагов против ${fmtN(av)} — в ${ratio >= 10 ? fmtN(Math.round(ratio)) : ratio.toFixed(1).replace('.', ',')} раз больше.`;
+  g.fillText(line, C.x, C.y + C.h + (mobile ? 62 : 72) * DPR);
+  const b25 = btCache[25] || (lastV * 2 ** (25 - lastKnown));
+  g.fillText(`При n = 25 — около ${fmtN(Math.round(b25 / 1e6))} млн шагов.`, C.x, C.y + C.h + (mobile ? 84 : 96) * DPR);
+  g.restore();
+}
+
+/* =========================================================================
+   13. Цикл
+   ========================================================================= */
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden || !W) return;
+  const k = .18;
+  if (!drag) { cam.s += (cam.ts - cam.s) * k; cam.x += (cam.tx - cam.x) * k; cam.y += (cam.ty - cam.y) * k; }
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(printCanvas, 0, 0);
+  if (view === 'bt') drawBt(now);
+  else {
+    if (playing && runs && now - lastStepT > 980) {
+      lastStepT = now;
+      const dead = deadAt(), end = dead >= 0 ? Math.min(dead, str.length) : str.length;
+      if (pos >= end) { if (now - (runs.endT || 0) > 0 && !runs.waiting) { runs.waiting = true; runs.endT = now + 1800; } else if (now > runs.endT) { runs.waiting = false; pos = 0; anim = null; renderTape(); updateVerdict(); } }
+      else step(1);
+    }
+    drawGraph(now);
+  }
+}
+
+/* текстура бумаги и маска штампа — рисуем один раз */
+(function textures() {
+  const c = document.createElement('canvas'); c.width = c.height = 220;
+  const g = c.getContext('2d'), r = rnd(7), id = g.createImageData(220, 220);
+  for (let i = 0; i < id.data.length; i += 4) { const v = r(); id.data[i] = 90; id.data[i + 1] = 70; id.data[i + 2] = 40; id.data[i + 3] = v < .5 ? v * 18 : 0; }
+  g.putImageData(id, 0, 0);
+  document.body.style.setProperty('--grain', `url(${c.toDataURL()})`);
+  const m = document.createElement('canvas'); m.width = 300; m.height = 80;
+  const mg = m.getContext('2d'); mg.fillStyle = '#000'; mg.fillRect(0, 0, 300, 80);
+  for (let i = 0; i < 700; i++) { mg.clearRect(r() * 300, r() * 80, 1 + r() * 3, 1 + r() * 2.5); }
+  document.documentElement.style.setProperty('--stampmask', `url(${m.toDataURL()})`);
+})();
+
+syncPlay();
+rebuild();
+resize();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

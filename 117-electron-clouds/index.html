@@ -1,0 +1,1200 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Облака электронов — орбитали атома водорода</title>
+<meta name="description" content="Орбитали атома водорода по точным волновым функциям: сотни тысяч точек, фаза, узлы, спектр излучения.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@400;500&family=Geologica:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#04070a; --ink:#ebe5d9; --dim:#9ba6a9; --faint:#74838a; --line:#15222a; --line2:#223440;
+  --coral:#ff6f5e; --teal:#38e1cf; --gold:#ffc857; --violet:#8c7cff;
+  --serif:'Spectral','Iowan Old Style',Georgia,serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --sans:'Geologica','Helvetica Neue',Arial,sans-serif;
+  --ease:cubic-bezier(.22,.8,.24,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden}
+body{font-family:var(--sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#gl{cursor:grab;touch-action:none}
+#gl.drag{cursor:grabbing}
+#overlay{pointer-events:none}
+button{font:inherit;color:inherit}
+:focus-visible{outline:1px solid var(--teal);outline-offset:3px}
+
+/* ─── Левая колонка ─────────────────────────────── */
+.left{position:fixed;left:0;top:0;bottom:0;width:410px;padding:34px 0 0 40px;pointer-events:none;
+  background:linear-gradient(90deg,rgba(4,7,10,.82) 0%,rgba(4,7,10,.55) 62%,rgba(4,7,10,0) 100%)}
+.left > *{pointer-events:auto}
+.kicker{font:500 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.kicker b{color:var(--ink);font-weight:500}
+h1{font:300 30px/1.05 var(--serif);margin:14px 0 10px;letter-spacing:-.01em}
+.lede{font:300 14px/1.5 var(--sans);color:var(--dim);max-width:320px;margin:0 0 24px}
+.orb{display:flex;align-items:baseline;gap:4px;margin:0 0 4px;min-height:84px}
+.orb .big{font:300 86px/.9 var(--serif);letter-spacing:-.03em}
+.orb sub{font:italic 300 34px/1 var(--serif);color:var(--ink);vertical-align:baseline;position:relative;top:.05em;white-space:nowrap}
+.orb .cm{font:400 13px/1 var(--mono);color:var(--dim);margin-left:10px;align-self:center}
+.qline{font:400 12px/1 var(--mono);color:var(--dim);margin-bottom:22px;letter-spacing:.02em}
+.qline span{color:var(--ink)}
+
+.qrow{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px;margin:0 0 9px}
+.qlab{font:italic 400 22px/1 var(--serif);color:var(--ink)}
+.qlab small{display:block;font:400 12px/1.2 var(--sans);font-style:normal;color:var(--faint);margin-top:4px}
+.pills{display:flex;gap:4px;flex-wrap:wrap}
+.pill{min-width:29px;height:29px;padding:0 7px;border:1px solid var(--line2);border-radius:15px;background:transparent;color:var(--dim);
+  font:500 12px/1 var(--mono);cursor:pointer;transition:background .25s var(--ease),color .25s var(--ease),border-color .25s var(--ease),transform .2s var(--ease)}
+.pill:hover{color:var(--ink);border-color:#3b4e59}
+.pill:active{transform:scale(.94)}
+.pill.on{background:var(--ink);color:#081014;border-color:var(--ink)}
+
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:17px;padding:2px;margin:12px 0 10px}
+.seg button{border:0;background:none;height:28px;padding:0 13px;border-radius:14px;color:var(--dim);font:400 12.5px/1 var(--sans);cursor:pointer;transition:all .3s var(--ease)}
+.seg button.on{background:#1a2a33;color:var(--ink)}
+.toggles{display:flex;gap:6px;flex-wrap:wrap}
+.tog{height:30px;padding:0 12px 0 10px;border:1px solid var(--line2);border-radius:15px;background:none;color:var(--dim);font:400 12.5px/1 var(--sans);cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .25s var(--ease)}
+.tog i{width:7px;height:7px;border-radius:50%;background:var(--faint);transition:all .3s var(--ease)}
+.tog.on{color:var(--ink);border-color:#35505c}
+.tog.on i{background:var(--teal)}
+.tog#bTour.on i{background:conic-gradient(var(--teal) var(--p,0%),#16303a 0);box-shadow:none;width:11px;height:11px}
+.tog:hover{color:var(--ink)}
+
+.stats{margin:22px 0 0;display:grid;gap:9px;max-width:320px}
+.stats div{display:flex;justify-content:space-between;gap:14px;border-top:1px solid var(--line);padding-top:8px}
+.stats dt{font:400 13px/1.3 var(--sans);color:var(--dim)}
+.stats dd{margin:0;font:400 13px/1.3 var(--mono);color:var(--ink);text-align:right}
+.legend{display:flex;align-items:center;gap:14px;margin-top:14px;font:400 12px/1 var(--sans);color:var(--dim)}
+.legend .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.legend .ring{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:7px;vertical-align:-3px;
+  background:conic-gradient(from 90deg,#ff5c47,#ffbd4d,#29dbc7,#856bff,#ff5c47);-webkit-mask:radial-gradient(circle,transparent 3.5px,#000 4px);mask:radial-gradient(circle,transparent 3.5px,#000 4px)}
+
+.radial{position:fixed;left:40px;bottom:30px;width:300px}
+.cap{font:500 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:8px;display:flex;justify-content:space-between}
+.cap em{font-style:normal;color:var(--dim);letter-spacing:.04em;text-transform:none}
+.radial svg{display:block;overflow:visible}
+
+/* ─── Правая колонка ─────────────────────────────── */
+.right{position:fixed;right:40px;top:34px;width:230px}
+.right svg{display:block;overflow:visible}
+.tcard{margin-top:18px;border-top:1px solid var(--line);padding-top:12px;min-height:92px;transition:opacity .5s var(--ease)}
+.tcard .k{font:500 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.tcard .m{font:300 26px/1.1 var(--serif);margin:8px 0 6px;display:flex;align-items:center;gap:10px}
+.tcard .sw{width:10px;height:10px;border-radius:50%;flex:none}
+.tcard .s{font:400 12px/1.55 var(--mono);color:var(--dim)}
+.tcard .s b{font-weight:400;color:var(--ink)}
+.tcard .ok{color:var(--teal)} .tcard .no{color:var(--coral)}
+
+.spectrum{position:fixed;right:40px;bottom:30px;width:min(560px,calc(100vw - 460px))}
+.spectrum svg{display:block;width:100%;height:46px;overflow:visible}
+.hint{margin:16px 0 0;font:400 12px/1.6 var(--sans);color:var(--faint);transition:opacity 1s}
+
+.nogl{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:40px;font:300 22px/1.4 var(--serif);color:var(--dim)}
+
+/* ─── Средние экраны ─────────────────────────────── */
+@media (max-width:1180px){
+  .spectrum{width:calc(100vw - 440px)}
+}
+@media (max-height:760px) and (min-width:721px){
+  .lede{display:none}
+  .radial{display:none}
+}
+/* ─── Телефон ─────────────────────────────── */
+@media (max-width:720px){
+  .left{width:100%;bottom:auto;padding:max(18px,env(safe-area-inset-top)) 18px 0 18px;background:linear-gradient(180deg,rgba(4,7,10,.85),rgba(4,7,10,0))}
+  h1{font-size:22px;margin:10px 0 0}
+  .lede,.radial,.right,.hint,.stats,.legend{display:none}
+  .orb{position:fixed;left:18px;top:calc(max(18px,env(safe-area-inset-top)) + 58px);min-height:0}
+  .orb .big{font-size:58px}
+  .orb sub{font-size:24px}
+  .qline{position:fixed;left:18px;top:calc(max(18px,env(safe-area-inset-top)) + 122px);margin:0}
+  .controls{position:fixed;left:0;right:0;bottom:0;padding:14px 14px max(14px,env(safe-area-inset-bottom));
+    background:linear-gradient(180deg,rgba(6,10,13,.0),rgba(6,10,13,.92) 22%);}
+  .qrow{grid-template-columns:30px 1fr;gap:6px;margin-bottom:6px}
+  .qlab{font-size:19px}
+  .qlab small{display:none}
+  .pills{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:5px;padding-bottom:2px}
+  .pills::-webkit-scrollbar{display:none}
+  .pill{min-width:40px;height:40px;border-radius:20px;flex:none}
+  .seg{margin:8px 0 8px}
+  .seg button{height:34px}
+  .tog{height:38px;border-radius:19px}
+  .ctlrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .spectrum{left:14px;right:14px;width:auto;bottom:auto;top:calc(max(18px,env(safe-area-inset-top)) + 150px);display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Трёхмерное облако вероятности электрона"></canvas>
+<canvas id="overlay"></canvas>
+
+<section class="left">
+  <div class="kicker">Атом водорода · <b>ψ(n, l, m)</b></div>
+  <h1>Облака электронов</h1>
+  <p class="lede">Точное решение уравнения Шрёдингера. Каждая из <span id="cnt">260&nbsp;000</span> точек — место, где электрон мог&nbsp;бы оказаться при измерении.</p>
+
+  <div class="orb" id="orb"><span class="big">4d</span><sub>z²</sub></div>
+  <div class="qline" id="qline">n = <span>4</span> · l = <span>2</span> · m = <span>0</span></div>
+
+  <div class="controls">
+    <div class="qrow"><span class="qlab">n<small>главное</small></span><div class="pills" id="pn"></div></div>
+    <div class="qrow"><span class="qlab">l<small>орбитальное</small></span><div class="pills" id="pl"></div></div>
+    <div class="qrow"><span class="qlab">m<small>магнитное</small></span><div class="pills" id="pm"></div></div>
+    <div class="ctlrow">
+      <div class="seg" role="group" aria-label="Базис орбиталей">
+        <button data-mode="real" class="on">Вещественные</button><button data-mode="complex">Комплексные</button>
+      </div>
+      <div class="toggles">
+        <button class="tog" id="bCut" aria-pressed="false"><i></i>Срез</button>
+        <button class="tog on" id="bSpin" aria-pressed="true"><i></i>Вращение</button>
+        <button class="tog on" id="bTour" aria-pressed="true"><i></i>Экскурсия</button>
+      </div>
+    </div>
+  </div>
+
+  <dl class="stats">
+    <div><dt>Энергия уровня</dt><dd id="sE">—</dd></div>
+    <div><dt>Средний радиус ⟨r⟩</dt><dd id="sR">—</dd></div>
+    <div><dt>Узлы</dt><dd id="sN">—</dd></div>
+  </dl>
+  <div class="legend" id="legend"></div>
+</section>
+
+<section class="radial" aria-label="Радиальная плотность вероятности">
+  <div class="cap"><span>Радиальная плотность</span><em>r²·R(r)²</em></div>
+  <svg id="radsvg" width="300" height="104"></svg>
+</section>
+
+<aside class="right">
+  <div class="cap"><span>Уровни энергии</span><em>эВ</em></div>
+  <svg id="levsvg" width="230" height="360"></svg>
+  <div class="tcard" id="tcard" style="opacity:0"></div>
+  <p class="hint" id="hint">Тяни — вращать, колесо — масштаб.<br>1–7 — уровень n, ↑↓ — l, ←→ — m, C — срез.</p>
+</aside>
+
+<section class="spectrum" aria-label="Накопленный спектр">
+  <div class="cap"><span>Спектр этого сеанса</span><em id="specnote">линии появляются при переходах</em></div>
+  <svg id="specsvg" preserveAspectRatio="none"></svg>
+</section>
+
+<div class="nogl" id="nogl">Этому проекту нужен WebGL2.<br>Откройте его в свежем Chrome, Safari или Firefox.</div>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════════
+   1. Физика: водородоподобные волновые функции
+   ════════════════════════════════════════════════════════════════ */
+const RYD_EV = 13.605693;       // энергия Ридберга (бесконечная масса ядра), эВ
+const R_H = 1.0967758e7;        // постоянная Ридберга для водорода, м⁻¹ (с приведённой массой)
+const HC_EV_NM = 1239.84198;    // hc, эВ·нм
+const TAU = Math.PI * 2;
+
+// Обобщённый полином Лагерра L_k^(a)(x) по рекуррентной формуле
+function laguerre(k, a, x) {
+  if (k === 0) return 1;
+  let L0 = 1, L1 = 1 + a - x;
+  for (let i = 1; i < k; i++) {
+    const L2 = ((2 * i + 1 + a - x) * L1 - (i + a) * L0) / (i + 1);
+    L0 = L1; L1 = L2;
+  }
+  return L1;
+}
+// Присоединённая функция Лежандра P_l^m(x), m ≥ 0
+function legendre(l, m, x) {
+  let pmm = 1;
+  if (m > 0) {
+    const s = Math.sqrt(Math.max(0, (1 - x) * (1 + x)));
+    let f = 1;
+    for (let i = 1; i <= m; i++) { pmm *= -f * s; f += 2; }
+  }
+  if (l === m) return pmm;
+  let pmm1 = x * (2 * m + 1) * pmm;
+  if (l === m + 1) return pmm1;
+  let pll = 0;
+  for (let ll = m + 2; ll <= l; ll++) {
+    pll = ((2 * ll - 1) * x * pmm1 - (ll + m - 1) * pmm) / (ll - m);
+    pmm = pmm1; pmm1 = pll;
+  }
+  return pll;
+}
+// Радиальная часть R_nl(r) без нормировки (r в боровских радиусах a₀)
+function radialR(n, l, r) {
+  const rho = 2 * r / n;
+  return Math.pow(rho, l) * Math.exp(-rho / 2) * laguerre(n - l - 1, 2 * l + 1, rho);
+}
+// Угловая часть: вещественная (cos mφ / sin |m|φ) или комплексная e^{imφ}
+function angular(l, m, complex, th, ph) {
+  const P = legendre(l, Math.abs(m), Math.cos(th));
+  if (complex) return [P * Math.cos(m * ph), P * Math.sin(m * ph)];
+  if (m === 0) return [P, 0];
+  return [P * (m > 0 ? Math.cos(m * ph) : Math.sin(-m * ph)), 0];
+}
+
+// Табулированная функция распределения и её обращение
+function buildTable(N, x0, x1, pdf) {
+  const xs = new Float64Array(N + 1), cdf = new Float64Array(N + 1), pd = new Float64Array(N + 1);
+  const dx = (x1 - x0) / N;
+  let acc = 0;
+  for (let i = 0; i <= N; i++) {
+    xs[i] = x0 + dx * i; pd[i] = pdf(xs[i]);
+    if (i > 0) acc += 0.5 * (pd[i] + pd[i - 1]) * dx;
+    cdf[i] = acc;
+  }
+  for (let i = 0; i <= N; i++) cdf[i] /= acc;
+  return { xs, cdf, pd };
+}
+function invert(t, u) {
+  const { xs, cdf } = t;
+  let lo = 0, hi = cdf.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cdf[mid] < u) lo = mid; else hi = mid; }
+  const c0 = cdf[lo], c1 = cdf[hi];
+  return xs[lo] + (c1 > c0 ? (u - c0) / (c1 - c0) : 0) * (xs[hi] - xs[lo]);
+}
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const rng = mulberry32(20260923);
+
+// Выборка облака: r, θ, φ независимы, потому что |ψ|² раскладывается в произведение
+function makeOrbital(n, l, m, complex, count) {
+  const am = Math.abs(m);
+  const rBig = 4 * n * n + 14;
+  const radT = buildTable(6000, 0, rBig, r => { const R = radialR(n, l, r); return r * r * R * R; });
+  const fit = invert(radT, 0.986);
+  const thT = buildTable(2400, 0, Math.PI, th => { const P = legendre(l, am, Math.cos(th)); return P * P * Math.sin(th); });
+  const phT = (!complex && m !== 0)
+    ? buildTable(2400, 0, TAU, ph => { const v = m > 0 ? Math.cos(m * ph) : Math.sin(am * ph); return v * v; })
+    : null;
+  const data = new Float32Array(count * 4);
+  for (let i = 0; i < count; i++) {
+    const r = invert(radT, rng());
+    const th = invert(thT, rng());
+    const ph = phT ? invert(phT, rng()) : rng() * TAU;
+    const ct = Math.cos(th), st = Math.sin(th);
+    let sgn = (laguerre(n - l - 1, 2 * l + 1, 2 * r / n) < 0 ? -1 : 1) * (legendre(l, am, ct) < 0 ? -1 : 1);
+    let phase;
+    if (complex) {
+      phase = m * ph + (sgn < 0 ? Math.PI : 0);
+    } else {
+      if (m !== 0) { const a = m > 0 ? Math.cos(m * ph) : Math.sin(am * ph); if (a < 0) sgn = -sgn; }
+      phase = sgn > 0 ? 0 : Math.PI;
+    }
+    phase = ((phase % TAU) + TAU) % TAU;
+    const x = r * st * Math.cos(ph), y = r * st * Math.sin(ph), z = r * ct;
+    const k = i * 4;
+    data[k] = x / fit; data[k + 1] = z / fit; data[k + 2] = -y / fit; data[k + 3] = phase; // ось z физики → вверх
+  }
+  // радиальные узлы — смены знака полинома Лагерра
+  const nodes = [];
+  let prev = laguerre(n - l - 1, 2 * l + 1, 1e-6);
+  for (let i = 1; i <= 6000; i++) {
+    const r = rBig * i / 6000, v = laguerre(n - l - 1, 2 * l + 1, 2 * r / n);
+    if ((v < 0) !== (prev < 0)) nodes.push(r);
+    prev = v;
+  }
+  let peak = 0, peakR = 0;
+  for (let i = 0; i < radT.pd.length; i++) if (radT.pd[i] > peak) { peak = radT.pd[i]; peakR = radT.xs[i]; }
+  return { n, l, m, complex, data, fit, radT, nodes, peakR, meanR: (3 * n * n - l * (l + 1)) / 2 };
+}
+
+// 97-й перцентиль плотности боковой проекции: по нему выравниваем яркость разных орбиталей
+function densityP97(data) {
+  const N = 64, bins = new Uint32Array(N * N);
+  for (let i = 0; i < data.length; i += 4) {
+    const bx = Math.floor((data[i] + 1.1) / 2.2 * N), by = Math.floor((data[i + 1] + 1.1) / 2.2 * N);
+    if (bx >= 0 && bx < N && by >= 0 && by < N) bins[by * N + bx]++;
+  }
+  const arr = Array.from(bins).filter(v => v > 0).sort((a, b) => a - b);
+  return (arr[Math.floor(arr.length * 0.97)] || 1) / (data.length / 4);
+}
+let REF_DENS = 0;
+
+// Дипольный матричный элемент ⟨b|r̂|a⟩ по углам — численно: честная проверка правил отбора
+function dipoleAllowed(a, b, complex) {
+  const NT = 72, NP = 144;
+  let mx = [0, 0], my = [0, 0], mz = [0, 0], na = 0, nb = 0;
+  for (let i = 0; i < NT; i++) {
+    const th = (i + 0.5) * Math.PI / NT, st = Math.sin(th), ct = Math.cos(th);
+    for (let j = 0; j < NP; j++) {
+      const ph = (j + 0.5) * TAU / NP;
+      const A = angular(a.l, a.m, complex, th, ph), B = angular(b.l, b.m, complex, th, ph);
+      // conj(B)·A
+      const re = B[0] * A[0] + B[1] * A[1], im = B[0] * A[1] - B[1] * A[0];
+      const w = st;
+      const ux = st * Math.cos(ph), uy = st * Math.sin(ph), uz = ct;
+      mx[0] += re * ux * w; mx[1] += im * ux * w;
+      my[0] += re * uy * w; my[1] += im * uy * w;
+      mz[0] += re * uz * w; mz[1] += im * uz * w;
+      na += (A[0] * A[0] + A[1] * A[1]) * w; nb += (B[0] * B[0] + B[1] * B[1]) * w;
+    }
+  }
+  const mag = Math.hypot(mx[0], mx[1], my[0], my[1], mz[0], mz[1]) / Math.sqrt(na * nb);
+  return mag > 1e-4;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   2. Оформление: названия, числа, цвета спектра
+   ════════════════════════════════════════════════════════════════ */
+const LETTERS = 'spdfghi';
+const REAL_SUB = {
+  '1,0': 'z', '1,1': 'x', '1,-1': 'y',
+  '2,0': 'z²', '2,1': 'xz', '2,-1': 'yz', '2,2': 'x²−y²', '2,-2': 'xy',
+  '3,0': 'z³', '3,1': 'xz²', '3,-1': 'yz²', '3,2': 'z(x²−y²)', '3,-2': 'xyz', '3,3': 'x(x²−3y²)', '3,-3': 'y(3x²−y²)'
+};
+const signed = m => (m > 0 ? '+' : m < 0 ? '−' : '') + Math.abs(m);
+function orbitalLabel(n, l, m, complex) {
+  const main = `${n}${LETTERS[l]}`;
+  if (l === 0) return { main, sub: '' };
+  if (complex) return { main, sub: '', note: `m = ${signed(m)}` };
+  const sub = REAL_SUB[`${l},${m}`];
+  return sub ? { main, sub } : { main, sub: '', note: `m = ${signed(m)}` };
+}
+const shortName = (n, l, m, complex) => { const o = orbitalLabel(n, l, m, complex); return o.main + (o.sub ? o.sub.replace(/[()]/g, '') : ''); };
+const fmt = (x, d = 2) => x.toFixed(d).replace('.', ',').replace('-', '−');
+const fmtInt = x => String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const plural = (k, one, few, many) => { const a = k % 10, b = k % 100; return (a === 1 && b !== 11) ? one : (a >= 2 && a <= 4 && (b < 10 || b >= 20)) ? few : many; };
+
+function wavelengthRGB(nm) {
+  let r = 0, g = 0, b = 0;
+  if (nm < 380) { r = 0.62; g = 0.52; b = 1; }
+  else if (nm < 440) { r = -(nm - 440) / 60; b = 1; }
+  else if (nm < 490) { g = (nm - 440) / 50; b = 1; }
+  else if (nm < 510) { g = 1; b = -(nm - 510) / 20; }
+  else if (nm < 580) { r = (nm - 510) / 70; g = 1; }
+  else if (nm < 645) { r = 1; g = -(nm - 645) / 65; }
+  else if (nm <= 780) { r = 1; }
+  else { r = 1; g = 0.36; b = 0.28; }
+  let f = 1;
+  if (nm >= 380 && nm < 420) f = 0.45 + 0.55 * (nm - 380) / 40;
+  else if (nm > 700 && nm <= 780) f = 0.55 + 0.45 * (780 - nm) / 80;
+  // слегка подтягиваем к «свету», чтобы на тёмном фоне не было грязи
+  const lift = 0.12;
+  return [Math.min(1, r * f + lift), Math.min(1, g * f + lift), Math.min(1, b * f + lift)];
+}
+const rgbCss = (c, a = 1) => `rgba(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)},${a})`;
+const bandOf = nm => nm < 380 ? 'УФ' : nm > 750 ? 'ИК' : 'видимый';
+function fmtLambda(nm) {
+  if (nm >= 1000) return `${fmt(nm / 1000, nm >= 10000 ? 1 : 2)} мкм`;
+  return `${fmt(nm, 1)} нм`;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   3. WebGL2: точки → HDR → свечение → тональная компрессия
+   ════════════════════════════════════════════════════════════════ */
+const cv = document.getElementById('gl');
+const gl = cv.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
+if (!gl) { document.getElementById('nogl').style.display = 'grid'; throw new Error('WebGL2 недоступен'); }
+const hasFloat = !!gl.getExtension('EXT_color_buffer_float');
+
+const isPhone = matchMedia('(max-width: 720px)').matches;
+const COUNT = isPhone ? 150000 : 260000;
+document.getElementById('cnt').textContent = fmtInt(COUNT);
+
+function sh(type, src) {
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function prog(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}; const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) { const info = gl.getActiveUniform(p, i); u[info.name] = gl.getUniformLocation(p, info.name); }
+  return { p, u };
+}
+
+const PALETTE = `
+vec3 phaseColor(float p){
+  vec3 c0 = vec3(1.00, 0.34, 0.26);
+  vec3 c1 = vec3(1.00, 0.72, 0.28);
+  vec3 c2 = vec3(0.14, 0.85, 0.77);
+  vec3 c3 = vec3(0.50, 0.40, 1.00);
+  float t = fract(p / 6.28318530718) * 4.0;
+  if (t < 1.0) return mix(c0, c1, smoothstep(0.0, 1.0, t));
+  if (t < 2.0) return mix(c1, c2, smoothstep(0.0, 1.0, t - 1.0));
+  if (t < 3.0) return mix(c2, c3, smoothstep(0.0, 1.0, t - 2.0));
+  return mix(c3, c0, smoothstep(0.0, 1.0, t - 3.0));
+}`;
+
+const pointsProg = prog(`#version 300 es
+precision highp float;
+layout(location=0) in vec4 aA;
+layout(location=1) in vec4 aB;
+layout(location=2) in float aR;
+uniform mat4 uView, uProj;
+uniform vec2 uShift;
+uniform float uMix, uSize, uGain, uCamDist, uCut, uTime, uFlash, uSwirl;
+out vec3 vCol;
+${PALETTE}
+void main(){
+  float t = uMix;
+  float s = sin(3.14159265 * t);
+  vec3 p = mix(aA.xyz, aB.xyz, t);
+  float ang = s * (aR - 0.5) * 2.4 * uSwirl;
+  float ca = cos(ang), sa = sin(ang);
+  p.xz = vec2(ca * p.x - sa * p.z, sa * p.x + ca * p.z);
+  p *= 1.0 + 0.10 * s;
+  p *= 1.0 + 0.006 * sin(uTime * 1.3 + aR * 6.2831853);
+  vec4 vp = uView * vec4(p, 1.0);
+  float dz = vp.z + uCamDist;
+  float thr = mix(3.0, 0.0, uCut);
+  if (dz > thr) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vCol = vec3(0.0); return; }
+  float gain = uGain;
+  float edge = 1.0 - smoothstep(0.0, 0.05, abs(dz - thr));
+  gain *= 1.0 + edge * 2.4 * smoothstep(0.55, 1.0, uCut);
+  vec4 cp = uProj * vp;
+  cp.xy += uShift * cp.w;
+  gl_Position = cp;
+  gl_PointSize = uSize * (uCamDist / max(0.2, -vp.z));
+  float depth = clamp(0.5 - dz * 0.5, 0.0, 1.0);
+  vec3 col = mix(phaseColor(aA.w), phaseColor(aB.w), t);
+  vCol = col * gain * mix(1.18, 0.5, depth) * (1.0 + uFlash);
+}`, `#version 300 es
+precision highp float;
+in vec3 vCol;
+out vec4 o;
+void main(){
+  vec2 d = gl_PointCoord * 2.0 - 1.0;
+  float r2 = dot(d, d);
+  if (r2 > 1.0) discard;
+  o = vec4(vCol * exp(-r2 * 3.2), 1.0);
+}`);
+
+const lineProg = prog(`#version 300 es
+precision highp float;
+layout(location=0) in vec3 aP;
+uniform mat4 uView, uProj;
+uniform vec2 uShift;
+void main(){ vec4 cp = uProj * uView * vec4(aP, 1.0); cp.xy += uShift * cp.w; gl_Position = cp; }`,
+`#version 300 es
+precision highp float;
+uniform vec3 uColor;
+out vec4 o;
+void main(){ o = vec4(uColor, 1.0); }`);
+
+const nucProg = prog(`#version 300 es
+precision highp float;
+uniform mat4 uView, uProj;
+uniform vec2 uShift;
+uniform float uSize;
+void main(){ vec4 cp = uProj * uView * vec4(0.0, 0.0, 0.0, 1.0); cp.xy += uShift * cp.w; gl_Position = cp; gl_PointSize = uSize; }`,
+`#version 300 es
+precision highp float;
+uniform float uGain;
+out vec4 o;
+void main(){
+  vec2 d = gl_PointCoord * 2.0 - 1.0; float r2 = dot(d, d);
+  if (r2 > 1.0) discard;
+  o = vec4(vec3(1.0, 0.86, 0.66) * (exp(-r2 * 9.0) * 3.0 + exp(-r2 * 2.5) * 0.25) * uGain, 1.0);
+}`);
+
+const FSQ = `#version 300 es
+out vec2 vUv;
+void main(){ vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); vUv = p; gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
+const downProg = prog(FSQ, `#version 300 es
+precision highp float;
+uniform sampler2D uTex; uniform vec2 uTexel;
+in vec2 vUv; out vec4 o;
+void main(){
+  vec3 c = texture(uTex, vUv + uTexel * vec2(-1.0, -1.0)).rgb + texture(uTex, vUv + uTexel * vec2(1.0, -1.0)).rgb
+         + texture(uTex, vUv + uTexel * vec2(-1.0, 1.0)).rgb + texture(uTex, vUv + uTexel * vec2(1.0, 1.0)).rgb;
+  o = vec4(c * 0.25, 1.0);
+}`);
+const blurProg = prog(FSQ, `#version 300 es
+precision highp float;
+uniform sampler2D uTex; uniform vec2 uDir;
+in vec2 vUv; out vec4 o;
+void main(){
+  vec3 c = texture(uTex, vUv).rgb * 0.2270270;
+  c += (texture(uTex, vUv + uDir * 1.3846154).rgb + texture(uTex, vUv - uDir * 1.3846154).rgb) * 0.3162162;
+  c += (texture(uTex, vUv + uDir * 3.2307692).rgb + texture(uTex, vUv - uDir * 3.2307692).rgb) * 0.0702703;
+  o = vec4(c, 1.0);
+}`);
+const compProg = prog(FSQ, `#version 300 es
+precision highp float;
+uniform sampler2D uHdr, uBloom;
+uniform float uExposure, uBloomAmt, uTime;
+uniform vec2 uRes, uCenter;
+in vec2 vUv; out vec4 o;
+void main(){
+  vec3 c = texture(uHdr, vUv).rgb + texture(uBloom, vUv).rgb * uBloomAmt;
+  c = 1.0 - exp(-c * uExposure);
+  vec2 q = vUv - uCenter; q.x *= uRes.x / uRes.y;
+  float d = length(q);
+  vec3 bg = vec3(0.013, 0.022, 0.030) + vec3(0.010, 0.020, 0.026) * (1.0 - smoothstep(0.0, 0.85, d));
+  c = c + bg * (1.0 - c);
+  vec2 v = vUv - 0.5; v.x *= uRes.x / uRes.y;
+  c *= 1.0 - 0.32 * smoothstep(0.45, 1.15, length(v));
+  float n = fract(sin(dot(gl_FragCoord.xy + fract(uTime) * 91.7, vec2(12.9898, 78.233))) * 43758.5453);
+  c += (n - 0.5) / 255.0;
+  o = vec4(c, 1.0);
+}`);
+
+// Буферы облака: A — откуда, B — куда (морфинг), R — случайная фаза точки
+const bufA = gl.createBuffer(), bufB = gl.createBuffer(), bufR = gl.createBuffer();
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+gl.bindBuffer(gl.ARRAY_BUFFER, bufA); gl.bufferData(gl.ARRAY_BUFFER, COUNT * 16, gl.DYNAMIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
+gl.bindBuffer(gl.ARRAY_BUFFER, bufB); gl.bufferData(gl.ARRAY_BUFFER, COUNT * 16, gl.DYNAMIC_DRAW);
+gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
+const rnd = new Float32Array(COUNT); for (let i = 0; i < COUNT; i++) rnd[i] = rng();
+gl.bindBuffer(gl.ARRAY_BUFFER, bufR); gl.bufferData(gl.ARRAY_BUFFER, rnd, gl.STATIC_DRAW);
+gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 1, gl.FLOAT, false, 0, 0);
+gl.bindVertexArray(null);
+
+// Оси и экваториальные кольца
+const guide = [];
+const AX = 1.12;
+guide.push(-AX, 0, 0, AX, 0, 0, 0, -AX, 0, 0, AX, 0, 0, 0, -AX, 0, 0, AX);
+for (const rad of [0.5, 1.0]) {
+  const seg = 128;
+  for (let i = 0; i < seg; i++) {
+    const a0 = i / seg * TAU, a1 = (i + 1) / seg * TAU;
+    guide.push(Math.cos(a0) * rad, 0, Math.sin(a0) * rad, Math.cos(a1) * rad, 0, Math.sin(a1) * rad);
+  }
+}
+const guideVao = gl.createVertexArray(), guideBuf = gl.createBuffer();
+gl.bindVertexArray(guideVao);
+gl.bindBuffer(gl.ARRAY_BUFFER, guideBuf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(guide), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+gl.bindVertexArray(null);
+const emptyVao = gl.createVertexArray();
+
+// Рендер-цели
+function makeTarget(w, h) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  if (hasFloat) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+  else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return { tex, fb, w, h };
+}
+function freeTarget(t) { if (t) { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fb); } }
+let hdr, bloomA, bloomB, W = 0, H = 0, DPR = 1, resScale = 1;
+
+/* ════════════════════════════════════════════════════════════════
+   4. Камера, раскладка, ввод
+   ════════════════════════════════════════════════════════════════ */
+const ov = document.getElementById('overlay');
+const ctx = ov.getContext('2d');
+const FOV = 30 * Math.PI / 180;
+const cam = { yaw: 0.72, pitch: 0.34, vyaw: 0, vpitch: 0, zoom: 1, dist: 3.6, shift: [0, 0], center: [0.5, 0.5] };
+let viewM, projM;
+
+function layout() {
+  const w = innerWidth, h = innerHeight;
+  let x0 = 0, x1 = w, y0 = 0, y1 = h;
+  if (isPhone || w <= 720) {
+    y0 = 150; y1 = h - (document.querySelector('.controls').getBoundingClientRect().height + 10);
+  } else {
+    x0 = w > 1000 ? 400 : 360; x1 = w - (w > 1000 ? 290 : 250);
+    y1 = h - 70;
+  }
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  cam.shift = [(cx - w / 2) / (w / 2), -(cy - h / 2) / (h / 2)];
+  cam.center = [cx / w, 1 - cy / h];
+  const availH = Math.max(120, y1 - y0), availW = Math.max(120, x1 - x0);
+  const t = Math.tan(FOV / 2), aspect = w / h;
+  const fill = 0.86;
+  const dH = 1 / (t * fill * availH / h);
+  const dW = 1 / (t * aspect * fill * availW / w);
+  cam.baseDist = Math.max(dH, dW) * 1.02;
+}
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2) * resScale;
+  W = Math.max(2, Math.round(innerWidth * DPR)); H = Math.max(2, Math.round(innerHeight * DPR));
+  cv.width = W; cv.height = H;
+  ov.width = Math.round(innerWidth * Math.min(window.devicePixelRatio || 1, 2));
+  ov.height = Math.round(innerHeight * Math.min(window.devicePixelRatio || 1, 2));
+  freeTarget(hdr); freeTarget(bloomA); freeTarget(bloomB);
+  hdr = makeTarget(W, H);
+  const bw = Math.max(2, W >> 2), bh = Math.max(2, H >> 2);
+  bloomA = makeTarget(bw, bh); bloomB = makeTarget(bw, bh);
+  layout();
+}
+
+function perspective(fovy, aspect, near, far) {
+  const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+  return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0]);
+}
+function lookAt(e, t, u) {
+  let zx = e[0] - t[0], zy = e[1] - t[1], zz = e[2] - t[2];
+  let l = Math.hypot(zx, zy, zz); zx /= l; zy /= l; zz /= l;
+  let xx = u[1] * zz - u[2] * zy, xy = u[2] * zx - u[0] * zz, xz = u[0] * zy - u[1] * zx;
+  l = Math.hypot(xx, xy, xz); xx /= l; xy /= l; xz /= l;
+  const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+  return new Float32Array([xx, yx, zx, 0, xy, yy, zy, 0, xz, yz, zz, 0,
+    -(xx * e[0] + xy * e[1] + xz * e[2]), -(yx * e[0] + yy * e[1] + yz * e[2]), -(zx * e[0] + zy * e[1] + zz * e[2]), 1]);
+}
+function mulPoint(m, p) {
+  const x = p[0], y = p[1], z = p[2];
+  return [m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13],
+          m[2] * x + m[6] * y + m[10] * z + m[14], m[3] * x + m[7] * y + m[11] * z + m[15]];
+}
+function project(p) {
+  const v = mulPoint(viewM, p), c = mulPoint(projM, v);
+  const x = c[0] / c[3] + cam.shift[0], y = c[1] / c[3] + cam.shift[1];
+  return [(x * 0.5 + 0.5) * innerWidth, (0.5 - y * 0.5) * innerHeight, -v[2]];
+}
+
+let lastInput = -1e9;
+const pointers = new Map();
+let pinch0 = 0, zoom0 = 1;
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  cv.classList.add('drag'); lastInput = performance.now();
+  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom0 = cam.zoom; }
+});
+cv.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  const prev = pointers.get(e.pointerId);
+  pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (pinch0 > 0) cam.zoom = Math.min(2.6, Math.max(0.45, zoom0 * pinch0 / d));
+    return;
+  }
+  const dx = e.clientX - prev[0], dy = e.clientY - prev[1];
+  cam.yaw -= dx * 0.006; cam.pitch += dy * 0.006;
+  cam.pitch = Math.max(-1.4, Math.min(1.4, cam.pitch));
+  cam.vyaw = -dx * 0.006; cam.vpitch = dy * 0.006;
+  lastInput = performance.now();
+});
+const endPtr = e => { pointers.delete(e.pointerId); if (!pointers.size) cv.classList.remove('drag'); pinch0 = 0; };
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+cv.addEventListener('wheel', e => { e.preventDefault(); cam.zoom = Math.min(2.6, Math.max(0.45, cam.zoom * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
+cv.addEventListener('dblclick', () => { cam.zoom = 1; cam.pitch = 0.34; });
+
+/* ════════════════════════════════════════════════════════════════
+   5. Состояние, морфинг, экскурсия
+   ════════════════════════════════════════════════════════════════ */
+const state = { n: 4, l: 2, m: 0, complex: false, cut: false, spin: true, tour: true };
+let cur = null, curData = null;
+const morph = { t0: 0, dur: 1.25, active: false, pending: false, swirl: 1 };
+let cutAnim = 0, flash = 0;
+
+function startMorph(intro) {
+  const orb = makeOrbital(state.n, state.l, state.m, state.complex, COUNT);
+  let from = curData;
+  if (intro || !from) {
+    from = new Float32Array(orb.data.length);
+    for (let i = 0; i < COUNT; i++) { from[i * 4 + 3] = orb.data[i * 4 + 3]; from[i * 4] = orb.data[i * 4] * 0.03; from[i * 4 + 1] = orb.data[i * 4 + 1] * 0.03; from[i * 4 + 2] = orb.data[i * 4 + 2] * 0.03; }
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufA); gl.bufferSubData(gl.ARRAY_BUFFER, 0, from);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufB); gl.bufferSubData(gl.ARRAY_BUFFER, 0, orb.data);
+  if (!REF_DENS) REF_DENS = densityP97(makeOrbital(4, 2, 0, false, 60000).data);
+  orb.gain = Math.max(0.3, Math.min(2.2, REF_DENS / densityP97(orb.data)));
+  morph.gainFrom = cur ? cur.gain : orb.gain;
+  cur = orb; curData = orb.data;
+  morph.t0 = performance.now(); morph.active = true; morph.swirl = intro ? 1.6 : 1;
+  morph.dur = intro ? 1.5 : 1.25;
+  drawRadial(orb);
+}
+function applyState(opts = {}) {
+  if (morph.active) morph.pending = true; else startMorph();
+  updateUI();
+}
+function setOrbital(n, l, m, opts = {}) {
+  n = Math.max(1, Math.min(7, n)); l = Math.max(0, Math.min(n - 1, l)); m = Math.max(-l, Math.min(l, m));
+  const prev = { n: state.n, l: state.l, m: state.m };
+  if (prev.n === n && prev.l === l && prev.m === m) return;
+  state.n = n; state.l = l; state.m = m;
+  if (!opts.fromTour) setTour(false);
+  if (prev.n !== n) emitTransition(prev, { n, l, m });
+  else showSameLevel(prev, { n, l, m });
+  applyState();
+}
+
+// Экскурсия: все переходы с изменением n — дипольно разрешённые
+const TOUR = [
+  [4, 2, 0], [2, 1, 0], [3, 2, 1], [2, 1, 1], [5, 2, 2], [4, 3, 3], [5, 4, 4],
+  [6, 3, 3], [3, 2, 2], [2, 1, 1], [1, 0, 0], [6, 1, 0], [2, 0, 0], [7, 1, 0]
+];
+let tourIdx = 0, tourT0 = performance.now();
+const TOUR_STEP = 7200;
+function setTour(on) {
+  state.tour = on;
+  const b = document.getElementById('bTour');
+  b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+  tourT0 = performance.now();
+  if (on) {
+    let best = 0;
+    TOUR.forEach((s, i) => { if (s[0] === state.n && s[1] === state.l && s[2] === state.m) best = i; });
+    tourIdx = best;
+  }
+}
+function tourTick(now) {
+  if (!state.tour) return;
+  const p = Math.min(1, (now - tourT0) / TOUR_STEP);
+  document.getElementById('bTour').style.setProperty('--p', (p * 100).toFixed(1) + '%');
+  if (p >= 1 && !morph.active) {
+    tourIdx = (tourIdx + 1) % TOUR.length;
+    const [n, l, m] = TOUR[tourIdx];
+    tourT0 = now;
+    setOrbital(n, l, m, { fromTour: true });
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   6. Переходы: фотоны, диаграмма уровней, спектр
+   ════════════════════════════════════════════════════════════════ */
+const photons = [];
+const SERIES = ['Лайман', 'Бальмер', 'Пашен', 'Брэккет', 'Пфунд', 'Хэмфри'];
+const GREEK = 'αβγδεζη';
+const specLines = new Map();
+let lastArrows = [];
+
+function transitionInfo(a, b) {
+  const n1 = Math.min(a.n, b.n), n2 = Math.max(a.n, b.n);
+  const inv = 1 / (n1 * n1) - 1 / (n2 * n2);
+  const nm = 1e9 / (R_H * inv);
+  const name = n1 === 2 ? `H${GREEK[n2 - n1 - 1]}` : `${SERIES[n1 - 1]}-${GREEK[n2 - n1 - 1]}`;
+  return { n1, n2, nm, eV: HC_EV_NM / nm, name, series: SERIES[n1 - 1], emission: b.n < a.n };
+}
+function emitTransition(a, b) {
+  const t = transitionInfo(a, b);
+  const allowed = dipoleAllowed(a, b, state.complex);
+  const col = wavelengthRGB(t.nm);
+  const card = document.getElementById('tcard');
+  const dl = b.l - a.l;
+  const rule = allowed
+    ? `<span class="ok">дипольно разрешён</span>`
+    : `<span class="no">запрещён в дипольном приближении</span>${Math.abs(dl) !== 1 ? ` (Δl = ${signed(dl)})` : ''}`;
+  card.innerHTML = `<div class="k">${t.emission ? 'Излучение' : 'Поглощение'} · серия ${t.series}а</div>
+    <div class="m"><span class="sw" style="background:${rgbCss(col)}"></span>${t.name} · ${fmtLambda(t.nm)}</div>
+    <div class="s">${shortName(a.n, a.l, a.m, state.complex)} → ${shortName(b.n, b.l, b.m, state.complex)} · <b>${fmt(t.eV, 2)} эВ</b> · ${bandOf(t.nm)}<br>${rule}</div>`;
+  card.style.opacity = 1;
+  photons.push({ t0: performance.now(), dur: 2300, nm: t.nm, col, emission: t.emission, label: `${t.name} · ${fmtLambda(t.nm)}` });
+  flash = 1;
+  addSpectrumLine(t);
+  lastArrows.unshift({ from: a.n, to: b.n, col, t: performance.now() });
+  lastArrows = lastArrows.slice(0, 5);
+  drawLevels();
+}
+function showSameLevel(a, b) {
+  const card = document.getElementById('tcard');
+  card.innerHTML = `<div class="k">Тот же уровень · n = ${b.n}</div>
+    <div class="m" style="font-size:21px">Фотон не нужен</div>
+    <div class="s">В атоме водорода энергия зависит только от n: орбитали ${shortName(a.n, a.l, a.m, state.complex)} и ${shortName(b.n, b.l, b.m, state.complex)} вырождены.</div>`;
+  card.style.opacity = 1;
+}
+
+// SVG-диаграмма уровней в честном линейном масштабе энергии
+const SVGNS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+function levelY(n) { return 14 + 330 * (1 / (n * n)); }
+function drawLevels() {
+  const svg = document.getElementById('levsvg');
+  svg.innerHTML = '';
+  el('line', { x1: 0, x2: 150, y1: 14, y2: 14, stroke: '#2a3b45', 'stroke-dasharray': '2 4' }, svg);
+  const ion = el('text', { x: 0, y: 6, fill: '#74838a', 'font-family': 'JetBrains Mono, monospace', 'font-size': 12, 'letter-spacing': '.06em' }, svg);
+  ion.textContent = 'ИОНИЗАЦИЯ · 0 эВ';
+  // подписи с разводкой, чтобы не наезжали
+  const labels = [];
+  for (let n = 7; n >= 1; n--) labels.push({ n, y: levelY(n) });
+  let minY = 26;
+  for (const L of labels) { L.ly = Math.max(L.y, minY); minY = L.ly + 15; }
+  for (const L of labels) {
+    const on = L.n === state.n;
+    el('line', { x1: 0, x2: 150, y1: L.y, y2: L.y, stroke: on ? '#ebe5d9' : '#2f434f', 'stroke-width': on ? 1.4 : 1 }, svg);
+    el('path', { d: `M152 ${L.y} L160 ${L.y} L168 ${L.ly} L172 ${L.ly}`, fill: 'none', stroke: '#22333d' }, svg);
+    const t = el('text', { x: 176, y: L.ly + 3.5, fill: on ? '#ebe5d9' : '#7d8a8e', 'font-family': 'JetBrains Mono, monospace', 'font-size': 12 }, svg);
+    t.textContent = `${L.n}  ${fmt(-RYD_EV / (L.n * L.n), 2)}`;
+  }
+  // стрелки последних переходов
+  const now = performance.now();
+  lastArrows.forEach((a, i) => {
+    const x = 118 - i * 20;
+    const y1 = levelY(a.from), y2 = levelY(a.to);
+    const alpha = Math.max(0.18, 1 - i * 0.2);
+    const c = rgbCss(a.col, alpha);
+    el('line', { x1: x, x2: x, y1, y2: y2 + (y2 > y1 ? -5 : 5), stroke: c, 'stroke-width': 1.6 }, svg);
+    const dir = y2 > y1 ? 1 : -1;
+    el('path', { d: `M${x - 4} ${y2 - 7 * dir} L${x} ${y2} L${x + 4} ${y2 - 7 * dir} Z`, fill: c }, svg);
+  });
+  // «электрон» на текущем уровне
+  const y = levelY(state.n);
+  el('circle', { cx: 14, cy: y, r: 7, fill: 'rgba(56,225,207,.16)' }, svg);
+  el('circle', { cx: 14, cy: y, r: 3.2, fill: '#38e1cf' }, svg);
+}
+
+// Спектр: видимая часть в центре, УФ и ИК — сжатыми полями по краям
+function specX(nm, w) {
+  const uvW = 54, irW = 64, vis0 = uvW + 8, vis1 = w - irW - 8;
+  if (nm < 380) { const t = (Math.log(nm) - Math.log(90)) / (Math.log(380) - Math.log(90)); return Math.max(4, Math.min(uvW - 4, 4 + t * (uvW - 8))); }
+  if (nm > 750) { const t = (Math.log(nm) - Math.log(750)) / (Math.log(8000) - Math.log(750)); return w - irW + 4 + Math.max(0, Math.min(1, t)) * (irW - 8); }
+  return vis0 + (nm - 380) / 370 * (vis1 - vis0);
+}
+function addSpectrumLine(t) {
+  const key = t.name;
+  const prev = specLines.get(key);
+  specLines.set(key, { nm: t.nm, name: t.name, count: (prev ? prev.count : 0) + 1, t: performance.now() });
+  drawSpectrum();
+}
+function drawSpectrum() {
+  const svg = document.getElementById('specsvg');
+  const w = svg.getBoundingClientRect().width || 520, h = 46;
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.innerHTML = '';
+  const defs = el('defs', {}, svg);
+  const g = el('linearGradient', { id: 'vis', x1: 0, x2: 1, y1: 0, y2: 0 }, defs);
+  for (let i = 0; i <= 12; i++) {
+    const nm = 380 + 370 * i / 12, c = wavelengthRGB(nm);
+    el('stop', { offset: i / 12, 'stop-color': rgbCss(c) }, g);
+  }
+  const uvW = 54, irW = 64;
+  el('rect', { x: 0, y: 8, width: uvW, height: 22, fill: '#0d1418', stroke: '#1b2a33' }, svg);
+  el('rect', { x: w - irW, y: 8, width: irW, height: 22, fill: '#0d1418', stroke: '#1b2a33' }, svg);
+  el('rect', { x: uvW + 8, y: 8, width: w - uvW - irW - 16, height: 22, fill: 'url(#vis)', opacity: 0.13 }, svg);
+  el('rect', { x: uvW + 8, y: 8, width: w - uvW - irW - 16, height: 22, fill: 'none', stroke: '#1b2a33' }, svg);
+  const lab = (x, txt, anchor) => { const t = el('text', { x, y: 43, fill: '#74838a', 'font-family': 'JetBrains Mono, monospace', 'font-size': 12, 'text-anchor': anchor }, svg); t.textContent = txt; };
+  lab(uvW / 2, 'УФ', 'middle'); lab(w - irW / 2, 'ИК', 'middle');
+  lab(uvW + 8, '380 нм', 'start'); lab(w - irW - 8, '750 нм', 'end');
+  const now = performance.now();
+  for (const L of specLines.values()) {
+    const x = specX(L.nm, w), c = wavelengthRGB(L.nm);
+    const fresh = Math.max(0, 1 - (now - L.t) / 2500);
+    const width = 1.6 + Math.min(2, L.count * 0.35);
+    el('rect', { x: x - width / 2 - 3, y: 6, width: width + 6, height: 26, fill: rgbCss(c, 0.10 + fresh * 0.25) }, svg);
+    el('rect', { x: x - width / 2, y: 8, width, height: 22, fill: rgbCss(c, 0.95) }, svg);
+    if (L.nm >= 380 && L.nm <= 750) {
+      const t = el('text', { x, y: 4, fill: rgbCss(c, 0.9), 'font-family': 'JetBrains Mono, monospace', 'font-size': 12, 'text-anchor': 'middle' }, svg);
+      t.textContent = L.name;
+    }
+  }
+  document.getElementById('specnote').textContent = specLines.size
+    ? `${specLines.size} ${plural(specLines.size, 'линия', 'линии', 'линий')}` : 'линии появляются при переходах';
+}
+
+// Радиальная плотность: цвет сегмента — знак R(r)
+function drawRadial(orb) {
+  const svg = document.getElementById('radsvg');
+  if (!svg || getComputedStyle(svg.parentNode).display === 'none') return;
+  svg.innerHTML = '';
+  const w = 300, h = 80, top = 4;
+  const rMax = orb.fit * 1.12;
+  const N = 220;
+  const pts = [];
+  let mx = 0;
+  for (let i = 0; i <= N; i++) {
+    const r = rMax * i / N, R = radialR(orb.n, orb.l, r), p = r * r * R * R;
+    pts.push([r, p, R]); if (p > mx) mx = p;
+  }
+  const X = r => r / rMax * w, Y = p => top + h - p / mx * (h - 4);
+  // сегменты одного знака
+  let seg = [pts[0]];
+  const flush = (arr) => {
+    if (arr.length < 2) return;
+    const pos = arr[Math.floor(arr.length / 2)][2] >= 0;
+    const col = pos ? '#ff6f5e' : '#38e1cf';
+    let d = `M${X(arr[0][0])} ${top + h}`;
+    for (const q of arr) d += ` L${X(q[0]).toFixed(1)} ${Y(q[1]).toFixed(1)}`;
+    d += ` L${X(arr[arr.length - 1][0])} ${top + h} Z`;
+    el('path', { d, fill: col, opacity: 0.16 }, svg);
+    let d2 = '';
+    arr.forEach((q, i) => d2 += `${i ? 'L' : 'M'}${X(q[0]).toFixed(1)} ${Y(q[1]).toFixed(1)}`);
+    el('path', { d: d2, fill: 'none', stroke: col, 'stroke-width': 1.5 }, svg);
+  };
+  for (let i = 1; i < pts.length; i++) {
+    seg.push(pts[i]);
+    if (i < pts.length - 1 && (pts[i][2] >= 0) !== (pts[i + 1][2] >= 0)) { flush(seg); seg = [pts[i]]; }
+  }
+  flush(seg);
+  el('line', { x1: 0, x2: w, y1: top + h, y2: top + h, stroke: '#2a3b45' }, svg);
+  // деления
+  const nice = [1, 2, 5, 10, 20, 50, 100];
+  const step = nice.find(s => rMax / s <= 6) || 100;
+  for (let r = 0; r <= rMax; r += step) {
+    el('line', { x1: X(r), x2: X(r), y1: top + h, y2: top + h + 4, stroke: '#2a3b45' }, svg);
+    const t = el('text', { x: X(r), y: top + h + 15, fill: '#74838a', 'font-family': 'JetBrains Mono, monospace', 'font-size': 12, 'text-anchor': 'middle' }, svg);
+    t.textContent = r === 0 ? '0' : `${r}`;
+  }
+  const ta = el('text', { x: w, y: top + h + 15, fill: '#74838a', 'font-family': 'JetBrains Mono, monospace', 'font-size': 12, 'text-anchor': 'end', dx: 22 }, svg);
+  ta.textContent = 'a₀';
+  // ⟨r⟩ и узлы
+  const mr = orb.meanR;
+  if (mr < rMax) {
+    el('line', { x1: X(mr), x2: X(mr), y1: top, y2: top + h, stroke: '#ebe5d9', 'stroke-dasharray': '1 3', opacity: 0.55 }, svg);
+    const t = el('text', { x: X(mr) + 4, y: top + 9, fill: '#b7b2a8', 'font-family': 'JetBrains Mono, monospace', 'font-size': 12 }, svg);
+    t.textContent = '⟨r⟩';
+  }
+  orb.nodes.forEach(r => {
+    if (r > rMax) return;
+    el('circle', { cx: X(r), cy: top + h, r: 2.6, fill: '#04070a', stroke: '#ebe5d9', 'stroke-width': 1 }, svg);
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════
+   7. Интерфейс
+   ════════════════════════════════════════════════════════════════ */
+function pillRow(id, items, active, onPick) {
+  const box = document.getElementById(id);
+  box.innerHTML = '';
+  for (const it of items) {
+    const b = document.createElement('button');
+    b.className = 'pill' + (it.v === active ? ' on' : '');
+    b.textContent = it.t; b.title = it.title || '';
+    b.addEventListener('click', () => onPick(it.v));
+    box.appendChild(b);
+  }
+}
+function updateUI() {
+  const { n, l, m, complex } = state;
+  pillRow('pn', [1, 2, 3, 4, 5, 6, 7].map(v => ({ v, t: v })), n, v => setOrbital(v, state.l, state.m));
+  pillRow('pl', Array.from({ length: n }, (_, v) => ({ v, t: LETTERS[v], title: `l = ${v}` })), l, v => setOrbital(state.n, v, state.m));
+  pillRow('pm', Array.from({ length: 2 * l + 1 }, (_, i) => ({ v: i - l, t: signed(i - l) })), m, v => setOrbital(state.n, state.l, v));
+  const lab = orbitalLabel(n, l, m, complex);
+  document.getElementById('orb').innerHTML = `<span class="big">${lab.main}</span>${lab.sub ? `<sub>${lab.sub}</sub>` : ''}${lab.note ? `<span class="cm">${lab.note}</span>` : ''}`;
+  document.getElementById('qline').innerHTML = `n = <span>${n}</span> · l = <span>${l}</span> · m = <span>${signed(m)}</span>`;
+  document.getElementById('sE').textContent = `${fmt(-RYD_EV / (n * n), 3)} эВ`;
+  document.getElementById('sR').textContent = `${fmt((3 * n * n - l * (l + 1)) / 2, 1)} a₀`;
+  const rn = n - l - 1;
+  document.getElementById('sN').textContent = `${rn} ${plural(rn, 'радиальный', 'радиальных', 'радиальных')} · ${l} ${plural(l, 'угловой', 'угловых', 'угловых')}`;
+  document.getElementById('legend').innerHTML = complex
+    ? `<span><i class="ring"></i>цвет — фаза ψ: от 0 до 2π</span>`
+    : `<span><i class="dot" style="background:#ff6f5e;"></i>ψ&nbsp;&gt;&nbsp;0</span><span><i class="dot" style="background:#38e1cf;"></i>ψ&nbsp;&lt;&nbsp;0</span>`;
+  document.querySelectorAll('.seg button').forEach(b => b.classList.toggle('on', (b.dataset.mode === 'complex') === complex));
+  drawLevels();
+}
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  const c = b.dataset.mode === 'complex';
+  if (c === state.complex) return;
+  state.complex = c;
+  applyState();
+}));
+function toggleBtn(id, key, after) {
+  const b = document.getElementById(id);
+  b.addEventListener('click', () => {
+    state[key] = !state[key];
+    b.classList.toggle('on', state[key]); b.setAttribute('aria-pressed', state[key]);
+    if (after) after();
+  });
+}
+toggleBtn('bCut', 'cut');
+toggleBtn('bSpin', 'spin');
+document.getElementById('bTour').addEventListener('click', () => setTour(!state.tour));
+
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (k >= '1' && k <= '7') setOrbital(+k, state.l, state.m);
+  else if (k === 'ArrowUp') setOrbital(state.n, state.l + 1, state.m);
+  else if (k === 'ArrowDown') setOrbital(state.n, state.l - 1, state.m);
+  else if (k === 'ArrowRight') setOrbital(state.n, state.l, state.m + 1);
+  else if (k === 'ArrowLeft') setOrbital(state.n, state.l, state.m - 1);
+  else if (k === 'c' || k === 'C' || k === 'с' || k === 'С') document.getElementById('bCut').click();
+  else if (k === ' ') { e.preventDefault(); document.getElementById('bSpin').click(); }
+  else return;
+  lastInput = performance.now();
+});
+
+/* ════════════════════════════════════════════════════════════════
+   8. Кадр
+   ════════════════════════════════════════════════════════════════ */
+const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+let lastT = performance.now(), ftAvg = 16, lowCheckT = performance.now(), running = true;
+
+function drawOverlay(now) {
+  const s = ov.width / innerWidth;
+  ctx.setTransform(s, 0, 0, s, 0, 0);
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+  // подписи осей
+  ctx.font = '400 12px "JetBrains Mono", monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const [p, t] of [[[1.2, 0, 0], 'x'], [[0, 0, -1.2], 'y'], [[0, 1.2, 0], 'z']]) {
+    const q = project(p);
+    ctx.fillStyle = 'rgba(235,229,217,0.34)'; ctx.fillText(t, q[0], q[1]);
+  }
+  // масштабная линейка в a₀
+  if (cur) {
+    const c0 = project([0, 0, 0]);
+    const pxPerUnit = (innerHeight / 2) / (cam.dist * Math.tan(FOV / 2));
+    const pxPerA0 = pxPerUnit / cur.fit;
+    const nice = [0.5, 1, 2, 5, 10, 20, 50, 100];
+    let L = nice[0];
+    for (const v of nice) if (v * pxPerA0 <= 150) L = v;
+    const len = L * pxPerA0;
+    const y = Math.min(innerHeight - (isPhone ? 290 : 58), c0[1] + pxPerUnit * 1.05);
+    if (!isPhone) {
+      const x = c0[0] - len / 2;
+      ctx.strokeStyle = 'rgba(235,229,217,0.35)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x, y); ctx.lineTo(x + len, y); ctx.lineTo(x + len, y - 4); ctx.stroke();
+      ctx.fillStyle = 'rgba(235,229,217,0.5)'; ctx.textBaseline = 'top';
+      ctx.fillText(`${String(L).replace('.', ',')} a₀ = ${fmt(L * 0.0529177, L < 2 ? 3 : 2)} нм`, c0[0], y + 7);
+    }
+  }
+  // фотоны
+  const c0 = project([0, 0, 0]);
+  for (let i = photons.length - 1; i >= 0; i--) {
+    const p = photons[i];
+    const age = (now - p.t0) / p.dur;
+    if (age >= 1) { photons.splice(i, 1); continue; }
+    const target = document.getElementById('levsvg').getBoundingClientRect();
+    let x0, y0, x1, y1;
+    const outX = (isPhone || target.width === 0) ? innerWidth + 60 : target.left + 20;
+    const outY = (isPhone || target.width === 0) ? c0[1] - 220 : target.top + levelY(state.n);
+    if (p.emission) { x0 = c0[0]; y0 = c0[1]; x1 = outX; y1 = outY; }
+    else { x0 = -80; y0 = c0[1] + 140; x1 = c0[0]; y1 = c0[1]; }
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+    const packet = 170;
+    const head = ease(age) * (len + packet);
+    const period = 9 * Math.pow(Math.min(Math.max(p.nm, 90), 8000) / 500, 0.45);
+    ctx.save();
+    ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.strokeStyle = rgbCss(p.col, 0.95); ctx.shadowColor = rgbCss(p.col, 1); ctx.shadowBlur = 14;
+    if (p.nm < 380 || p.nm > 750) ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    let started = false;
+    for (let s = Math.max(0, head - packet); s <= Math.min(len, head); s += 1.5) {
+      const env = Math.sin(Math.PI * Math.min(1, Math.max(0, (s - (head - packet)) / packet)));
+      const off = Math.sin(s / period * TAU - now * 0.018) * 7 * env;
+      const x = x0 + ux * s - uy * off, y = y0 + uy * s + ux * off;
+      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+    const hs = Math.min(len, head);
+    if (head - packet < len) {
+      ctx.font = '500 12px "JetBrains Mono", monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.fillStyle = rgbCss(p.col, Math.min(1, (1 - age) * 3));
+      ctx.fillText(p.label, x0 + ux * hs + 10, y0 + uy * hs - 12);
+    }
+  }
+}
+
+function frame() {
+  if (!running) return;
+  // время — только из performance.now(): метка rAF бывает раньше момента запуска скрипта
+  const now = performance.now();
+  const dt = Math.max(0, Math.min(0.05, (now - lastT) / 1000)); lastT = now;
+  ftAvg = ftAvg * 0.95 + dt * 1000 * 0.05;
+  // адаптивное разрешение: если кадр тяжёлый — уменьшаем внутреннее разрешение (кроме съёмки обложки)
+  if (!window.__SHOT__ && now - lowCheckT > 2500) {
+    lowCheckT = now;
+    if (ftAvg > 34 && resScale > 0.6) { resScale = Math.max(0.6, resScale - 0.15); resize(); }
+  }
+  // камера
+  if (state.spin && pointers.size === 0) cam.yaw += dt * 0.16;
+  if (pointers.size === 0) { cam.yaw += cam.vyaw; cam.pitch += cam.vpitch; cam.vyaw *= 0.92; cam.vpitch *= 0.92; cam.pitch = Math.max(-1.4, Math.min(1.4, cam.pitch)); }
+  cam.dist += (cam.baseDist * cam.zoom - cam.dist) * Math.min(1, dt * 6);
+  const e = [cam.dist * Math.cos(cam.pitch) * Math.sin(cam.yaw), cam.dist * Math.sin(cam.pitch), cam.dist * Math.cos(cam.pitch) * Math.cos(cam.yaw)];
+  viewM = lookAt(e, [0, 0, 0], [0, 1, 0]);
+  projM = perspective(FOV, innerWidth / innerHeight, 0.05, 50);
+  // морфинг
+  let mix = 1;
+  if (morph.active) {
+    const t = Math.min(1, (now - morph.t0) / (morph.dur * 1000));
+    mix = ease(t);
+    if (t >= 1) {
+      morph.active = false;
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufA); gl.bufferSubData(gl.ARRAY_BUFFER, 0, curData);
+      if (morph.pending) { morph.pending = false; startMorph(); mix = 0; }
+      else mix = 1;
+    }
+  }
+  cutAnim += ((state.cut ? 1 : 0) - cutAnim) * Math.min(1, dt * 5);
+  flash *= Math.pow(0.02, dt);
+  tourTick(now);
+
+  // 1) облако в HDR
+  gl.bindFramebuffer(gl.FRAMEBUFFER, hdr.fb);
+  gl.viewport(0, 0, W, H);
+  gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+
+  gl.useProgram(lineProg.p);
+  gl.uniformMatrix4fv(lineProg.u.uView, false, viewM); gl.uniformMatrix4fv(lineProg.u.uProj, false, projM);
+  gl.uniform2fv(lineProg.u.uShift, cam.shift); gl.uniform3f(lineProg.u.uColor, 0.030, 0.050, 0.058);
+  gl.bindVertexArray(guideVao); gl.drawArrays(gl.LINES, 0, guide.length / 3);
+
+  gl.useProgram(pointsProg.p);
+  const u = pointsProg.u;
+  gl.uniformMatrix4fv(u.uView, false, viewM); gl.uniformMatrix4fv(u.uProj, false, projM);
+  gl.uniform2fv(u.uShift, cam.shift);
+  gl.uniform1f(u.uMix, mix);
+  // яркость на пиксель не должна зависеть от размера облака на экране, DPR и числа точек
+  const sizeCss = isPhone ? 2.3 : 2.5;
+  const pxPerUnit = (innerHeight / 2) / (cam.dist * Math.tan(FOV / 2));
+  gl.uniform1f(u.uSize, sizeCss * DPR);
+  const orbGain = cur ? (morph.active ? morph.gainFrom + (cur.gain - morph.gainFrom) * mix : cur.gain) : 1;
+  gl.uniform1f(u.uGain, (hasFloat ? 0.16 : 0.09) * orbGain * Math.pow(pxPerUnit / 300, 2) * (260000 / COUNT) * Math.pow(2.5 / sizeCss, 2));
+  gl.uniform1f(u.uCamDist, cam.dist);
+  gl.uniform1f(u.uCut, cutAnim);
+  gl.uniform1f(u.uTime, now / 1000);
+  gl.uniform1f(u.uFlash, flash * 0.9);
+  gl.uniform1f(u.uSwirl, morph.swirl);
+  gl.bindVertexArray(vao); gl.drawArrays(gl.POINTS, 0, COUNT);
+
+  gl.useProgram(nucProg.p);
+  gl.uniformMatrix4fv(nucProg.u.uView, false, viewM); gl.uniformMatrix4fv(nucProg.u.uProj, false, projM);
+  gl.uniform2fv(nucProg.u.uShift, cam.shift);
+  gl.uniform1f(nucProg.u.uSize, 22 * DPR); gl.uniform1f(nucProg.u.uGain, 0.9 + flash * 2);
+  gl.bindVertexArray(emptyVao); gl.drawArrays(gl.POINTS, 0, 1);
+  gl.disable(gl.BLEND);
+
+  // 2) свечение: уменьшение ×4 и два прохода гауссова размытия
+  gl.bindVertexArray(emptyVao);
+  gl.useProgram(downProg.p);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, bloomA.fb); gl.viewport(0, 0, bloomA.w, bloomA.h);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, hdr.tex);
+  gl.uniform1i(downProg.u.uTex, 0); gl.uniform2f(downProg.u.uTexel, 1.5 / W, 1.5 / H);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.useProgram(blurProg.p); gl.uniform1i(blurProg.u.uTex, 0);
+  const passes = [[1, 0, bloomB, bloomA], [0, 1, bloomA, bloomB], [2.2, 0, bloomB, bloomA], [0, 2.2, bloomA, bloomB]];
+  for (const [dx, dy, dst, src] of passes) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb); gl.viewport(0, 0, dst.w, dst.h);
+    gl.bindTexture(gl.TEXTURE_2D, src.tex);
+    gl.uniform2f(blurProg.u.uDir, dx / src.w, dy / src.h);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  // 3) итог
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, W, H);
+  gl.useProgram(compProg.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, hdr.tex);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
+  gl.uniform1i(compProg.u.uHdr, 0); gl.uniform1i(compProg.u.uBloom, 1);
+  gl.uniform1f(compProg.u.uExposure, 1.45); gl.uniform1f(compProg.u.uBloomAmt, 1.35);
+  gl.uniform1f(compProg.u.uTime, now / 1000);
+  gl.uniform2f(compProg.u.uRes, W, H); gl.uniform2fv(compProg.u.uCenter, cam.center);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.activeTexture(gl.TEXTURE0);
+
+  drawOverlay(now);
+  if (now - lastInput > 9000) document.getElementById('hint').style.opacity = 0.55;
+  requestAnimationFrame(frame);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) running = false;
+  else if (!running) { running = true; lastT = performance.now(); requestAnimationFrame(frame); }
+});
+let resizeT = 0;
+addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { resize(); drawSpectrum(); if (cur) drawRadial(cur); }, 80); });
+
+resize();
+updateUI();
+drawSpectrum();
+startMorph(true);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

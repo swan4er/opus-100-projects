@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Молекулярный пейзаж</title>
+<meta name="description" content="Разрез кишечной палочки в стиле акварелей Дэвида Гудселла: рибосомы читают мРНК, белки сворачиваются, моторы вращаются.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f3ecdb;
+    --ink: #2b2530;
+    --muted: #6b6168;
+    --line: rgba(43, 37, 48, .16);
+    --card: rgba(250, 246, 236, .94);
+    --accent: #a8457f;
+    --serif: "Lora", Georgia, serif;
+    --ui: "Manrope", "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink); font-family: var(--serif); -webkit-font-smoothing: antialiased; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  canvas.drag { cursor: grabbing; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 3px; box-shadow: 0 10px 40px rgba(60, 40, 30, .14); }
+
+  .title { position: fixed; left: 24px; top: 24px; width: 360px; padding: 20px 22px 18px; }
+  .kicker { font: 700 12px/1 var(--ui); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  h1 { margin: 10px 0 8px; font: 500 34px/1.05 var(--serif); letter-spacing: -.01em; }
+  .lede { margin: 0; font: 400 15px/1.5 var(--serif); color: #3d3540; }
+  .lede i { color: var(--muted); }
+  .tourbtn { margin-top: 14px; display: inline-flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 16px; border: 0; border-radius: 2px; background: var(--ink); color: #f6f0e2; font: 600 14px/1 var(--ui); cursor: pointer; transition: background .2s; }
+  .tourbtn:hover { background: #453a4b; }
+  .tourbtn svg { width: 14px; height: 14px; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .legend { position: fixed; right: 24px; top: 24px; width: 262px; padding: 14px 14px 10px; max-height: calc(100% - 48px); overflow-y: auto; scrollbar-width: thin; }
+  .legend h2 { margin: 0 0 10px; font: 700 12px/1 var(--ui); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .legend h2 span { display: block; margin-top: 6px; letter-spacing: 0; text-transform: none; font: 500 12px/1.3 var(--ui); }
+  .legend ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+  .legend button { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 3px 6px; background: transparent; border: 1px solid transparent; border-radius: 2px; text-align: left; cursor: pointer; font: 400 14.5px/1.2 var(--serif); color: var(--ink); transition: background .15s, border-color .15s; }
+  .legend button:hover { background: rgba(43, 37, 48, .05); }
+  .legend button[aria-pressed=true] { border-color: var(--ink); background: rgba(43, 37, 48, .06); }
+  .legend .sw { width: 16px; height: 16px; border-radius: 50%; flex: none; border: 1.5px solid rgba(0, 0, 0, .35); }
+
+  .info { position: fixed; left: 24px; bottom: 24px; width: 360px; padding: 16px 20px; transition: opacity .25s; }
+  .info h3 { margin: 0 0 6px; font: 600 20px/1.2 var(--serif); }
+  .info .size { font: 600 12px/1 var(--ui); color: var(--accent); letter-spacing: .04em; margin-bottom: 8px; }
+  .info p { margin: 0; font: 400 15px/1.5 var(--serif); color: #3d3540; }
+  .scale { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; font: 700 12px/1 var(--ui); color: var(--ink); pointer-events: none; }
+  .scale i { display: block; height: 6px; border: 2px solid var(--ink); border-top: 0; }
+  .caption { position: fixed; left: 50%; top: 24px; transform: translate(-50%, -6px); max-width: 520px; padding: 12px 18px; text-align: center; font: italic 400 17px/1.4 var(--serif); opacity: 0; transition: opacity .5s, transform .5s; pointer-events: none; }
+  .caption.show { opacity: 1; transform: translate(-50%, 0); }
+  .zoomer { position: fixed; right: 24px; bottom: 24px; display: flex; gap: 6px; }
+  .zoomer button { width: 44px; height: 44px; border: 1px solid var(--line); background: var(--card); border-radius: 2px; font: 600 20px/1 var(--ui); color: var(--ink); cursor: pointer; }
+  .zoomer button:hover { border-color: var(--ink); }
+
+  @media (max-width: 1100px) { .legend { width: 230px; } .title { width: 320px; } .info { width: 320px; } }
+  @media (max-width: 760px) {
+    .title { left: 10px; right: 10px; top: 10px; width: auto; padding: 14px 16px; }
+    h1 { font-size: 26px; margin: 6px 0; }
+    .lede { font-size: 14px; }
+    .legend { display: none; }
+    .info { left: 10px; right: 10px; bottom: 70px; width: auto; padding: 12px 14px; }
+    .info p { font-size: 14px; }
+    .zoomer { right: 10px; bottom: 12px; }
+    .scale { left: 20px; transform: none; bottom: 22px; align-items: flex-start; }
+    .caption { top: auto; bottom: 190px; left: 10px; right: 10px; transform: none; max-width: none; }
+    .caption.show { transform: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Иллюстрация клетки"></canvas>
+
+<header class="title card">
+  <div class="kicker">Внутри кишечной палочки</div>
+  <h1>Молекулярный пейзаж</h1>
+  <p class="lede">Разрез бактерии в миллион раз крупнее натуральной величины. Рибосомы читают матричную РНК, белковые цепочки растут и сворачиваются, моторы в мембране вращаются. <i>Наведите на молекулу — узнаете, что это.</i></p>
+  <button class="tourbtn" id="tour"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5l9 5.5-9 5.5z"/></svg><span>Экскурсия</span></button>
+</header>
+
+<aside class="legend card" aria-label="Легенда">
+  <h2>Что есть что <span id="legendHint">нажмите, чтобы выделить</span></h2>
+  <ul id="legend"></ul>
+</aside>
+
+<section class="info card" id="info" aria-live="polite">
+  <div class="size" id="infoSize">≈ 1,2 мкм в ширину кадра</div>
+  <h3 id="infoTitle">Кишечная палочка в разрезе</h3>
+  <p id="infoText">Сверху — оболочка из двух мембран, в середине — цитоплазма, плотно набитая рибосомами и белками, внизу — нуклеоид, где лежит ДНК.</p>
+</section>
+<div class="caption card" id="caption"></div>
+<div class="scale" id="scale"><span id="scaleTxt"></span><i id="scaleBar"></i></div>
+<div class="zoomer"><button id="zIn" aria-label="Приблизить">+</button><button id="zOut" aria-label="Отдалить">−</button></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+let seed = 20240917;
+const rnd = () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+const rr = (a, b) => a + rnd() * (b - a);
+const TAU = Math.PI * 2;
+
+// ───────────────────────── Мир, нанометры ─────────────────────────
+const WW = 1200, WH = 800;
+const Y = { lps0: 16, om0: 38, om1: 45, pg0: 49, pg1: 55, im0: 67, im1: 74, nuc: 585 };
+
+// ───────────────────────── Виды молекул ─────────────────────────
+// r — радиус в нм; lobes — «доли» силуэта; desc — подпись
+const SP = {
+  ribo: { name: 'Рибосома', col: '#b04a8e', r: 10.5, size: '≈ 21 нм · 2,5 МДа', desc: 'Фабрика белка: читает матричную РНК и по её коду соединяет аминокислоты в цепочку. Состоит из трёх молекул РНК и примерно полусотни белков.' },
+  mrna: { name: 'Матричная РНК', col: '#e0607e', r: 1, size: 'нить ≈ 1–2 нм', desc: 'Рабочая копия гена. Её пишет РНК-полимераза, а читают рибосомы — у бактерий это происходит одновременно.' },
+  trna: { name: 'Транспортная РНК', col: '#ee8f67', r: 3.2, size: '≈ 7 нм', desc: 'Подносит к рибосоме нужную аминокислоту: своим антикодоном «узнаёт» кодон на мРНК.' },
+  chain: { name: 'Растущий белок', col: '#e9a94a', r: 1, size: 'шаг ≈ 0,35 нм на аминокислоту', desc: 'Цепочка аминокислот выходит из туннеля рибосомы и начинает сворачиваться ещё до конца синтеза.' },
+  prot: { name: 'Белки цитоплазмы', col: '#5b8fd1', r: 3, size: '≈ 4–9 нм', desc: 'Ферменты гликолиза, синтеза аминокислот, сигнальные белки. Вместе с РНК они занимают около трети объёма цитоплазмы.' },
+  groel: { name: 'Шаперонин GroEL', col: '#4fae9a', r: 7, size: '≈ 14 × 15 нм', desc: 'Полая «бочка» из двух колец: внутри неё новорождённые белки получают шанс свернуться правильно.' },
+  dna: { name: 'ДНК', col: '#e5b53a', r: 1, size: 'ширина 2 нм · шаг витка ≈ 3,4 нм', desc: 'Кольцевая хромосома из 4,6 млн пар нуклеотидов; в вытянутом виде она длиной около 1,5 мм — в тысячу раз длиннее самой клетки.' },
+  hu: { name: 'Белок HU', col: '#d77c34', r: 1.8, size: '≈ 3 нм', desc: 'Изгибает и упаковывает ДНК, помогая уложить огромную молекулу в нуклеоид.' },
+  rnap: { name: 'РНК-полимераза', col: '#b8622f', r: 6, size: '≈ 10–15 нм', desc: 'Скользит по ДНК и переписывает ген в матричную РНК. Сюда, к нуклеоиду, тянется нить мРНК с рибосомами.' },
+  atp: { name: 'АТФ-синтаза', col: '#4f9a58', r: 5, size: 'головка ≈ 10 нм', desc: 'Роторный мотор: поток протонов через мембрану крутит кольцо, а головка превращает вращение в молекулы АТФ.' },
+  tr: { name: 'Белки-переносчики', col: '#6cae5c', r: 3.4, size: '≈ 5–8 нм', desc: 'Каналы и насосы внутренней мембраны: пропускают внутрь сахара, ионы и аминокислоты.' },
+  mem: { name: 'Липидные мембраны', col: '#cdd671', r: 1, size: 'толщина ≈ 7 нм', desc: 'Двойной слой липидов: головки наружу, хвосты внутрь. У кишечной палочки две мембраны — внутренняя и наружная.' },
+  porin: { name: 'Порины', col: '#7fae52', r: 2.6, size: '≈ 5 нм', desc: 'Бочонки-каналы в наружной мембране: пропускают мелкие молекулы.' },
+  lps: { name: 'Липополисахариды', col: '#bfc684', r: 1, size: 'длина до ≈ 20 нм', desc: 'Сахарный «ворс» на внешней стороне клетки: защищает её от антибиотиков и желчи.' },
+  pg: { name: 'Пептидогликан', col: '#a9b56c', r: 1, size: 'слой ≈ 6 нм', desc: 'Сетчатый мешок из сахаров и коротких пептидов: держит форму клетки и не даёт ей лопнуть.' },
+  peri: { name: 'Белки периплазмы', col: '#6fa7b8', r: 2.2, size: '≈ 4 нм', desc: 'Белки между мембранами: связывают питательные вещества и чинят клеточную стенку.' },
+  flag: { name: 'Жгутик и мотор', col: '#b89a68', r: 4, size: 'нить ≈ 20 нм в диаметре', desc: 'Мотор в мембране крутит жгутик примерно сто раз в секунду — так кишечная палочка плывёт.' },
+};
+const LEGEND = ['ribo', 'mrna', 'chain', 'trna', 'prot', 'groel', 'dna', 'hu', 'rnap', 'atp', 'tr', 'porin', 'mem', 'pg', 'lps', 'peri', 'flag'];
+
+// Цвет: затемнить или осветлить
+function tint(hex, k) {
+  const n = parseInt(hex.slice(1), 16); let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  if (k < 0) { r *= 1 + k; g *= 1 + k; b *= 1 + k; } else { r += (255 - r) * k; g += (255 - g) * k; b += (255 - b) * k; }
+  return `rgb(${r | 0},${g | 0},${b | 0})`;
+}
+
+// ───────────────────────── Спрайты в духе Гудселла ─────────────────────────
+// Силуэт из нескольких кругов: тёмный контур, заливка, светлая середина, акварельная неровность.
+const RES = 9; // пикселей на нм в спрайте
+function blobSprite(col, lobes, extra) {
+  let ext = 0; for (const l of lobes) ext = Math.max(ext, Math.hypot(l[0], l[1]) + l[2]);
+  ext += 0.8;
+  const S = Math.ceil(ext * 2 * RES), c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d'); g.translate(S / 2, S / 2); g.scale(RES, RES);
+  g.fillStyle = tint(col, -0.55); for (const [x, y, r] of lobes) { g.beginPath(); g.arc(x, y, r + 0.32, 0, TAU); g.fill(); }
+  g.fillStyle = col; for (const [x, y, r] of lobes) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
+  g.globalAlpha = 0.45; g.fillStyle = tint(col, 0.35); for (const [x, y, r] of lobes) { g.beginPath(); g.arc(x - r * 0.18, y - r * 0.22, r * 0.55, 0, TAU); g.fill(); }
+  g.globalAlpha = 1;
+  if (extra) extra(g);
+  // акварель: пигмент скапливается у краёв
+  const img = g.getImageData(0, 0, S, S), d = img.data;
+  for (let i = 0; i < d.length; i += 4) { if (!d[i + 3]) continue; const n = (Math.random() - 0.5) * 16; d[i] = Math.max(0, Math.min(255, d[i] + n)); d[i + 1] = Math.max(0, Math.min(255, d[i + 1] + n)); d[i + 2] = Math.max(0, Math.min(255, d[i + 2] + n)); }
+  g.putImageData(img, 0, 0);
+  return { c, ext };
+}
+function randomLobes(r, n) {
+  const L = [[0, 0, r * rr(0.62, 0.8)]];
+  for (let k = 1; k < n; k++) { const a = rnd() * TAU, d = r * rr(0.28, 0.5); L.push([Math.cos(a) * d, Math.sin(a) * d, r * rr(0.38, 0.6)]); }
+  return L;
+}
+const SPR = {};
+function buildSprites() {
+  const protCols = ['#5b8fd1', '#7fb0e0', '#3f6fb3', '#4fb3a9', '#8aa6d6', '#c9a26a', '#6d86c8'];
+  SPR.prot = []; for (let k = 0; k < 28; k++) { const r = rr(2, 4.4); SPR.prot.push(blobSprite(protCols[k % protCols.length], randomLobes(r, 2 + (k % 4)))); }
+  SPR.peri = []; for (let k = 0; k < 6; k++) SPR.peri.push(blobSprite(k % 2 ? '#6fa7b8' : '#86b8c2', randomLobes(rr(1.6, 2.6), 2 + (k % 3))));
+  SPR.hu = []; for (let k = 0; k < 3; k++) SPR.hu.push(blobSprite('#d77c34', randomLobes(1.8, 2)));
+  SPR.trna = []; for (let k = 0; k < 3; k++) SPR.trna.push(blobSprite('#ee8f67', [[0, 0, 1.3], [1.6, -1.2, 1.1], [2.9, -2.3, 1.0], [-1.5, 0.6, 1.1], [-2.8, 1.3, 0.95]]));
+  SPR.ribo = [];
+  for (let k = 0; k < 5; k++) {
+    // большая субчастица и малая сверху; между ними — щель для мРНК
+    const big = [[0, 1.5, 7.2], [-4.2, 3.5, 4.4], [4.4, 3.2, 4.6], [0, 6.2, 4.2], [-5, -0.8, 3.1], [5.2, -0.5, 3.1]];
+    const small = [[0, -6.4, 5.0], [-3.6, -6.9, 3.2], [3.8, -6.6, 3.0], [0.8, -9.6, 2.6]];
+    SPR.ribo.push(blobSprite('#b04a8e', big.map((l) => [l[0] + rr(-0.5, 0.5), l[1] + rr(-0.4, 0.4), l[2] * rr(0.92, 1.06)]), (g) => {
+      g.fillStyle = tint('#d77ab3', -0.5); for (const [x, y, r] of small) { g.beginPath(); g.arc(x, y, r + 0.32, 0, TAU); g.fill(); }
+      g.fillStyle = '#d77ab3'; for (const [x, y, r] of small) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
+      g.globalAlpha = 0.4; g.fillStyle = tint('#d77ab3', 0.4); for (const [x, y, r] of small) { g.beginPath(); g.arc(x - r * 0.2, y - r * 0.2, r * 0.5, 0, TAU); g.fill(); } g.globalAlpha = 1;
+    }));
+  }
+  SPR.groel = [blobSprite('#4fae9a', [[0, 0, 0.1]], (g) => {
+    const band = (y, col) => { g.fillStyle = tint(col, -0.5); roundRect(g, -7.3, y - 0.3, 14.6, 7.6, 2.4); g.fill(); g.fillStyle = col; roundRect(g, -7, y, 14, 7, 2.2); g.fill(); g.fillStyle = tint(col, 0.3); for (let k = -3; k <= 3; k++) { g.beginPath(); g.ellipse(k * 2, y + 3.5, 0.8, 2.8, 0, 0, TAU); g.fill(); } };
+    band(-7.2, '#4fae9a'); band(0.2, '#63bfa9');
+  })];
+  SPR.rnap = [blobSprite('#b8622f', [[0, 0, 5], [-3.4, 2.4, 3.4], [3.6, 2.2, 3.4], [0, -3.5, 3.2], [-4.2, -2, 2.4]])];
+  SPR.porin = [blobSprite('#7fae52', [[0, 0, 0.1]], (g) => { g.fillStyle = tint('#7fae52', -0.5); roundRect(g, -2.8, -4.4, 5.6, 8.8, 1.6); g.fill(); g.fillStyle = '#7fae52'; roundRect(g, -2.5, -4.1, 5, 8.2, 1.4); g.fill(); g.fillStyle = tint('#7fae52', 0.35); roundRect(g, -1.1, -3.6, 2.2, 7.2, 1); g.fill(); })];
+  SPR.tr = []; for (let k = 0; k < 4; k++) SPR.tr.push(blobSprite(k % 2 ? '#6cae5c' : '#5d9f63', [[0, 0, 3.2], [0, -2.8, 2.4], [0, 2.8, 2.4], [rr(-1.5, 1.5), rr(3, 5), 2]]));
+}
+function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+// ───────────────────────── Сцена ─────────────────────────
+const mols = [];                     // {sp, x, y, r, a, spr, ph}
+const GRID = 24, gw = Math.ceil(WW / GRID), gh = Math.ceil(WH / GRID);
+const bins = Array.from({ length: gw * gh }, () => []);
+function fits(x, y, r) {
+  const x0 = Math.max(0, Math.floor((x - r - 12) / GRID)), x1 = Math.min(gw - 1, Math.floor((x + r + 12) / GRID));
+  const y0 = Math.max(0, Math.floor((y - r - 12) / GRID)), y1 = Math.min(gh - 1, Math.floor((y + r + 12) / GRID));
+  for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) for (const m of bins[j * gw + i]) { const d = Math.hypot(m.x - x, m.y - y); if (d < m.r + r + 0.4) return false; }
+  return true;
+}
+function add(m) { mols.push(m); const i = Math.min(gw - 1, Math.max(0, Math.floor(m.x / GRID))), j = Math.min(gh - 1, Math.max(0, Math.floor(m.y / GRID))); bins[j * gw + i].push(m); return m; }
+function place(sp, spriteList, n, region, rFn, tries = 12) {
+  for (let k = 0; k < n; k++) for (let t = 0; t < tries; t++) {
+    const x = rr(region[0], region[2]), y = rr(region[1], region[3]); const spr = spriteList[Math.floor(rnd() * spriteList.length)];
+    const r = rFn ? rFn(spr) : spr.ext * 0.86;
+    if (fits(x, y, r)) { add({ sp, x, y, r, a: rnd() * TAU, spr, ph: rnd() * TAU }); break; }
+  }
+}
+// Сплайн Катмулла — Рома, разбитый на точки через ~0,5 нм
+function spline(ctrl, step = 0.5) {
+  const out = [];
+  for (let i = 0; i < ctrl.length - 1; i++) {
+    const p0 = ctrl[Math.max(0, i - 1)], p1 = ctrl[i], p2 = ctrl[i + 1], p3 = ctrl[Math.min(ctrl.length - 1, i + 2)];
+    const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]), n = Math.max(2, Math.ceil(len / step));
+    for (let k = 0; k < n; k++) { const t = k / n, t2 = t * t, t3 = t2 * t;
+      out.push([0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+                0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)]); }
+  }
+  out.push(ctrl[ctrl.length - 1]);
+  // длина дуги
+  let s = 0; out[0][2] = 0; for (let i = 1; i < out.length; i++) { s += Math.hypot(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]); out[i][2] = s; }
+  return out;
+}
+function atS(path, s) {
+  let lo = 0, hi = path.length - 1; s = Math.max(0, Math.min(path[hi][2], s));
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (path[m][2] < s) lo = m; else hi = m; }
+  const a = path[lo], b = path[hi], t = (s - a[2]) / Math.max(1e-6, b[2] - a[2]);
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, Math.atan2(b[1] - a[1], b[0] - a[0])];
+}
+const dnas = [], lpsList = [], pgLines = [];
+let mrna, polysome, rnapMain, atps = [], flagellum;
+function buildScene() {
+  // мРНК полисомы: от РНК-полимеразы на ДНК вверх в цитоплазму
+  const rx = 640, ry = Y.nuc + 36;
+  mrna = spline([[rx, ry - 6], [rx - 30, ry - 60], [rx + 40, ry - 130], [rx - 10, ry - 200], [rx + 70, ry - 250], [rx + 150, ry - 240], [rx + 190, ry - 300]], 0.5);
+  // ДНК: несколько длинных петель в нуклеоиде, одна проходит через полимеразу
+  const dnaMain = [[40, ry + 30], [260, ry + 70], [470, ry + 10], [rx, ry + 8], [820, ry + 60], [1000, ry + 20], [1170, ry + 90]];
+  dnas.push(spline(dnaMain, 0.6));
+  for (let k = 0; k < 7; k++) { const pts = []; let x = rr(0, 200), y = rr(Y.nuc + 50, WH - 20); for (let s = 0; s < 8; s++) { pts.push([x, y]); x += rr(90, 200); y = Math.max(Y.nuc + 40, Math.min(WH - 10, y + rr(-90, 90))); } dnas.push(spline(pts, 0.6)); }
+  // ДНК занимает место: вдоль неё — белки HU
+  for (const d of dnas) for (let i = 0; i < d.length; i += 3) { const [x, y] = d[i]; const m = { sp: 'dna', x, y, r: 1.2, ghost: true }; const bi = Math.floor(x / GRID), bj = Math.floor(y / GRID); if (bi >= 0 && bi < gw && bj >= 0 && bj < gh) bins[bj * gw + bi].push(m); }
+  for (const d of dnas) for (let s = 30; s < d[d.length - 1][2]; s += rr(18, 40)) { const [x, y, a] = atS(d, s); const side = rnd() < 0.5 ? 1 : -1; const px = x - Math.sin(a) * 2.8 * side, py = y + Math.cos(a) * 2.8 * side; if (fits(px, py, 1.8)) add({ sp: 'hu', x: px, y: py, r: 1.8, a: rnd() * TAU, spr: SPR.hu[Math.floor(rnd() * 3)], ph: rnd() * TAU }); }
+  // главная РНК-полимераза и ещё несколько на ДНК
+  rnapMain = add({ sp: 'rnap', x: rx, y: ry + 2, r: 6.2, a: -0.2, spr: SPR.rnap[0], ph: 0, fixed: true });
+  for (let k = 0; k < 5; k++) { const d = dnas[1 + k]; const [x, y, a] = atS(d, rr(60, d[d.length - 1][2] - 60)); if (fits(x, y, 6)) add({ sp: 'rnap', x, y, r: 6.2, a, spr: SPR.rnap[0], ph: rnd() * TAU }); }
+  // резервируем место вдоль мРНК для полисомы
+  for (let i = 0; i < mrna.length; i += 4) { const [x, y] = mrna[i]; const m = { sp: 'mrna', x, y, r: 9, ghost: true }; bins[Math.floor(y / GRID) * gw + Math.floor(x / GRID)].push(m); }
+  polysome = [];
+  const L = mrna[mrna.length - 1][2];
+  for (let k = 0; k < 7; k++) polysome.push({ s: L * 0.12 + k * (L * 0.84 / 7), seed: rnd() * 1000, born: -1e9 });
+  // мембраны: АТФ-синтазы и переносчики во внутренней, порины в наружной
+  for (let x = 30; x < WW - 20; x += rr(9, 16)) add({ sp: 'porin', x, y: (Y.om0 + Y.om1) / 2, r: 2.6, a: 0, spr: SPR.porin[0], ph: rnd() * TAU, flat: true });
+  for (let k = 0; k < 7; k++) atps.push({ x: 90 + k * 160 + rr(-30, 30), rot: rnd() * TAU });
+  for (const a of atps) { const m = { sp: 'atp', x: a.x, y: Y.im1 + 12, r: 7, ghost: true }; bins[Math.floor(m.y / GRID) * gw + Math.floor(m.x / GRID)].push(m); a.m = m; }
+  flagellum = { x: 1010 };
+  for (let x = 15; x < WW; x += rr(20, 38)) { if (Math.abs(x - flagellum.x) < 14 || atps.some((a) => Math.abs(a.x - x) < 10)) continue; add({ sp: 'tr', x, y: (Y.im0 + Y.im1) / 2, r: 3.4, a: 0, spr: SPR.tr[Math.floor(rnd() * 4)], ph: rnd() * TAU, flat: true }); }
+  // пептидогликан: горизонтальные нити с поперечными сшивками
+  for (let y = Y.pg0; y <= Y.pg1; y += 2.2) { const seg = []; for (let x = 0; x <= WW; x += 5) seg.push([x, y + Math.sin(x * 0.05 + y) * 0.6]); pgLines.push(seg); }
+  // ЛПС: «ворс» наружной мембраны
+  for (let x = 2; x < WW; x += rr(1.6, 2.6)) lpsList.push({ x, len: rr(10, 22), ph: rnd() * TAU });
+  // крупные частицы цитоплазмы
+  const cyto = [8, Y.im1 + 8, WW - 8, Y.nuc - 6];
+  place('ribo', SPR.ribo, 150, cyto, () => 10.8, 30);
+  place('groel', SPR.groel, 22, cyto, () => 8, 30);
+  place('trna', SPR.trna, 260, cyto, (s) => 3.4, 16);
+  place('prot', SPR.prot, 17000, cyto, null, 6);
+  place('peri', SPR.peri, 520, [4, Y.om1 + 2, WW - 4, Y.im0 - 2], (s) => s.ext * 0.8, 8);
+  place('prot', SPR.prot, 2600, [8, Y.nuc + 6, WW - 8, WH - 6], null, 5);
+  place('ribo', SPR.ribo, 10, [8, Y.nuc + 6, WW - 8, WH - 6], () => 10.8, 20);
+}
+
+// ───────────────────────── Холст и камера ─────────────────────────
+const cv = $('c'), g = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+const cam = { x: 600, y: 330, z: 1.7 }, goal = { x: 600, y: 330, z: 1.7 };
+function resize() { DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); }
+addEventListener('resize', resize);
+const minZ = () => Math.max(W / (WW + 40), H / (WH + 40)) * 0.98;
+const toS = (x, y) => [(x - cam.x) * cam.z + W / 2, (y - cam.y) * cam.z + H / 2];
+const toW = (sx, sy) => [(sx - W / 2) / cam.z + cam.x, (sy - H / 2) / cam.z + cam.y];
+
+// Обзорная картинка всего мира — для дальнего зума
+let overview = null;
+function buildOverview() {
+  const Z = 1.35, c = document.createElement('canvas'); c.width = Math.ceil(WW * Z); c.height = Math.ceil(WH * Z);
+  const o = c.getContext('2d'); o.scale(Z, Z);
+  drawWorld(o, [0, 0, WW, WH], Z, 0, true);
+  overview = c;
+}
+
+// ───────────────────────── Рисование ─────────────────────────
+const BG = { out: '#dbe7ec', peri: '#e4ead0', cyto: '#f1e8d0', nuc: '#f3e4bc' };
+let highlight = null, hover = null;
+function dimFor(sp) { return highlight && highlight !== sp ? 0.18 : 1; }
+function drawWorld(ctx, R, z, t, still) {
+  // фон по областям
+  ctx.fillStyle = BG.out; ctx.fillRect(R[0] - 5, R[1] - 5, R[2] - R[0] + 10, Math.max(0, Y.om0 - R[1] + 5));
+  ctx.fillStyle = BG.peri; ctx.fillRect(R[0] - 5, Y.om1, R[2] - R[0] + 10, Y.im0 - Y.om1);
+  const gcy = ctx.createLinearGradient(0, Y.im1, 0, WH); gcy.addColorStop(0, BG.cyto); gcy.addColorStop((Y.nuc - Y.im1 - 40) / (WH - Y.im1), BG.cyto); gcy.addColorStop((Y.nuc - Y.im1 + 30) / (WH - Y.im1), BG.nuc); gcy.addColorStop(1, BG.nuc);
+  ctx.fillStyle = gcy; ctx.fillRect(R[0] - 5, Y.im1, R[2] - R[0] + 10, WH - Y.im1 + 5);
+  const lw = Math.max(0.35, 1.2 / z);
+  // ЛПС
+  if (R[1] < Y.om0 + 2) {
+    ctx.globalAlpha = dimFor('lps'); ctx.strokeStyle = '#a9b16a'; ctx.lineWidth = Math.max(0.9, 1.1); ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (const l of lpsList) { if (l.x < R[0] - 25 || l.x > R[2] + 25) continue; const sw = still ? 0 : Math.sin(t * 0.8 + l.ph) * 1.4;
+      ctx.moveTo(l.x, Y.om0); ctx.quadraticCurveTo(l.x + sw * 0.5 + Math.sin(l.ph) * 2, Y.om0 - l.len * 0.5, l.x + sw + Math.sin(l.ph * 2) * 3, Y.om0 - l.len); }
+    ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  // мембраны: двойной слой липидов
+  membrane(ctx, Y.om0, Y.om1, R, z); membrane(ctx, Y.im0, Y.im1, R, z);
+  // пептидогликан
+  if (R[1] < Y.pg1 + 2 && R[3] > Y.pg0 - 2) {
+    ctx.globalAlpha = dimFor('pg'); ctx.strokeStyle = '#9aa75e'; ctx.lineWidth = 0.9;
+    ctx.beginPath(); for (const seg of pgLines) { let first = true; for (const [x, y] of seg) { if (x < R[0] - 6 || x > R[2] + 6) { first = true; continue; } first ? ctx.moveTo(x, y) : ctx.lineTo(x, y); first = false; } } ctx.stroke();
+    ctx.strokeStyle = '#8b9852'; ctx.lineWidth = 0.6; ctx.beginPath(); for (let x = Math.max(0, R[0] - 5); x < R[2] + 5; x += 3.3) { const k = Math.floor(x * 7) % 3; ctx.moveTo(x, Y.pg0 + k * 2.2); ctx.lineTo(x + 1, Y.pg0 + (k + 1) * 2.2); } ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  // ДНК: жёлтая двойная спираль с бороздками каждые 3,4 нм
+  ctx.globalAlpha = dimFor('dna');
+  for (const d of dnas) {
+    ctx.strokeStyle = '#9c7414'; ctx.lineWidth = 2.6; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; polyline(ctx, d, R, 3);
+    ctx.strokeStyle = '#e5b53a'; ctx.lineWidth = 2.0; polyline(ctx, d, R, 3);
+    if (z > 5) { ctx.strokeStyle = 'rgba(120,80,10,.55)'; ctx.lineWidth = 0.35; ctx.beginPath();
+      for (let s = 0; s < d[d.length - 1][2]; s += 1.7) { const [x, y, a] = atS(d, s); if (x < R[0] || x > R[2] || y < R[1] || y > R[3]) continue; const k = (Math.floor(s / 1.7) % 2) ? 1 : -1; const nx = -Math.sin(a), ny = Math.cos(a);
+        ctx.moveTo(x + nx * 1 + Math.cos(a) * 0.5 * k, y + ny * 1 + Math.sin(a) * 0.5 * k); ctx.lineTo(x - nx * 1 - Math.cos(a) * 0.5 * k, y - ny * 1 - Math.sin(a) * 0.5 * k); } ctx.stroke(); }
+  }
+  ctx.globalAlpha = 1;
+  // молекулы
+  const x0 = Math.max(0, Math.floor((R[0] - 14) / GRID)), x1 = Math.min(gw - 1, Math.floor((R[2] + 14) / GRID));
+  const y0 = Math.max(0, Math.floor((R[1] - 14) / GRID)), y1 = Math.min(gh - 1, Math.floor((R[3] + 14) / GRID));
+  // матрица задаётся напрямую — без save/restore на каждую из тысяч молекул
+  const B = ctx.getTransform(), bs = B.a;
+  for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) for (const m of bins[j * gw + i]) {
+    if (m.ghost) continue;
+    let x = m.x, y = m.y, a = m.a;
+    if (!still && !m.fixed) { const w = m.flat ? 0.15 : 0.45; x += Math.sin(t * 1.3 + m.ph) * w + Math.sin(t * 2.9 + m.ph * 2.1) * w * 0.5; y += Math.cos(t * 1.1 + m.ph * 1.7) * w; if (!m.flat) a += Math.sin(t * 0.9 + m.ph) * 0.12; }
+    const e = m.spr.ext, c = Math.cos(a) * bs, s = Math.sin(a) * bs;
+    ctx.globalAlpha = dimFor(m.sp);
+    ctx.setTransform(c, s, -s, c, B.e + x * bs, B.f + y * bs);
+    ctx.drawImage(m.spr.c, -e * 1.07, -e * 1.07, e * 2.14, e * 2.14);   // чуть крупнее радиуса столкновений — плотная упаковка, как у Гудселла
+  }
+  ctx.setTransform(B);
+  ctx.globalAlpha = 1;
+  // АТФ-синтазы: кольцо в мембране вращается, головка в цитоплазме
+  for (const s of atps) if (s.x > R[0] - 20 && s.x < R[2] + 20 && R[1] < Y.im1 + 30) atpSynthase(ctx, s, t, still);
+  // жгутик и мотор
+  if (R[1] < Y.im1 + 20 && flagellum.x > R[0] - 200 && flagellum.x < R[2] + 60) flag(ctx, t, still, R);
+  // мРНК и полисома
+  ctx.globalAlpha = dimFor('mrna');
+  ctx.strokeStyle = tint('#e0607e', -0.45); ctx.lineWidth = 1.9; ctx.lineCap = 'round'; polyline(ctx, mrna, R, 2);
+  ctx.strokeStyle = '#e0607e'; ctx.lineWidth = 1.3; polyline(ctx, mrna, R, 2);
+  ctx.globalAlpha = 1;
+  polysomes(ctx, t, still, R, z);
+}
+function polyline(ctx, pts, R, step) {
+  ctx.beginPath(); let pen = false;
+  for (let i = 0; i < pts.length; i += step) { const [x, y] = pts[i]; if (x < R[0] - 10 || x > R[2] + 10 || y < R[1] - 10 || y > R[3] + 10) { pen = false; continue; } pen ? ctx.lineTo(x, y) : ctx.moveTo(x, y); pen = true; }
+  ctx.stroke();
+}
+function membrane(ctx, y0, y1, R, z) {
+  if (R[1] > y1 + 2 || R[3] < y0 - 2) return;
+  ctx.globalAlpha = dimFor('mem');
+  ctx.fillStyle = '#e8e2a4'; ctx.fillRect(R[0] - 5, y0, R[2] - R[0] + 10, y1 - y0);
+  ctx.fillStyle = '#cdd671';
+  if (z > 3.2) {
+    // головки липидов бусинами, хвосты — штрихи
+    ctx.strokeStyle = 'rgba(160,150,70,.5)'; ctx.lineWidth = 0.18; ctx.beginPath();
+    for (let x = Math.max(0, Math.floor(R[0])); x < R[2] + 1; x += 0.8) { ctx.moveTo(x, y0 + 1); ctx.lineTo(x + 0.15, (y0 + y1) / 2 - 0.2); ctx.moveTo(x, y1 - 1); ctx.lineTo(x - 0.15, (y0 + y1) / 2 + 0.2); }
+    ctx.stroke();
+    ctx.fillStyle = '#b9c653';
+    for (let x = Math.max(0, Math.floor(R[0])); x < R[2] + 1; x += 0.8) { ctx.beginPath(); ctx.arc(x, y0 + 0.5, 0.45, 0, TAU); ctx.arc(x, y1 - 0.5, 0.45, 0, TAU); ctx.fill(); }
+  } else { ctx.fillRect(R[0] - 5, y0, R[2] - R[0] + 10, 1.3); ctx.fillRect(R[0] - 5, y1 - 1.3, R[2] - R[0] + 10, 1.3); }
+  ctx.globalAlpha = 1;
+}
+function atpSynthase(ctx, s, t, still) {
+  const x = s.x, rot = still ? s.rot : s.rot + t * 3.2;
+  ctx.globalAlpha = dimFor('atp');
+  // кольцо ротора в мембране: полоски бегут — видно вращение
+  ctx.save(); roundRect(ctx, x - 5, Y.im0 - 0.5, 10, Y.im1 - Y.im0 + 1, 1.6); ctx.fillStyle = '#3e7f47'; ctx.fill(); ctx.clip();
+  ctx.fillStyle = '#5fae68'; for (let k = -6; k <= 6; k++) { const px = x + ((k * 1.7 + rot * 1.3) % 10.2 + 10.2) % 10.2 - 5.1; ctx.fillRect(px - 0.35, Y.im0 - 1, 0.7, 12); }
+  ctx.restore();
+  // центральная ножка и периферический статор
+  ctx.fillStyle = '#2f6a38'; ctx.fillRect(x - 0.8, Y.im1, 1.6, 6.5);
+  ctx.strokeStyle = '#2f6a38'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(x + 5.5, Y.im1 - 1); ctx.quadraticCurveTo(x + 7.5, Y.im1 + 7, x + 5, Y.im1 + 12.5); ctx.stroke();
+  // головка F1: чередование α и β
+  const hy = Y.im1 + 12;
+  ctx.fillStyle = '#244f2a'; ctx.beginPath(); ctx.arc(x, hy, 5.6, 0, TAU); ctx.fill();
+  for (let k = 0; k < 6; k++) { const a = k / 6 * TAU + rot * 0.02; ctx.fillStyle = k % 2 ? '#79bf6f' : '#4f9a58'; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 2.6, hy + Math.sin(a) * 2.6 * 0.8, 2.4, 0, TAU); ctx.fill(); }
+  ctx.globalAlpha = 1;
+}
+function flag(ctx, t, still, R) {
+  const x = flagellum.x;
+  ctx.globalAlpha = dimFor('flag');
+  // базальное тело: кольца в мембранах и слое пептидогликана
+  ctx.fillStyle = '#8e7448';
+  roundRect(ctx, x - 7, Y.im0 - 1, 14, Y.im1 - Y.im0 + 2, 2); ctx.fill();
+  roundRect(ctx, x - 5.5, Y.pg0 - 0.5, 11, 3, 1); ctx.fill();
+  roundRect(ctx, x - 5.5, Y.om0 - 0.5, 11, Y.om1 - Y.om0 + 1, 1.5); ctx.fill();
+  ctx.fillStyle = '#b89a68'; ctx.fillRect(x - 1.6, Y.om0 - 1, 3.2, Y.im1 - Y.om0 + 2);
+  // крюк и нить: бегущая спиральная волна
+  const ph = still ? 0 : t * 6;
+  ctx.strokeStyle = tint('#b89a68', -0.4); ctx.lineWidth = 11.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const path = []; for (let s = 0; s <= 700; s += 4) { const ang = -1.15, amp = Math.min(1, s / 60) * 11; const w = Math.sin(s * 0.055 - ph) * amp; path.push([x + Math.cos(ang) * 0 + s * 0.42 + w * 0.8, Y.om0 - 3 - s * 0.9 + w * 0.2]); }
+  ctx.beginPath(); path.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.stroke();
+  ctx.strokeStyle = '#c9ab78'; ctx.lineWidth = 9; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,240,210,.35)'; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+// Полисома: рибосомы ползут по мРНК, за каждой тянется растущая цепочка
+function polysomes(ctx, t, still, R, z) {
+  const L = mrna[mrna.length - 1][2];
+  for (const p of polysome) {
+    const [x, y, a] = atS(mrna, p.s);
+    if (x < R[0] - 60 || x > R[2] + 60 || y < R[1] - 60 || y > R[3] + 60) continue;
+    const fadeIn = Math.min(1, (t - p.born) / 2.5);
+    // цепочка: чем дальше рибосома прошла, тем длиннее белок
+    const residues = Math.max(0, (p.s - L * 0.1) / 1.02);
+    const beads = Math.min(160, Math.floor(residues / 2));
+    let bx = x - Math.sin(a) * 9, by = y + Math.cos(a) * 9, ang = a + Math.PI / 2;
+    let sd = p.seed;
+    ctx.globalAlpha = dimFor('chain') * fadeIn;
+    for (let k = 0; k < beads; k++) {
+      sd = (sd * 16807) % 2147483647;
+      const turn = k < 18 ? 0.05 : 0.55 + Math.min(0.9, k / 140);
+      ang += (sd / 2147483647 - 0.5) * turn * 2 + (still ? 0 : Math.sin(t * 1.5 + k * 0.3 + p.seed) * 0.03);
+      bx += Math.cos(ang) * 0.62; by += Math.sin(ang) * 0.62;
+      ctx.fillStyle = k % 9 === 0 ? '#c47d25' : '#e9a94a';
+      ctx.beginPath(); ctx.arc(bx, by, 0.55, 0, TAU); ctx.fill();
+    }
+    const spr = SPR.ribo[Math.floor(p.seed) % SPR.ribo.length], e = spr.ext;
+    ctx.globalAlpha = dimFor('ribo') * fadeIn;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.drawImage(spr.c, -e, -e, e * 2, e * 2); ctx.restore();
+    // тРНК подлетает к рибосоме
+    if (z > 3.5 && !still) { const k = (t * 0.7 + p.seed) % 1; const tr = SPR.trna[0]; ctx.globalAlpha = dimFor('trna') * Math.sin(k * Math.PI) * fadeIn; ctx.save(); ctx.translate(x + Math.cos(a + 2.4) * (8 + 14 * (1 - k)), y + Math.sin(a + 2.4) * (8 + 14 * (1 - k))); ctx.rotate(t + p.seed); ctx.drawImage(tr.c, -tr.ext, -tr.ext, tr.ext * 2, tr.ext * 2); ctx.restore(); }
+  }
+  ctx.globalAlpha = 1;
+  // готовые белки уплывают прочь
+  for (const f of freed) {
+    const k = Math.min(1, (t - f.t) / 9); const x = f.x + f.vx * k * 40, y = f.y + f.vy * k * 40;
+    ctx.globalAlpha = (1 - k) * dimFor('chain'); const e = f.spr.ext; ctx.save(); ctx.translate(x, y); ctx.rotate(f.a + k * 2); ctx.drawImage(f.spr.c, -e, -e, e * 2, e * 2); ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+const freed = [];
+let foldedSprites = null;
+function stepPolysome(dt, t) {
+  const L = mrna[mrna.length - 1][2];
+  for (const p of polysome) {
+    p.s += dt * 2.2;
+    if (p.s > L - 4) {
+      const [x, y] = atS(mrna, p.s);
+      if (!foldedSprites) foldedSprites = [0, 1, 2].map(() => blobSprite('#e9a94a', randomLobes(3.2, 4)));
+      freed.push({ x: x - 8, y: y - 6, vx: rr(-0.8, 0.8), vy: rr(-1, -0.2), t, a: rnd() * TAU, spr: foldedSprites[Math.floor(rnd() * 3)] });
+      if (freed.length > 12) freed.shift();
+      p.s = L * 0.1; p.seed = rnd() * 1000; p.born = t;
+    }
+  }
+}
+
+// ───────────────────────── Кадр ─────────────────────────
+const t0 = performance.now();
+let last = t0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) return;
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const t = (now - t0) / 1000;
+  tourStep(t);
+  const k = 1 - Math.pow(0.03, dt);
+  cam.x += (goal.x - cam.x) * k; cam.y += (goal.y - cam.y) * k; cam.z = Math.exp(Math.log(cam.z) + (Math.log(goal.z) - Math.log(cam.z)) * k);
+  stepPolysome(dt, t);
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.fillStyle = '#e7ddc6'; g.fillRect(0, 0, W, H);
+  const R = [...toW(0, 0), ...toW(W, H)];
+  g.setTransform(DPR * cam.z, 0, 0, DPR * cam.z, DPR * (W / 2 - cam.x * cam.z), DPR * (H / 2 - cam.y * cam.z));
+  // дальний план — готовая картинка, ближний — живые молекулы; между ними плавный переход
+  const blend = Math.max(0, Math.min(1, (cam.z - 1.15) / 0.5));
+  if (blend < 1 && overview) { g.globalAlpha = 1; g.drawImage(overview, 0, 0, WW, WH); }
+  if (blend > 0) { g.globalAlpha = blend; g.save(); g.globalAlpha = 1; if (blend < 1) { g.globalAlpha = blend; } drawWorldLive(R, t, blend); g.restore(); }
+  g.globalAlpha = 1;
+  // подсветка молекулы под курсором
+  if (hover && hover.m) {
+    const m = hover.m; g.strokeStyle = '#2b2530'; g.lineWidth = 1.6 / cam.z; g.setLineDash([4 / cam.z, 3 / cam.z]);
+    g.beginPath(); g.arc(hover.x, hover.y, hover.r + 2.2, 0, TAU); g.stroke(); g.setLineDash([]);
+  }
+  // бумага и виньетка
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.hypot(W, H) * 0.62);
+  vg.addColorStop(0, 'rgba(90,60,30,0)'); vg.addColorStop(1, 'rgba(90,60,30,0.22)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  g.fillStyle = paper; g.fillRect(0, 0, W, H);
+  updateScale();
+}
+function drawWorldLive(R, t, alpha) {
+  if (alpha < 1) { // рисуем в отдельный слой, чтобы плавно проявить
+    if (!drawWorldLive.buf || drawWorldLive.buf.width !== cv.width || drawWorldLive.buf.height !== cv.height) { drawWorldLive.buf = document.createElement('canvas'); drawWorldLive.buf.width = cv.width; drawWorldLive.buf.height = cv.height; drawWorldLive.bg = drawWorldLive.buf.getContext('2d'); }
+    const b = drawWorldLive.bg; b.setTransform(1, 0, 0, 1, 0, 0); b.clearRect(0, 0, cv.width, cv.height);
+    b.setTransform(DPR * cam.z, 0, 0, DPR * cam.z, DPR * (W / 2 - cam.x * cam.z), DPR * (H / 2 - cam.y * cam.z));
+    drawWorld(b, R, cam.z, t, false);
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = alpha; g.drawImage(drawWorldLive.buf, 0, 0); g.restore();
+  } else drawWorld(g, R, cam.z, t, false);
+}
+// Фактура бумаги
+const paper = (() => { const c = document.createElement('canvas'); c.width = c.height = 200; const x = c.getContext('2d'); const d = x.createImageData(200, 200); for (let i = 0; i < d.data.length; i += 4) { const v = 120 + Math.random() * 100; d.data[i] = v; d.data[i + 1] = v * 0.95; d.data[i + 2] = v * 0.85; d.data[i + 3] = 10; } x.putImageData(d, 0, 0); return g.createPattern(c, 'repeat'); })();
+function updateScale() {
+  const nice = [5, 10, 20, 50, 100, 200, 500];
+  let nm = nice[0]; for (const n of nice) if (n * cam.z <= 170) nm = n;
+  $('scaleBar').style.width = Math.round(nm * cam.z) + 'px';
+  $('scaleTxt').textContent = nm + ' нм';
+}
+
+// ───────────────────────── Наведение и легенда ─────────────────────────
+function pick(sx, sy) {
+  const [x, y] = toW(sx, sy);
+  if (cam.z < 1.1) return null;
+  // полисома
+  for (const p of polysome) { const [px, py] = atS(mrna, p.s); if (Math.hypot(px - x, py - y) < 11) return { m: { sp: 'ribo' }, x: px, y: py, r: 11 }; }
+  for (const s of atps) { if (Math.hypot(s.x - x, Y.im1 + 10 - y) < 9) return { m: { sp: 'atp' }, x: s.x, y: Y.im1 + 8, r: 9 }; }
+  if (Math.abs(x - flagellum.x) < 9 && y > Y.om0 - 4 && y < Y.im1 + 2) return { m: { sp: 'flag' }, x: flagellum.x, y: (Y.om0 + Y.im1) / 2, r: 18 };
+  const i = Math.floor(x / GRID), j = Math.floor(y / GRID); let best = null, bd = 1e9;
+  for (let b = j - 1; b <= j + 1; b++) for (let a = i - 1; a <= i + 1; a++) { if (a < 0 || b < 0 || a >= gw || b >= gh) continue; for (const m of bins[b * gw + a]) { const d = Math.hypot(m.x - x, m.y - y); if (d < Math.max(m.r, 2.2) + 0.8 && d < bd) { bd = d; best = m; } } }
+  if (best) return { m: best, x: best.x, y: best.y, r: best.r };
+  // по высоте — мембраны, пептидогликан, ЛПС
+  for (const d of dnas) for (let k = 0; k < d.length; k += 4) if (Math.hypot(d[k][0] - x, d[k][1] - y) < 2.5) return { m: { sp: 'dna' }, x, y, r: 3 };
+  for (let k = 0; k < mrna.length; k += 3) if (Math.hypot(mrna[k][0] - x, mrna[k][1] - y) < 2.5) return { m: { sp: 'mrna' }, x, y, r: 3 };
+  if (y >= Y.om0 && y <= Y.om1 || y >= Y.im0 && y <= Y.im1) return { m: { sp: 'mem' }, x, y, r: 4 };
+  if (y >= Y.pg0 && y <= Y.pg1) return { m: { sp: 'pg' }, x, y, r: 4 };
+  if (y < Y.om0 && y > Y.lps0 - 8) return { m: { sp: 'lps' }, x, y, r: 4 };
+  return null;
+}
+function showInfo(sp) {
+  if (!sp) { $('infoSize').textContent = '≈ 1,2 мкм в ширину кадра'; $('infoTitle').textContent = 'Кишечная палочка в разрезе'; $('infoText').textContent = 'Сверху — оболочка из двух мембран, в середине — цитоплазма, плотно набитая рибосомами и белками, внизу — нуклеоид, где лежит ДНК.'; return; }
+  const s = SP[sp]; $('infoSize').textContent = s.size; $('infoTitle').textContent = s.name; $('infoText').textContent = s.desc;
+}
+LEGEND.forEach((id) => {
+  const s = SP[id]; const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button';
+  b.innerHTML = `<span class="sw" style="background:${s.col}"></span>${s.name}`;
+  b.addEventListener('click', () => { highlight = highlight === id ? null : id; syncLegend(); showInfo(highlight); });
+  b.addEventListener('mouseenter', () => showInfo(id)); b.addEventListener('mouseleave', () => showInfo(highlight));
+  li.appendChild(b); $('legend').appendChild(li);
+});
+function syncLegend() { [...$('legend').querySelectorAll('button')].forEach((b, i) => b.setAttribute('aria-pressed', String(LEGEND[i] === highlight))); }
+
+// ───────────────────────── Экскурсия ─────────────────────────
+const STOPS = [
+  { x: 600, y: 400, z: 0, cap: 'Кишечная палочка шириной около микрометра. Всё, что вы видите, помещается в капле воды тысячи раз.', sp: null },
+  { x: 250, y: 58, z: 6, cap: 'Оболочка клетки: наружная мембрана с «ворсом» липополисахаридов, сетка пептидогликана и внутренняя мембрана.', sp: 'pg' },
+  { x: 0, y: 0, z: 13, cap: 'АТФ-синтаза — самый маленький мотор природы: протоны крутят кольцо в мембране, а головка собирает молекулы АТФ.', sp: 'atp', atp: true },
+  { x: 1010, y: 40, z: 3.2, cap: 'Мотор жгутика вращает длинную нить — примерно сто оборотов в секунду.', sp: 'flag' },
+  { x: 380, y: 300, z: 4.2, cap: 'Цитоплазма забита до предела: белки и РНК занимают около трети её объёма.', sp: 'prot' },
+  { x: 0, y: 0, z: 5.5, cap: 'Полисома: несколько рибосом читают одну и ту же мРНК, и за каждой тянется свой растущий белок.', sp: 'ribo', poly: true },
+  { x: 0, y: 0, z: 12, cap: 'Цепочка аминокислот выходит из рибосомы и начинает сворачиваться ещё до того, как синтез закончен.', sp: 'chain', ribo: true },
+  { x: 640, y: 628, z: 5, cap: 'У бактерий нет ядра: мРНК начинают читать, пока РНК-полимераза ещё переписывает её с ДНК.', sp: 'rnap' },
+];
+let tour = null;
+function startTour() { tour = { i: 0, t: -1 }; $('tour').querySelector('span').textContent = 'Остановить'; }
+function stopTour() { tour = null; $('caption').classList.remove('show'); $('tour').querySelector('span').textContent = 'Экскурсия'; showInfo(highlight); }
+function tourStep(t) {
+  if (!tour) return;
+  if (tour.t < 0) tour.t = t;
+  const st = STOPS[tour.i];
+  let x = st.x, y = st.y, z = st.z || minZ() * 1.02;
+  if (st.atp) { x = atps[2].x; y = Y.im1 + 4; }
+  if (st.poly) { const [px, py] = atS(mrna, mrna[mrna.length - 1][2] * 0.55); x = px; y = py; }
+  if (st.ribo) { const p = polysome.reduce((a, b) => (b.s > a.s ? b : a)); const [px, py] = atS(mrna, p.s); x = px - 4; y = py - 6; }
+  goal.x = x; goal.y = y; goal.z = z;
+  if (t - tour.t < 0.1) { const c = $('caption'); c.textContent = st.cap; c.classList.add('show'); showInfo(st.sp); }
+  if (t - tour.t > 6.5) { tour.i++; tour.t = t; if (tour.i >= STOPS.length) stopTour(); }
+}
+$('tour').addEventListener('click', () => (tour ? stopTour() : startTour()));
+
+// ───────────────────────── Мышь и тач ─────────────────────────
+const pointers = new Map(); let pinch = null, moved = 0;
+function clampGoal() { const mz = minZ(); goal.z = Math.max(mz, Math.min(16, goal.z)); const hw = W / 2 / goal.z, hh = H / 2 / goal.z; goal.x = Math.max(Math.min(hw - 20, WW / 2), Math.min(Math.max(WW - hw + 20, WW / 2), goal.x)); goal.y = Math.max(Math.min(hh - 20, WH / 2), Math.min(Math.max(WH - hh + 20, WH / 2), goal.y)); }
+function zoomAt(f, sx, sy) { if (tour) stopTour(); const [wx, wy] = toW(sx, sy); goal.z *= f; clampGoal(); goal.x = wx - (sx - W / 2) / goal.z; goal.y = wy - (sy - H / 2) / goal.z; clampGoal(); }
+cv.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
+cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; cv.classList.add('drag'); if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+cv.addEventListener('pointermove', (e) => {
+  if (!pointers.has(e.pointerId)) { const h = pick(e.clientX, e.clientY); hover = h; if (!tour) showInfo(h ? h.m.sp : highlight); return; }
+  const p = pointers.get(e.pointerId); const dx = e.clientX - p[0], dy = e.clientY - p[1]; pointers.set(e.pointerId, [e.clientX, e.clientY]); moved += Math.abs(dx) + Math.abs(dy);
+  if (pointers.size === 2 && pinch) { const [a, b] = [...pointers.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoomAt(d / pinch, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); pinch = d; return; }
+  if (tour) stopTour();
+  goal.x -= dx / cam.z; goal.y -= dy / cam.z; cam.x -= dx / cam.z; cam.y -= dy / cam.z; clampGoal();
+});
+const up = (e) => { pointers.delete(e.pointerId); if (pointers.size < 2) pinch = null; if (!pointers.size) cv.classList.remove('drag'); if (moved < 5 && e.pointerType !== 'mouse') { const h = pick(e.clientX, e.clientY); hover = h; showInfo(h ? h.m.sp : null); } };
+cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+cv.addEventListener('pointerleave', () => { hover = null; if (!tour) showInfo(highlight); });
+$('zIn').addEventListener('click', () => zoomAt(1.6, W / 2, H / 2));
+$('zOut').addEventListener('click', () => zoomAt(1 / 1.6, W / 2, H / 2));
+
+// ───────────────────────── Старт ─────────────────────────
+resize();
+buildSprites();
+buildScene();
+buildOverview();
+// первый кадр — живой средний план: оболочка сверху, полисома и край нуклеоида снизу
+if (W < 760) { goal.z = cam.z = 1.25; goal.x = cam.x = 640; goal.y = cam.y = 380; }
+else { goal.z = cam.z = Math.max(1.55, Math.min(2.2, H / 540)); goal.x = cam.x = 610; goal.y = cam.y = 300; }
+clampGoal(); cam.x = goal.x; cam.y = goal.y; cam.z = goal.z;
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

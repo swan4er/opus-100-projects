@@ -1,0 +1,272 @@
+/* Оркестр на кувшинке — страница-разворот детской книжки */
+:root {
+  --paper: #F1E5CC;
+  --paper-2: #E8D9BB;
+  --ink: #2B211C;
+  --ink-2: #6A5446;
+  --accent: #C4533B;
+  --pond: #2F5A4C;
+  --bar-h: 92px;
+  --gap: 18px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background:
+    radial-gradient(120% 90% at 50% 38%, #F6ECD6 0%, var(--paper) 55%, var(--paper-2) 100%);
+  background-color: var(--paper);
+  color: var(--ink);
+  font: 500 14px/1.4 "Alegreya Sans", "Trebuchet MS", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; }
+.app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: inherit;
+}
+
+/* ---------- кадр ---------- */
+.screen {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--gap) var(--gap) 0;
+}
+.frame {
+  position: relative;
+  width: min(100%, calc((100dvh - var(--bar-h) - var(--gap) * 2) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  background: #1B2A26;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 22px 48px -24px rgba(44, 30, 18, 0.55), 0 2px 7px rgba(44, 30, 18, 0.22);
+}
+.frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
+
+.sound-cta, .again {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 20px 10px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 248, 232, 0.94);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -12px rgba(30, 20, 10, 0.55), 0 1px 3px rgba(30, 20, 10, 0.25);
+  transition: transform 0.25s cubic-bezier(.2, .8, .2, 1), opacity 0.35s ease, background-color 0.2s ease;
+}
+.sound-cta {
+  position: absolute;
+  left: calc(var(--fl, 18px) + 22px);
+  top: calc(var(--ft, 18px) + 22px);
+  z-index: 2;
+}
+.sound-cta svg, .again svg { width: 22px; height: 22px; flex: none; }
+.sound-cta svg path, .again svg path { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.sound-cta svg path.fill { fill: var(--accent); stroke: var(--accent); }
+.sound-cta:hover, .again:hover { transform: translateY(-2px); background: #FFFBF1; }
+.sound-cta:active, .again:active { transform: translateY(0) scale(0.98); }
+.sound-cta.gone { opacity: 0; transform: translateY(8px); pointer-events: none; }
+.again {
+  position: absolute;
+  left: 50%;
+  top: 64%;
+  transform: translate(-50%, 0);
+  z-index: 2;
+  padding: 12px 24px 12px 18px;
+  font-size: 16px;
+}
+.again:hover { transform: translate(-50%, -2px); }
+.again[hidden] { display: none; }
+
+/* ---------- плеер ---------- */
+.bar {
+  flex: none;
+  height: var(--bar-h);
+  display: grid;
+  grid-template-columns: minmax(170px, 250px) 1fr;
+  align-items: center;
+  gap: 26px;
+  padding: 0 calc(var(--gap) + 6px);
+}
+.title { min-width: 0; }
+.kicker {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+h1 {
+  margin: 0;
+  font: italic 800 23px/1.1 "Alegreya", Georgia, serif;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.btn {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s cubic-bezier(.2, .8, .2, 1);
+}
+.btn svg { width: 22px; height: 22px; }
+.btn svg path { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.btn svg path.fill { fill: currentColor; }
+.btn:hover { background: rgba(43, 33, 28, 0.08); }
+.btn:active { transform: scale(0.94); }
+.btn.play { width: 48px; height: 48px; background: var(--ink); color: var(--paper); }
+.btn.play:hover { background: #45352C; }
+.btn.play svg rect, .btn.play svg path { fill: currentColor; stroke: none; }
+.btn.play .i-play { display: none; }
+.paused .btn.play .i-play { display: block; }
+.paused .btn.play .i-pause { display: none; }
+#mute .i-on { display: none; }
+.sound #mute .i-on { display: block; }
+.sound #mute .i-off { display: none; }
+.btn:focus-visible, .sound-cta:focus-visible, .again:focus-visible, .timeline:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.time {
+  flex: none;
+  min-width: 38px;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 700;
+}
+.time.dim { color: var(--ink-2); font-weight: 500; text-align: right; }
+.tools { display: flex; gap: 4px; }
+
+/* шкала времени со сценами */
+.timeline {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 120px;
+  height: 44px;
+  cursor: pointer;
+  touch-action: none;
+  border-radius: 6px;
+}
+.track {
+  position: absolute;
+  left: 0; right: 0; top: 12px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(43, 33, 28, 0.16);
+  overflow: hidden;
+}
+.tl-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #E2A04A, var(--accent) 60%, #6E4A7A);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+.head {
+  position: absolute;
+  top: 8.5px;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  transition: transform 0.2s cubic-bezier(.2, .8, .2, 1);
+  will-change: transform;
+}
+.timeline:hover .head, .timeline.drag .head { box-shadow: 0 0 0 5px rgba(43, 33, 28, 0.12); }
+.marks { position: absolute; inset: 0; pointer-events: none; }
+.mark {
+  position: absolute;
+  top: 8px;
+  height: 13px;
+  border-left: 1.5px solid rgba(43, 33, 28, 0.45);
+}
+.mark span {
+  position: absolute;
+  top: 16px;
+  left: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+  transition: color 0.2s ease;
+}
+.mark.on span { color: var(--ink); font-weight: 700; }
+.scene-now { display: none; }
+
+/* полноэкранный режим — тёмный зал */
+.app:fullscreen {
+  --paper: #120F0D;
+  --paper-2: #120F0D;
+  --ink: #F1E5CC;
+  --ink-2: #B9A993;
+  background: #120F0D;
+  color: var(--ink);
+}
+.app:fullscreen .btn.play { background: var(--ink); color: #120F0D; }
+.app:fullscreen .btn:hover { background: rgba(241, 229, 204, 0.1); }
+.app:fullscreen .track { background: rgba(241, 229, 204, 0.2); }
+.app:fullscreen .mark { border-color: rgba(241, 229, 204, 0.45); }
+
+.nojs { position: fixed; inset: auto 0 40% 0; text-align: center; font-size: 18px; }
+
+/* ---------- телефон ---------- */
+@media (max-width: 760px) {
+  body { overflow-x: hidden; overflow-y: auto; }
+  .app { height: auto; min-height: 100dvh; justify-content: center; }
+  .screen { display: flex; flex-direction: column; align-items: stretch; padding: 12px 12px 0; flex: none; }
+  .frame { width: 100%; border-radius: 4px; }
+  .sound-cta { position: static; margin-top: 12px; justify-content: center; width: 100%; font-size: 16px; }
+  .sound-cta.gone { display: none; }
+  .again { font-size: 14px; min-height: 40px; padding: 8px 16px 8px 12px; top: auto; bottom: 12px; }
+  .bar {
+    height: auto;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 18px 16px 24px;
+  }
+  h1 { font-size: 26px; white-space: normal; }
+  .controls { flex-wrap: wrap; gap: 10px 12px; }
+  .timeline { order: -1; flex: 1 1 100%; height: 30px; }
+  .mark span { display: none; }
+  .tools { margin-left: auto; }
+  .scene-now {
+    display: block;
+    order: -2;
+    margin: 0;
+    font: italic 800 17px/1.2 "Alegreya", Georgia, serif;
+  }
+  .bar { display: flex; flex-direction: column; align-items: stretch; }
+  .title { order: 0; }
+  .controls { order: 2; }
+  .scene-now { order: 1; margin-bottom: -6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sound-cta, .again, .btn, .head { transition: none; }
+}

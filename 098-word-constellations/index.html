@@ -1,0 +1,1098 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Созвездия слов</title>
+<meta name="description" content="Звёздная карта этимологии: слова&nbsp;— звёзды, семьи родственных слов&nbsp;— созвездия с праиндоевропейским корнем в центре.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Jost:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050814;
+  --ink:#f3ead8;
+  --ink-2:rgba(243,234,216,.82);
+  --ink-3:rgba(243,234,216,.64);
+  --line:rgba(243,234,216,.15);
+  --gold:#f0c983;
+  --panel:rgba(7,11,25,.94);
+  --serif:'EB Garamond','Iowan Old Style','Palatino Linotype',Georgia,serif;
+  --sans:'Jost','Avenir Next','Segoe UI',system-ui,sans-serif;
+  --ease:cubic-bezier(.22,.7,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+#cv{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none;cursor:grab}
+#cv.drag{cursor:grabbing}#cv.hov{cursor:pointer}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:1.5px solid var(--gold);outline-offset:3px}
+.syl{position:relative;display:inline-block}
+.syl::after{content:'';position:absolute;left:50%;bottom:-.02em;width:.15em;height:.15em;border:1px solid currentColor;border-radius:50%;transform:translateX(-50%);opacity:.9}
+sub{font-size:.6em;vertical-align:-.28em;line-height:0}
+
+/* ---------- заголовок ---------- */
+.head{position:fixed;left:44px;top:34px;z-index:3;width:350px;pointer-events:none;text-shadow:0 1px 14px rgba(5,8,20,.95)}
+.over{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
+h1{font-family:var(--serif);font-weight:400;font-size:56px;line-height:.95;margin:10px 0 12px;letter-spacing:-.005em}
+h1 i{color:var(--gold)}
+.lead{font-family:var(--serif);font-size:18px;line-height:1.4;color:var(--ink-2)}
+.stats{margin-top:10px;font-size:13px;letter-spacing:.04em;color:var(--ink-3)}
+
+/* ---------- поиск ---------- */
+.search{position:fixed;right:44px;top:38px;z-index:5;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(243,234,216,.34);padding:6px 2px;width:280px}
+.search svg{width:17px;height:17px;stroke:var(--ink-3);fill:none;stroke-width:1.6;flex:0 0 auto}
+.search input{flex:1;background:transparent;border:0;outline:0;font-family:var(--serif);font-size:19px;color:var(--ink);min-width:0;height:32px}
+.search input::placeholder{color:var(--ink-3);font-style:italic}
+.search:focus-within{border-bottom-color:var(--gold)}
+.hits{position:fixed;right:44px;top:84px;z-index:6;width:280px;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;
+  opacity:0;transform:translateY(-4px);pointer-events:none;transition:opacity .2s var(--ease),transform .2s var(--ease)}
+.hits.on{opacity:1;transform:none;pointer-events:auto}
+.hit{display:flex;justify-content:space-between;align-items:baseline;gap:10px;width:100%;text-align:left;padding:10px 14px;min-height:44px;font-family:var(--serif);font-size:18px;border-bottom:1px solid rgba(243,234,216,.07)}
+.hit:last-child{border-bottom:0}
+.hit:hover,.hit.sel{background:rgba(243,234,216,.08)}
+.hit small{font-family:var(--sans);font-size:12px;color:var(--ink-3);white-space:nowrap}
+.hit.none{cursor:default;color:var(--ink-3);font-style:italic}
+
+/* ---------- легенда ---------- */
+.legend{position:fixed;left:44px;bottom:34px;z-index:3;width:228px}
+.rose{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.rose svg{width:74px;height:74px;flex:0 0 auto;overflow:visible}
+.rose p{font-family:var(--serif);font-size:14px;line-height:1.35;color:var(--ink-3)}
+.lg{display:flex;align-items:center;gap:10px;width:100%;min-height:30px;padding:3px 8px;margin-left:-8px;border-radius:6px;font-size:13px;color:var(--ink-2);transition:opacity .2s}
+.lg i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.lg b{margin-left:auto;font-weight:400;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.lg:hover{background:rgba(243,234,216,.06)}
+.lg[aria-pressed="true"]{background:rgba(243,234,216,.1);color:var(--ink)}
+.legend.filtering .lg[aria-pressed="false"]{opacity:.5}
+
+/* ---------- инструменты ---------- */
+.tools{position:fixed;right:44px;bottom:34px;z-index:3;display:flex;gap:8px}
+.tbtn{font-size:14px;padding:10px 17px;border-radius:999px;border:1px solid rgba(243,234,216,.3);color:var(--ink-2);min-height:42px;background:rgba(5,8,20,.5)}
+.tbtn:hover{border-color:var(--ink);color:var(--ink)}
+.tbtn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.hint{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:2;font-size:12px;letter-spacing:.04em;color:var(--ink-3);white-space:nowrap;pointer-events:none;transition:opacity .5s}
+.hint.off{opacity:0}
+
+/* ---------- карточка семьи и законы ---------- */
+.side{position:fixed;right:44px;top:100px;bottom:96px;width:372px;z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:24px 24px 20px;overflow-y:auto;overscroll-behavior:contain;transform:translateX(26px);opacity:0;pointer-events:none;visibility:hidden;
+  transition:transform .45s var(--ease),opacity .35s var(--ease),visibility 0s .45s;scrollbar-width:thin;scrollbar-color:rgba(243,234,216,.2) transparent}
+.side.on{transform:none;opacity:1;pointer-events:auto;visibility:visible;transition:transform .45s var(--ease),opacity .35s var(--ease),visibility 0s}
+.x{position:absolute;right:10px;top:10px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--ink-3)}
+.x:hover{color:var(--ink);background:rgba(243,234,216,.08)}
+.x svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.6}
+.k{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);padding-right:36px}
+.card h2{font-family:var(--serif);font-weight:400;font-style:italic;font-size:42px;line-height:1.08;margin:8px 0 2px;color:#fff}
+.card .gl{font-family:var(--serif);font-size:20px;color:var(--gold)}
+.card .note{font-family:var(--serif);font-size:17px;line-height:1.45;color:var(--ink-2);margin:16px 0 14px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.wl{list-style:none;display:grid;gap:1px}
+.wl li{display:grid;grid-template-columns:92px 1fr;gap:10px;align-items:baseline;padding:6px 8px;margin:0 -8px;border-radius:6px;cursor:pointer}
+.wl li:hover,.wl li.hl{background:rgba(243,234,216,.07)}
+.wl .lang{font-size:13px;color:var(--ink-3);display:flex;align-items:center;gap:7px}
+.wl .lang i{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.wl .w{font-family:var(--serif);font-size:20px;line-height:1.2}
+.wl .w em{font-size:15px;color:var(--ink-3);margin-left:6px}
+.wl .w small{display:block;font-size:14px;color:var(--ink-3);font-style:italic}
+.foot{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--serif);font-size:14px;line-height:1.4;color:var(--ink-3)}
+.laws .tabs{display:flex;gap:6px;margin:14px 0 14px;flex-wrap:wrap}
+.lt{font-family:var(--serif);font-size:17px;padding:6px 14px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);min-height:40px}
+.lt:hover{border-color:rgba(243,234,216,.5)}
+.lt[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.laws h2{font-family:var(--serif);font-weight:400;font-size:30px;line-height:1.1;margin-top:8px}
+.laws p{font-family:var(--serif);font-size:17px;line-height:1.45;color:var(--ink-2)}
+.laws p b{font-weight:500;color:var(--ink)}
+.pairs{list-style:none;margin-top:14px;display:grid;gap:2px}
+.pairs li{display:flex;align-items:baseline;gap:10px;padding:7px 8px;margin:0 -8px;border-radius:6px;font-family:var(--serif);font-size:18px;cursor:pointer}
+.pairs li:hover{background:rgba(243,234,216,.07)}
+.pairs em{color:var(--gold);font-style:normal}
+.pairs small{margin-left:auto;font-family:var(--sans);font-size:12px;color:var(--ink-3);white-space:nowrap}
+
+.tip{position:fixed;z-index:7;pointer-events:none;padding:8px 12px;border-radius:6px;background:var(--panel);border:1px solid var(--line);
+  font-family:var(--serif);font-size:18px;line-height:1.3;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;max-width:300px}
+.tip.on{opacity:1;transform:none}
+.tip small{display:block;font-family:var(--sans);font-size:12px;color:var(--ink-3);margin-top:3px}
+.tip i{color:var(--ink-3)}
+.caption{position:fixed;left:var(--cap-x,50%);bottom:76px;transform:translateX(-50%);z-index:3;font-family:var(--serif);font-style:italic;font-size:21px;line-height:1.35;color:var(--ink);
+  text-align:center;width:min(560px,calc(100vw - 40px));opacity:0;transition:opacity .6s var(--ease);pointer-events:none;text-shadow:0 1px 14px rgba(5,8,20,.95)}
+.caption.on{opacity:1}
+
+/* ---------- телефон ---------- */
+@media (max-width:860px){
+  .head{left:18px;top:16px;right:18px;width:auto}
+  .over{font-size:11.5px;letter-spacing:.16em}
+  h1{font-size:36px;margin:6px 0 6px}
+  .lead{font-size:15px;max-width:340px}
+  .stats{display:none}
+  .search{left:18px;right:18px;top:auto;bottom:118px;width:auto;background:rgba(5,8,20,.72)}
+  .hits{left:18px;right:18px;width:auto;top:auto;bottom:166px}
+  .legend{left:0;right:0;bottom:70px;width:auto;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:0 14px}
+  .legend::-webkit-scrollbar{display:none}
+  .rose{display:none}
+  .lg{flex:0 0 auto;width:auto;margin:0;min-height:36px;padding:4px 11px;background:rgba(5,8,20,.6);border:1px solid rgba(243,234,216,.12);border-radius:999px}
+  .lg b{display:none}
+  .tools{left:14px;right:14px;bottom:16px;justify-content:space-between;gap:6px}
+  .tbtn{flex:1;padding:8px 6px;font-size:13.5px;min-height:44px}
+  .hint{display:none}
+  .side{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:54vh;padding:20px 18px 16px;transform:translateY(30px);z-index:8;background:rgba(7,11,25,.97)}
+  .head,.search,.legend,.tools{transition:opacity .35s var(--ease)}
+  body.panel-open .head,body.panel-open .search,body.panel-open .legend,body.panel-open .tools{opacity:0;pointer-events:none}
+  .card h2{font-size:34px}
+  .caption{top:16px;bottom:auto;font-size:17px;width:calc(100vw - 32px)}
+}
+@media (max-width:860px) and (max-height:700px){ .lead{display:none} }
+@media (max-height:760px) and (min-width:861px){ .rose{display:none} .lead{font-size:16px} }
+@media (prefers-reduced-motion:reduce){ .side,.caption,.hits,.tip{transition:none} }
+</style>
+</head>
+<body>
+<canvas id="cv" aria-label="Звёздная карта этимологических семей"></canvas>
+
+<header class="head">
+  <p class="over">Атлас праиндоевропейского неба</p>
+  <h1>Созвездия <i>слов</i></h1>
+  <p class="lead">Каждая звезда&nbsp;— слово, каждое созвездие&nbsp;— семья родственников. В&nbsp;центре горит праиндоевропейский корень: на&nbsp;этом языке говорили около шести тысяч лет назад.</p>
+  <p class="stats" id="stats"></p>
+</header>
+
+<div class="search" role="search">
+  <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg>
+  <input id="q" placeholder="мышь, night, μήτηρ…" autocomplete="off" spellcheck="false" aria-label="Найти слово" aria-controls="hits">
+</div>
+<div class="hits" id="hits" role="listbox" aria-label="Найденные слова"></div>
+
+<nav class="legend" id="legend" aria-label="Ветви индоевропейской семьи">
+  <div class="rose"><svg id="rose" viewBox="-50 -50 100 100" aria-hidden="true"></svg><p>Слова стоят вокруг корня по&nbsp;сторонам света&nbsp;— там, где живут их языки.</p></div>
+</nav>
+
+<div class="tools">
+  <button class="tbtn" id="tour" aria-pressed="false">Экскурсия</button>
+  <button class="tbtn" id="lawsBtn" aria-pressed="false">Звуковые законы</button>
+  <button class="tbtn" id="home">Всё небо</button>
+</div>
+<p class="hint" id="hint">Щёлкните по&nbsp;созвездию · колесо&nbsp;— масштаб · небо можно тянуть</p>
+<p class="caption" id="caption" aria-live="polite"></p>
+
+<aside class="side card" id="card" aria-live="polite"></aside>
+<section class="side laws" id="laws" aria-label="Звуковые законы"></section>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+(() => {
+'use strict';
+const SHOT = !!window.__SHOT__;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+// mulberry32: у простого линейного генератора соседние числа ложатся на решётку, и в звёздной пыли видны полосы
+function rnd(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const NB = s => { let o = s, p; do { p = o; o = o.replace(/(^|[\s(«—])(в|к|с|и|а|о|у|я|но|на|по|за|от|до|из|не|ни|во|со|же|В|К|С|И|А|О|У|Но|На|По|За|От|До|Из|Не)\s/g, '$1$2 '); } while (o !== p); return o.replace(/ —/g, ' —'); };
+function plural(n, a, b, c) { n = Math.abs(n) % 100; const d = n % 10; if (n > 10 && n < 20) return c; if (d > 1 && d < 5) return b; if (d === 1) return a; return c; }
+
+/* =========================================================================
+   Ветви. Угол — сторона света относительно прародины: север сверху, запад слева
+   ========================================================================= */
+const BR = {
+  sl: { n: 'Славянские', c: '#ffb36b', a: -95 },
+  ba: { n: 'Балтийские', c: '#d6ee8c', a: -125 },
+  ge: { n: 'Германские', c: '#8fb8ff', a: -155 },
+  ce: { n: 'Кельтские', c: '#7fe0d4', a: 175 },
+  it: { n: 'Италийские', c: '#ff8f7e', a: 146 },
+  gr: { n: 'Греческий', c: '#a9f0c4', a: 116 },
+  an: { n: 'Анатолийские', c: '#fff08e', a: 86 },
+  ar: { n: 'Армянский', c: '#d2adff', a: 50 },
+  ii: { n: 'Индоиранские', c: '#ff9fd0', a: 2 }
+};
+const BR_ORDER = ['sl', 'ba', 'ge', 'ce', 'it', 'gr', 'an', 'ar', 'ii'];
+const LANG = { 'рус.': 'русский', 'англ.': 'английский', 'нем.': 'немецкий', 'гот.': 'готский', 'лат.': 'латынь', 'др.-греч.': 'древнегреческий',
+  'санскр.': 'санскрит', 'ведийск.': 'ведийский', 'перс.': 'персидский', 'авест.': 'авестийский', 'лит.': 'литовский', 'ирл.': 'ирландский',
+  'др.-ирл.': 'древнеирландский', 'валл.': 'валлийский', 'арм.': 'армянский', 'хетт.': 'хеттский' };
+
+/* =========================================================================
+   Семьи. Только хрестоматийные, надёжно установленные этимологии.
+   Слово: [ветвь, язык, слово, транслитерация, значение (если отличается)]
+   ========================================================================= */
+const REGIONS = [
+  { name: 'Родство', fams: [
+    { root: '*méh₂tēr', gl: 'мать', note: 'Узнаётся почти во всех ветвях — от ирландского до персидского.', w: [
+      ['sl', 'рус.', 'мать'], ['ge', 'англ.', 'mother'], ['ge', 'нем.', 'Mutter'], ['it', 'лат.', 'māter'], ['gr', 'др.-греч.', 'μήτηρ', 'mḗtēr'],
+      ['ii', 'санскр.', 'mātár-'], ['ii', 'перс.', 'mâdar'], ['ba', 'лит.', 'mótina'], ['ce', 'ирл.', 'máthair'], ['ar', 'арм.', 'mayr']] },
+    { root: '*ph₂tḗr', gl: 'отец', note: '«Отец» сюда не входит: оно от детского *atta «папа» — того же, что готское atta. Зато здесь виден закон Гримма: pater — father. Кельты потеряли начальное p (athair), армяне превратили его в h (hayr).', w: [
+      ['ge', 'англ.', 'father'], ['ge', 'нем.', 'Vater'], ['ge', 'гот.', 'fadar'], ['it', 'лат.', 'pater'], ['gr', 'др.-греч.', 'πατήρ', 'patḗr'],
+      ['ii', 'санскр.', 'pitár-'], ['ii', 'перс.', 'pedar'], ['ce', 'ирл.', 'athair'], ['ar', 'арм.', 'hayr']] },
+    { root: '*bʰréh₂tēr', gl: 'брат', note: 'В греческом φράτηρ стал «членом фратрии», а родного брата назвали новым словом ἀδελφός — буквально «единоутробный».', w: [
+      ['sl', 'рус.', 'брат'], ['ge', 'англ.', 'brother'], ['ge', 'нем.', 'Bruder'], ['ge', 'гот.', 'brōþar'], ['it', 'лат.', 'frāter'],
+      ['gr', 'др.-греч.', 'φράτηρ', 'phrátēr', 'член фратрии'], ['ii', 'санскр.', 'bhrā́tar-'], ['ii', 'перс.', 'barâdar'], ['ce', 'др.-ирл.', 'bráthair']] },
+    { root: '*swésōr', gl: 'сестра', note: 'В славянских и германских языках в слово «вросло» t: сестра, Schwester. В латыни s между гласными перешло в r: soror.', w: [
+      ['sl', 'рус.', 'сестра'], ['ge', 'англ.', 'sister'], ['ge', 'нем.', 'Schwester'], ['it', 'лат.', 'soror'], ['ii', 'санскр.', 'svásar-'],
+      ['ii', 'перс.', 'xâhar'], ['ba', 'лит.', 'sesuo'], ['ce', 'др.-ирл.', 'siur']] },
+    { root: '*dʰugh₂tḗr', gl: 'дочь', note: 'Латынь это слово потеряла: дочь там — fīlia.', w: [
+      ['sl', 'рус.', 'дочь'], ['ge', 'англ.', 'daughter'], ['ge', 'нем.', 'Tochter'], ['gr', 'др.-греч.', 'θυγάτηρ', 'thugátēr'], ['ii', 'санскр.', 'duhitár-'],
+      ['ii', 'перс.', 'doxtar'], ['ba', 'лит.', 'duktė'], ['ar', 'арм.', 'dustr']] },
+    { root: '*suHnús', gl: 'сын', note: 'В латыни сын — fīlius, совсем из другого корня: его родня — «доить», соседнее созвездие.', w: [
+      ['sl', 'рус.', 'сын'], ['ge', 'англ.', 'son'], ['ge', 'нем.', 'Sohn'], ['ge', 'гот.', 'sunus'], ['ii', 'санскр.', 'sūnú-'], ['ba', 'лит.', 'sūnus']] },
+    { root: '*dʰeh₁(y)-', gl: 'кормить грудью', lab: 'доить', note: 'Латинское fēmina «женщина» по происхождению значит «кормящая», а fīlius «сын» — «сосунок». По-русски из этого корня — «доить» и «дитя».', w: [
+      ['sl', 'рус.', 'доить'], ['sl', 'рус.', 'дитя'], ['it', 'лат.', 'fēmina', '', 'женщина'], ['it', 'лат.', 'fīlius', '', 'сын'],
+      ['gr', 'др.-греч.', 'θηλή', 'thēlḗ', 'сосок'], ['ii', 'санскр.', 'dháyati', '', 'сосёт'], ['ge', 'гот.', 'daddjan', '', 'кормить грудью']] }
+  ] },
+  { name: 'Звери', fams: [
+    { root: '*wĺ̥kʷos', gl: 'волк', note: 'Латинское lupus с неожиданным p, скорее всего, пришло из соседнего италийского наречия — как и bōs «бык».', w: [
+      ['sl', 'рус.', 'волк'], ['ge', 'англ.', 'wolf'], ['ge', 'нем.', 'Wolf'], ['ge', 'гот.', 'wulfs'], ['it', 'лат.', 'lupus'],
+      ['gr', 'др.-греч.', 'λύκος', 'lúkos'], ['ii', 'санскр.', 'vṛ́ka-'], ['ba', 'лит.', 'vilkas']] },
+    { root: '*h₂ŕ̥tḱos', gl: 'медведь', note: 'Настоящее имя медведя славяне и германцы звать боялись. Отсюда «медведь» — «тот, кто ест мёд», и английское bear — по происхождению «бурый». А греческое ἄρκτος живёт в «Арктике»: так греки называли север — край под созвездием Медведицы.', w: [
+      ['gr', 'др.-греч.', 'ἄρκτος', 'árktos'], ['it', 'лат.', 'ursus'], ['ii', 'санскр.', 'ṛ́kṣa-'], ['ii', 'перс.', 'xers'], ['ar', 'арм.', 'arǰ'], ['ce', 'др.-ирл.', 'art']] },
+    { root: '*h₂ówis', gl: 'овца', note: 'Английское ewe — это «овца-матка»; слово sheep пришло из другого корня.', w: [
+      ['sl', 'рус.', 'овца'], ['sl', 'рус.', 'овен', '', 'баран'], ['ge', 'англ.', 'ewe'], ['it', 'лат.', 'ovis'], ['gr', 'др.-греч.', 'ὄϊς', 'óïs'],
+      ['ii', 'санскр.', 'ávi-'], ['ba', 'лит.', 'avis']] },
+    { root: '*gʷṓws', gl: 'корова, бык', lab: 'корова', note: '«Говядина» — родня английской cow: русское слово образовано от древнего «говядо» — «крупный рогатый скот».', w: [
+      ['sl', 'рус.', 'говядина'], ['ge', 'англ.', 'cow'], ['ge', 'нем.', 'Kuh'], ['it', 'лат.', 'bōs'], ['gr', 'др.-греч.', 'βοῦς', 'boûs'],
+      ['ii', 'санскр.', 'gáuḥ'], ['ii', 'перс.', 'gâv'], ['ar', 'арм.', 'kov']] },
+    { root: '*mūs', gl: 'мышь', note: 'Латинское musculus — и «мышонок», и «мышца»: мускул ходит под кожей, как мышь. Греческое μῦς тоже значит и то и другое.', w: [
+      ['sl', 'рус.', 'мышь'], ['ge', 'англ.', 'mouse'], ['ge', 'нем.', 'Maus'], ['it', 'лат.', 'mūs'], ['it', 'лат.', 'musculus', '', 'мышца, мышонок'],
+      ['gr', 'др.-греч.', 'μῦς', 'mûs'], ['ii', 'санскр.', 'mū́ṣ-'], ['ii', 'перс.', 'muš']] },
+    { root: '*ǵʰh₂éns', gl: 'гусь', note: 'Литовское žąsis подчиняется правилу сатэм, а русское «гусь» начинается с неожиданного «г»: возможно, слово пришло от германцев. В латинском ānser начальный звук исчез совсем.', w: [
+      ['sl', 'рус.', 'гусь'], ['ge', 'англ.', 'goose'], ['ge', 'нем.', 'Gans'], ['it', 'лат.', 'ānser'], ['gr', 'др.-греч.', 'χήν', 'khḗn'],
+      ['ii', 'санскр.', 'haṃsá-'], ['ba', 'лит.', 'žąsis']] }
+  ] },
+  { name: 'Небо и стихии', fams: [
+    { root: '*sóh₂wl̥', gl: 'солнце', note: 'В греческом и валлийском начальное s превратилось в h: sōl — ἥλιος — haul.', w: [
+      ['sl', 'рус.', 'солнце'], ['ge', 'англ.', 'sun'], ['ge', 'нем.', 'Sonne'], ['it', 'лат.', 'sōl'], ['gr', 'др.-греч.', 'ἥλιος', 'hḗlios'],
+      ['ii', 'санскр.', 'sū́rya-'], ['ba', 'лит.', 'saulė'], ['ce', 'валл.', 'haul']] },
+    { root: '*méh₁n̥s', gl: 'луна, месяц', lab: 'месяц', note: 'Луной измеряли время — отсюда одно слово для светила и для месяца: moon и month, Mond и Monat.', w: [
+      ['sl', 'рус.', 'месяц'], ['ge', 'англ.', 'moon'], ['ge', 'англ.', 'month'], ['ge', 'нем.', 'Mond'], ['ge', 'нем.', 'Monat'], ['it', 'лат.', 'mēnsis', '', 'месяц'],
+      ['gr', 'др.-греч.', 'μήν', 'mḗn', 'месяц'], ['ii', 'санскр.', 'mā́s-'], ['ii', 'перс.', 'mâh'], ['ba', 'лит.', 'mėnuo']] },
+    { root: '*h₂stḗr', gl: 'звезда', note: 'Русская «звезда» сюда не входит: её родня — литовское žvaigždė. А вот «астра» и «астрономия» — из этой семьи, через греческий.', w: [
+      ['ge', 'англ.', 'star'], ['ge', 'нем.', 'Stern'], ['it', 'лат.', 'stella'], ['gr', 'др.-греч.', 'ἀστήρ', 'astḗr'],
+      ['ii', 'ведийск.', 'stṛ́-'], ['ii', 'перс.', 'setâre'], ['ar', 'арм.', 'astł'], ['an', 'хетт.', 'ḫašter-']] },
+    { root: '*nókʷts', gl: 'ночь', note: 'По закону Гримма германцы превратили k в h: nox — night, Nacht.', w: [
+      ['sl', 'рус.', 'ночь'], ['ge', 'англ.', 'night'], ['ge', 'нем.', 'Nacht'], ['ge', 'гот.', 'nahts'], ['it', 'лат.', 'nox'],
+      ['gr', 'др.-греч.', 'νύξ', 'núx'], ['ii', 'санскр.', 'nákt-'], ['ba', 'лит.', 'naktis']] },
+    { root: '*snóygʷʰos', gl: 'снег', note: 'Латынь и греческий потеряли начальное s — nix, νίφα, — а другие ветви его сохранили: снег, snow, sniegas.', w: [
+      ['sl', 'рус.', 'снег'], ['ge', 'англ.', 'snow'], ['ge', 'нем.', 'Schnee'], ['it', 'лат.', 'nix'], ['gr', 'др.-греч.', 'νίφα', 'nípha'],
+      ['ba', 'лит.', 'sniegas'], ['ce', 'др.-ирл.', 'snechta']] },
+    { root: '*h₁n̥gʷnis', gl: 'огонь', note: 'Германского родственника нет: fire и Feuer — из другого корня. Зато есть ведийский бог огня Агни.', w: [
+      ['sl', 'рус.', 'огонь'], ['it', 'лат.', 'ignis'], ['ii', 'санскр.', 'agní-'], ['ba', 'лит.', 'ugnis']] },
+    { root: '*wódr̥', gl: 'вода', note: 'Хеттское watar записано больше трёх тысяч лет назад — и узнаётся сразу. «Водка» — уменьшительное от «вода», а приставка «гидро-» — от греческого ὕδωρ.', w: [
+      ['sl', 'рус.', 'вода'], ['ge', 'англ.', 'water'], ['ge', 'нем.', 'Wasser'], ['gr', 'др.-греч.', 'ὕδωρ', 'húdōr'], ['an', 'хетт.', 'watar'],
+      ['ii', 'санскр.', 'udán-'], ['ba', 'лит.', 'vanduo'], ['it', 'лат.', 'unda', '', 'волна']] },
+    { root: '*ǵʰel-', gl: 'жёлтый, зелёный', lab: 'жёлтый', note: '«Золото» по происхождению — «жёлтое». Отсюда же хлор: по-гречески χλωρός — «зеленовато-жёлтый».', w: [
+      ['sl', 'рус.', 'золото'], ['sl', 'рус.', 'жёлтый'], ['sl', 'рус.', 'зелёный'], ['ge', 'англ.', 'yellow'], ['ge', 'англ.', 'gold'], ['ge', 'нем.', 'gelb'],
+      ['gr', 'др.-греч.', 'χλωρός', 'khlōrós', 'зеленовато-жёлтый'], ['it', 'лат.', 'helvus', '', 'медово-жёлтый']] }
+  ] },
+  { name: 'Числа', fams: [
+    { root: '*dwóh₁', gl: 'два', note: 'Закон Гримма: d → t. Duo — two.', w: [
+      ['sl', 'рус.', 'два'], ['ge', 'англ.', 'two'], ['ge', 'нем.', 'zwei'], ['it', 'лат.', 'duo'], ['gr', 'др.-греч.', 'δύο', 'dúo'],
+      ['ii', 'санскр.', 'dvā́'], ['ii', 'перс.', 'do'], ['ba', 'лит.', 'du'], ['ce', 'ирл.', 'dá']] },
+    { root: '*tréyes', gl: 'три', note: 'Закон Гримма: t → th. Trēs — three.', w: [
+      ['sl', 'рус.', 'три'], ['ge', 'англ.', 'three'], ['ge', 'нем.', 'drei'], ['it', 'лат.', 'trēs'], ['gr', 'др.-греч.', 'τρεῖς', 'treîs'],
+      ['ii', 'санскр.', 'tráyaḥ'], ['ii', 'перс.', 'se'], ['ba', 'лит.', 'trys'], ['ce', 'ирл.', 'trí']] },
+    { root: '*pénkʷe', gl: 'пять', note: 'Латынь уподобила первый звук второму: *penkʷe → quīnque. А германцы по закону Гримма сделали из p — f: five.', w: [
+      ['sl', 'рус.', 'пять'], ['ge', 'англ.', 'five'], ['ge', 'нем.', 'fünf'], ['it', 'лат.', 'quīnque'], ['gr', 'др.-греч.', 'πέντε', 'pénte'],
+      ['ii', 'санскр.', 'páñca'], ['ii', 'перс.', 'panj'], ['ba', 'лит.', 'penki']] },
+    { root: '*septḿ̥', gl: 'семь', note: 'Греки и иранцы превратили начальное s в h: septem — ἑπτά, персидское haft. А «сентябрь» — седьмой месяц старого римского календаря.', w: [
+      ['sl', 'рус.', 'семь'], ['ge', 'англ.', 'seven'], ['ge', 'нем.', 'sieben'], ['it', 'лат.', 'septem'], ['gr', 'др.-греч.', 'ἑπτά', 'heptá'],
+      ['ii', 'санскр.', 'saptá'], ['ii', 'перс.', 'haft'], ['ba', 'лит.', 'septyni'], ['ce', 'др.-ирл.', 'secht']] },
+    { root: '*déḱm̥', gl: 'десять', note: 'Сатэм и кентум в одном числе: «десять», литовское dešimt и санскритское dáśa против латинского decem и греческого δέκα. «Декабрь» — десятый месяц того же календаря.', w: [
+      ['sl', 'рус.', 'десять'], ['ge', 'англ.', 'ten'], ['ge', 'нем.', 'zehn'], ['ge', 'гот.', 'taíhun'], ['it', 'лат.', 'decem'], ['gr', 'др.-греч.', 'δέκα', 'déka'],
+      ['ii', 'санскр.', 'dáśa'], ['ii', 'перс.', 'dah'], ['ba', 'лит.', 'dešimt'], ['ar', 'арм.', 'tasn'], ['ce', 'ирл.', 'deich']] },
+    { root: '*ḱm̥tóm', gl: 'сто', note: 'Отсюда названия двух половин семьи: авестийское satəm и латинское centum — «сто». «Процент» пришёл через немецкий из латинского pro centum — «на сотню».', w: [
+      ['sl', 'рус.', 'сто'], ['ge', 'англ.', 'hundred'], ['ge', 'гот.', 'hund'], ['it', 'лат.', 'centum'], ['gr', 'др.-греч.', 'ἑκατόν', 'hekatón'],
+      ['ii', 'санскр.', 'śatám'], ['ii', 'авест.', 'satəm'], ['ii', 'перс.', 'sad'], ['ba', 'лит.', 'šimtas'], ['ce', 'ирл.', 'céad']] }
+  ] },
+  { name: 'Действия', fams: [
+    { root: '*h₁es-', gl: 'быть', note: 'Омоним! «Есть» в значении «кушать» — совсем из другого корня, *h₁ed-. Его созвездие — рядом.', w: [
+      ['sl', 'рус.', 'есть', '', 'он есть'], ['ge', 'англ.', 'is'], ['ge', 'нем.', 'ist'], ['it', 'лат.', 'est'], ['gr', 'др.-греч.', 'ἐστί', 'estí'],
+      ['ii', 'санскр.', 'ásti'], ['an', 'хетт.', 'ēšzi']] },
+    { root: '*h₁ed-', gl: 'есть, кушать', lab: 'есть', note: 'Второе «есть». Совпадение двух древних корней в одном русском слове — случайность звуковой истории.', w: [
+      ['sl', 'рус.', 'есть', '', 'кушать'], ['sl', 'рус.', 'еда'], ['ge', 'англ.', 'eat'], ['ge', 'нем.', 'essen'], ['it', 'лат.', 'edere'],
+      ['gr', 'др.-греч.', 'ἔδω', 'édō'], ['ii', 'санскр.', 'ad-'], ['ba', 'лит.', 'ėsti'], ['an', 'хетт.', 'ēd-']] },
+    { root: '*ǵneh₃-', gl: 'знать', note: 'Граница сатэм и кентум: ǵ стало «з» в славянском (знать) и ž в литовском (žinoti), но осталось g в латыни и греческом, а у германцев по закону Гримма дало k (know).', w: [
+      ['sl', 'рус.', 'знать'], ['ge', 'англ.', 'know'], ['ge', 'нем.', 'kennen'], ['it', 'лат.', 'nōscere', '', 'узнавать (старолат. gnōscere)'],
+      ['gr', 'др.-греч.', 'γιγνώσκω', 'gignṓskō'], ['ii', 'санскр.', 'jānā́ti'], ['ba', 'лит.', 'žinoti']] },
+    { root: '*weyd-', gl: 'видеть, знать', lab: 'видеть', note: 'Видео, идея, Веды и «ведать» — одна семья: знать значит «увидеть».', w: [
+      ['sl', 'рус.', 'видеть'], ['sl', 'рус.', 'ведать'], ['ge', 'англ.', 'wise'], ['ge', 'нем.', 'wissen'], ['it', 'лат.', 'vidēre', '', 'видеть (→ видео)'],
+      ['gr', 'др.-греч.', 'ἰδέα', 'idéa', 'вид, образ'], ['ii', 'санскр.', 'véda', '', 'знание']] },
+    { root: '*sed-', gl: 'сидеть', note: 'Седло, saddle и Sattel — от того же корня: седло — то, на чём сидят. Из латинского sedēre — «сессия» и «президент», буквально «сидящий впереди».', w: [
+      ['sl', 'рус.', 'сидеть'], ['sl', 'рус.', 'седло'], ['ge', 'англ.', 'sit'], ['ge', 'англ.', 'saddle'], ['ge', 'нем.', 'Sattel'], ['it', 'лат.', 'sedēre'],
+      ['gr', 'др.-греч.', 'ἕζομαι', 'hézomai'], ['ii', 'санскр.', 'sad-'], ['ba', 'лит.', 'sėdėti']] },
+    { root: '*mer-', gl: 'умирать', lab: 'смерть', note: 'Персидское mard «мужчина» по происхождению значит «смертный», а санскритское amṛ́ta — «бессмертный»: так называли напиток богов, амриту.', w: [
+      ['sl', 'рус.', 'смерть'], ['sl', 'рус.', 'мёртвый'], ['ge', 'англ.', 'murder'], ['it', 'лат.', 'mors'], ['ii', 'санскр.', 'amṛ́ta-', '', 'бессмертный'],
+      ['ii', 'перс.', 'marg', '', 'смерть'], ['ii', 'перс.', 'mard', '', 'мужчина'], ['ba', 'лит.', 'mirti']] },
+    { root: '*bʰer-', gl: 'нести', note: '«Беременная» — несущая бремя, фосфор — «несущий свет», трансфер — «перенос».', w: [
+      ['sl', 'рус.', 'брать'], ['sl', 'рус.', 'бремя'], ['ge', 'англ.', 'bear', '', 'нести'], ['ge', 'англ.', 'burden'], ['ge', 'нем.', 'gebären', '', 'рожать'],
+      ['it', 'лат.', 'ferre'], ['gr', 'др.-греч.', 'φέρω', 'phérō'], ['ii', 'санскр.', 'bhárati']] },
+    { root: '*lewbʰ-', gl: 'любить, желать', lab: 'любить', note: 'Любовь и либидо — родственники: латинское libīdō значит «желание».', w: [
+      ['sl', 'рус.', 'любить'], ['ge', 'англ.', 'love'], ['ge', 'нем.', 'Liebe'], ['ge', 'гот.', 'liufs', '', 'милый'], ['it', 'лат.', 'libīdō', '', 'желание'],
+      ['ii', 'санскр.', 'lúbhyati', '', 'жаждет']] }
+  ] },
+  { name: 'Дом и мир', fams: [
+    { root: '*dem-', gl: 'дом; строить', lab: 'дом', note: 'Английское timber и немецкое Zimmer по происхождению — «постройка»: германское d по закону Гримма стало t.', w: [
+      ['sl', 'рус.', 'дом'], ['it', 'лат.', 'domus'], ['gr', 'др.-греч.', 'δόμος', 'dómos'], ['ii', 'санскр.', 'dáma-'], ['ge', 'англ.', 'timber', '', 'строевой лес'], ['ge', 'нем.', 'Zimmer', '', 'комната']] },
+    { root: '*dʰwer-', gl: 'дверь', note: 'Латинский forum — площадь «за дверями» — из того же корня.', w: [
+      ['sl', 'рус.', 'дверь'], ['ge', 'англ.', 'door'], ['ge', 'нем.', 'Tür'], ['it', 'лат.', 'forēs'], ['gr', 'др.-греч.', 'θύρα', 'thúra'],
+      ['ii', 'санскр.', 'dvā́r-'], ['ii', 'перс.', 'dar'], ['ba', 'лит.', 'durys']] },
+    { root: '*gʰóstis', gl: 'чужак, гость', lab: 'гость', note: 'Латынь раздвоила значение: hostis — «враг» (отсюда hostile), hospes — «гость» (отсюда госпиталь).', w: [
+      ['sl', 'рус.', 'гость'], ['ge', 'англ.', 'guest'], ['ge', 'нем.', 'Gast'], ['it', 'лат.', 'hostis', '', 'враг'], ['it', 'лат.', 'hospes', '', 'гость']] },
+    { root: '*h₁nómn̥', gl: 'имя', note: 'Имя, name, nōmen, ὄνομα — узнаётся без словаря.', w: [
+      ['sl', 'рус.', 'имя'], ['ge', 'англ.', 'name'], ['ge', 'нем.', 'Name'], ['it', 'лат.', 'nōmen'], ['gr', 'др.-греч.', 'ὄνομα', 'ónoma'],
+      ['ii', 'санскр.', 'nā́man-'], ['ii', 'перс.', 'nâm'], ['ce', 'ирл.', 'ainm']] },
+    { root: '*ḱḗr', gl: 'сердце', note: 'Сатэм и кентум: ḱ стало «с» в славянском (сердце) и š в литовском, осталось k в латыни и греческом, а у германцев по закону Гримма дало h (heart).', w: [
+      ['sl', 'рус.', 'сердце'], ['ge', 'англ.', 'heart'], ['ge', 'нем.', 'Herz'], ['it', 'лат.', 'cor'], ['gr', 'др.-греч.', 'καρδία', 'kardía'],
+      ['ba', 'лит.', 'širdis'], ['ar', 'арм.', 'sirt'], ['an', 'хетт.', 'kard-']] },
+    { root: '*médʰu', gl: 'мёд', note: 'По-гречески μέθυ — «вино». Отсюда аметист — «непьянящий»: камнем оберегались от хмеля.', w: [
+      ['sl', 'рус.', 'мёд'], ['ge', 'англ.', 'mead', '', 'медовуха'], ['ge', 'нем.', 'Met'], ['gr', 'др.-греч.', 'μέθυ', 'méthu', 'вино'],
+      ['ii', 'санскр.', 'mádhu'], ['ba', 'лит.', 'medus'], ['ce', 'др.-ирл.', 'mid']] },
+    { root: '*seh₂l-', gl: 'соль', note: 'Английское salary — «жалованье» — от латинского salārium, связанного с солью. Греки и валлийцы и здесь сменили s на h: ἅλς, halen.', w: [
+      ['sl', 'рус.', 'соль'], ['ge', 'англ.', 'salt'], ['ge', 'нем.', 'Salz'], ['it', 'лат.', 'sāl'], ['gr', 'др.-греч.', 'ἅλς', 'háls'], ['ce', 'валл.', 'halen'], ['ce', 'ирл.', 'salann']] },
+    { root: '*kʷel-', gl: 'вращаться', lab: 'колесо', note: 'Колесо, цикл, чакра — одна семья. И даже «культура»: латинское colere «возделывать, обитать» восходит к тому же корню.', w: [
+      ['sl', 'рус.', 'колесо'], ['ge', 'англ.', 'wheel'], ['gr', 'др.-греч.', 'κύκλος', 'kúklos', 'круг, колесо'], ['ii', 'санскр.', 'cakrá-', '', 'колесо'],
+      ['ii', 'перс.', 'čarx', '', 'колесо'], ['it', 'лат.', 'colere', '', 'возделывать']] },
+    { root: '*néwos', gl: 'новый', note: '«Новый», new, novus и νέος разошлись очень мало — это слово легко узнать почти в любом индоевропейском языке.', w: [
+      ['sl', 'рус.', 'новый'], ['ge', 'англ.', 'new'], ['ge', 'нем.', 'neu'], ['it', 'лат.', 'novus'], ['gr', 'др.-греч.', 'νέος', 'néos'],
+      ['ii', 'санскр.', 'náva-'], ['ii', 'перс.', 'now'], ['ba', 'лит.', 'naujas']] }
+  ] }
+];
+
+/* =========================================================================
+   Раскладка неба: круглая карта-планисфера, «мать» — в центре
+   ========================================================================= */
+const R = 1000, SECT = [-120, -60, 0, 60, 120, 180];
+const fams = [], stars = [];
+(function buildSky() {
+  const r0 = rnd(6000);
+  REGIONS.forEach((reg, ri) => reg.fams.forEach(f => { f.region = ri; fams.push(f); }));
+  const center = fams.find(f => f.root === '*méh₂tēr');
+  center.x = 0; center.y = 0; center.fixed = true;
+  REGIONS.forEach((reg, ri) => {
+    const list = reg.fams.filter(f => f !== center), n = list.length, phi0 = SECT[ri] * Math.PI / 180, rows = Math.ceil(n / 3);
+    list.forEach((f, k) => {
+      const col = k % 3, row = Math.floor(k / 3);
+      const phi = phi0 + ((col + .5) / 3 - .5) * .82 + (r0() - .5) * .1, rr = R * (.36 + (row + .5) / rows * .5) + (r0() - .5) * 50;
+      f.x = Math.cos(phi) * rr; f.y = Math.sin(phi) * rr;
+    });
+  });
+  // лёгкая релаксация: созвездия расталкиваются, оставаясь в своём секторе
+  for (let it = 0; it < 240; it++) {
+    for (let i = 0; i < fams.length; i++) for (let j = i + 1; j < fams.length; j++) {
+      const a = fams[i], b = fams[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, D = 262;
+      if (d < D) { const p = (D - d) / d * .22; if (!a.fixed) { a.x -= dx * p; a.y -= dy * p; } if (!b.fixed) { b.x += dx * p; b.y += dy * p; } }
+    }
+    fams.forEach(f => {
+      if (f.fixed) return;
+      const phi0 = SECT[f.region] * Math.PI / 180, phi = Math.atan2(f.y, f.x);
+      const dphi = clamp(((phi - phi0 + Math.PI * 3) % (Math.PI * 2)) - Math.PI, -.45, .45), rr = clamp(Math.hypot(f.x, f.y), R * .32, R * .9);
+      f.x = Math.cos(phi0 + dphi) * rr; f.y = Math.sin(phi0 + dphi) * rr;
+    });
+  }
+  // звёзды-слова вокруг корня: каждая ветвь — в своей стороне света
+  fams.forEach((f, fi) => {
+    f.idx = fi; f.stars = []; f.bloom = 1; f.bloomT = 1; f.dim = 1; f.ign = null;
+    const root = { fam: f, isRoot: true, text: f.root, gl: f.gl, ox: 0, oy: 0, br: null, mag: 1, ph: r0() * 6.28, x: f.x, y: f.y, depth: 0 };
+    root.id = stars.length; f.stars.push(root); f.rootStar = root; stars.push(root);
+    const byBr = {};
+    f.w.forEach(w => (byBr[w[0]] = byBr[w[0]] || []).push(w));
+    Object.entries(byBr).forEach(([b, list]) => {
+      const n = list.length;
+      list.forEach((w, k) => {
+        const a = (BR[b].a + (k - (n - 1) / 2) * 25 + (r0() - .5) * 8) * Math.PI / 180;
+        const rad = 50 + (n > 1 ? (k % 2) * 27 : 13) + r0() * 14;
+        const s = { fam: f, isRoot: false, br: b, lang: w[1], text: w[2], tr: w[3] || '', gl: w[4] || '', ox: Math.cos(a) * rad, oy: Math.sin(a) * rad,
+          mag: b === 'sl' ? .95 : .6 + r0() * .3, ph: r0() * 6.28, x: 0, y: 0 };
+        s.id = stars.length; f.stars.push(s); stars.push(s);
+      });
+    });
+    f.rad = Math.max(...f.stars.map(s => Math.hypot(s.ox, s.oy)));
+    // линии созвездия — минимальное остовное дерево, как у настоящих фигур
+    const S = f.stars, inT = [0], edges = [], par = [-1];
+    while (inT.length < S.length) {
+      let best = null, bd = 1e9;
+      inT.forEach(a => S.forEach((s, b) => { if (inT.includes(b)) return; const d = Math.hypot(S[a].ox - s.ox, S[a].oy - s.oy); if (d < bd) { bd = d; best = [a, b]; } }));
+      edges.push(best); inT.push(best[1]); par[best[1]] = best[0];
+    }
+    f.edges = edges;
+    S.forEach((s, i) => { let d = 0, j = i; while (j !== 0) { j = par[j]; d++; } s.depth = d; s.parent = i === 0 ? null : S[par[i]]; });
+  });
+})();
+const TOTAL_WORDS = stars.filter(s => !s.isRoot).length;
+$('stats').textContent = `${fams.length} ${plural(fams.length, 'созвездие', 'созвездия', 'созвездий')} · ${TOTAL_WORDS} ${plural(TOTAL_WORDS, 'слово', 'слова', 'слов')} · ${BR_ORDER.length} ветвей`;
+
+/* =========================================================================
+   Звуковые законы: пары, которые соединяются дугами
+   ========================================================================= */
+const LAWS = [
+  { id: 'grimm', name: 'Закон Гримма', text: NB('Германские языки сдвинули целый ряд согласных: <b>p → f</b>, <b>t → th</b>, <b>k → h</b>, <b>d → t</b>. Поэтому латинское pater — это father, trēs — three, decem — ten, cor — heart. Славянские языки и латынь этого сдвига не знали.'),
+    pairs: [['pater', 'father'], ['trēs', 'three'], ['duo', 'two'], ['decem', 'ten'], ['cor', 'heart'], ['centum', 'hundred'], ['nox', 'night'], ['pénte', 'five']] },
+  { id: 'satem', name: 'Сатэм и кентум', text: NB('Древние <b>ḱ</b> и <b>ǵ</b> на востоке семьи стали свистящими и шипящими: «сто», литовское šimtas, санскритское śatám; «десять», dešimt; «сердце», širdis. На западе они остались смычными: centum, ἑκατόν, decem, cor. Название — по слову «сто»: авестийское satəm и латинское centum.'),
+    pairs: [['сто', 'centum'], ['śatám', 'ἑκατόν'], ['десять', 'decem'], ['dešimt', 'δέκα'], ['сердце', 'cor'], ['širdis', 'καρδία'], ['знать', 'γιγνώσκω'], ['žinoti', 'nōscere']] },
+  { id: 'sh', name: 's → h', text: NB('В греческом начальное <b>s</b> перед гласной ослабло до придыхания <b>h</b>: латинское sōl — ἥλιος, sāl — ἅλς, septem — ἑπτά. То же случилось в иранских языках (санскритское saptá — персидское haft) и в валлийском: haul «солнце», halen «соль».'),
+    pairs: [['sōl', 'ἥλιος'], ['sāl', 'ἅλς'], ['septem', 'ἑπτά'], ['sedēre', 'ἕζομαι'], ['saptá', 'haft'], ['sōl', 'haul'], ['sāl', 'halen']] }
+];
+const findStar = t => stars.find(s => !s.isRoot && (s.text === t || s.tr === t));
+LAWS.forEach(l => { l.links = l.pairs.map(([a, b]) => [findStar(a), findStar(b)]).filter(([a, b]) => a && b); });
+
+/* =========================================================================
+   Холст, камера, фон
+   ========================================================================= */
+const cv = $('cv'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1, mobile = false, bgC = null, milkC = null, spr = {};
+const dust = [];   // пыль Млечного Пути в мировых координатах — рисуется точками, когда небо приближено
+const cam = { x: 0, y: 0, z: .3, tx: 0, ty: 0, tz: .3 };
+let focus = null, demo = null, hover = null, hoverFam = null, branch = null, law = null, lawT = 0, T = 0, DT = .016;
+const toS = (x, y) => [(x - cam.x) * cam.z + W / 2, (y - cam.y) * cam.z + H / 2];
+const toW = (x, y) => [(x - W / 2) / cam.z + cam.x, (y - H / 2) / cam.z + cam.y];
+
+let HOME = { x: 0, y: 0, z: .3 };
+function computeHome() {
+  // круг карты не должен задевать заголовок, легенду, поиск и кнопки — считаем по их настоящим прямоугольникам
+  if (mobile) { const rs = W * .4, z = rs / R; HOME = { z, x: 0, y: (H / 2 - H * .465) / z }; return; }
+  const rects = ['.head h1', '.head .lead', '.head .stats', '.legend', '.search', '.tools'].map(sel => {
+    const el = document.querySelector(sel); if (!el) return null;
+    const r = el.getBoundingClientRect(); return r.width ? [r.left * DPR, r.top * DPR, r.right * DPR, r.bottom * DPR] : null;
+  }).filter(Boolean);
+  const sy = H / 2;
+  let rs = Math.min(H * .395, W * .3);
+  for (let it = 0; it < 40; it++) {
+    const rho = rs * 1.16 + 8 * DPR;
+    let lo = rho + 10 * DPR, hi = W - rho - 10 * DPR;
+    rects.forEach(([x0, y0, x1, y1]) => {
+      const dy = sy < y0 ? y0 - sy : sy > y1 ? sy - y1 : 0;
+      if (dy >= rho) return;
+      const dx = Math.sqrt(rho * rho - dy * dy);
+      if ((x0 + x1) / 2 < W / 2) lo = Math.max(lo, x1 + dx); else hi = Math.min(hi, x0 - dx);
+    });
+    if (lo <= hi || it === 39) { const sx = lo <= hi ? clamp(W * .54, lo, hi) : W * .54, z = rs / R; HOME = { z, x: (W / 2 - sx) / z, y: (H / 2 - sy) / z }; return; }
+    rs *= .95;
+  }
+}
+const homeView = () => HOME;
+function freeArea() {
+  // часть экрана, не закрытая открытой панелью
+  const side = (focus || law) ? (mobile ? { h: Math.min(H * .54, H - 220 * DPR) } : { w: (372 + 44 + 24) * DPR }) : null;
+  if (!side) return { cx: W / 2, cy: H / 2, w: W, h: H };
+  if (mobile) return { cx: W / 2, cy: (H - side.h) / 2 + (tourI >= 0 ? 24 * DPR : 0), w: W, h: H - side.h - 50 * DPR };
+  // слева колонка заголовка и легенды, справа панель
+  const left = Math.min(420 * DPR, W * .3), right = W - side.w;
+  return { cx: (left + right) / 2, cy: H / 2, w: right - left - 60 * DPR, h: H - 160 * DPR };
+}
+function flyTo(x, y, z) { cam.tx = x; cam.ty = y; cam.tz = z; }
+function flyHome() { const v = homeView(); flyTo(v.x, v.y, v.z); }
+
+function makeSprites() {
+  spr = {};
+  const mk = (hex, size, core) => {
+    const c = document.createElement('canvas'), s = Math.ceil(size * DPR); c.width = c.height = s * 2;
+    const g = c.getContext('2d'), n = parseInt(hex.slice(1), 16), rgb = `${n >> 16},${(n >> 8) & 255},${n & 255}`;
+    const gr = g.createRadialGradient(s, s, 0, s, s, s);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(core, `rgba(${rgb},1)`); gr.addColorStop(core * 2.6, `rgba(${rgb},.3)`); gr.addColorStop(1, `rgba(${rgb},0)`);
+    g.fillStyle = gr; g.fillRect(0, 0, s * 2, s * 2);
+    return c;
+  };
+  BR_ORDER.forEach(k => { spr[k] = mk(BR[k].c, 24, .09); });
+  spr.root = mk('#fff4dc', 40, .07);
+  spr.spark = mk('#fff1c8', 14, .14);
+}
+function makeBackground() {
+  // экранный слой: далёкие звёзды
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), r = rnd(77);
+  const base = g.createRadialGradient(W * .55, H * .48, 0, W * .55, H * .5, Math.max(W, H) * .75);
+  base.addColorStop(0, '#0b1228'); base.addColorStop(.6, '#070b1a'); base.addColorStop(1, '#03050c');
+  g.fillStyle = base; g.fillRect(0, 0, W, H);
+  const n = Math.round(W * H / (DPR * DPR) / 520);
+  for (let i = 0; i < n; i++) {
+    const x = r() * W, y = r() * H, m = r(), a = .1 + m * m * m * .7, s = (m > .985 ? 1.5 : 1) * DPR;
+    g.fillStyle = `rgba(${215 + r() * 40 | 0},${220 + r() * 30 | 0},255,${a.toFixed(3)})`;
+    g.beginPath(); g.arc(x, y, s * .6, 0, 7); g.fill();
+  }
+  bgC = c;
+  // мировой слой: Млечный Путь поперёк планисферы
+  const M = 1400, m = document.createElement('canvas'); m.width = m.height = M;
+  const q = m.getContext('2d'), rr = rnd(42), k = M / (2.6 * R);   // 1 px текстуры = 1/k мировых единиц
+  const along = (t, off) => { const ang = -.42, cx = M / 2, cy = M / 2, L = M * .62; return [cx + Math.cos(ang) * (t - .5) * 2 * L - Math.sin(ang) * off, cy + Math.sin(ang) * (t - .5) * 2 * L + Math.cos(ang) * off]; };
+  for (let i = 0; i < 900; i++) {
+    const t = rr(), w = (1 + Math.sin(t * 9 + 1.3) * .35) * M * .07, [x, y] = along(t, (rr() - .5) * w * 2 * (.4 + rr() * .6));
+    const rad = (18 + rr() * 90) * (M / 1400), warm = rr() < .3;
+    const gg = q.createRadialGradient(x, y, 0, x, y, rad);
+    gg.addColorStop(0, warm ? 'rgba(170,140,150,.075)' : 'rgba(110,135,200,.08)'); gg.addColorStop(1, 'rgba(0,0,0,0)');
+    q.fillStyle = gg; q.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+  }
+  for (let i = 0; i < 160; i++) {       // тёмные прожилки пыли
+    const t = rr(), [x, y] = along(t, (rr() - .5) * M * .05), rad = (10 + rr() * 40) * (M / 1400);
+    const gg = q.createRadialGradient(x, y, 0, x, y, rad);
+    gg.addColorStop(0, 'rgba(2,3,9,.4)'); gg.addColorStop(1, 'rgba(0,0,0,0)');
+    q.fillStyle = gg; q.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+  }
+  dust.length = 0;
+  for (let i = 0; i < 5000; i++) {      // звёздная пыль в полосе
+    const t = rr(), [x, y] = along(t, (rr() - .5) * M * .16 * Math.pow(rr(), .7)), a = .1 + rr() * .45;
+    q.fillStyle = `rgba(230,236,255,${a.toFixed(2)})`; q.fillRect(x, y, 1.2, 1.2);
+    const wx = (x - M / 2) / k, wy = (y - M / 2) / k;
+    if (Math.hypot(wx, wy) < R * 1.03) dust.push([wx, wy, a]);
+  }
+  milkC = m; milkC.k = k;
+}
+
+/* =========================================================================
+   Подписи: жадная раскладка без наложений, с плавным появлением
+   ========================================================================= */
+const SUBS = { '₁': '1', '₂': '2', '₃': '3' };
+function richSegs(text) {
+  const segs = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (SUBS[ch]) segs.push({ t: SUBS[ch], sub: true });
+    else if (text[i + 1] === '̥') { segs.push({ t: ch, ring: true }); i++; }
+    else { const l = segs[segs.length - 1]; if (l && !l.sub && !l.ring) l.t += ch; else segs.push({ t: ch }); }
+  }
+  return segs;
+}
+const wCache = new Map();
+function tw(g, font, text) { const key = font + '|' + text; let w = wCache.get(key); if (w === undefined) { g.font = font; w = g.measureText(text).width; wCache.set(key, w); } return w; }
+function richWidth(g, text, size) {
+  let w = 0; for (const s of richSegs(text)) w += tw(g, `italic ${s.sub ? size * .62 : size}px "EB Garamond", Georgia, serif`, s.t);
+  return w;
+}
+function drawRich(g, text, x, y, size) {
+  let cx = x;
+  for (const s of richSegs(text)) {
+    const f = `italic ${s.sub ? size * .62 : size}px "EB Garamond", Georgia, serif`, w = tw(g, f, s.t);
+    g.font = f;
+    g.strokeText(s.t, cx, s.sub ? y + size * .22 : y); g.fillText(s.t, cx, s.sub ? y + size * .22 : y);
+    if (s.ring) { g.save(); g.lineWidth = Math.max(1, size * .06); g.strokeStyle = g.fillStyle; g.beginPath(); g.arc(cx + w * .5, y + size * .38, size * .09, 0, 7); g.stroke(); g.restore(); }
+    cx += w;
+  }
+}
+const labels = new Map();   // key → {a, dx, dy, w, h, s, kind, fam}
+let placed = [], blocked = [], clickable = [];
+function refreshBlocked() {
+  blocked = [];
+  const add = el => { if (!el) return; const r = el.getBoundingClientRect(); if (r.width && r.height && getComputedStyle(el).visibility !== 'hidden' && +getComputedStyle(el).opacity > .05) blocked.push([r.left * DPR - 6 * DPR, r.top * DPR - 6 * DPR, r.right * DPR + 6 * DPR, r.bottom * DPR + 6 * DPR]); };
+  ['.head h1', '.head .lead', '.head .over', '.head .stats', '.search', '.tools', '.legend .rose', '#card.on', '#laws.on', '#hint:not(.off)', '#caption.on'].forEach(sel => add(document.querySelector(sel)));
+  document.querySelectorAll('.lg').forEach(add);
+}
+const hitRect = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
+function tryPlace(key, pri, s, kind, w, h, opts) {
+  for (const [dx, dy] of opts) {
+    const [sx, sy] = [s.sx + dx, s.sy + dy], box = [sx, sy, sx + w, sy + h];
+    if (box[0] < 4 * DPR || box[1] < 4 * DPR || box[2] > W - 4 * DPR || box[3] > H - 4 * DPR) continue;
+    if (placed.some(p => hitRect(p, box)) || blocked.some(p => hitRect(p, box))) continue;
+    placed.push(box);
+    let L = labels.get(key);
+    if (!L) { L = { a: 0 }; labels.set(key, L); }
+    Object.assign(L, { dx, dy, w, h, s, kind, pri, seen: true });
+    return true;
+  }
+  return false;
+}
+
+/* =========================================================================
+   Рисование кадра
+   ========================================================================= */
+function famAlpha(f) {
+  let a = focus ? (focus !== f ? .28 : 1) : demo && demo !== f ? .62 : 1;
+  if (law) a = law.fams.has(f) ? 1 : .22;
+  return a;
+}
+function starAlpha(s) {
+  let a = famAlpha(s.fam);
+  if (branch) a *= s.isRoot ? .45 : (s.br === branch ? 1 : .16);
+  const ig = s.fam.ign;
+  if (ig && !s.isRoot) { const t = T - ig.t0 - s.depth * .2; if (t < 0) a *= .3; }
+  return a;
+}
+function igniteFlare(s) {
+  const ig = s.fam.ign; if (!ig) return 0;
+  const t = T - ig.t0 - s.depth * .2; if (t < 0) return 0;
+  return Math.exp(-t * 3.2) * (s.isRoot ? 1.4 : 1.1);
+}
+function updateStars() {
+  fams.forEach(f => {
+    f.bloom += (f.bloomT - f.bloom) * (1 - Math.exp(-DT * 5));
+    f.stars.forEach(s => { s.x = f.x + s.ox * f.bloom; s.y = f.y + s.oy * f.bloom; const p = toS(s.x, s.y); s.sx = p[0]; s.sy = p[1]; });
+  });
+}
+function drawPlanisphere(g) {
+  const [cx, cy] = toS(0, 0), z = cam.z, rr = R * z;
+  if (cx + rr * 1.25 < 0 || cx - rr * 1.25 > W || cy + rr * 1.25 < 0 || cy - rr * 1.25 > H) return;
+  g.save();
+  // едва заметная подсветка диска и сетка «склонений»
+  const dg = g.createRadialGradient(cx, cy, 0, cx, cy, rr * 1.04);
+  dg.addColorStop(0, 'rgba(40,56,110,.16)'); dg.addColorStop(1, 'rgba(40,56,110,.03)');
+  g.fillStyle = dg; g.beginPath(); g.arc(cx, cy, rr * 1.03, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(232,220,190,.06)'; g.lineWidth = DPR;
+  [.3, .6].forEach(k => { g.beginPath(); g.arc(cx, cy, rr * k, 0, 7); g.stroke(); });
+  SECT.forEach(a => { const p = (a + 30) * Math.PI / 180; g.beginPath(); g.moveTo(cx + Math.cos(p) * rr * .26, cy + Math.sin(p) * rr * .26); g.lineTo(cx + Math.cos(p) * rr * 1.03, cy + Math.sin(p) * rr * 1.03); g.stroke(); });
+  // обод с делениями
+  g.strokeStyle = 'rgba(232,220,190,.3)';
+  g.beginPath(); g.arc(cx, cy, rr * 1.03, 0, 7); g.stroke();
+  g.beginPath(); g.arc(cx, cy, rr * 1.075, 0, 7); g.stroke();
+  g.strokeStyle = 'rgba(232,220,190,.22)';
+  g.beginPath();
+  for (let d = 0; d < 360; d += 2) {
+    const p = d * Math.PI / 180, long = d % 30 === 0, mid = d % 10 === 0, r1 = rr * 1.03, r2 = rr * (long ? 1.075 : mid ? 1.055 : 1.042);
+    g.moveTo(cx + Math.cos(p) * r1, cy + Math.sin(p) * r1); g.lineTo(cx + Math.cos(p) * r2, cy + Math.sin(p) * r2);
+  }
+  g.stroke();
+  // названия областей неба — по дуге
+  const fs = clamp(13 * DPR * Math.pow(z * R / (380 * DPR), .35), 11 * DPR, 17 * DPR), hv = homeView(), na = clamp((hv.z * 1.7 - z) / (hv.z * .6), 0, 1);
+  g.font = `500 ${fs}px Jost, sans-serif`; g.fillStyle = `rgba(236,224,196,${(.7 * na).toFixed(3)})`; g.textBaseline = 'middle'; g.textAlign = 'center';
+  if (na > .01)
+  REGIONS.forEach((reg, i) => {
+    const txt = reg.name.toUpperCase(), sp = fs * .42, rad = rr * 1.075 + fs * 1.15, a0 = SECT[i] * Math.PI / 180;
+    const bottom = Math.sin(a0) > .2, chars = [...txt], widths = chars.map(ch => tw(g, g.font, ch) + sp), total = widths.reduce((a, b) => a + b, 0) - sp;
+    let a = a0 + (bottom ? 1 : -1) * total / 2 / rad;
+    chars.forEach((ch, k) => {
+      const da = (widths[k] - sp / 2) / 2 / rad * (bottom ? -1 : 1);
+      const ang = a + da, x = cx + Math.cos(ang) * rad, y = cy + Math.sin(ang) * rad;
+      g.save(); g.translate(x, y); g.rotate(ang + (bottom ? -Math.PI / 2 : Math.PI / 2)); g.fillText(ch, 0, 0); g.restore();
+      a += widths[k] / rad * (bottom ? -1 : 1);
+    });
+  });
+  g.restore();
+}
+function draw() {
+  const g = ctx;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+  g.drawImage(bgC, 0, 0);
+  // Млечный Путь — в мировых координатах
+  const k = milkC.k, [mx, my] = toS(0, 0), sc = cam.z / k;
+  const zc0 = cam.z / DPR, near = clamp((zc0 - .75) / .6, 0, 1);
+  g.save(); g.beginPath(); g.arc(mx, my, R * cam.z * 1.03, 0, 7); g.clip();
+  g.globalAlpha = 1 - near * .72;
+  g.drawImage(milkC, mx - milkC.width / 2 * sc, my - milkC.height / 2 * sc, milkC.width * sc, milkC.height * sc);
+  g.globalAlpha = 1;
+  if (near > 0) {   // вблизи текстура размывается — пыль рисуется точками
+    const ds = 1.3 * DPR;
+    for (const [x, y, a] of dust) {
+      const sx = (x - cam.x) * cam.z + W / 2, sy = (y - cam.y) * cam.z + H / 2;
+      if (sx < 0 || sy < 0 || sx > W || sy > H) continue;
+      g.fillStyle = `rgba(230,236,255,${(a * near).toFixed(3)})`; g.fillRect(sx, sy, ds, ds);
+    }
+  }
+  g.restore();
+  drawPlanisphere(g);
+  updateStars();
+  const zc = cam.z / DPR;   // масштаб в CSS-пикселях на мировую единицу
+  // линии созвездий
+  g.lineCap = 'round';
+  fams.forEach(f => {
+    const lead = focus === f || demo === f, hov = hoverFam === f;
+    const a = famAlpha(f) * (law && !law.fams.has(f) ? .5 : 1) * (branch ? .6 : 1);
+    g.lineWidth = (lead ? 1.3 : 1) * DPR;
+    const la = (.26 + (lead ? .3 : 0) + (hov ? .25 : 0)) * a;
+    const [rx, ry] = [f.rootStar.sx, f.rootStar.sy], reach = (f.rad * f.bloom + 20) * cam.z;
+    if (rx + reach < 0 || ry + reach < 0 || rx - reach > W || ry - reach > H) return;
+    if (f.ign && T - f.ign.t0 < 2.5) {   // идёт «зажигание»: у каждой линии своя яркость
+      f.edges.forEach(([i, j]) => {
+        const A = f.stars[i], B = f.stars[j], lit = T - f.ign.t0 - B.depth * .2 >= 0;
+        g.strokeStyle = `rgba(236,222,190,${(la * (lit ? 1 : .35)).toFixed(3)})`;
+        g.beginPath(); g.moveTo(A.sx, A.sy); g.lineTo(B.sx, B.sy); g.stroke();
+      });
+    } else {                               // иначе — одним путём на всё созвездие
+      g.strokeStyle = `rgba(236,222,190,${la.toFixed(3)})`; g.beginPath();
+      f.edges.forEach(([i, j]) => { const A = f.stars[i], B = f.stars[j]; g.moveTo(A.sx, A.sy); g.lineTo(B.sx, B.sy); });
+      g.stroke();
+    }
+  });
+  // дуги звуковых законов
+  if (law) {
+    const p = Math.min(1, lawT / 1.1);
+    law.links.forEach(([A, B], i) => {
+      const q = clamp(p * 1.8 - i * .1, 0, 1); if (q <= 0) return;
+      const mxp = (A.sx + B.sx) / 2, myp = (A.sy + B.sy) / 2, d = Math.hypot(B.sx - A.sx, B.sy - A.sy);
+      const nx = -(B.sy - A.sy) / (d || 1), ny = (B.sx - A.sx) / (d || 1), bend = d * .32 * (ny > 0 ? -1 : 1);
+      g.strokeStyle = `rgba(240,201,131,${(.85 * q).toFixed(3)})`; g.lineWidth = 1.6 * DPR;
+      g.setLineDash([5 * DPR, 5 * DPR]); g.lineDashOffset = -T * 18 * DPR;
+      g.beginPath(); g.moveTo(A.sx, A.sy); g.quadraticCurveTo(mxp + nx * bend, myp + ny * bend, B.sx, B.sy); g.stroke(); g.setLineDash([]);
+    });
+  }
+  // искры, бегущие от корня по линиям созвездия
+  g.globalCompositeOperation = 'lighter';
+  fams.forEach(f => {
+    if (!f.ign) return;
+    f.stars.forEach(s => {
+      if (!s.parent) return;
+      const t = (T - f.ign.t0 - (s.depth - 1) * .2) / .2;
+      if (t <= 0 || t >= 1) return;
+      const x = s.parent.sx + (s.sx - s.parent.sx) * t, y = s.parent.sy + (s.sy - s.parent.sy) * t, r = 11 * DPR;
+      g.drawImage(spr.spark, x - r, y - r, r * 2, r * 2);
+    });
+  });
+  // звёзды
+  const zs = clamp(zc * 1.35, .3, 1.02);
+  stars.forEach(s => {
+    if (s.sx < -60 || s.sy < -60 || s.sx > W + 60 || s.sy > H + 60) return;
+    const a = starAlpha(s), tw2 = REDUCED ? 1 : .8 + .2 * Math.sin(T * (1.1 + s.ph * .3) + s.ph);
+    const im = s.isRoot ? spr.root : spr[s.br];
+    const flare = igniteFlare(s), hl = s === hover ? 1.4 : 1;
+    const size = im.width / 2 * (s.isRoot ? .95 : .38 + s.mag * .38) * zs * hl * (1 + flare * .8);
+    g.globalAlpha = Math.min(1, a * tw2 * (1 + flare * .5));
+    g.drawImage(im, s.sx - size, s.sy - size, size * 2, size * 2);
+    if (s.isRoot) {
+      g.strokeStyle = `rgba(255,244,220,${(.34 * a * tw2).toFixed(3)})`; g.lineWidth = DPR;
+      const L = size * 1.6;
+      g.beginPath(); g.moveTo(s.sx - L, s.sy); g.lineTo(s.sx + L, s.sy); g.moveTo(s.sx, s.sy - L); g.lineTo(s.sx, s.sy + L); g.stroke();
+    }
+  });
+  g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  drawLabels(g, zc);
+  drawMeteors(g);
+}
+
+function drawLabels(g, zc) {
+  placed = []; clickable = [];
+  labels.forEach(L => { L.seen = false; });
+  const lead = focus || demo;
+  const cand = [];
+  const ignited = s => !s.fam.ign || T - s.fam.ign.t0 - s.depth * .2 >= 0;
+  // 1. законы  2. семья в фокусе  3. наведение  4. ветвь  5. названия созвездий  6. корни  7. слова
+  if (law) law.links.forEach(([A, B]) => { cand.push([100, A, 'word']); cand.push([100, B, 'word']); });
+  if (lead) { cand.push([90, lead.rootStar, 'root']); cand.push([89, lead.rootStar, 'gloss']); lead.stars.forEach(s => { if (!s.isRoot && ignited(s)) cand.push([s.br === 'sl' ? 86 : 85, s, 'word']); }); }
+  if (hover) cand.push([80, hover, hover.isRoot ? 'root' : 'word']);
+  if (hoverFam && hoverFam !== lead) cand.push([79, hoverFam.rootStar, 'gloss']);
+  if (branch) stars.forEach(s => { if (s.br === branch) cand.push([60, s, 'word']); });
+  fams.forEach(f => { if (f !== lead) cand.push([50 - (famAlpha(f) < .5 ? 20 : 0), f.rootStar, 'gloss']); });
+  if (!focus && !law) {   // в фокусе — только своя семья, без шума соседей
+    if (zc > .75) fams.forEach(f => { if (f !== lead) cand.push([40, f.rootStar, 'root']); });
+    if (zc > 1.15) stars.forEach(s => { if (!s.isRoot && s.br === 'sl' && s.fam !== lead) cand.push([35, s, 'word']); });
+    if (zc > 1.5) stars.forEach(s => { if (!s.isRoot && s.br !== 'sl' && s.fam !== lead) cand.push([30, s, 'word']); });
+  }
+  cand.sort((a, b) => b[0] - a[0]);
+  const done = new Set();
+  for (const [pri, s, kind] of cand) {
+    const key = kind + (kind === 'word' ? s.id : s.fam.idx);
+    if (done.has(key)) continue; done.add(key);
+    if (s.sx < -80 || s.sy < -40 || s.sx > W + 80 || s.sy > H + 40) continue;
+    const focusFam = s.fam === lead || (law && law.fams.has(s.fam));
+    if (kind === 'gloss') {
+      const fs = (focusFam ? 17 : clamp(13.5 * Math.pow(zc / .36, .25), 13, 17)) * DPR, text = focusFam ? s.fam.gl : (s.fam.lab || s.fam.gl);
+      const w = tw(g, `${fs}px "EB Garamond", Georgia, serif`, text), h = fs * 1.2, off = (s.isRoot ? 9 : 6) * DPR;
+      const L0 = labels.get(key); if (L0) L0.text = text;
+      if (tryPlace(key, pri, s, 'gloss', w, h, [[-w / 2, off], [-w / 2, -off - h], [off, -h / 2], [-off - w, -h / 2]])) labels.get(key).text = text;
+    } else if (kind === 'root') {
+      const fs = (focusFam ? 22 : clamp(15 * Math.pow(zc, .3), 14, 20)) * DPR, w = richWidth(g, s.text, fs), h = fs * 1.25, off = 12 * DPR;
+      tryPlace(key, pri, s, 'root', w, h, [[-w / 2, -off - h], [-w / 2, off + fs * 1.3], [off, -h - off * .4]]);
+    } else {
+      const fs = (focusFam || s === hover ? 17 : clamp(14 * Math.pow(zc, .25), 13, 17)) * DPR, ls = 12 * DPR;
+      const w1 = tw(g, `${s.br === 'sl' ? '500 ' : ''}${fs}px "EB Garamond", Georgia, serif`, s.text), w2 = tw(g, `${ls}px Jost, sans-serif`, s.lang);
+      const w = w1 + 6 * DPR + w2, h = fs * 1.2, off = 9 * DPR, right = s.ox >= -4;
+      tryPlace(key, pri, s, 'word', w, h, right ? [[off, -h / 2], [-w / 2, -off - h], [-w / 2, off], [-off - w, -h / 2]] : [[-off - w, -h / 2], [-w / 2, -off - h], [-w / 2, off], [off, -h / 2]]);
+      const L = labels.get(key); if (L) { L.fs = fs; L.w1 = w1; }
+    }
+  }
+  // отрисовка с плавным появлением и уходом
+  g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
+  labels.forEach((L, key) => {
+    L.a += ((L.seen ? 1 : 0) - L.a) * (1 - Math.exp(-DT * (L.seen ? 9 : 12)));
+    if (L.a < .02) { if (!L.seen) labels.delete(key); return; }
+    const s = L.s, x = s.sx + L.dx, y = s.sy + L.dy, a = L.a * Math.max(.55, starAlpha(s));
+    g.strokeStyle = `rgba(4,7,18,${(.85 * a).toFixed(3)})`; g.lineWidth = 3.2 * DPR;
+    if (L.kind === 'gloss') {
+      const fs = L.h / 1.2;
+      g.font = `${fs}px "EB Garamond", Georgia, serif`; g.fillStyle = s.fam === (focus || demo) ? `rgba(240,201,131,${a.toFixed(3)})` : `rgba(236,218,182,${(.9 * a).toFixed(3)})`;
+      g.strokeText(L.text, x, y + fs * .92); g.fillText(L.text, x, y + fs * .92);
+      if (L.seen) clickable.push([x, y, x + L.w, y + L.h, s.fam]);
+    } else if (L.kind === 'root') {
+      const fs = L.h / 1.25;
+      g.fillStyle = `rgba(255,246,228,${(.97 * a).toFixed(3)})`;
+      drawRich(g, s.text, x, y + fs * .95, fs);
+      if (L.seen) clickable.push([x, y, x + L.w, y + L.h, s.fam]);
+    } else {
+      const fs = L.fs || 15 * DPR;
+      g.font = `${s.br === 'sl' ? '500 ' : ''}${fs}px "EB Garamond", Georgia, serif`;
+      g.fillStyle = `rgba(246,238,222,${((s.br === 'sl' ? 1 : .88) * a).toFixed(3)})`;
+      g.strokeText(s.text, x, y + fs * .92); g.fillText(s.text, x, y + fs * .92);
+      g.font = `${12 * DPR}px Jost, sans-serif`; g.fillStyle = `rgba(214,206,190,${(.78 * a).toFixed(3)})`;
+      const lx = x + (L.w1 || 0) + 6 * DPR;
+      g.strokeText(s.lang, lx, y + fs * .92); g.fillText(s.lang, lx, y + fs * .92);
+      if (L.seen) clickable.push([x, y, x + L.w, y + L.h, s.fam, s]);
+    }
+  });
+}
+
+/* ---------- падающие звёзды ---------- */
+const meteors = [];
+let meteorT = 3.5;
+function drawMeteors(g) {
+  for (let i = meteors.length - 1; i >= 0; i--) {
+    const m = meteors[i], t = (T - m.t0) / m.d;
+    if (t > 1) { meteors.splice(i, 1); continue; }
+    const x = m.x + m.vx * t, y = m.y + m.vy * t, a = Math.sin(Math.PI * t) * .8;
+    const gr = g.createLinearGradient(x, y, x - m.vx * .18, y - m.vy * .18);
+    gr.addColorStop(0, `rgba(255,248,230,${a.toFixed(3)})`); gr.addColorStop(1, 'rgba(255,248,230,0)');
+    g.strokeStyle = gr; g.lineWidth = 1.4 * DPR; g.beginPath(); g.moveTo(x, y); g.lineTo(x - m.vx * .18, y - m.vy * .18); g.stroke();
+  }
+}
+
+/* =========================================================================
+   Фокус на семье: полёт камеры, «зажигание» родственников, карточка
+   ========================================================================= */
+function bloomFor(f, targetPx) { return clamp(targetPx * DPR / (f.rad * cam.tz), 1, 3.4); }
+function ignite(f) { f.ign = { t0: T }; }
+function setDemo(f) {
+  if (demo && demo !== f) { demo.bloomT = 1; demo.ign = null; }
+  demo = f;
+  if (f) { f.bloomT = bloomFor(f, mobile ? 64 : 104); ignite(f); }
+}
+function focusFam(f, star) {
+  if (demo && demo !== f) { demo.bloomT = 1; demo.ign = null; }
+  demo = null;
+  if (focus && focus !== f) { focus.bloomT = 1; focus.ign = null; }
+  focus = f; setLaw(null, true);
+  openCard(f, star);
+  const fa = freeArea(), z = clamp(Math.min(fa.w, fa.h) * .36 / (f.rad * 1.15), .5 * DPR, 3.6 * DPR);
+  flyTo(f.x - (fa.cx - W / 2) / z, f.y - (fa.cy - H / 2) / z, z);
+  f.bloomT = bloomFor(f, mobile ? 70 : 110);
+  ignite(f);
+  $('hint').classList.add('off');
+}
+function rich(s) {
+  return s.replace(/(.)̥/g, '<span class="syl">$1</span>').replace(/[₁₂₃]/g, m => `<sub>${'₁₂₃'.indexOf(m) + 1}</sub>`);
+}
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function openCard(f, star) {
+  const card = $('card');
+  const byBr = BR_ORDER.flatMap(b => f.w.filter(w => w[0] === b));
+  card.innerHTML = `<button class="x" aria-label="Закрыть"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
+    <p class="k">${REGIONS[f.region].name} · праиндоевропейский корень</p>
+    <h2>${rich(esc(f.root))}</h2><p class="gl">«${esc(f.gl)}»</p>
+    <p class="note">${rich(NB(esc(f.note)))}</p>
+    <ul class="wl">${byBr.map(w => `<li data-t="${esc(w[2])}" data-l="${esc(w[1])}" tabindex="0"><span class="lang"><i style="background:${BR[w[0]].c}"></i>${w[1]}</span><span class="w">${esc(w[2])}${w[3] ? `<em>${esc(w[3])}</em>` : ''}${w[4] ? `<small>${esc(w[4])}</small>` : ''}</span></li>`).join('')}</ul>
+    <p class="foot">${NB('Звёздочка * значит, что слово восстановлено сравнением языков, а не найдено в записях. h₁, h₂, h₃ — «ларингалы», гортанные звуки праязыка; напрямую они отразились только в анатолийских языках, например в хеттском ḫ.').replace(/[₁₂₃]/g, m => `<sub>${'₁₂₃'.indexOf(m) + 1}</sub>`)}</p>`;
+  card.classList.add('on'); card.scrollTop = 0; document.body.classList.add('panel-open');
+  card.querySelector('.x').onclick = () => closeCard();
+  card.querySelectorAll('li').forEach(li => {
+    const s = f.stars.find(x => x.text === li.dataset.t && x.lang === li.dataset.l);
+    li.onmouseenter = () => { hover = s; }; li.onmouseleave = () => { if (hover === s) hover = null; };
+    li.onclick = () => { hover = s; setTimeout(() => { if (hover === s) hover = null; }, 1800); };
+    li.onkeydown = e => { if (e.key === 'Enter') li.onclick(); };
+    if (star && star === s) li.classList.add('hl');
+  });
+  setTimeout(refreshBlocked, 480);
+}
+function closeCard(keepCam) {
+  $('card').classList.remove('on'); if (!law) document.body.classList.remove('panel-open');
+  if (focus) { focus.bloomT = 1; focus.ign = null; }
+  focus = null; hover = null;
+  if (!keepCam) flyHome();
+  setTimeout(refreshBlocked, 480);
+}
+
+/* ---------- легенда и роза ветвей ---------- */
+const legend = $('legend');
+const counts = {}; stars.forEach(s => { if (s.br) counts[s.br] = (counts[s.br] || 0) + 1; });
+BR_ORDER.forEach(k => {
+  const b = document.createElement('button'); b.className = 'lg'; b.dataset.b = k; b.setAttribute('aria-pressed', 'false');
+  b.innerHTML = `<i style="background:${BR[k].c}"></i>${BR[k].n}<b>${counts[k]}</b>`;
+  b.title = `${BR[k].n}: ${counts[k]} ${plural(counts[k], 'слово', 'слова', 'слов')} в атласе`;
+  b.onclick = () => { branch = branch === k ? null : k; syncLegend(); stopDemo(); };
+  legend.appendChild(b);
+});
+function syncLegend() { legend.classList.toggle('filtering', !!branch); legend.querySelectorAll('.lg').forEach(b => b.setAttribute('aria-pressed', b.dataset.b === branch ? 'true' : 'false')); }
+(function rose() {
+  const svg = $('rose');
+  let h = '<circle r="30" fill="none" stroke="rgba(243,234,216,.22)"/><circle r="2.4" fill="#fff4dc"/>';
+  [['С', 0, -43], ['Ю', 0, 47], ['З', -45, 2], ['В', 45, 2]].forEach(([t, x, y]) => { h += `<text x="${x}" y="${y}" fill="rgba(243,234,216,.6)" font-size="10" font-family="Jost, sans-serif" text-anchor="middle" dominant-baseline="middle">${t}</text>`; });
+  BR_ORDER.forEach(k => { const a = BR[k].a * Math.PI / 180; h += `<line x1="0" y1="0" x2="${(Math.cos(a) * 30).toFixed(1)}" y2="${(Math.sin(a) * 30).toFixed(1)}" stroke="rgba(243,234,216,.12)"/><circle cx="${(Math.cos(a) * 30).toFixed(1)}" cy="${(Math.sin(a) * 30).toFixed(1)}" r="3.6" fill="${BR[k].c}"/>`; });
+  svg.innerHTML = h;
+})();
+
+/* ---------- звуковые законы ---------- */
+const lawsBox = $('laws');
+function renderLaws(active) {
+  lawsBox.innerHTML = `<button class="x" aria-label="Закрыть"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
+    <p class="k">Звуковые законы</p><h2>${active.name}</h2>
+    <div class="tabs">${LAWS.map(l => `<button class="lt" data-l="${l.id}" aria-pressed="${l === active}">${l.name}</button>`).join('')}</div>
+    <p>${active.text}</p>
+    <ul class="pairs">${active.links.map(([A, B], i) => `<li data-i="${i}" tabindex="0"><span>${esc(A.text)} <em>→</em> ${esc(B.text)}</span><small>«${esc(A.fam.lab || A.fam.gl)}»</small></li>`).join('')}</ul>`;
+  lawsBox.querySelector('.x').onclick = () => setLaw(null);
+  lawsBox.querySelectorAll('.lt').forEach(b => b.onclick = () => setLaw(LAWS.find(l => l.id === b.dataset.l)));
+  lawsBox.querySelectorAll('.pairs li').forEach(li => {
+    const [A, B] = active.links[+li.dataset.i];
+    li.onmouseenter = () => { hover = A; }; li.onmouseleave = () => { hover = null; };
+    li.onclick = () => focusFam(A.fam, A);
+    li.onkeydown = e => { if (e.key === 'Enter') li.onclick(); };
+  });
+}
+function setLaw(l, silent) {
+  if (law) law.fams.forEach(f => { if (f !== focus) f.bloomT = 1; });
+  law = l; lawT = 0;
+  $('lawsBtn').setAttribute('aria-pressed', l ? 'true' : 'false');
+  if (!l) { lawsBox.classList.remove('on'); if (!focus) document.body.classList.remove('panel-open'); if (!silent && !focus) flyHome(); setTimeout(refreshBlocked, 480); return; }
+  stopDemo(); stopTour();
+  if (focus) closeCard(true);
+  l.fams = new Set(l.links.flatMap(([A, B]) => [A.fam, B.fam]));
+  renderLaws(l); lawsBox.classList.add('on'); lawsBox.scrollTop = 0; document.body.classList.add('panel-open');
+  const fa = freeArea(), pts = [...l.fams];
+  const x0 = Math.min(...pts.map(f => f.x)) - 140, x1 = Math.max(...pts.map(f => f.x)) + 140, y0 = Math.min(...pts.map(f => f.y)) - 140, y1 = Math.max(...pts.map(f => f.y)) + 140;
+  const z = Math.min(fa.w / (x1 - x0), fa.h / (y1 - y0));
+  flyTo((x0 + x1) / 2 - (fa.cx - W / 2) / z, (y0 + y1) / 2 - (fa.cy - H / 2) / z, z);
+  l.fams.forEach(f => { f.bloomT = clamp(58 * DPR / (f.rad * z), 1, 2.3); });
+  $('hint').classList.add('off');
+  setTimeout(refreshBlocked, 480);
+}
+$('lawsBtn').onclick = () => setLaw(law ? null : LAWS[0]);
+$('home').onclick = () => { stopTour(); stopDemo(); setLaw(null, true); closeCard(); branch = null; syncLegend(); };
+
+/* ---------- поиск ---------- */
+const q = $('q'), hitsBox = $('hits');
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/ё/g, 'е').replace(/[*()\-₁₂₃]/g, '');
+let hitList = [], hitSel = 0;
+q.addEventListener('input', () => {
+  const v = norm(q.value.trim());
+  if (!v) { hitsBox.classList.remove('on'); return; }
+  const score = s => { const t = norm(s.text), tr = s.tr ? norm(s.tr) : ''; if (t === v || tr === v) return 0; if (t.startsWith(v) || tr.startsWith(v)) return 1; if (t.includes(v) || tr.includes(v)) return 2; if (s.isRoot && norm(s.fam.gl).includes(v)) return 3; if (s.gl && norm(s.gl).includes(v)) return 4; return 9; };
+  hitList = stars.map(s => [score(s), s]).filter(([sc]) => sc < 9).sort((a, b) => a[0] - b[0]).slice(0, 7).map(x => x[1]);
+  hitSel = 0;
+  hitsBox.innerHTML = hitList.length
+    ? hitList.map((s, i) => `<button class="hit${i === 0 ? ' sel' : ''}" data-i="${i}" role="option"><span>${s.isRoot ? rich(esc(s.text)) : esc(s.text)}</span><small>${s.isRoot ? 'корень · «' + esc(s.fam.gl) + '»' : esc(s.lang) + ' · «' + esc(s.fam.lab || s.fam.gl) + '»'}</small></button>`).join('')
+    : '<div class="hit none">Такого слова в атласе нет</div>';
+  hitsBox.classList.add('on');
+  hitsBox.querySelectorAll('button').forEach(b => b.onclick = () => pick(hitList[+b.dataset.i]));
+});
+q.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && hitList[hitSel]) pick(hitList[hitSel]);
+  if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && hitList.length) { e.preventDefault(); hitSel = (hitSel + (e.key === 'ArrowDown' ? 1 : -1) + hitList.length) % hitList.length; hitsBox.querySelectorAll('.hit').forEach((h, i) => h.classList.toggle('sel', i === hitSel)); }
+  if (e.key === 'Escape') { hitsBox.classList.remove('on'); q.blur(); }
+});
+q.addEventListener('blur', () => setTimeout(() => hitsBox.classList.remove('on'), 150));
+function pick(s) { hitsBox.classList.remove('on'); q.value = s.isRoot ? s.fam.gl : s.text; q.blur(); stopTour(); focusFam(s.fam, s.isRoot ? null : s); if (!s.isRoot) { hover = s; setTimeout(() => { if (hover === s) hover = null; }, 2600); } }
+
+/* ---------- экскурсия ---------- */
+const TOUR = [
+  ['*méh₂tēr', 'В центре неба — мать: mother, Mutter, māter, μήτηρ. Слово узнаётся почти во всех ветвях.'],
+  ['*h₂ŕ̥tḱos', 'Медведя боялись звать по имени: «медведь» — «медоед». Но греческое ἄρκτος осталось в «Арктике».'],
+  ['*h₁es-', 'Два «есть» в русском — из двух разных корней. Совпадение!'],
+  ['*ḱm̥tóm', 'Слово «сто» дало имя двум половинам всей семьи: сатэм и кентум.'],
+  ['*gʷṓws', 'Говядина и английская cow — родня.'],
+  ['*wódr̥', 'Хеттское watar записано больше трёх тысяч лет назад — и узнаётся сразу.'],
+  ['*kʷel-', 'Колесо, цикл, чакра и даже культура — одна семья.']
+];
+let tourI = -1, tourTimer = 0;
+function stopTour() { if (tourI < 0) return; tourI = -1; clearTimeout(tourTimer); $('tour').setAttribute('aria-pressed', 'false'); $('caption').classList.remove('on'); }
+function tourStep() {
+  if (tourI < 0) return;
+  if (tourI >= TOUR.length) { stopTour(); closeCard(); return; }
+  const [root, cap] = TOUR[tourI], f = fams.find(x => x.root === root);
+  focusFam(f);
+  const c = $('caption'); c.textContent = NB(cap); c.classList.add('on');
+  c.style.setProperty('--cap-x', mobile ? '50%' : `${freeArea().cx / DPR}px`);
+  tourI++; tourTimer = setTimeout(tourStep, 6200);
+}
+$('tour').onclick = () => { if (tourI >= 0) { stopTour(); return; } stopDemo(); setLaw(null, true); branch = null; syncLegend(); tourI = 0; $('tour').setAttribute('aria-pressed', 'true'); tourStep(); };
+function stopDemo() { if (demo) { demo.bloomT = 1; demo.ign = null; demo = null; } }
+
+/* ---------- мышь, касания, клавиши ---------- */
+const tip = $('tip');
+const ptrs = new Map(); let downAt = null, pinch = 0, moved = false;
+function starAt(mx, my) {
+  let best = null, bd = 16 * DPR;
+  stars.forEach(s => { const d = Math.hypot(s.sx - mx, s.sy - my); if (d < bd && starAlpha(s) > .2) { bd = d; best = s; } });
+  return best;
+}
+function labelAt(mx, my) { for (let i = clickable.length - 1; i >= 0; i--) { const c = clickable[i]; if (mx >= c[0] && mx <= c[2] && my >= c[1] && my <= c[3]) return c; } return null; }
+function famAt(mx, my) {
+  let best = null, bd = 1e9;
+  fams.forEach(f => { const d = Math.hypot(f.rootStar.sx - mx, f.rootStar.sy - my), lim = f.rad * f.bloom * cam.z * 1.05; if (d < lim && d < bd) { bd = d; best = f; } });
+  return best;
+}
+cv.addEventListener('pointerdown', e => { ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); cv.setPointerCapture(e.pointerId); downAt = { x: e.clientX, y: e.clientY }; moved = false; });
+cv.addEventListener('pointermove', e => {
+  const p = ptrs.get(e.pointerId);
+  if (p) {
+    if (ptrs.size === 1) {
+      if (Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 5) { if (!moved) { stopTour(); stopDemo(); } moved = true; cv.classList.add('drag'); }
+      if (moved) { cam.tx -= (e.clientX - p.x) * DPR / cam.z; cam.ty -= (e.clientY - p.y) * DPR / cam.z; cam.x = cam.tx; cam.y = cam.ty; }
+    } else if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinch) zoomAt((a.x + b.x) / 2 * DPR, (a.y + b.y) / 2 * DPR, d / pinch, true);
+      pinch = d; moved = true;
+    }
+    p.x = e.clientX; p.y = e.clientY; tip.classList.remove('on'); return;
+  }
+  if (e.pointerType !== 'mouse') return;
+  const mx = e.clientX * DPR, my = e.clientY * DPR, s = starAt(mx, my), lab = s ? null : labelAt(mx, my);
+  hover = s || (lab && lab[5]) || null;
+  hoverFam = s ? s.fam : lab ? lab[4] : famAt(mx, my);
+  cv.classList.toggle('hov', !!(s || lab));
+  if (s) {
+    tip.innerHTML = s.isRoot ? `<i>${rich(esc(s.text))}</i> — «${esc(s.fam.gl)}»<small>праиндоевропейский корень · щёлкните, чтобы открыть семью</small>`
+      : `${esc(s.text)}${s.tr ? ` <i>${esc(s.tr)}</i>` : ''}${s.gl ? `<small>«${esc(s.gl)}»</small>` : ''}<small>${LANG[s.lang] || s.lang} · ${BR[s.br].n.toLowerCase()} · семья «${esc(s.fam.lab || s.fam.gl)}»</small>`;
+    tip.style.left = Math.min(innerWidth - 310, e.clientX + 16) + 'px'; tip.style.top = Math.min(innerHeight - 90, e.clientY + 18) + 'px'; tip.classList.add('on');
+  } else tip.classList.remove('on');
+});
+const up = e => {
+  ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = 0; cv.classList.remove('drag');
+  if (!moved && downAt && e.type === 'pointerup') {
+    const mx = e.clientX * DPR, my = e.clientY * DPR, s = starAt(mx, my), lab = s ? null : labelAt(mx, my), f = s ? s.fam : lab ? lab[4] : null;
+    if (f) { stopTour(); focusFam(f, s && !s.isRoot ? s : lab && lab[5] ? lab[5] : null); }
+  }
+  downAt = null;
+};
+cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+cv.addEventListener('pointerleave', () => { if (!ptrs.size) { hover = null; hoverFam = null; tip.classList.remove('on'); } });
+function zoomAt(mx, my, factor, instant) {
+  const [wx, wy] = toW(mx, my), hv = homeView();
+  const nz = clamp(cam.tz * factor, hv.z * .7, 4.5 * DPR);
+  cam.tz = nz; cam.tx = wx - (mx - W / 2) / nz; cam.ty = wy - (my - H / 2) / nz;
+  if (instant) { cam.z = cam.tz; cam.x = cam.tx; cam.y = cam.ty; }
+}
+cv.addEventListener('wheel', e => { e.preventDefault(); stopTour(); stopDemo(); zoomAt(e.clientX * DPR, e.clientY * DPR, Math.exp(-e.deltaY * .0015)); }, { passive: false });
+cv.addEventListener('dblclick', e => { zoomAt(e.clientX * DPR, e.clientY * DPR, 1.8); });
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (tourI >= 0) stopTour(); if ($('card').classList.contains('on')) closeCard(); else if (law) setLaw(null); }
+  if (e.key === '/' && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+});
+
+/* =========================================================================
+   Размер и цикл
+   ========================================================================= */
+function resize() {
+  DPR = Math.min(devicePixelRatio || 1, SHOT ? 1 : 2);
+  W = cv.width = Math.round(innerWidth * DPR); H = cv.height = Math.round(innerHeight * DPR);
+  mobile = innerWidth <= 860;
+  wCache.clear(); makeSprites(); makeBackground(); computeHome();
+  if (focus) focusFam(focus); else if (law) setLaw(law); else { const v = homeView(); flyTo(v.x, v.y, v.z); cam.x = v.x; cam.y = v.y; cam.z = v.z; if (demo) demo.bloomT = bloomFor(demo, mobile ? 64 : 104); }
+  refreshBlocked();
+}
+let rzT = 0;
+addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(resize, 120); });
+if (document.fonts) {
+  // греческое и расширенное латинское подмножества грузятся лениво — подгружаем заранее и пересчитываем ширины подписей
+  const sample = 'μήτηρ ἀἁἄὄὕῦ ā́ḗṓǵḱʷʰ ṛ́ṣñś ḫšž əłǰ';
+  ['400 16px "EB Garamond"', 'italic 400 16px "EB Garamond"', '500 16px "EB Garamond"'].forEach(f => { document.fonts.load(f, sample).catch(() => {}); });
+  document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', () => wCache.clear());
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => {
+  wCache.clear(); refreshBlocked(); computeHome();
+  if (!focus && !law) { flyHome(); if (demo) demo.bloomT = bloomFor(demo, mobile ? 64 : 104); }
+});
+
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  // шаг по реальному времени: на медленной машине анимации не должны растягиваться
+  const dt = Math.min(SHOT ? .5 : .1, (now - last) / 1000); last = now; T += dt; lawT += dt; DT = dt;
+  const k = 1 - Math.exp(-dt * 3.4);
+  cam.x += (cam.tx - cam.x) * k; cam.y += (cam.ty - cam.y) * k; cam.z *= Math.exp(Math.log(cam.tz / cam.z) * k);
+  if (!REDUCED) {
+    meteorT -= dt;
+    if (meteorT <= 0) {
+      meteorT = 7 + Math.random() * 9;
+      const x = W * (.2 + Math.random() * .7), y = H * (.05 + Math.random() * .3), a = .5 + Math.random() * .5, L = (220 + Math.random() * 200) * DPR;
+      meteors.push({ x, y, vx: -Math.cos(a) * L, vy: Math.sin(a) * L, t0: T, d: .9 + Math.random() * .5 });
+    }
+  }
+  draw();
+}
+resize();
+// первый кадр: «мать» в центре неба уже раскрывается и зажигает родню
+setTimeout(() => { if (!focus && !law && tourI < 0) setDemo(fams.find(f => f.root === '*méh₂tēr')); }, SHOT ? 150 : 700);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

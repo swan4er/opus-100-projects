@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Бездна Мандельброта</title>
+<meta name="description" content="Глубокий зум в множество Мандельброта до увеличения 10³¹: теория возмущений, 256-битная эталонная орбита и автопилот.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;600;700&family=Unbounded:wght@400;700&display=swap">
+<style>
+:root {
+  --bg: #03040a;
+  --plate: rgba(4, 6, 12, .74);
+  --plate-2: rgba(4, 6, 12, .9);
+  --ink: #edf0f7;
+  --muted: #a3abbd;
+  --line: rgba(237, 240, 247, .14);
+  --line-2: rgba(237, 240, 247, .32);
+  --accent: #ffb238;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; }
+body { font: 400 14px/1.45 "Manrope", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; touch-action: none; }
+
+.plate { background: var(--plate); border: 1px solid var(--line); }
+
+/* ---------- Заголовок ---------- */
+.title { position: fixed; top: 20px; left: 22px; padding: 14px 18px 13px; max-width: 360px; }
+h1 { margin: 0; font: 700 19px/1.1 "Unbounded", sans-serif; letter-spacing: .01em; }
+.title p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.title p b { color: var(--ink); font-weight: 600; }
+
+/* ---------- Счётчик глубины ---------- */
+.hud { position: fixed; left: 22px; bottom: 22px; padding: 16px 20px 16px; width: min(560px, calc(100vw - 150px)); }
+.z-label { font: 600 12px/1 "Manrope", sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.z { margin: 8px 0 12px; font: 700 52px/0.95 "Unbounded", sans-serif; letter-spacing: -.01em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.z sup { font-size: .52em; vertical-align: .95em; margin-left: .04em; color: var(--accent); }
+.coords { margin: 0; display: grid; gap: 3px; font: 400 13px/1.35 "JetBrains Mono", monospace; }
+.coords div { display: grid; grid-template-columns: 26px 1fr; }
+.coords dt { color: var(--muted); }
+.coords dd { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meta { margin-top: 10px; display: flex; gap: 18px; flex-wrap: wrap; font: 400 13px/1.3 "Manrope", sans-serif; color: var(--muted); }
+.meta b { color: var(--ink); font: 600 13px/1 "JetBrains Mono", monospace; }
+.fact { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--ink); font-size: 14px; line-height: 1.4; }
+.fact sup { font-size: .72em; }
+
+/* ---------- Шкала глубины ---------- */
+.gauge { position: fixed; right: 26px; top: 50%; transform: translateY(-50%); height: min(62vh, 560px); width: 108px; pointer-events: none; }
+.track { position: absolute; inset: 0 0 0 auto; width: 52px; border-left: 1px solid var(--line-2); }
+.tick { position: absolute; left: -1px; width: 12px; border-top: 1px solid var(--line-2); }
+.tick span { position: absolute; left: 18px; top: -9px; font: 400 12px/1 "JetBrains Mono", monospace; color: var(--muted); text-shadow: 0 1px 2px #000; }
+.mark { position: absolute; right: 100%; width: 60px; border-top: 1px dashed rgba(255, 178, 56, .55); }
+.mark span { position: absolute; right: 4px; top: -17px; font: 600 12px/1 "Manrope", sans-serif; color: #ffd08a; white-space: nowrap; text-shadow: 0 1px 2px #000; }
+#gaugeMark { position: absolute; left: 0; right: 0; top: 0; height: 100%; transition: transform .15s linear; }
+#gaugeMark::before { content: ""; position: absolute; left: -6px; top: -5px; border: 5px solid transparent; border-left: 7px solid var(--ink); }
+#gaugeVal { position: absolute; left: 12px; top: -8px; padding: 1px 5px; font: 600 13px/1.2 "JetBrains Mono", monospace; background: var(--ink); color: #05060b; }
+.gauge-cap { position: absolute; right: 0; bottom: -28px; width: 150px; text-align: right; font-size: 12px; color: var(--muted); text-shadow: 0 1px 2px #000; }
+
+/* ---------- Панель ---------- */
+.panel { position: fixed; top: 20px; right: 22px; width: 300px; padding: 14px; display: grid; gap: 12px; }
+.lbl { font: 600 12px/1 "Manrope", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.place-wrap { position: relative; }
+#placeBtn {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 12px;
+  border: 1px solid var(--line-2); font-weight: 600; font-size: 14px; text-align: left;
+  transition: border-color .2s, background-color .2s;
+}
+#placeBtn:hover { border-color: var(--ink); background: rgba(237, 240, 247, .05); }
+#placeBtn svg { width: 14px; height: 14px; flex: none; transition: transform .25s cubic-bezier(.2, .8, .2, 1); }
+#placeBtn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.place-list { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 5; background: var(--plate-2); border: 1px solid var(--line-2); padding: 6px; }
+.place-list button { width: 100%; display: flex; gap: 10px; align-items: baseline; padding: 9px 8px; text-align: left; font-size: 14px; transition: background-color .15s; }
+.place-list button b { font: 600 12px/1 "JetBrains Mono", monospace; color: var(--muted); }
+.place-list button:hover { background: rgba(237, 240, 247, .07); }
+.place-list button[aria-current="true"] { color: var(--accent); }
+.pals { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.pal { display: grid; gap: 5px; justify-items: stretch; padding: 5px 4px 6px; border: 1px solid var(--line); font-size: 12px; transition: border-color .2s, transform .2s cubic-bezier(.2, .8, .2, 1); }
+.pal i { height: 16px; display: block; }
+.pal span { text-align: center; color: var(--muted); }
+.pal:hover { border-color: var(--line-2); transform: translateY(-1px); }
+.pal[aria-pressed="true"] { border-color: var(--ink); }
+.pal[aria-pressed="true"] span { color: var(--ink); }
+.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 10px;
+  border: 1px solid var(--line-2); font-weight: 600; font-size: 14px; transition: border-color .2s, background-color .2s, color .2s;
+}
+.btn:hover { border-color: var(--ink); background: rgba(237, 240, 247, .06); }
+.btn svg { width: 15px; height: 15px; }
+#dive { background: var(--ink); color: #05060b; border-color: var(--ink); }
+#dive:hover { background: #fff; }
+#dive .i-play { display: none; }
+#dive[aria-pressed="false"] .i-play { display: block; }
+#dive[aria-pressed="false"] .i-pause { display: none; }
+#cycle::before { content: ""; width: 8px; height: 8px; border: 1.5px solid currentColor; transition: background-color .2s; }
+#cycle[aria-pressed="true"]::before { background: var(--accent); border-color: var(--accent); }
+.sheet-btn { display: none; }
+
+.hint { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 8px 14px; font-size: 13px; color: var(--ink); white-space: nowrap; }
+.hint kbd { font: 600 12px/1 "JetBrains Mono", monospace; border: 1px solid var(--line-2); padding: 2px 5px; }
+
+/* ---------- Дно ---------- */
+.bottom { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -46%); opacity: 0; width: min(460px, calc(100vw - 32px)); padding: 24px 24px 22px; background: var(--plate-2); border: 1px solid var(--line-2); transition: opacity .5s, transform .6s cubic-bezier(.2, .8, .2, 1); }
+.bottom.on { opacity: 1; transform: translate(-50%, -50%); }
+.bottom h2 { margin: 0 0 10px; font: 700 22px/1.2 "Unbounded", sans-serif; }
+.bottom p { margin: 0 0 16px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.bottom .btn { width: 100%; background: var(--ink); color: #05060b; border-color: var(--ink); }
+
+.flash { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+.flash.on { animation: fl .9s ease-out; }
+@keyframes fl { 0% { opacity: .85; } 100% { opacity: 0; } }
+.fail { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); padding: 24px; text-align: center; }
+.fail h2 { font: 700 22px/1.2 "Unbounded", sans-serif; margin: 0 0 10px; }
+.fail p { color: var(--muted); max-width: 420px; margin: 0 auto; }
+
+@media (max-width: 1100px) {
+  .gauge { display: none; }
+  .hud { width: min(560px, calc(100vw - 44px)); }
+}
+@media (max-width: 760px) {
+  .title { top: 12px; left: 12px; right: 12px; max-width: none; padding: 10px 12px; }
+  h1 { font-size: 16px; }
+  .title p { font-size: 12.5px; margin-top: 4px; }
+  .hud { left: 12px; right: 12px; bottom: 70px; width: auto; padding: 12px 14px; }
+  .z { font-size: 38px; margin: 6px 0 8px; }
+  .coords { font-size: 12px; }
+  .meta { margin-top: 8px; gap: 12px; font-size: 12.5px; }
+  .fact { font-size: 13px; margin-top: 8px; padding-top: 8px; }
+  .hint { display: none; }
+  .sheet-btn { display: flex; position: fixed; left: 12px; right: 12px; bottom: 12px; min-height: 46px; align-items: center; justify-content: center; gap: 8px; background: var(--plate-2); border: 1px solid var(--line-2); font-weight: 600; font-size: 14px; }
+  .panel { top: auto; bottom: 66px; left: 12px; right: 12px; width: auto; transform: translateY(12px); opacity: 0; pointer-events: none; transition: opacity .25s, transform .3s cubic-bezier(.2, .8, .2, 1); z-index: 4; background: var(--plate-2); }
+  .panel.open { transform: none; opacity: 1; pointer-events: auto; }
+  .place-list { top: auto; bottom: calc(100% + 6px); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Множество Мандельброта"></canvas>
+
+<header class="title plate">
+  <h1>Бездна Мандельброта</h1>
+  <p>Сейчас: <b id="placeName">Долина морских коньков</b></p>
+</header>
+
+<section class="hud plate" aria-live="off">
+  <div class="z-label">Увеличение</div>
+  <div class="z"><span id="zMant">×1</span><sup id="zExp"></sup></div>
+  <dl class="coords">
+    <div><dt>Re</dt><dd id="cRe">—</dd></div>
+    <div><dt>Im</dt><dd id="cIm">—</dd></div>
+  </dl>
+  <div class="meta"><span>итераций <b id="iter">—</b></span><span>эталонная орбита <b id="bits">—</b></span><span>double хватает до&nbsp;<b>10¹⁴</b></span></div>
+  <p class="fact" id="fact"></p>
+</section>
+
+<aside class="gauge" aria-hidden="true">
+  <div class="track">
+    <div class="tick" style="top:0%"><span>10⁰</span></div>
+    <div class="tick" style="top:16.13%"><span>10⁵</span></div>
+    <div class="tick" style="top:32.26%"><span>10¹⁰</span></div>
+    <div class="tick" style="top:48.39%"><span>10¹⁵</span></div>
+    <div class="tick" style="top:64.52%"><span>10²⁰</span></div>
+    <div class="tick" style="top:80.65%"><span>10²⁵</span></div>
+    <div class="tick" style="top:100%"><span>10³¹</span></div>
+    <div class="mark" style="top:16.13%"><span>float сдаётся</span></div>
+    <div class="mark" style="top:45.16%"><span>double сдаётся</span></div>
+    <div id="gaugeMark"><span id="gaugeVal">10⁰</span></div>
+  </div>
+  <div class="gauge-cap">глубина, порядков</div>
+</aside>
+
+<nav class="panel plate" id="panel" aria-label="Управление">
+  <div>
+    <div class="lbl">Экскурсия</div>
+    <div class="place-wrap">
+      <button id="placeBtn" type="button" aria-expanded="false" aria-controls="places"><span>Выбрать точку погружения</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6l5 5 5-5"/></svg></button>
+      <div class="place-list" id="places" hidden></div>
+    </div>
+  </div>
+  <div>
+    <div class="lbl">Краски</div>
+    <div class="pals" id="pals"></div>
+  </div>
+  <div class="btns">
+    <button id="dive" class="btn" type="button" aria-pressed="true"><svg class="i-pause" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="2" width="3.5" height="12"/><rect x="9.5" y="2" width="3.5" height="12"/></svg><svg class="i-play" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6z"/></svg><span>Пауза</span></button>
+    <button id="cycle" class="btn" type="button" aria-pressed="true">Перелив</button>
+    <button id="reset" class="btn" type="button">Сначала</button>
+    <button id="snap" class="btn" type="button">Снимок PNG</button>
+  </div>
+</nav>
+<button id="sheetBtn" class="sheet-btn" type="button" aria-expanded="false" aria-controls="panel">Экскурсия и краски</button>
+
+<div class="hint plate">Клик — нырнуть сюда · колесо — масштаб · тяните — сдвиг · <kbd>Пробел</kbd> — пауза</div>
+
+<div class="bottom" id="bottom" hidden role="dialog" aria-labelledby="bottomTitle">
+  <h2 id="bottomTitle">Дно: 10³¹</h2>
+  <p>Дальше кончается диапазон 32-битных чисел в&nbsp;шейдере: отклонения пикселей становятся меньше 10⁻³⁸. Эталонной орбите хватило бы точности и глубже — нужна другая арифметика с&nbsp;расширенной экспонентой.</p>
+  <button id="bottomNext" class="btn" type="button">Следующая точка</button>
+</div>
+<div class="flash" id="flash"></div>
+<div class="fail" id="fail" hidden><div><h2>Бездна недоступна</h2><p></p></div></div>
+<script src="app.js"></script>
+</body>
+</html>

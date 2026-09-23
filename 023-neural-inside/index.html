@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Нейросеть изнутри</title>
+<meta name="description" content="Многослойный перцептрон учится прямо в браузере: граница решений, карты нейронов и то, как скрытый слой сгибает плоскость.">
+<meta name="theme-color" content="#0b1322">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Serif:ital,wght@1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="title">
+    <h1>Нейросеть изнутри</h1>
+    <p>Учится прямо сейчас&nbsp;— в&nbsp;вашем браузере, без&nbsp;библиотек</p>
+  </div>
+  <div class="datasets" id="datasets" role="radiogroup" aria-label="Данные"></div>
+  <div class="transport">
+    <button class="tb" id="bReset" title="Новые веса (R)" aria-label="Новые веса"><svg viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4 4.5v4.6h4.6"/></svg></button>
+    <button class="tb" id="bStep" title="Шаг (S)" aria-label="Один шаг"><svg viewBox="0 0 24 24"><path d="M6 5.5v13l9-6.5z"/><path d="M17.5 5.5v13"/></svg></button>
+    <button class="tb main on" id="bPlay" title="Пуск и пауза (пробел)" aria-label="Пауза"><svg class="i-play" viewBox="0 0 24 24"><path d="M7 5v14l12-7z"/></svg><svg class="i-pause" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg></button>
+    <div class="speed" role="radiogroup" aria-label="Шагов за кадр">
+      <button data-k="1" role="radio">×1</button>
+      <button data-k="5" role="radio" aria-checked="true">×5</button>
+      <button data-k="25" role="radio">×25</button>
+    </div>
+  </div>
+</header>
+
+<main class="stages">
+  <figure class="stage">
+    <figcaption><b>Входное пространство</b><span>цвет — решение сети в каждой точке</span></figcaption>
+    <canvas id="inCv" aria-label="Карта решений на входной плоскости"></canvas>
+    <div class="readout" id="readout"></div>
+  </figure>
+  <figure class="stage">
+    <figcaption><b>Глазами последнего слоя</b><span id="hiddenNote">сеть гнёт плоскость, пока классы не разделит прямая</span></figcaption>
+    <canvas id="hidCv" aria-label="Представление данных в последнем скрытом слое"></canvas>
+  </figure>
+  <aside class="side">
+    <div class="stats">
+      <div><span>Шаг</span><b id="sStep">0</b></div>
+      <div><span>Потери</span><b id="sLoss">—</b></div>
+      <div><span>Точность</span><b id="sAcc">—</b></div>
+    </div>
+    <canvas id="lossCv" aria-label="График потерь"></canvas>
+    <label class="ctl"><span>Активация</span>
+      <span class="seg" id="acts" role="radiogroup" aria-label="Функция активации"></span>
+    </label>
+    <label class="ctl"><span>Скорость обучения <output id="oLr"></output></span><input type="range" id="lr" min="0" max="100" value="62"></label>
+    <label class="ctl"><span>Шум в данных <output id="oNoise"></output></span><input type="range" id="noise" min="0" max="50" value="10"></label>
+    <label class="ctl"><span>L2-регуляризация <output id="oL2"></output></span><input type="range" id="l2" min="0" max="100" value="0"></label>
+    <div class="ctl paint"><span>Точка по&nbsp;клику на&nbsp;карте</span>
+      <span class="seg two" id="paint" role="radiogroup" aria-label="Класс новой точки">
+        <button data-c="0" role="radio" aria-checked="true"><i class="dot cool"></i>синяя</button>
+        <button data-c="1" role="radio" aria-checked="false"><i class="dot warm"></i>оранжевая</button>
+      </span>
+    </div>
+    <p class="note">Shift или правая кнопка&nbsp;— другой цвет.</p>
+  </aside>
+</main>
+
+<section class="net" aria-label="Архитектура сети">
+  <div class="net-head">
+    <b>Архитектура</b>
+    <span id="archText"></span>
+    <div class="net-actions">
+      <button class="chip" id="addLayer">+ слой</button>
+      <button class="chip" id="delLayer">− слой</button>
+    </div>
+  </div>
+  <div class="net-body" id="netBody">
+    <canvas id="netCv" aria-label="Нейроны и веса"></canvas>
+    <div id="netControls"></div>
+  </div>
+</section>
+<script src="app.js"></script>
+</body>
+</html>

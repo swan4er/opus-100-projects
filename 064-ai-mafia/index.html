@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Мафия — семеро нейросетевых соседей</title>
+<meta name="description" content="Мафия за круглым столом коммунальной кухни: семь нейросетевых игроков с характерами, тайными ролями и настоящей ложью.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=PT+Mono&family=Playfair+Display:ital,wght@0,700;1,500;1,700;1,900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head>
+<body class="at-start">
+<canvas id="scene" aria-label="Кухня коммуналки: восемь игроков за круглым столом под абажуром"></canvas>
+<div id="flat" hidden></div>
+<div id="plates" aria-live="off"></div>
+<div id="bubbles" aria-live="polite"></div>
+
+<header class="top">
+  <div class="brand">
+    <div class="brand-title">Мафия</div>
+    <div id="phase" class="phase"></div>
+  </div>
+  <div class="tools">
+    <span id="demoFlag" class="demo-flag" hidden>демо-режим&nbsp;— нейросеть не&nbsp;подключена</span>
+    <span id="cost" class="cost" title="Потрачено на нейросеть">$0.0000</span>
+    <button id="bVoice" class="tool" type="button" aria-pressed="false" title="Озвучка реплик">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="on-only" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><span>Голоса</span>
+    </button>
+    <button id="bSound" class="tool" type="button" aria-pressed="true" title="Звук комнаты">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg><span>Звук</span>
+    </button>
+    <button id="bLog" class="tool" type="button" aria-pressed="false" title="Протокол всех реплик">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7M9 7h4"/></svg><span>Протокол</span>
+    </button>
+    <div class="restart-wrap">
+      <button id="bRestart" class="tool icon-only" type="button" title="Новая партия" aria-label="Новая партия">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>
+      </button>
+      <div id="restartPop" class="pop" hidden>
+        <p>Начать новую партию?</p>
+        <div><button id="restartYes" type="button" class="mini primary">Да</button><button id="restartNo" type="button" class="mini">Нет</button></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<aside id="log" class="log" aria-labelledby="logTitle">
+  <div class="log-head"><h2 id="logTitle">Протокол</h2><button id="logClose" type="button" class="x" aria-label="Закрыть протокол">×</button></div>
+  <div id="logBody" class="log-body"></div>
+</aside>
+
+<div id="banner" class="banner" aria-live="assertive"><div class="b-big"></div><div class="b-small"></div></div>
+
+<div id="dock" class="dock" data-mode="wait">
+  <div id="roleChip" class="role-chip"></div>
+  <div class="dock-main">
+    <div id="dockHint" class="dock-hint"></div>
+    <div id="chips" class="chips"></div>
+    <form id="say" class="say" autocomplete="off">
+      <input id="sayInput" type="text" maxlength="300" placeholder="Ваше слово…" aria-label="Ваша реплика" enterkeyhint="send">
+      <button id="sayBtn" type="submit" class="send">Сказать</button>
+    </form>
+  </div>
+  <div class="dock-actions">
+    <button id="bSkip" type="button" class="ghost-btn" hidden>Промолчать</button>
+    <button id="bVote" type="button" class="primary-btn" hidden>К&nbsp;голосованию</button>
+    <button id="bAbstain" type="button" class="ghost-btn" hidden>Воздержаться</button>
+  </div>
+</div>
+
+<section id="start" class="start panel" aria-labelledby="startTitle">
+  <form id="startForm">
+    <p class="kicker">Игра с&nbsp;нейросетью</p>
+    <h1 id="startTitle" class="title">Мафия</h1>
+    <p class="lead">Коммунальная кухня, ночь, абажур над&nbsp;столом. Семеро соседей&nbsp;— нейросетевые игроки: у&nbsp;каждого свой характер, своя тайная роль и&nbsp;своя ложь. Двое из&nbsp;восьми&nbsp;— мафия.</p>
+    <label class="field">
+      <span>Как вас зовут за&nbsp;столом</span>
+      <input id="nameInput" type="text" maxlength="16" autocomplete="off" spellcheck="false">
+    </label>
+    <fieldset class="roles">
+      <legend>Кем играете</legend>
+      <label class="role-opt">
+        <input type="radio" name="role" value="civ" checked>
+        <span class="ro-card">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 22 24 8l16 14h-4v18H12V22z"/><path class="win" d="M20 26h8v8h-8z"/></svg>
+          <b>Мирный житель</b>
+          <small>Найдите двоих среди семерых&nbsp;— по&nbsp;словам и&nbsp;голосам.</small>
+        </span>
+      </label>
+      <label class="role-opt">
+        <input type="radio" name="role" value="com">
+        <span class="ro-card">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="16"/><path d="m24 13 3 7 7 .6-5.4 4.6 1.7 7L24 28.6 17.7 32l1.7-7L14 20.6l7-.6z"/></svg>
+          <b>Комиссар</b>
+          <small>Каждую ночь проверяете одного. Раскрыться&nbsp;— риск.</small>
+        </span>
+      </label>
+      <label class="role-opt">
+        <input type="radio" name="role" value="maf">
+        <span class="ro-card">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 31c4 3 32 3 36 0-2-2-5-3-8-3l-1-10c-1-4-5-5-7-3-1 1-3 1-4 0-2-2-6-1-7 3l-1 10c-3 0-6 1-8 3z"/></svg>
+          <b>Мафия</b>
+          <small>Вы и&nbsp;напарник-нейросеть. Врите так, чтобы поверили.</small>
+        </span>
+      </label>
+    </fieldset>
+    <button id="bStart" type="submit" class="primary-btn big">Сесть за&nbsp;стол</button>
+    <p class="fine">Реплики пишет DeepSeek в&nbsp;реальном времени. Роли раздаёт код: каждая нейросеть знает только свою. Партия&nbsp;— 5–10&nbsp;минут и&nbsp;несколько центов.</p>
+    <p id="cdnNote" class="fine warn" hidden>3D-сцена не&nbsp;загрузилась: нет связи с&nbsp;CDN. Играем в&nbsp;упрощённом виде.</p>
+  </form>
+</section>
+
+<section id="final" class="final panel" hidden aria-labelledby="finTitle">
+  <p id="finKicker" class="kicker">Партия окончена</p>
+  <h2 id="finTitle" class="title small">Мирные победили</h2>
+  <p id="finSub" class="lead"></p>
+  <ul id="finRoles" class="fin-roles"></ul>
+  <p id="finStats" class="fine"></p>
+  <div class="fin-actions">
+    <button id="bRecord" type="button" class="primary-btn">Запись ночи</button>
+    <button id="bAgain" type="button" class="ghost-btn">Новая партия</button>
+  </div>
+</section>
+
+<section id="record" class="record" hidden role="dialog" aria-modal="true" aria-labelledby="recTitle">
+  <div class="rec-paper">
+    <div class="rec-head"><h2 id="recTitle">Запись ночи</h2><button id="recClose" type="button" class="x dark" aria-label="Закрыть запись">×</button></div>
+    <div id="recBody" class="rec-body"></div>
+  </div>
+</section>
+
+<div id="toast" class="toast" role="status"></div>
+
+<script src="../_ai/ai.js"></script>
+<script src="cast.js"></script>
+<script src="people.js"></script>
+<script src="stage.js"></script>
+<script src="brain.js"></script>
+<script src="ui.js"></script>
+<script src="game.js"></script>
+<script type="module">
+  import('three')
+    .then((T) => { window.THREE = T; window.dispatchEvent(new Event('three-ready')); })
+    .catch(() => window.dispatchEvent(new Event('three-fail')));
+</script>
+</body>
+</html>

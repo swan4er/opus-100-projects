@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Шань-шуй — бесконечный свиток тушью</title>
+<meta name="description" content="Бесконечный свиток китайской пейзажной живописи тушью: горы, сосны, туман и лодки рождаются алгоритмом по мере прокрутки.">
+<meta name="theme-color" content="#1b1512">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Rubik+Mono+One&display=swap">
+<!-- Китайский каллиграфический шрифт — только знаки, которые есть на свитке -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&text=%E3%80%82%E4%B8%80%E4%B8%87%E4%B8%8A%E4%B8%8D%E4%B8%99%E4%B8%A4%E4%B8%BE%E4%B9%A1%E4%BA%8C%E4%BA%8E%E4%BA%91%E4%BA%AD%E4%BA%BA%E4%BC%97%E4%BD%86%E4%BD%8E%E4%BE%9D%E5%81%9C%E5%85%89%E5%85%A5%E5%89%8D%E5%8D%83%E5%8D%88%E5%8E%8C%E5%8E%BB%E5%8F%AA%E5%8F%B6%E5%93%8D%E5%95%BC%E5%9C%B0%E5%9D%90%E5%A3%B0%E5%A4%84%E5%A4%8D%E5%A4%9A%E5%A4%9C%E5%A4%B4%E5%AD%A4%E5%AE%B6%E5%AF%92%E5%B0%91%E5%B0%BD%E5%B1%82%E5%B1%B1%E5%BA%8A%E5%BE%84%E6%80%9D%E6%95%85%E6%95%AC%E6%96%9C%E6%97%A0%E6%97%A5%E6%98%8E%E6%98%A5%E6%98%AF%E6%99%93%E6%99%9A%E6%99%AF%E6%9B%B4%E6%9C%88%E6%9C%89%E6%9C%9B%E6%9D%A5%E6%9E%97%E6%9E%AB%E6%A5%BC%E6%AC%B2%E6%B0%B4%E6%B1%9F%E6%B2%B3%E6%B5%81%E6%B5%B7%E6%B7%B1%E6%BA%AA%E7%81%AD%E7%85%A7%E7%88%B1%E7%8B%AC%E7%94%9F%E7%96%91%E7%99%BD%E7%9B%AE%E7%9B%B8%E7%9C%8B%E7%9C%A0%E7%9F%A5%E7%9F%B3%E7%A7%8B%E7%A9%B7%E7%A9%BA%E7%AC%A0%E7%BA%A2%E7%BB%9D%E7%BF%81%E8%88%9F%E8%8A%B1%E8%8B%94%E8%90%BD%E8%93%91%E8%A7%81%E8%A7%89%E8%AF%AD%E8%B8%AA%E8%BD%A6%E8%BF%94%E8%BF%9C%E9%87%8C%E9%92%93%E9%97%B2%E9%97%BB%E9%9B%A8%E9%9B%AA%E9%9C%9C%E9%9D%92%E9%A3%8E%E9%A3%9E%E9%AB%98%E9%B8%9F%E9%BB%84%EF%BC%8C&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-time="day">
+<canvas id="scene" aria-label="Свиток с пейзажем тушью. Прокручивайте колесом или перетаскивайте."></canvas>
+<div class="room r-dawn"></div>
+<div class="room r-day"></div>
+<div class="room r-dusk"></div>
+<div class="room r-night"></div>
+
+<header class="top">
+  <div class="brand">
+    <h1>Шань-шуй</h1>
+    <p>бесконечный свиток тушью</p>
+  </div>
+  <div class="meta">
+    <span>развёрнуто <span class="num" id="unrolled">0,0&nbsp;м</span></span>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="hide-m">свиток №&nbsp;<span class="num" id="scrollNo">0</span></span>
+    <button class="icon-btn" id="infoBtn" aria-label="О свитке" aria-expanded="false" aria-controls="info">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.2v.1"/></svg>
+    </button>
+  </div>
+</header>
+
+<section class="info" id="info" aria-label="О свитке">
+  <h2>Реки и&nbsp;горы без конца</h2>
+  <p>Горы, сосны, водопады, мосты и&nbsp;лодки не&nbsp;нарисованы заранее: алгоритм пишет их&nbsp;тушью в&nbsp;тот момент, когда вы&nbsp;разворачиваете свиток. У&nbsp;каждого номера свой пейзаж, и&nbsp;он никогда не&nbsp;кончается.</p>
+  <p>Как настоящий китайский свиток, его смотрят справа налево: слева разворачиваете новое, справа сворачиваете увиденное.</p>
+  <p>Столбцы знаков в&nbsp;небе — стихи поэтов эпохи Тан. Наведите на&nbsp;них курсор, чтобы прочитать перевод.</p>
+  <p>Вдохновлено проектом shan-shui-inf Линдонга Хуана.</p>
+</section>
+
+<nav class="controls" aria-label="Управление свитком">
+  <div class="group" role="radiogroup" aria-label="Время года">
+    <span class="label">Сезон</span>
+    <button class="opt" role="radio" data-season="spring" aria-checked="false">весна</button>
+    <button class="opt" role="radio" data-season="summer" aria-checked="false">лето</button>
+    <button class="opt" role="radio" data-season="autumn" aria-checked="false">осень</button>
+    <button class="opt" role="radio" data-season="winter" aria-checked="false">зима</button>
+  </div>
+  <span class="divider" aria-hidden="true"></span>
+  <div class="group" role="radiogroup" aria-label="Время суток">
+    <span class="label">Час</span>
+    <button class="opt" role="radio" data-time="dawn" aria-checked="false">рассвет</button>
+    <button class="opt" role="radio" data-time="day" aria-checked="true">день</button>
+    <button class="opt" role="radio" data-time="dusk" aria-checked="false">закат</button>
+    <button class="opt" role="radio" data-time="night" aria-checked="false">ночь</button>
+  </div>
+  <span class="divider" aria-hidden="true"></span>
+  <div class="actions">
+    <button class="act" id="autoBtn" aria-pressed="true" title="Пробел">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><g class="i-pause"><path d="M9 6v12"/><path d="M15 6v12"/></g><path class="i-play" d="M8 5.5v13l10.5-6.5z" style="display:none"/></svg>
+      <span class="full">Прокрутка</span><span class="short">Авто</span>
+    </button>
+    <button class="act" id="sealBtn" aria-pressed="false" title="Клавиша S">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M9 11V8.5a3 3 0 0 1 6 0V11"/><path d="M9 15.5h6"/></svg>
+      <span class="full">Печать</span><span class="short">Печать</span>
+    </button>
+    <button class="act" id="saveBtn" title="Сохранить видимый фрагмент в PNG">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19.5h14"/></svg>
+      <span class="full">Сохранить</span><span class="short">PNG</span>
+    </button>
+    <button class="act" id="newBtn" title="Начать другой свиток">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95"/><path d="M19 5v4.2h-4.2"/></svg>
+      <span class="full">Новый свиток</span><span class="short">Новый</span>
+    </button>
+  </div>
+</nav>
+
+<p class="hint" id="hint">Колесо, перетаскивание или ←&nbsp;→. Свиток читают справа налево&nbsp;— как в&nbsp;Китае.</p>
+<div class="tip" id="tip" role="tooltip"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="loader" id="loader">Растираю тушь…</div>
+
+<script src="app.js"></script>
+</body>
+</html>

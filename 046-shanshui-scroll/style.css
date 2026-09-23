@@ -1,0 +1,317 @@
+:root {
+  --ui: #e6d9bc;
+  --ui-2: #c2b394;
+  --ui-3: #9c8d74;
+  --line: rgba(230, 217, 188, 0.16);
+  --line-2: rgba(230, 217, 188, 0.36);
+  --cinnabar: #d0543c;
+  --panel: rgba(24, 18, 15, 0.92);
+  --serif: "Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  color: var(--ui);
+  font-family: var(--serif);
+  background-color: #1b1512;
+  background-image:
+    radial-gradient(120% 95% at 50% 46%, rgba(104, 70, 44, 0.34) 0%, rgba(27, 21, 18, 0) 64%),
+    url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0032 0.16' numOctaves='3' seed='11'/%3E%3CfeColorMatrix values='0 0 0 0 0.30 0 0 0 0 0.19 0 0 0 0 0.12 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+  z-index: 1;
+}
+#scene.dragging { cursor: grabbing; }
+#scene.stamping { cursor: crosshair; }
+
+/* Свет в комнате: обычное смешивание, без blend-mode */
+.room {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 1.4s ease;
+}
+.room.r-dawn  { background: radial-gradient(95% 85% at 50% 48%, rgba(40, 30, 40, 0) 52%, rgba(24, 16, 22, 0.55) 100%); }
+.room.r-day   { background: radial-gradient(95% 85% at 50% 48%, rgba(0, 0, 0, 0) 55%, rgba(8, 5, 3, 0.45) 100%); }
+.room.r-dusk  { background: radial-gradient(95% 85% at 50% 48%, rgba(60, 24, 0, 0) 48%, rgba(30, 10, 0, 0.62) 100%); }
+.room.r-night { background: radial-gradient(70% 70% at 50% 50%, rgba(10, 12, 24, 0) 30%, rgba(4, 5, 12, 0.78) 100%); }
+body[data-time="dawn"] .r-dawn,
+body[data-time="day"] .r-day,
+body[data-time="dusk"] .r-dusk,
+body[data-time="night"] .r-night { opacity: 1; }
+
+/* ---------- Шапка ---------- */
+.top {
+  position: fixed;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 34px;
+  pointer-events: none;
+}
+.top > * { pointer-events: auto; }
+.brand h1 {
+  margin: 0;
+  font-weight: 500;
+  font-size: 31px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+.brand p {
+  margin: 5px 0 0;
+  font-style: italic;
+  font-size: 17px;
+  color: var(--ui-2);
+}
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 17px;
+  color: var(--ui-2);
+}
+.meta .num { font-variant-numeric: tabular-nums lining-nums; color: var(--ui); }
+.meta .sep { width: 1px; height: 18px; background: var(--line-2); }
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ui-2);
+  cursor: pointer;
+  transition: color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+.icon-btn:hover { color: var(--ui); border-color: var(--line-2); }
+.icon-btn:active { transform: scale(0.94); }
+.icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
+
+/* ---------- Панель «О свитке» ---------- */
+.info {
+  position: fixed;
+  z-index: 6;
+  top: 74px;
+  right: 30px;
+  width: min(410px, calc(100vw - 32px));
+  padding: 22px 24px 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--ui);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+.info.open { opacity: 1; transform: none; pointer-events: auto; }
+.info h2 {
+  margin: 0 0 10px;
+  font-size: 22px;
+  font-weight: 500;
+}
+.info p { margin: 0 0 10px; }
+.info p:last-child { margin: 0; color: var(--ui-2); font-style: italic; font-size: 16px; }
+
+/* ---------- Нижняя панель ---------- */
+.controls {
+  position: fixed;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  padding: 0 28px;
+}
+.group { display: flex; align-items: center; gap: 2px; }
+.label {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ui-3);
+  margin-right: 8px;
+  font-weight: 600;
+}
+.opt {
+  position: relative;
+  background: none;
+  border: 0;
+  color: var(--ui-2);
+  font: 500 18px/1 var(--serif);
+  padding: 11px 9px 13px;
+  min-height: 40px;
+  cursor: pointer;
+  transition: color 0.25s ease;
+}
+.opt::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
+  border-radius: 50%;
+  background: var(--cinnabar);
+  transform: scale(0);
+  transition: transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.opt:hover { color: var(--ui); }
+.opt[aria-checked="true"] { color: var(--ui); }
+.opt[aria-checked="true"]::after { transform: scale(1); }
+
+.divider { width: 1px; height: 30px; background: var(--line); }
+
+.actions { display: flex; gap: 8px; }
+.act {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 15px 0 13px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  color: var(--ui-2);
+  font: 500 17px/1 var(--serif);
+  cursor: pointer;
+  transition: color 0.25s ease, border-color 0.25s ease, background-color 0.25s ease, transform 0.2s ease;
+}
+.act svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.act .short { display: none; }
+.act:hover { color: var(--ui); border-color: var(--line-2); }
+.act:active { transform: scale(0.97); }
+.act[aria-pressed="true"] { color: var(--ui); border-color: rgba(208, 84, 60, 0.7); background: rgba(208, 84, 60, 0.1); }
+
+.hint {
+  position: fixed;
+  z-index: 5;
+  left: 50%;
+  top: 29px;
+  margin: 0;
+  transform: translateX(-50%);
+  font-size: 17px;
+  font-style: italic;
+  color: var(--ui-2);
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+@media (max-width: 1180px) { .hint { display: none; } }
+.hint.gone { opacity: 0; }
+
+button:focus-visible { outline: 1px solid var(--cinnabar); outline-offset: 3px; }
+
+/* ---------- Подсказка к стихам ---------- */
+.tip {
+  position: fixed;
+  z-index: 7;
+  width: 320px;
+  padding: 16px 18px 14px;
+  background: rgba(241, 233, 213, 0.97);
+  color: #2a231c;
+  border-radius: 2px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.tip.show { opacity: 1; transform: none; }
+.tip .zh { font-family: "Ma Shan Zheng", "Kaiti SC", "STKaiti", serif; font-size: 21px; letter-spacing: 0.08em; color: #1f1a15; margin-bottom: 8px; }
+.tip .ru { font-size: 17px; line-height: 1.38; }
+.tip .src { margin-top: 10px; font-size: 14px; font-style: italic; color: #6d5a45; }
+
+/* ---------- Сообщения ---------- */
+.toast {
+  position: fixed;
+  z-index: 8;
+  left: 50%;
+  top: 92px;
+  transform: translate(-50%, -8px);
+  padding: 10px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  font-size: 17px;
+  color: var(--ui);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+.loader {
+  position: fixed;
+  z-index: 9;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-style: italic;
+  color: var(--ui-2);
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+.loader.gone { opacity: 0; }
+
+/* ---------- Телефон ---------- */
+@media (max-width: 720px) {
+  .top { height: 62px; padding: 0 16px; }
+  .brand h1 { font-size: 25px; }
+  .brand p { font-size: 15px; margin-top: 3px; }
+  .meta { gap: 10px; font-size: 15px; }
+  .meta .hide-m, .meta .sep { display: none; }
+  .info { top: 60px; right: 16px; }
+  .hint { display: none; }
+  .controls {
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 6px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+  .divider { display: none; }
+  .group { justify-content: space-between; }
+  .label { width: 52px; margin-right: 0; letter-spacing: 0.12em; }
+  .opt { flex: 1; font-size: 17px; padding: 10px 2px 12px; }
+  .actions { justify-content: space-between; gap: 6px; margin-top: 4px; }
+  .act { flex: 1; justify-content: center; padding: 0 6px; font-size: 16px; gap: 6px; }
+  .act .full { display: none; }
+  .act .short { display: inline; white-space: nowrap; }
+  .toast { top: 70px; }
+}

@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Снежинки Рейтера</title>
+<meta name="description" content="Модель Рейтера: гексагональный клеточный автомат выращивает снежинки в реальном времени.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --velvet: #050a16;
+    --navy: #0a1428;
+    --panel: #081226;
+    --line: rgba(160, 196, 235, .16);
+    --line-strong: rgba(160, 196, 235, .32);
+    --ice: #e8f6ff;
+    --frost: #9fd3ff;
+    --text: #d6e3f0;
+    --muted: #7e93ad;
+    --gold: #f2c46d;
+    --serif: "Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--velvet); color: var(--text); overflow: hidden; }
+  body { font-family: var(--serif); -webkit-font-smoothing: antialiased; }
+  canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+
+  /* ── Заголовок ─────────────────────────────── */
+  .title { position: fixed; left: 44px; top: 36px; max-width: 360px; pointer-events: none; }
+  .kicker { font: 500 12px/1.4 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  h1 { margin: 10px 0 12px; font: italic 600 58px/.95 var(--serif); letter-spacing: -.01em; color: var(--ice); }
+  h1 span { display: block; font-style: normal; font-weight: 500; font-size: 30px; letter-spacing: .01em; color: var(--frost); margin-top: 6px; }
+  .lede { margin: 0; font: 500 18px/1.35 var(--serif); color: #b8c9dc; max-width: 330px; }
+
+  /* ── Паспорт кристалла ─────────────────────── */
+  .passport { position: fixed; left: 44px; bottom: 36px; width: 340px; pointer-events: none; }
+  .passport .no { font: 500 12px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--line-strong); }
+  .passport .morph { font: italic 600 30px/1.05 var(--serif); color: var(--ice); margin: 12px 0 10px; min-height: 32px; }
+  .passport dl { display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: 2px 22px; margin: 0; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .passport dt { font: 400 12px/1.3 var(--mono); color: var(--muted); letter-spacing: .08em; }
+  .passport dd { margin: 0; font: 500 14px/1.3 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
+  .passport .grow { margin-top: 10px; font: 400 12px/1.5 var(--mono); color: var(--muted); display: flex; align-items: center; gap: 10px; }
+  .passport .bar { flex: 1; height: 2px; background: var(--line); position: relative; overflow: hidden; }
+  .passport .bar i { position: absolute; inset: 0; transform: scaleX(0); transform-origin: 0 50%; background: linear-gradient(90deg, var(--frost), var(--ice)); transition: transform .25s ease-out; }
+
+  /* ── Панель ────────────────────────────────── */
+  .panel { position: fixed; right: 28px; top: 28px; bottom: 28px; width: 336px; display: flex; flex-direction: column; background: linear-gradient(180deg, rgba(10, 20, 40, .86), rgba(6, 12, 26, .9)); border: 1px solid var(--line); border-radius: 3px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .panel .scroll { overflow-y: auto; padding: 20px 22px 18px; flex: 1; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  .sec { padding: 14px 0 16px; border-top: 1px solid var(--line); }
+  .sec:first-child { border-top: 0; padding-top: 2px; }
+  .sec h2 { margin: 0 0 12px; font: 500 12px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: baseline; }
+  .sec h2 em { font: italic 500 15px/1 var(--serif); letter-spacing: 0; text-transform: none; color: var(--frost); }
+
+  .presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .preset { position: relative; aspect-ratio: 1; border: 1px solid var(--line); background: radial-gradient(circle at 50% 45%, #0f1d3a, #070d1c 72%); border-radius: 2px; padding: 0; cursor: pointer; overflow: hidden; transition: border-color .2s, transform .2s cubic-bezier(.2, .8, .2, 1); }
+  .preset canvas { width: 100%; height: 100%; display: block; opacity: 0; transition: opacity .6s ease; }
+  .preset canvas.on { opacity: 1; }
+  .preset:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+  .preset.active { border-color: var(--frost); }
+  .preset:focus-visible, .btn:focus-visible, .seg button:focus-visible, .tray button:focus-visible { outline: 1px solid var(--frost); outline-offset: 2px; }
+  .preset-name { margin-top: 10px; font: italic 500 17px/1.2 var(--serif); color: var(--ice); min-height: 21px; }
+
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .seg button { font: 500 13.5px/1.2 var(--serif); color: var(--text); background: transparent; border: 1px solid var(--line); padding: 8px 8px; border-radius: 2px; cursor: pointer; text-align: left; transition: background .2s, border-color .2s; min-height: 40px; }
+  .seg button:hover { border-color: var(--line-strong); }
+  .seg button.active { border-color: var(--frost); background: rgba(159, 211, 255, .07); color: var(--ice); }
+  .seg button:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .sched-graph { margin-top: 10px; height: 44px; width: 100%; display: block; }
+  .sched-note { font: 400 12px/1.45 var(--mono); color: var(--muted); margin-top: 4px; display: flex; justify-content: space-between; }
+
+  .field { margin: 0 0 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+  .field label { font: 500 16px/1.2 var(--serif); color: var(--text); }
+  .field label b { font: italic 600 18px/1 var(--serif); color: var(--frost); margin-right: 6px; }
+  .field output { font: 500 12.5px/1 var(--mono); color: var(--ice); font-variant-numeric: tabular-nums; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; cursor: pointer; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { height: 1px; background: linear-gradient(90deg, var(--frost) var(--p, 50%), var(--line-strong) var(--p, 50%)); }
+  input[type=range]::-moz-range-track { height: 1px; background: var(--line-strong); }
+  input[type=range]::-moz-range-progress { height: 1px; background: var(--frost); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 16px; margin-top: -8px; background: var(--ice); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); transition: transform .15s; }
+  input[type=range]::-moz-range-thumb { width: 14px; height: 16px; border: 0; border-radius: 0; background: var(--ice); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+  input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.18); }
+  input[type=range]:focus-visible { outline: 1px solid var(--frost); outline-offset: 4px; }
+  .hint { font: 400 12px/1.5 var(--mono); color: var(--muted); margin-top: -2px; }
+
+  .actions { padding: 14px 22px 18px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 42px; padding: 0 12px; font: 500 15px/1 var(--serif); color: var(--text); background: transparent; border: 1px solid var(--line-strong); border-radius: 2px; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
+  .btn svg { width: 15px; height: 15px; flex: none; }
+  .btn:hover { border-color: var(--frost); color: var(--ice); }
+  .btn.primary { grid-column: 1 / -1; background: var(--ice); color: #06101f; border-color: var(--ice); font-size: 17px; font-weight: 600; }
+  .btn.primary:hover { background: #fff; }
+  .btn.small { font-size: 14px; }
+  .toggles { display: flex; gap: 6px; }
+  .toggles .btn { flex: 1; min-height: 36px; font-size: 14px; }
+  .toggles .btn[aria-pressed=true] { border-color: var(--gold); color: var(--gold); }
+  .toggles .btn.vap[aria-pressed=true] { border-color: var(--frost); color: var(--frost); }
+
+  /* ── Коллекция ─────────────────────────────── */
+  .tray { position: fixed; left: 420px; right: 392px; bottom: 30px; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+  .tray .label { font: 500 12px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .tray .items { display: flex; gap: 8px; pointer-events: auto; max-width: 100%; overflow-x: auto; padding: 2px; scrollbar-width: none; }
+  .tray .items::-webkit-scrollbar { display: none; }
+  .tray button { flex: none; width: 58px; height: 58px; padding: 0; border: 1px solid var(--line); background: #060c19; border-radius: 50%; overflow: hidden; cursor: pointer; transition: transform .25s cubic-bezier(.2, .8, .2, 1), border-color .2s; }
+  .tray button:hover { transform: translateY(-3px) scale(1.06); border-color: var(--frost); }
+  .tray img { width: 100%; height: 100%; display: block; }
+  .tray .empty { font: italic 500 15px/1.3 var(--serif); color: var(--muted); }
+
+  .tip { position: fixed; left: calc((380px + 100vw - 392px) / 2); top: 32px; transform: translateX(-50%); font: 400 12px/1 var(--mono); letter-spacing: .12em; color: var(--muted); pointer-events: none; opacity: .85; transition: opacity 1s; white-space: nowrap; }
+  .toast { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.96); padding: 14px 22px; background: rgba(5, 10, 22, .9); border: 1px solid var(--line-strong); font: italic 500 20px/1 var(--serif); color: var(--ice); opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; }
+  .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .nogl { position: fixed; inset: 0; display: none; place-items: center; text-align: center; padding: 30px; font: italic 500 24px/1.4 var(--serif); color: var(--text); }
+
+  @media (max-width: 1180px) {
+    .title { max-width: 300px; }
+    h1 { font-size: 46px; }
+    .lede { display: none; }
+    .tray { left: 40px; right: 392px; bottom: auto; top: 34px; align-items: flex-end; }
+    .tip { display: none; }
+  }
+  @media (max-width: 760px) {
+    html, body { overflow: auto; height: auto; }
+    canvas#gl { position: fixed; height: 62vh; height: 62svh; inset: 0 0 auto 0; }
+    .title { left: 20px; top: 16px; }
+    .kicker { display: none; }
+    h1 { font-size: 30px; margin: 0; }
+    h1 span { font-size: 16px; margin-top: 3px; }
+    .passport { position: absolute; top: calc(62svh - 46px); left: 20px; right: 20px; bottom: auto; width: auto; }
+    .passport .no, .passport dl, .passport .grow { display: none; }
+    .passport .morph { font-size: 24px; margin: 0; text-shadow: 0 1px 12px #050a16; }
+    .panel { position: relative; top: auto; right: auto; bottom: auto; width: auto; margin: calc(62svh + 8px) 12px 16px; backdrop-filter: none; }
+    .panel .scroll { overflow: visible; padding: 16px 16px 10px; }
+    .presets { grid-template-columns: repeat(5, 1fr); }
+    .actions { padding: 12px 16px 16px; }
+    .tray { position: relative; left: auto; right: auto; bottom: auto; top: auto; margin: 0 12px 28px; align-items: flex-start; }
+    .tip { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .preset, .tray button, .toast { transition: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Снежинка, растущая по модели Рейтера"></canvas>
+<div class="nogl" id="nogl">Этому браузеру не хватает WebGL2 — без него лёд не отрисовать.<br>Откройте страницу в свежем Chrome, Safari или Firefox.</div>
+
+<header class="title">
+  <div class="kicker">Клеточный автомат Рейтера, 2005</div>
+  <h1>Снежинки Рейтера<span>шесть правил и&nbsp;немного&nbsp;пара</span></h1>
+  <p class="lede">Каждая шестиугольная клетка хранит водяной пар. Пар расплывается к соседям, а&nbsp;там, где касается льда, намерзает. Из&nbsp;этих локальных правил вырастает кристалл — всегда с&nbsp;шестью одинаковыми лучами.</p>
+</header>
+
+<div class="tip" id="tip">Ведите мышью — свет скользит по граням льда</div>
+
+<section class="passport" aria-live="polite">
+  <div class="no"><span id="pNo">Кристалл № —</span><span id="pState">растёт</span></div>
+  <div class="morph" id="pMorph">&nbsp;</div>
+  <dl>
+    <div><dt>β пар</dt><dd id="pB">—</dd></div>
+    <div><dt>γ приток</dt><dd id="pG">—</dd></div>
+    <div><dt>α диффузия</dt><dd id="pA">—</dd></div>
+    <div><dt>κ шум</dt><dd id="pK">—</dd></div>
+  </dl>
+  <div class="grow"><span id="pSteps">шаг 0</span><span class="bar"><i id="pBar"></i></span><span id="pCells">0 клеток льда</span></div>
+</section>
+
+<aside class="panel" aria-label="Условия роста">
+  <div class="scroll">
+    <section class="sec">
+      <h2>Образцы <em id="presetCount"></em></h2>
+      <div class="presets" id="presets"></div>
+      <div class="preset-name" id="presetName">&nbsp;</div>
+    </section>
+    <section class="sec">
+      <h2>Путь через облако</h2>
+      <div class="seg" id="sched"></div>
+      <svg class="sched-graph" id="schedGraph" viewBox="0 0 300 44" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="sched-note"><span>центр</span><span>влажность пара по мере роста</span><span>край</span></div>
+    </section>
+    <section class="sec">
+      <h2>Условия</h2>
+      <div class="field"><div class="row"><label for="rB"><b>β</b>влажность фона</label><output id="oB"></output></div><input id="rB" type="range" min="0.25" max="0.97" step="0.005"></div>
+      <div class="field"><div class="row"><label for="rG"><b>γ</b>приток пара сверху</label><output id="oG"></output></div><input id="rG" type="range" min="0" max="1" step="0.001"></div>
+      <div class="field"><div class="row"><label for="rA"><b>α</b>скорость диффузии</label><output id="oA"></output></div><input id="rA" type="range" min="0.4" max="2.4" step="0.02"></div>
+      <div class="field"><div class="row"><label for="rK"><b>κ</b>случайные порывы</label><output id="oK"></output></div><input id="rK" type="range" min="0" max="1" step="0.01"></div>
+      <div class="hint">Шум применяется к клину 1/12, поэтому даже «неровная» снежинка остаётся идеально симметричной — как настоящая: все лучи растут в одном и том же воздухе.</div>
+    </section>
+    <section class="sec">
+      <h2>Свет</h2>
+      <div class="toggles">
+        <button class="btn" id="tRhein" aria-pressed="false">Рейнберг</button>
+        <button class="btn vap" id="tVapor" aria-pressed="false">Показать пар</button>
+      </div>
+    </section>
+  </div>
+  <div class="actions">
+    <button class="btn primary" id="bGrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1v14M2 4.5l12 7M2 11.5l12-7M8 1l-1.6 1.6M8 1l1.6 1.6M8 15l-1.6-1.6M8 15l1.6-1.6"/></svg>Вырастить заново</button>
+    <button class="btn small" id="bSave"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2.5l5 2.9v5.2L8 13.5l-5-2.9V5.4z"/><path d="M8 6v4M6 8h4"/></svg>В коллекцию</button>
+    <button class="btn small" id="bPng"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2v8M4.5 6.5L8 10l3.5-3.5M2.5 13.5h11"/></svg>Карточка PNG</button>
+  </div>
+</aside>
+
+<section class="tray" aria-label="Коллекция">
+  <div class="label">Коллекция на бархате</div>
+  <div class="items" id="tray"></div>
+</section>
+<div class="toast" id="toast"></div>
+
+<!-- ─────────────────────────────────────────────────────────────
+     Воркер: модель Рейтера на клине 1/12 гексагональной решётки
+     ───────────────────────────────────────────────────────────── -->
+<script type="text/plain" id="worker-src">
+const SQ3_2 = 0.8660254037844386;
+const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
+const cache = {};
+
+// Сетка: клетки круга радиуса R в осевых координатах (q, r).
+// Считаем только клин 0 ≤ r ≤ q (угол 0–30°): остальные 11 копий получаются симметрией.
+function build(R) {
+  if (cache[R]) return cache[R];
+  const S = 2 * R + 1;
+  const inside = (q, r) => { const x = q + r / 2, y = SQ3_2 * r; return x * x + y * y <= R * R; };
+  const canon = (q, r) => {
+    let a = q, b = r;
+    for (let k = 0; k < 12; k++) {
+      if (b >= 0 && b <= a) return [a, b];
+      if (k === 5) { const t = a + b; b = -b; a = t; }     // отражение
+      else { const t = -b; b = a + b; a = t; }              // поворот на 60°
+    }
+    return [a, b];
+  };
+  const idx = new Int32Array(S * S).fill(-1);
+  const cq = [], cr = [];
+  for (let r = 0; r <= R; r++) for (let q = r; q <= R; q++) {
+    if (!inside(q, r)) continue;
+    idx[(r + R) * S + (q + R)] = cq.length; cq.push(q); cr.push(r);
+  }
+  const N = cq.length, OUT = N;
+  const nb = new Int32Array(N * 6), dist = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const q = cq[i], r = cr[i];
+    dist[i] = Math.hypot(q + r / 2, SQ3_2 * r);
+    for (let d = 0; d < 6; d++) {
+      const nq = q + DIRS[d][0], nr = r + DIRS[d][1];
+      if (!inside(nq, nr)) { nb[i * 6 + d] = OUT; continue; }
+      const c = canon(nq, nr);
+      nb[i * 6 + d] = idx[(c[1] + R) * S + (c[0] + R)];
+    }
+  }
+  // Карта «клетка полной сетки → индекс в клине» (−1 — вне круга)
+  const map = new Int32Array(S * S).fill(-1);
+  for (let r = -R; r <= R; r++) for (let q = -R; q <= R; q++) {
+    if (!inside(q, r)) continue;
+    const c = canon(q, r);
+    map[(r + R) * S + (q + R)] = idx[(c[1] + R) * S + (c[0] + R)];
+  }
+  return (cache[R] = { R, S, N, nb, dist, map, cq, cr });
+}
+
+// Путь через облако: β как функция относительного радиуса x
+const WET = 0.88;
+const SCHED = {
+  flat: (x, b) => b,
+  plateFirst: (x, b) => (x < 0.22 ? WET : b),
+  platesTips: (x, b) => (x < 0.55 ? b : 0.85),
+  wetDryWet: (x, b) => (x < 0.2 || x > 0.62 ? WET : b),
+  bands: (x, b) => Math.min(0.97, b + 0.35 * (Math.floor(x / 0.16) % 2)),
+};
+
+function rng(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+function makeSim(G, p) {
+  const { N } = G;
+  const sched = SCHED[p.sched] || SCHED.flat;
+  const sim = {
+    G, p, sched, beta: sched(0, p.beta),
+    s: new Float32Array(N + 1), u: new Float32Array(N + 1), v: new Float32Array(N),
+    fr: new Uint8Array(N + 1), born: new Float32Array(N).fill(-1),
+    step: 0, maxR: 0, ice: 1, maxS: 1, done: false, stall: 0, rand: rng(p.seed || 1),
+  };
+  sim.s.fill(sim.beta); sim.s[0] = 1; sim.born[0] = 0;
+  return sim;
+}
+
+function stepSim(sim) {
+  const { G, p } = sim, { N, nb, dist, R } = G;
+  const s = sim.s, u = sim.u, v = sim.v, fr = sim.fr;
+  // «Путь через облако»: смена влажности слоя сдвигает весь пар
+  const tb = sim.sched(sim.maxR / R, p.beta);
+  if (Math.abs(tb - sim.beta) > 1e-6) {
+    const d = tb - sim.beta;
+    for (let i = 0; i < N; i++) if (s[i] < 1) s[i] = Math.min(0.999, Math.max(0, s[i] + d));
+    sim.beta = tb;
+  }
+  for (let i = 0; i < N; i++) fr[i] = s[i] >= 1 ? 1 : 0;
+  fr[N] = 0; u[N] = sim.beta;
+  const g = p.gamma, k = p.noise * 0.0006, rand = sim.rand;
+  for (let i = 0; i < N; i++) {
+    const o = i * 6;
+    if (fr[i] || fr[nb[o]] || fr[nb[o + 1]] || fr[nb[o + 2]] || fr[nb[o + 3]] || fr[nb[o + 4]] || fr[nb[o + 5]]) {
+      u[i] = 0; v[i] = s[i] + g + (k ? k * (rand() * 2 - 1) : 0);   // восприимчивая клетка: не диффундирует, копит пар
+    } else { u[i] = s[i]; v[i] = 0; }
+  }
+  const a2 = p.alpha / 2;
+  let grew = false;
+  sim.step++;
+  for (let i = 0; i < N; i++) {
+    const o = i * 6;
+    const ub = (u[nb[o]] + u[nb[o + 1]] + u[nb[o + 2]] + u[nb[o + 3]] + u[nb[o + 4]] + u[nb[o + 5]]) / 6;
+    const ns = u[i] + a2 * (ub - u[i]) + v[i];
+    if (ns >= 1 && s[i] < 1) {
+      sim.born[i] = sim.step; sim.ice++; grew = true;
+      if (dist[i] > sim.maxR) sim.maxR = dist[i];
+    }
+    s[i] = ns;
+  }
+  sim.stall = grew ? 0 : sim.stall + 1;
+  if (sim.maxR > R * 0.9 || sim.stall > 6000 || sim.step > 90000) sim.done = true;
+}
+
+function stats(sim) {
+  let mx = 1; const s = sim.s, N = sim.G.N;
+  for (let i = 0; i < N; i++) if (s[i] > mx) mx = s[i];
+  sim.maxS = mx;
+}
+
+// Морфология — грубая оценка по форме: заполненность и «ветвистость» клина
+function morphology(sim) {
+  const { G } = sim, { N, cq, cr, dist } = G, s = sim.s, Rc = Math.max(sim.maxR, 1);
+  let inDisk = 0, ice = 0, mid = 0, midN = 0, side = 0, sideN = 0;
+  for (let i = 0; i < N; i++) {
+    if (dist[i] > Rc) continue;
+    inDisk++; const isIce = s[i] >= 1; if (isIce) ice++;
+    const ang = Math.atan2(0.866 * cr[i], cq[i] + cr[i] / 2) * 180 / Math.PI;
+    if (dist[i] > 0.55 * Rc && dist[i] < 0.9 * Rc) {
+      if (ang > 22) { midN++; if (isIce) mid++; }
+      else if (ang > 4 && ang < 16) { sideN++; if (isIce) side++; }
+    }
+  }
+  const fill = ice / Math.max(1, inDisk), midF = mid / Math.max(1, midN), sideF = side / Math.max(1, sideN);
+  let name;
+  if (fill > 0.5 && midF > 0.6) name = 'Шестиугольная пластинка';
+  else if (midF > 0.45) name = 'Звёздчатая пластинка';
+  else if (fill > 0.34) name = 'Широкие ветви';
+  else if (sideF > 0.28) name = 'Звёздчатый дендрит';
+  else if (sideF > 0.12) name = 'Звезда с веточками';
+  else name = 'Простая звезда';
+  return { name, fill };
+}
+
+let current = null, timer = 0;
+function pump() {
+  const sim = current; if (!sim) return;
+  const t0 = performance.now();
+  const R = sim.G.R;
+  // Скорость роста ограничена по времени, чтобы на рост можно было смотреть (~6 с до края)
+  const elapsed = (t0 - sim.t0) / 1000;
+  const allowed = 5 + elapsed * R / sim.p.pace;
+  while (!sim.done && sim.maxR < allowed && performance.now() - t0 < 14) stepSim(sim);
+  stats(sim);
+  const msg = { type: 'frame', gen: sim.gen, step: sim.step, maxR: sim.maxR, ice: sim.ice * 12, maxS: sim.maxS, beta: sim.beta, done: sim.done,
+    s: sim.s.slice(0, sim.G.N), born: sim.born.slice() };
+  if (sim.done) msg.morph = morphology(sim);
+  postMessage(msg, [msg.s.buffer, msg.born.buffer]);
+  if (!sim.done) timer = setTimeout(pump, 16);
+}
+
+onmessage = (e) => {
+  const m = e.data;
+  if (m.type === 'grow') {
+    clearTimeout(timer);
+    const G = build(m.R);
+    current = makeSim(G, m.params); current.gen = m.gen; current.t0 = performance.now(); current.p.pace = m.pace || 6;
+    postMessage({ type: 'grid', gen: m.gen, R: G.R, S: G.S, N: G.N, map: G.map });
+    pump();
+  } else if (m.type === 'thumb') {
+    const G = build(m.R);
+    const sim = makeSim(G, m.params);
+    while (!sim.done) stepSim(sim);
+    stats(sim);
+    postMessage({ type: 'thumb', id: m.id, R: G.R, S: G.S, map: G.map, s: sim.s.slice(0, G.N), born: sim.born, maxS: sim.maxS, beta: sim.beta, step: sim.step, morph: morphology(sim) });
+  }
+};
+</script>
+
+<script>
+(() => {
+'use strict';
+
+// ───────────────────────── Данные ─────────────────────────
+const PRESETS = [
+  { name: 'Звезда с пластинками', alpha: 1, beta: 0.40, gamma: 0.001, noise: 0, sched: 'platesTips' },
+  { name: 'Облачный путь', alpha: 1, beta: 0.35, gamma: 0.001, noise: 0, sched: 'wetDryWet' },
+  { name: 'Папоротниковая звезда', alpha: 1, beta: 0.40, gamma: 0.0005, noise: 0, sched: 'bands' },
+  { name: 'Звёздчатый дендрит', alpha: 1, beta: 0.35, gamma: 0.001, noise: 0, sched: 'flat' },
+  { name: 'Пластинка в сердце', alpha: 1, beta: 0.40, gamma: 0.001, noise: 0, sched: 'plateFirst' },
+  { name: 'Шестиугольная пластинка', alpha: 1, beta: 0.97, gamma: 0.001, noise: 0, sched: 'flat' },
+  { name: 'Секторная пластинка', alpha: 1, beta: 0.70, gamma: 0, noise: 0, sched: 'flat' },
+  { name: 'Широкие ветви', alpha: 1, beta: 0.75, gamma: 0.005, noise: 0, sched: 'flat' },
+  { name: 'Простая звезда', alpha: 1, beta: 0.90, gamma: 0, noise: 0, sched: 'flat' },
+  { name: 'Кружево', alpha: 0.5, beta: 0.50, gamma: 0.001, noise: 0, sched: 'flat' },
+];
+const SCHEDS = [
+  { id: 'flat', name: 'Ровное облако' },
+  { id: 'plateFirst', name: 'Влажно → сухо' },
+  { id: 'platesTips', name: 'Сухо → влажно' },
+  { id: 'wetDryWet', name: 'Влажно, сухо, влажно' },
+  { id: 'bands', name: 'Слоистое облако' },
+];
+const WET = 0.88;
+const SCHED_FN = {
+  flat: (x, b) => b,
+  plateFirst: (x, b) => (x < 0.22 ? WET : b),
+  platesTips: (x, b) => (x < 0.55 ? b : 0.85),
+  wetDryWet: (x, b) => (x < 0.2 || x > 0.62 ? WET : b),
+  bands: (x, b) => Math.min(0.97, b + 0.35 * (Math.floor(x / 0.16) % 2)),
+};
+
+// γ на ползунке — логарифмическая шкала: 0 и 10⁻⁵…10⁻²
+const gammaFromSlider = (t) => (t < 0.02 ? 0 : Math.pow(10, -5 + 3 * (t - 0.02) / 0.98));
+const sliderFromGamma = (g) => (g <= 0 ? 0 : Math.min(1, 0.02 + 0.98 * (Math.log10(g) + 5) / 3));
+
+const fmt = (x, d) => x.toFixed(d).replace('.', ',');
+const fmtInt = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const plural = (n, f) => { const a = Math.abs(n) % 100, b = a % 10; return f[a > 10 && a < 20 ? 2 : b > 1 && b < 5 ? 1 : b === 1 ? 0 : 2]; };
+const $ = (id) => document.getElementById(id);
+
+// Номер кристалла выводится из параметров: одинаковые условия — один и тот же кристалл
+function crystalNo(p) {
+  const str = [p.alpha, p.beta, p.gamma, p.noise, p.sched].join('|');
+  let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return 1000 + ((h >>> 0) % 9000);
+}
+
+// ───────────────────────── Рендер льда (WebGL2) ─────────────────────────
+const VS = `#version 300 es
+in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`;
+const FS = `#version 300 es
+precision highp float; precision highp int;
+uniform highp sampler2D uField;
+uniform sampler2D uBgTex;
+uniform int uS, uPass;
+uniform float uBeta, uScale, uMaxS, uStep, uTime, uVapor, uRhein, uRev, uBg, uRadius;
+uniform vec2 uRes, uCenter;
+uniform vec3 uLight;
+out vec4 outColor;
+
+vec2 cellVal(ivec2 qr) {
+  ivec2 t = qr + ivec2(uS / 2);
+  if (t.x < 0 || t.y < 0 || t.x >= uS || t.y >= uS) return vec2(uBeta, -1.0);
+  return texelFetch(uField, t, 0).rg;
+}
+// Кусочно-линейная интерполяция по треугольникам решётки центров
+vec2 field(vec2 d) {
+  vec2 p = vec2(-d.y, d.x);                 // поворот: один луч смотрит вверх
+  float r = p.y / 0.8660254;
+  float q = p.x - r * 0.5;
+  vec2 f = floor(vec2(q, r)), w = vec2(q, r) - f;
+  ivec2 b = ivec2(f);
+  if (w.x + w.y < 1.0) return cellVal(b) * (1.0 - w.x - w.y) + cellVal(b + ivec2(1, 0)) * w.x + cellVal(b + ivec2(0, 1)) * w.y;
+  return cellVal(b + ivec2(1, 0)) * (1.0 - w.y) + cellVal(b + ivec2(0, 1)) * (1.0 - w.x) + cellVal(b + ivec2(1, 1)) * (w.x + w.y - 1.0);
+}
+float iceMask(float s) { return smoothstep(0.965, 1.005, s); }
+float height(vec2 d) {
+  float s = field(d).x;
+  float th = clamp((s - 1.0) / max(uMaxS - 1.0, 0.02), 0.0, 1.0);
+  return iceMask(s) * (0.45 + 0.55 * sqrt(th));
+}
+float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
+}
+float fbm(vec2 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++) { s += a * vnoise(p); p = p * 2.03 + 11.7; a *= 0.5; } return s; }
+
+vec3 velvet(vec2 frag) {
+  vec2 uv = frag / uRes.y;
+  float crush = fbm(uv * 3.2 + fbm(uv * 1.3) * 1.4);
+  float nap = vnoise(vec2(frag.x * 0.35 + frag.y * 0.12, frag.y * 0.04 - frag.x * 0.02));
+  vec3 lo = mix(vec3(0.012, 0.020, 0.045), vec3(0.030, 0.012, 0.030), uRhein);
+  vec3 hi = mix(vec3(0.060, 0.095, 0.180), vec3(0.020, 0.060, 0.200), uRhein);
+  vec3 c = mix(lo, hi, smoothstep(0.25, 0.85, crush));
+  c *= 0.92 + 0.16 * nap;
+  // мягкий «ворс» с неравномерным блеском
+  c += 0.018 * vec3(0.5, 0.65, 1.0) * smoothstep(0.55, 0.95, crush);
+  float r = length(frag - uCenter) / uRes.y;
+  c *= 1.18 - 0.75 * smoothstep(0.1, 0.95, r);
+  c += (hash(frag) - 0.5) * 0.012;
+  return c;
+}
+vec3 finish(vec3 col) { col = col / (1.0 + col * 0.18); return pow(max(col, 0.0), vec3(0.94)); }
+
+void main() {
+  vec2 frag = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
+  // Проход 0: бархат рисуется один раз в текстуру (дорогой шум не считается каждый кадр)
+  if (uPass == 0) { outColor = vec4(velvet(frag), 1.0); return; }
+  vec3 col = (uPass == 1 ? texelFetch(uBgTex, ivec2(gl_FragCoord.xy), 0).rgb : velvet(frag)) * uBg;
+  vec2 d = (frag - uCenter) / uScale;
+  // Всё, что дальше кристалла и его тени, — только бархат
+  if (length(d) > uRadius + 9.0) { outColor = vec4(finish(col), 1.0); return; }
+  vec3 L = normalize(uLight);
+
+  // Мягкая тень кристалла на бархате
+  vec2 so = -L.xy * vec2(1.0, -1.0) * 4.0;
+  float sh = iceMask(field(d + so).x) + iceMask(field(d + so * 1.6 + vec2(1.2, -1.2)).x);
+  col *= 1.0 - 0.2 * sh * uRev;
+
+  vec2 F = field(d);
+  float s = F.x, born = F.y;
+  float ice = iceMask(s) * uRev;
+
+  // Пар: поле восприимчивости — туман и тёмный ореол обеднения вокруг кристалла
+  if (uVapor > 0.0) {
+    float vap = clamp(s / max(uBeta, 0.05), 0.0, 1.0);
+    float halo = (1.0 - vap);
+    col += uVapor * (1.0 - ice) * (vec3(0.10, 0.20, 0.42) * vap * 0.55 - vec3(0.02, 0.03, 0.05) * halo);
+    col += uVapor * (1.0 - ice) * vec3(0.35, 0.6, 1.0) * 0.18 * smoothstep(0.8, 0.99, s);
+  }
+
+  if (ice > 0.001) {
+    float e = 0.55;
+    float h0 = height(d), hx = height(d + vec2(e, 0.0)), hy = height(d + vec2(0.0, e));
+    vec3 n = normalize(vec3(-(hx - h0) / e * 1.25, (hy - h0) / e * 1.25, 1.0));
+    float th = clamp((s - 1.0) / max(uMaxS - 1.0, 0.02), 0.0, 1.0);
+    float rim = 1.0 - n.z;
+    float diff = max(dot(n, L), 0.0);
+    vec3 Hh = normalize(L + vec3(0.0, 0.0, 1.0));
+    float spec = pow(max(dot(n, Hh), 0.0), 70.0);
+    float spec2 = pow(max(dot(n, normalize(vec3(-L.x, -L.y, L.z * 0.7) + vec3(0, 0, 1))), 0.0), 24.0);
+    float ang = atan(n.y, n.x);
+    vec3 rainbow = 0.5 + 0.5 * cos(6.2831 * (ang / 6.2831 + vec3(0.0, 0.33, 0.67)) + uTime * 0.25);
+    float age = born >= 0.0 ? max(uStep - born, 0.0) : 1e6;
+    float fresh = exp(-age / 90.0);
+
+    vec3 body = mix(vec3(0.36, 0.58, 0.84), vec3(0.93, 0.975, 1.0), 0.12 + 0.88 * th * th);
+    vec3 rimCol = mix(vec3(0.85, 0.94, 1.0), vec3(1.0, 0.80, 0.42), uRhein);
+    float a = clamp(0.16 + 0.5 * th + 0.95 * rim, 0.0, 0.94);
+    vec3 icec = body * (0.40 + 0.72 * diff) + rimCol * rim * 0.75;
+    icec = mix(icec, icec * vec3(0.55, 0.72, 1.15), uRhein * (1.0 - rim) * 0.5);
+    col = mix(col, icec, a * ice);
+    col += ice * spec * vec3(1.0, 0.97, 0.92) * 1.35;
+    col += ice * spec2 * rainbow * 0.28 * (0.4 + rim);
+    col += ice * fresh * vec3(0.55, 0.8, 1.0) * 0.55;
+  }
+
+  outColor = vec4(finish(col), 1.0);
+}`;
+
+function makeRenderer(canvas, opts) {
+  const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: !!opts.preserve, powerPreference: 'high-performance' });
+  if (!gl) return null;
+  const sh = (t, src) => { const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'aPos'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const U = {}; ['uField', 'uBgTex', 'uS', 'uPass', 'uBeta', 'uScale', 'uMaxS', 'uStep', 'uTime', 'uVapor', 'uRhein', 'uRev', 'uBg', 'uRadius', 'uRes', 'uCenter', 'uLight'].forEach((n) => (U[n] = gl.getUniformLocation(prog, n)));
+  const mkTex = (filter) => {
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  };
+  const tex = mkTex(gl.NEAREST), bgTex = mkTex(gl.NEAREST);
+  const fbo = gl.createFramebuffer();
+  gl.uniform1i(U.uField, 0); gl.uniform1i(U.uBgTex, 1);
+  let texS = 0, bgKey = '';
+  const common = (u) => {
+    gl.uniform1i(U.uS, texS);
+    gl.uniform1f(U.uBeta, u.beta); gl.uniform1f(U.uScale, u.scale); gl.uniform1f(U.uMaxS, u.maxS);
+    gl.uniform1f(U.uStep, u.step); gl.uniform1f(U.uTime, u.time); gl.uniform1f(U.uVapor, u.vapor);
+    gl.uniform1f(U.uRhein, u.rhein); gl.uniform1f(U.uRev, u.rev); gl.uniform1f(U.uBg, u.bg ?? 1);
+    gl.uniform1f(U.uRadius, u.radius ?? 1e5);
+    gl.uniform2f(U.uRes, canvas.width, canvas.height); gl.uniform2f(U.uCenter, u.cx, u.cy);
+    gl.uniform3f(U.uLight, u.light[0], u.light[1], u.light[2]);
+  };
+  return {
+    gl,
+    upload(S, data) {
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
+      if (S !== texS) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG32F, S, S, 0, gl.RG, gl.FLOAT, data); texS = S; }
+      else gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, S, S, gl.RG, gl.FLOAT, data);
+    },
+    // Бархат пересчитывается только при смене размера или освещения Рейнберга
+    draw(u) {
+      const W = canvas.width, H = canvas.height;
+      if (u.bgCache) {
+        const key = [W, H, u.cx | 0, u.cy | 0, u.rhein].join(',');
+        if (key !== bgKey) {
+          gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bgTex);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+          gl.bindTexture(gl.TEXTURE_2D, null);          // иначе текстура одновременно и цель, и источник
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, bgTex, 0);
+          gl.viewport(0, 0, W, H); common(u); gl.uniform1i(U.uPass, 0);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          bgKey = key;
+        }
+      }
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bgTex);
+      gl.viewport(0, 0, W, H); common(u); gl.uniform1i(U.uPass, u.bgCache ? 1 : 2);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    },
+  };
+}
+
+// Разворачиваем клин 1/12 в полную сетку: (s, шаг замерзания) в RG-текстуру
+function expand(S, map, s, born, beta, out) {
+  const n = S * S; const o = out && out.length === n * 2 ? out : new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) {
+    const w = map[i];
+    if (w < 0) { o[i * 2] = beta; o[i * 2 + 1] = -1; }
+    else { o[i * 2] = s[w]; o[i * 2 + 1] = born[w]; }
+  }
+  return o;
+}
+
+// ───────────────────────── Состояние ─────────────────────────
+const canvas = $('gl');
+const SHOT = !!window.__SHOT__;
+let R_MAIN = 240;
+let rend;
+try { rend = makeRenderer(canvas, { preserve: true }); } catch (e) { rend = null; }
+if (!rend) { $('nogl').style.display = 'grid'; return; }
+
+const thumbCanvas = document.createElement('canvas');
+thumbCanvas.width = thumbCanvas.height = 192;
+const thumbRend = makeRenderer(thumbCanvas, { preserve: true });
+
+const params = { ...PRESETS[0] };
+const state = {
+  gen: 0, S: 0, map: null, full: null, step: 0, maxR: 0, maxS: 1, beta: params.beta, done: false,
+  morph: null, ice: 0, rhein: 0, vapor: 0, vaporT: 0, rev: 0, dpr: 1, scaleQ: 1,
+  light: [0.45, -0.5, 0.75], mouse: null, lastMove: -1e9, presetIdx: 0,
+};
+
+const worker = new Worker(URL.createObjectURL(new Blob([$('worker-src').textContent], { type: 'text/javascript' })));
+const thumbJobs = new Map();
+
+worker.onmessage = (e) => {
+  const m = e.data;
+  if (m.type === 'grid') { if (m.gen === state.gen) { state.S = m.S; state.map = m.map; } return; }
+  if (m.type === 'frame') {
+    if (m.gen !== state.gen || !state.map) return;
+    state.full = expand(state.S, state.map, m.s, m.born, m.beta, state.full);
+    rend.upload(state.S, state.full);
+    Object.assign(state, { step: m.step, maxR: m.maxR, maxS: m.maxS, beta: m.beta, done: m.done, ice: m.ice });
+    if (m.morph) state.morph = m.morph;
+    if (m.done && typeof tryThumbs === 'function') setTimeout(tryThumbs, 200);
+    updatePassport();
+    return;
+  }
+  if (m.type === 'thumb') { const cb = thumbJobs.get(m.id); thumbJobs.delete(m.id); cb && cb(m); }
+};
+
+function grow() {
+  state.gen++;
+  state.done = false; state.morph = null; state.step = 0; state.maxR = 0; state.rev = 0;
+  const mobile = innerWidth < 760;
+  R_MAIN = mobile ? 170 : 240;
+  worker.postMessage({ type: 'grow', gen: state.gen, R: R_MAIN, pace: 6, params: { ...params, seed: crystalNo(params) } });
+  updatePassport();
+}
+
+// ───────────────────────── Паспорт ─────────────────────────
+function presetName() {
+  const i = PRESETS.findIndex((p) => ['alpha', 'beta', 'gamma', 'noise', 'sched'].every((k) => p[k] === params[k]));
+  return i >= 0 ? PRESETS[i].name : null;
+}
+function updatePassport() {
+  $('pNo').textContent = 'Кристалл № ' + crystalNo(params);
+  $('pState').textContent = state.done ? 'вырос' : 'растёт';
+  const nm = presetName();
+  $('pMorph').textContent = state.done ? (nm || (state.morph ? state.morph.name : '')) : (nm || 'Новый кристалл');
+  $('pB').textContent = fmt(params.beta, 3);
+  $('pG').textContent = params.gamma === 0 ? '0' : params.gamma < 0.001 ? fmt(params.gamma, 5) : fmt(params.gamma, 4);
+  $('pA').textContent = fmt(params.alpha, 2);
+  $('pK').textContent = fmt(params.noise, 2);
+  $('pSteps').textContent = 'шаг ' + fmtInt(state.step);
+  $('pCells').textContent = fmtInt(state.ice) + ' ' + plural(state.ice, ['клетка', 'клетки', 'клеток']) + ' льда';
+  $('pBar').style.transform = 'scaleX(' + Math.min(1, state.maxR / (R_MAIN * 0.9)).toFixed(3) + ')';
+}
+
+// ───────────────────────── Панель ─────────────────────────
+const presetsEl = $('presets');
+PRESETS.forEach((p, i) => {
+  const b = document.createElement('button');
+  b.className = 'preset'; b.type = 'button'; b.title = p.name; b.setAttribute('aria-label', p.name);
+  const c = document.createElement('canvas'); c.width = c.height = 128; b.appendChild(c);
+  b.addEventListener('click', () => { Object.assign(params, PRESETS[i]); state.presetIdx = i; syncUI(); grow(); });
+  b.addEventListener('mouseenter', () => ($('presetName').textContent = p.name));
+  b.addEventListener('mouseleave', () => ($('presetName').textContent = presetName() || 'Свои условия'));
+  presetsEl.appendChild(b);
+});
+$('presetCount').textContent = PRESETS.length + ' условий';
+
+const schedEl = $('sched');
+SCHEDS.forEach((s) => {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = s.name; b.dataset.id = s.id;
+  b.addEventListener('click', () => { params.sched = s.id; syncUI(); grow(); });
+  schedEl.appendChild(b);
+});
+
+function drawSchedGraph() {
+  const fn = SCHED_FN[params.sched];
+  let d = '';
+  for (let i = 0; i <= 100; i++) {
+    const x = i / 100, b = fn(x, params.beta);
+    const X = x * 300, Y = 40 - ((b - 0.25) / 0.75) * 36;
+    d += (i ? 'L' : 'M') + X.toFixed(1) + ' ' + Y.toFixed(1);
+  }
+  $('schedGraph').innerHTML =
+    `<line x1="0" y1="${(40 - ((WET - 0.25) / 0.75) * 36).toFixed(1)}" x2="300" y2="${(40 - ((WET - 0.25) / 0.75) * 36).toFixed(1)}" stroke="rgba(160,196,235,.14)" stroke-dasharray="2 4"/>` +
+    `<path d="${d} L300 44 L0 44 Z" fill="rgba(159,211,255,.08)"/><path d="${d}" fill="none" stroke="#9fd3ff" stroke-width="1.4" vector-effect="non-scaling-stroke"/>`;
+}
+
+const rB = $('rB'), rG = $('rG'), rA = $('rA'), rK = $('rK');
+function paintRange(el) { const t = (el.value - el.min) / (el.max - el.min); el.style.setProperty('--p', (t * 100).toFixed(1) + '%'); }
+function syncUI() {
+  rB.value = params.beta; rG.value = sliderFromGamma(params.gamma); rA.value = params.alpha; rK.value = params.noise;
+  [rB, rG, rA, rK].forEach(paintRange);
+  $('oB').textContent = fmt(params.beta, 3);
+  $('oG').textContent = params.gamma === 0 ? '0' : params.gamma.toExponential(1).replace('.', ',').replace('e-', '·10⁻').replace(/⁻(\d)$/, (m, d) => '⁻' + '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]);
+  $('oA').textContent = fmt(params.alpha, 2);
+  $('oK').textContent = fmt(params.noise, 2);
+  const nm = presetName();
+  [...presetsEl.children].forEach((b, i) => b.classList.toggle('active', nm === PRESETS[i].name));
+  $('presetName').textContent = nm || 'Свои условия';
+  [...schedEl.children].forEach((b) => b.classList.toggle('active', b.dataset.id === params.sched));
+  drawSchedGraph();
+}
+let growTimer = 0;
+function onSlider() {
+  params.beta = +rB.value; params.gamma = gammaFromSlider(+rG.value); params.alpha = +rA.value; params.noise = +rK.value;
+  syncUI(); clearTimeout(growTimer); growTimer = setTimeout(grow, 220);
+}
+[rB, rG, rA, rK].forEach((el) => el.addEventListener('input', onSlider));
+
+$('bGrow').addEventListener('click', grow);
+$('tRhein').addEventListener('click', (e) => { state.rhein = state.rhein ? 0 : 1; e.currentTarget.setAttribute('aria-pressed', String(!!state.rhein)); });
+$('tVapor').addEventListener('click', (e) => { state.vaporT = state.vaporT ? 0 : 1; e.currentTarget.setAttribute('aria-pressed', String(!!state.vaporT)); });
+
+// ───────────────────────── Миниатюры образцов ─────────────────────────
+let thumbId = 0;
+function renderThumb(m, size, rhein) {
+  thumbCanvas.width = thumbCanvas.height = size;
+  thumbRend.upload(m.S, expand(m.S, m.map, m.s, m.born, m.beta));
+  thumbRend.draw({ beta: m.beta, scale: (size * 0.47) / (m.R * 0.9), maxS: m.maxS, step: m.step + 1e5, time: 0.6, vapor: 0, rhein: rhein || 0, rev: 1, cx: size / 2, cy: size / 2, light: [0.45, -0.5, 0.75], bg: 0.9 });
+  return thumbCanvas;
+}
+function requestThumb(params, R, cb) { const id = ++thumbId; thumbJobs.set(id, cb); worker.postMessage({ type: 'thumb', id, R, params: { ...params, seed: crystalNo(params) } }); }
+function loadPresetThumbs() {
+  PRESETS.forEach((p, i) => requestThumb(p, 58, (m) => {
+    const c = presetsEl.children[i].querySelector('canvas');
+    c.getContext('2d').drawImage(renderThumb(m, 128), 0, 0);
+    c.classList.add('on');
+  }));
+}
+
+// ───────────────────────── Коллекция ─────────────────────────
+const KEY = 'reiter-collection-v1';
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
+const store = (arr) => { try { localStorage.setItem(KEY, JSON.stringify(arr)); return true; } catch (e) { return false; } };
+function renderTray() {
+  const items = load(), el = $('tray'); el.innerHTML = '';
+  if (!items.length) { const s = document.createElement('span'); s.className = 'empty'; s.textContent = 'Пока пусто — вырастите кристалл и положите его на бархат'; el.appendChild(s); return; }
+  items.forEach((it) => {
+    const b = document.createElement('button'); b.type = 'button'; b.title = `№ ${it.no} · ${it.morph}`; b.setAttribute('aria-label', `Кристалл № ${it.no}, ${it.morph}`);
+    const img = new Image(); img.alt = ''; img.src = it.img; b.appendChild(img);
+    b.addEventListener('click', () => { Object.assign(params, it.params); syncUI(); grow(); });
+    el.appendChild(b);
+  });
+}
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 1600); }
+
+function snapshotFlake(size) {
+  // Рендерим текущий кристалл заново в отдельный холст — без интерфейса и с центром в кадре
+  thumbCanvas.width = thumbCanvas.height = size;
+  thumbRend.upload(state.S, state.full);
+  const r = Math.max(state.maxR, 20);
+  thumbRend.draw({ beta: state.beta, scale: (size * 0.46) / r, maxS: state.maxS, step: state.step + 1e5, time: state.time || 0, vapor: 0, rhein: state.rhein, rev: 1, cx: size / 2, cy: size / 2, light: state.light, bg: 1 });
+  return thumbCanvas;
+}
+$('bSave').addEventListener('click', () => {
+  if (!state.full) return;
+  const c = document.createElement('canvas'); c.width = c.height = 144;
+  c.getContext('2d').drawImage(snapshotFlake(144), 0, 0);
+  const items = load();
+  const no = crystalNo(params);
+  const entry = { no, morph: $('pMorph').textContent.trim(), params: { alpha: params.alpha, beta: params.beta, gamma: params.gamma, noise: params.noise, sched: params.sched }, img: c.toDataURL('image/jpeg', 0.86) };
+  const rest = items.filter((x) => x.no !== no);
+  rest.unshift(entry);
+  if (!store(rest.slice(0, 16))) { toast('Не удалось сохранить: хранилище браузера недоступно'); return; }
+  renderTray(); toast(`Кристалл № ${no} на бархате`);
+});
+
+$('bPng').addEventListener('click', () => {
+  if (!state.full) return;
+  const W = 1400, H = 1750, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.drawImage(snapshotFlake(1400), 0, 0);
+  const grd = g.createLinearGradient(0, 1250, 0, H); grd.addColorStop(0, 'rgba(5,10,22,0)'); grd.addColorStop(0.35, '#050a16'); g.fillStyle = grd; g.fillRect(0, 1250, W, H - 1250);
+  g.fillStyle = '#050a16'; g.fillRect(0, 1400, W, H - 1400);
+  g.strokeStyle = 'rgba(160,196,235,.32)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(110, 1452); g.lineTo(W - 110, 1452); g.stroke();
+  g.fillStyle = '#7e93ad'; g.font = '500 24px "JetBrains Mono", monospace'; g.textBaseline = 'alphabetic';
+  g.fillText(('КРИСТАЛЛ № ' + crystalNo(params)).split('').join(' '), 110, 1432);
+  g.textAlign = 'right'; g.fillText('МОДЕЛЬ РЕЙТЕРА', W - 110, 1432); g.textAlign = 'left';
+  g.fillStyle = '#e8f6ff'; g.font = 'italic 600 78px "Cormorant Garamond", Georgia, serif';
+  g.fillText($('pMorph').textContent.trim(), 110, 1550);
+  g.fillStyle = '#b8c9dc'; g.font = '400 26px "JetBrains Mono", monospace';
+  g.fillText(`β ${fmt(params.beta, 3)}   γ ${$('pG').textContent}   α ${fmt(params.alpha, 2)}   κ ${fmt(params.noise, 2)}`, 110, 1612);
+  g.fillStyle = '#7e93ad'; g.font = '400 22px "JetBrains Mono", monospace';
+  g.fillText(`${SCHEDS.find((s) => s.id === params.sched).name} · ${fmtInt(state.step)} шагов · ${fmtInt(state.ice)} клеток льда`, 110, 1656);
+  c.toBlob((blob) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `snowflake-${crystalNo(params)}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }, 'image/png');
+});
+
+// ───────────────────────── Свет и кадр ─────────────────────────
+canvas.addEventListener('pointermove', (e) => { state.mouse = [e.clientX, e.clientY]; state.lastMove = performance.now(); });
+canvas.addEventListener('pointerdown', (e) => { state.mouse = [e.clientX, e.clientY]; state.lastMove = performance.now(); });
+
+function layout() {
+  const w = innerWidth, h = innerHeight, mobile = w < 760;
+  const cssW = w, cssH = mobile ? Math.round(h * 0.62) : h;
+  // В режиме съёмки (window.__SHOT__) качество не понижаем: DPR = 1, без адаптации
+  state.dpr = SHOT ? 1 : Math.min(devicePixelRatio || 1, 2) * state.scaleQ;
+  canvas.width = Math.max(2, Math.round(cssW * state.dpr)); canvas.height = Math.max(2, Math.round(cssH * state.dpr));
+  let cx, cy, rad;
+  if (mobile) { cx = w / 2; cy = cssH * 0.56; rad = Math.min(w * 0.42, cssH * 0.33); }
+  else {
+    const left = w >= 1180 ? 380 : 330, right = 392;
+    cx = left + (w - left - right) / 2; cy = h * 0.48;
+    rad = Math.min((w - left - right) * 0.5, h * 0.42);
+    if (w - left - right < 360) { cx = (w - right) / 2 + 20; rad = Math.min((w - right) * 0.42, h * 0.4); }
+  }
+  state.view = { cx: cx * state.dpr, cy: cy * state.dpr, rad: rad * state.dpr };
+}
+addEventListener('resize', layout);
+layout();
+
+let last = performance.now(), frameAvg = 16, frames = 0;
+let lastDraw = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) return;
+  // В режиме съёмки программный рендер медленный: рисуем редко, чтобы не забивать GPU-процесс
+  if (SHOT && now - lastDraw < 600) return;
+  lastDraw = now;
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  state.time = now / 1000;
+  state.rev = Math.min(1, state.rev + dt * 2.5);
+  state.vapor += (state.vaporT - state.vapor) * Math.min(1, dt * 6);
+  // Свет: за мышью, а без неё медленно обходит кристалл
+  let lx, ly;
+  const idle = now - state.lastMove > 2500 || !state.mouse;
+  if (idle) { const a = now / 5200; lx = Math.cos(a) * 0.55; ly = Math.sin(a * 0.8) * 0.5; }
+  else { lx = (state.mouse[0] * state.dpr - state.view.cx) / (state.view.rad * 1.6); ly = -(state.mouse[1] * state.dpr - state.view.cy) / (state.view.rad * 1.6); }
+  const k = idle ? 0.03 : 0.2;
+  state.light[0] += (Math.max(-1.2, Math.min(1.2, lx)) - state.light[0]) * k;
+  state.light[1] += (Math.max(-1.2, Math.min(1.2, ly)) - state.light[1]) * k;
+  state.light[2] = 0.8;
+  if (!state.full) { return; }
+  const scale = state.view.rad / (R_MAIN * 0.9);
+  const radius = state.vapor > 0.01 ? R_MAIN : state.maxR + 3;
+  rend.draw({ beta: state.beta, scale, maxS: state.maxS, step: state.step, time: state.time, vapor: state.vapor, rhein: state.rhein, rev: state.rev, cx: state.view.cx, cy: state.view.cy, light: state.light, radius, bgCache: true });
+  // Адаптивное разрешение: если кадр тяжёлый, снижаем плотность пикселей (реагируем уже с первых кадров)
+  const ft = now - (frame.prev || now); frame.prev = now; frames++;
+  frameAvg = frames < 4 ? ft : frameAvg * 0.9 + ft * 0.1;
+  if (!SHOT && (frames === 5 || (frames > 5 && frames % 45 === 0))) {
+    if (frameAvg > 70 && state.scaleQ > 0.45) { state.scaleQ = Math.max(0.45, state.scaleQ * 0.6); layout(); }
+    else if (frameAvg > 30 && state.scaleQ > 0.45) { state.scaleQ = Math.max(0.45, state.scaleQ - 0.15); layout(); }
+    else if (frameAvg < 17 && state.scaleQ < 1) { state.scaleQ = Math.min(1, state.scaleQ + 0.1); layout(); }
+  }
+}
+
+syncUI();
+renderTray();
+grow();
+// Миниатюры образцов строим, когда основной кристалл уже вырос (или через 7 с) — чтобы не мешать росту
+let thumbsLoaded = false;
+const tryThumbs = () => { if (!thumbsLoaded) { thumbsLoaded = true; loadPresetThumbs(); } };
+setTimeout(tryThumbs, SHOT ? 300 : 7000);
+requestAnimationFrame(frame);
+setTimeout(() => { const t = $('tip'); if (t) t.style.opacity = '0'; }, 9000);
+})();
+</script>
+</body>
+</html>

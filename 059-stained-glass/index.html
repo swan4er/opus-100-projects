@@ -1,0 +1,1742 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Витраж — генератор готических окон-роз</title>
+<meta name="description" content="Генератор готических окон-роз: солнце идёт по небу, и цветной свет ползёт по каменному полу собора.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Cormorant+SC:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #f0e6cf;
+    --ink-2: rgba(240, 230, 207, 0.78);
+    --ink-3: rgba(240, 230, 207, 0.5);
+    --line: rgba(240, 230, 207, 0.22);
+    --gold: #e6bb6a;
+    --night: #0b0908;
+    --serif: "Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif;
+    --sc: "Cormorant SC", "Cormorant Garamond", Georgia, serif;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--night); color: var(--ink);
+    font-family: var(--serif); font-size: 17px;
+    -webkit-font-smoothing: antialiased;
+  }
+  canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: default; touch-action: none; }
+  canvas#gl.over-glass { cursor: pointer; }
+
+  .scrim {
+    position: fixed; left: 0; right: 0; bottom: 0; height: 46vh; pointer-events: none;
+    background:
+      radial-gradient(ellipse 36% 70% at 100% 100%, rgba(8, 6, 5, 0.86), rgba(8, 6, 5, 0) 100%),
+      radial-gradient(ellipse 30% 55% at 0% 100%, rgba(8, 6, 5, 0.7), rgba(8, 6, 5, 0) 100%);
+  }
+  .scrim.top { top: 0; bottom: auto; height: 22vh; background: linear-gradient(to bottom, rgba(8, 6, 5, 0.6), rgba(8, 6, 5, 0)); }
+
+  /* ——— бренд ——— */
+  .brand { position: fixed; left: 40px; top: 32px; max-width: 360px; pointer-events: none; }
+  .brand .kicker { font-family: var(--sc); font-size: 14px; letter-spacing: 0.22em; color: var(--ink-2); }
+  .brand h1 { margin: 2px 0 6px; font-weight: 500; font-size: 56px; line-height: 0.95; letter-spacing: 0.01em; }
+  .brand p { margin: 0; font-size: 18px; line-height: 1.35; color: var(--ink-2); font-style: italic; }
+
+
+  /* ——— кнопки ——— */
+  button { font: inherit; color: inherit; }
+  .icon-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: grid; place-items: center; cursor: pointer;
+    background: rgba(14, 11, 9, 0.55); border: 1px solid var(--line);
+    transition: border-color .25s var(--ease), background .25s var(--ease), transform .2s var(--ease);
+  }
+  .icon-btn:hover { border-color: rgba(240, 230, 207, 0.55); background: rgba(24, 19, 15, 0.7); }
+  .icon-btn:active { transform: scale(0.94); }
+  .icon-btn svg { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 1.4; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+  /* ——— этикетка ——— */
+  .label {
+    position: fixed; right: 32px; top: 30px; width: 300px;
+    padding: 16px 18px 15px; border: 1px solid var(--line);
+    background: rgba(12, 10, 8, 0.62);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .label .no { font-family: var(--sc); font-size: 15px; letter-spacing: 0.18em; color: var(--gold); }
+  .label .save { position: absolute; right: 12px; top: 12px; width: 40px; height: 40px; }
+  .label .rays { font-size: 23px; margin: 2px 0 4px; font-weight: 500; }
+  .label .parts { font-size: 16px; line-height: 1.35; color: var(--ink-2); font-style: italic; }
+  .label .pal { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line); font-size: 15px; color: var(--ink-2); }
+  .label .pal b { font-weight: 600; color: var(--ink); }
+
+  /* ——— управление: солнце, палитры ——— */
+  .controls { position: fixed; right: 30px; bottom: 24px; width: 440px; display: flex; flex-direction: column; align-items: center; }
+  .sun-wrap { position: relative; width: 380px; height: 124px; }
+  .sun-wrap svg { width: 100%; height: 100%; overflow: visible; touch-action: none; cursor: grab; }
+  .sun-wrap svg:active { cursor: grabbing; }
+  .readout { display: flex; align-items: center; gap: 14px; margin-top: -10px; }
+  .readout .t { font-size: 34px; font-weight: 500; font-variant-numeric: lining-nums tabular-nums; letter-spacing: 0.02em; min-width: 92px; text-align: center; }
+  .readout .w { font-family: var(--sc); font-size: 15px; letter-spacing: 0.16em; color: var(--ink-2); min-width: 150px; }
+  .readout .icon-btn { width: 40px; height: 40px; }
+
+  .row { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+  .chips { display: flex; gap: 8px; }
+  .chip {
+    width: 42px; height: 42px; border-radius: 50%; padding: 0; cursor: pointer;
+    border: 1px solid var(--line); background: #000; position: relative;
+    transition: transform .25s var(--ease), border-color .25s;
+  }
+  .chip span { position: absolute; inset: 4px; border-radius: 50%; }
+  .chip:hover { transform: translateY(-2px); border-color: rgba(240, 230, 207, 0.6); }
+  .chip[aria-pressed="true"] { border: 1px solid var(--ink); box-shadow: 0 0 0 3px rgba(11, 9, 8, 0.9), 0 0 0 4px rgba(240, 230, 207, 0.7); }
+  .pal-name { align-self: flex-start; margin: 8px 0 0 4px; font-family: var(--sc); font-size: 15px; letter-spacing: 0.12em; color: var(--ink-2); min-height: 18px; }
+  .new-btn {
+    display: inline-flex; align-items: center; gap: 12px; height: 48px; padding: 0 22px 0 16px;
+    border-radius: 24px; cursor: pointer; font-size: 19px; font-weight: 500; white-space: nowrap;
+    background: var(--ink); color: #1a1310; border: 0;
+    transition: transform .2s var(--ease), background .25s;
+  }
+  .new-btn:hover { background: #fff6e2; }
+  .new-btn:active { transform: scale(0.97); }
+  .new-btn svg { width: 24px; height: 24px; }
+
+  /* ——— подсказка ——— */
+  .hint {
+    position: fixed; left: 50%; top: 30px; transform: translate(-50%, -8px);
+    padding: 9px 18px; border-radius: 20px; font-size: 17px; font-style: italic;
+    background: rgba(12, 10, 8, 0.66); border: 1px solid var(--line); color: var(--ink);
+    opacity: 0; pointer-events: none; white-space: nowrap;
+    transition: opacity .8s var(--ease), transform .8s var(--ease);
+  }
+  .hint.on { opacity: 1; transform: translate(-50%, 0); }
+
+  .veil { position: fixed; inset: 0; background: var(--night); display: grid; place-items: center; transition: opacity 1.4s var(--ease); z-index: 5; }
+  .veil.off { opacity: 0; pointer-events: none; }
+  .veil p { font-size: 22px; font-style: italic; color: var(--ink-2); }
+
+  .ripple { position: fixed; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; border: 1.5px solid var(--ink); pointer-events: none; animation: rip .7s var(--ease) forwards; }
+  @keyframes rip { to { transform: scale(5); opacity: 0; } }
+
+  @media (max-width: 1100px) {
+    .label { width: auto; padding: 0; border: 0; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .label > div { display: none; }
+    .label .save { position: static; }
+  }
+  @media (max-width: 760px) {
+    .brand { left: 20px; top: 18px; right: 80px; }
+    .brand h1 { font-size: 40px; }
+    .brand p { font-size: 16px; }
+    .brand .kicker { font-size: 13px; }
+    .label { right: 16px; top: 18px; }
+    .hint { top: auto; bottom: 252px; font-size: 15px; white-space: normal; width: calc(100% - 40px); text-align: center; }
+    .controls { left: 0; right: 0; bottom: 0; width: auto; padding: 0 14px 16px; }
+    .sun-wrap { width: min(360px, calc(100vw - 40px)); height: 112px; }
+    .readout .t { font-size: 30px; }
+    .row { width: 100%; justify-content: space-between; gap: 8px; margin-top: 12px; }
+    .pal-name { display: none; }
+    .chips { gap: 5px; }
+    .chip { width: 40px; height: 40px; }
+    .new-btn { height: 44px; padding: 0 14px 0 12px; font-size: 17px; gap: 8px; }
+    .scrim { height: 50vh; background: linear-gradient(to top, rgba(8, 6, 5, 0.9), rgba(8, 6, 5, 0.5) 45%, rgba(8, 6, 5, 0)); }
+  }
+  @media (max-width: 430px) {
+    .new-btn .long { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hint, .veil, .chip, .icon-btn { transition: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Интерьер собора: окно-роза и цветной свет на полу"></canvas>
+<div class="scrim top"></div>
+<div class="scrim"></div>
+
+<header class="brand">
+  <div class="kicker">Южный трансепт</div>
+  <h1>Витраж</h1>
+  <p>Генератор готических окон-роз. Солнце ведёт цветной свет по&nbsp;камню.</p>
+</header>
+
+<aside class="label" id="label" aria-live="polite">
+  <button class="icon-btn save" id="save" title="Сохранить кадр (S)" aria-label="Сохранить кадр">
+    <svg viewBox="0 0 24 24"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 16v3.5h16V16"/></svg>
+  </button>
+  <div class="no" id="lblNo">Роза № 0000</div>
+  <div class="rays" id="lblRays">—</div>
+  <div class="parts" id="lblParts">—</div>
+  <div class="pal">Палитра: <b id="lblPal">—</b></div>
+</aside>
+
+<div class="controls">
+  <div class="sun-wrap"><svg id="sun" viewBox="0 0 380 124" role="slider" tabindex="0" aria-label="Время суток" aria-valuemin="5.5" aria-valuemax="20.5" aria-valuenow="16.7"></svg></div>
+  <div class="readout">
+    <button class="icon-btn" id="play" aria-label="Остановить солнце" title="Пауза (пробел)">
+      <svg viewBox="0 0 24 24" id="playIcon"><path d="M9 6v12M15 6v12"/></svg>
+    </button>
+    <div class="t" id="time">16:40</div>
+    <div class="w" id="timeWord">вечерний свет</div>
+  </div>
+  <div class="row">
+  <div class="chips" id="chips" role="group" aria-label="Палитра стекла"></div>
+  <button class="new-btn" id="newWin" title="Новое окно (N)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#1a1310" stroke-width="1.3"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3"/><path d="M12 2.5v6.5M12 15v6.5M2.5 12H9M15 12h6.5M5.3 5.3l4.6 4.6M14.1 14.1l4.6 4.6M18.7 5.3l-4.6 4.6M9.9 14.1l-4.6 4.6"/></svg>
+    <span>Новое <span class="long">окно</span></span>
+  </button>
+  </div>
+  <div class="pal-name" id="palName">Шартр, XIII век</div>
+</div>
+
+<div class="hint" id="hint">Нажмите на&nbsp;стекло, чтобы перекрасить. Колесо — подойти ближе.</div>
+<div class="veil" id="veil"><p>Собираем витраж…</p></div>
+
+<script>
+window.addEventListener('load', () => setTimeout(() => {
+'use strict';
+
+/* ================================================================
+   Утилиты
+   ================================================================ */
+const TAU = Math.PI * 2;
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const normA = (x) => ((x % TAU) + TAU) % TAU;
+
+function rng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hashInt(x) {
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  return (x ^ (x >>> 16)) >>> 0;
+}
+const hexRGB = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+
+/* ================================================================
+   Палитры стекла
+   ================================================================ */
+const PALETTES = [
+  { key: 1, short: 'Шартр', name: 'Шартр, XIII век',
+    ground: ['#1c3e9e', '#15307f'], accent: ['#a6182d', '#c98d20', '#2b7549', '#62297f'], light: ['#e4e7cf', '#dcc56a'] },
+  { key: 2, short: 'Сент-Шапель', name: 'Сент-Шапель, XIII век',
+    ground: ['#8f1326', '#1f3a92'], accent: ['#5b2687', '#d69a28', '#2a6c4c', '#b51d37'], light: ['#efe3c2', '#c7d6a6'] },
+  { key: 3, short: 'Прага', name: 'Прага, XIV век',
+    ground: ['#cc8a1b', '#b3670f'], accent: ['#7f1822', '#3e5f29', '#2b407c', '#6c3878'], light: ['#f4e0a0', '#eadab8'] },
+  { key: 4, short: 'Модерн', name: 'Модерн, 1900-е',
+    ground: ['#2e8c83', '#79ae9f'], accent: ['#c65079', '#e0a238', '#7862ae', '#9cc046'], light: ['#f3e9d5', '#d9e8c5'] },
+  { key: 5, short: 'Реймс', name: 'Реймс, синий Шагала',
+    ground: ['#172f8b', '#21419e'], accent: ['#c32828', '#e6c126', '#2c8a56', '#2361b3'], light: ['#b8d2ef', '#e9eef4'] },
+];
+for (const p of PALETTES) p.all = [...new Set([...p.ground, ...p.accent, ...p.light])];
+
+// Роли классов стекла: фон, акцент, светлое
+const ROLE = {
+  1: 'ground', 2: 'accent', 3: 'light', 4: 'accent',
+  10: 'ground', 11: 'accent', 12: 'ground', 13: 'light',
+  20: 'ground', 21: 'accent', 22: 'accent', 23: 'accent', 24: 'ground', 25: 'light', 26: 'accent', 27: 'light', 29: 'light',
+  40: 'accent', 41: 'ground', 42: 'light', 43: 'ground',
+};
+// Пары, которые не должны совпасть по цвету (класс → сосед)
+const CONTRAST = { 2: 1, 11: 10, 12: 10, 21: 20, 22: 20, 23: 20, 24: 23, 26: 22, 29: 24, 41: 40, 40: 43 };
+
+function baseIndex(design, pal, cls) {
+  const base = cls & 63;
+  const role = ROLE[base] || 'accent';
+  const list = pal[role];
+  const h = hashInt(design.seed * 131 + cls * 977 + pal.key * 7919) / 4294967296;
+  let i = role === 'ground' ? (h < 0.7 ? 0 : 1) : Math.floor(h * list.length);
+  let color = list[i];
+  const partner = CONTRAST[base];
+  if (partner !== undefined) {
+    const pc = pal.all[baseIndex(design, pal, partner + (cls & 64))];
+    if (pc === color) color = list[(i + 1) % list.length] === pc ? list[(i + 2) % list.length] : list[(i + 1) % list.length];
+  }
+  return pal.all.indexOf(color);
+}
+function colorIndex(design, pal, overrides, cls) {
+  return overrides.has(cls) ? overrides.get(cls) : baseIndex(design, pal, cls);
+}
+
+/* ================================================================
+   Дизайн розы (по seed)
+   ================================================================ */
+function makeDesign(seed) {
+  const r = rng(seed);
+  const pick = (a) => a[Math.floor(r() * a.length)];
+  const n = pick([8, 12, 12, 16, 16, 16, 20, 24]);
+  const d = {
+    seed, n,
+    rc: lerp(0.115, 0.15, r()),
+    ra: lerp(0.27, 0.32, r()),
+    rb: lerp(0.775, 0.81, r()),
+    center: pick(['star', 'foil', 'rosette']),
+    ringA: pick(['petals', 'petals', 'arcade', 'spokes']),
+    ringB: n <= 12 ? pick(['double', 'double', 'lancet']) : pick(['lancet', 'lancet', 'double']),
+    ringC: pick(['oculi2', 'oculi2', 'trefoil', 'oculi']),
+    altA: r() < 0.6, altB: r() < 0.45, altC: r() < 0.5,
+    spandrelA: r() < 0.85, spandrelC: r() < 0.9,
+    lattice: pick(['diamond', 'diamond', 'square', 'scale']),
+    medSeg: pick([4, 6, 8]),
+    lobes: pick([3, 4, 4]),
+  };
+  if (n >= 20 && d.ringB === 'double') d.ringB = 'lancet';
+  if (n >= 20 && d.ringC === 'oculi2') d.ringC = 'oculi';
+  if (n <= 12 && d.ringC === 'oculi') d.ringC = 'oculi2';
+  return d;
+}
+
+/* ================================================================
+   Геометрия (локальные координаты сектора: ось сектора = +x)
+   ================================================================ */
+function circ(cx, cy, r) { const p = new Path2D(); p.moveTo(cx + r, cy); p.arc(cx, cy, r, 0, TAU); p.closePath(); return p; }
+function annSector(r1, r2, a1, a2) { const p = new Path2D(); p.arc(0, 0, r2, a1, a2, false); p.arc(0, 0, r1, a2, a1, true); p.closePath(); return p; }
+function seg(x1, y1, x2, y2) { const p = new Path2D(); p.moveTo(x1, y1); p.lineTo(x2, y2); return p; }
+function radial(r1, r2, a) { return seg(r1 * Math.cos(a), r1 * Math.sin(a), r2 * Math.cos(a), r2 * Math.sin(a)); }
+
+// дуга от S к E вокруг C, выпуклостью в сторону ref относительно хорды
+function arcSide(p, C, r, S, E, ref) {
+  const a0 = Math.atan2(S[1] - C[1], S[0] - C[0]);
+  const a1 = Math.atan2(E[1] - C[1], E[0] - C[0]);
+  const mid = a0 + normA(a1 - a0) / 2;
+  const mx = C[0] + r * Math.cos(mid), my = C[1] + r * Math.sin(mid);
+  const side = (x, y) => (E[0] - S[0]) * (y - S[1]) - (E[1] - S[1]) * (x - S[0]);
+  const same = Math.sign(side(mx, my)) === Math.sign(side(ref[0], ref[1]));
+  p.arc(C[0], C[1], r, a0, a1, !same);
+}
+// стрельчатый верх: P1 → A → P2, центры дуг лежат на линии пят P1P2
+function pointedHead(p, P1, P2, A) {
+  const dx = P2[0] - P1[0], dy = P2[1] - P1[1], L = Math.hypot(dx, dy);
+  const d = [dx / L, dy / L];
+  const u = ((P1[0] - A[0]) ** 2 + (P1[1] - A[1]) ** 2) / (2 * (d[0] * (A[0] - P1[0]) + d[1] * (A[1] - P1[1])));
+  const v = ((P2[0] - A[0]) ** 2 + (P2[1] - A[1]) ** 2) / (2 * (d[0] * (P2[0] - A[0]) + d[1] * (P2[1] - A[1])));
+  const C1 = [P1[0] + d[0] * u, P1[1] + d[1] * u];
+  const C2 = [P2[0] - d[0] * v, P2[1] - d[1] * v];
+  const m1 = [(P1[0] + A[0]) / 2, (P1[1] + A[1]) / 2];
+  const m2 = [(P2[0] + A[0]) / 2, (P2[1] + A[1]) / 2];
+  arcSide(p, C1, u, P1, A, [2 * m1[0] - C1[0], 2 * m1[1] - C1[1]]);
+  arcSide(p, C2, v, A, P2, [2 * m2[0] - C2[0], 2 * m2[1] - C2[1]]);
+  return { C1, u, C2, v };
+}
+// внешний контур объединения k лепестков (четырёхлистник и т. п.)
+function foil(cx, cy, d, rho, k, rot) {
+  const p = new Path2D();
+  const C = [], X = [];
+  const s = Math.sin(Math.PI / k), c = Math.cos(Math.PI / k);
+  for (let i = 0; i < k; i++) {
+    const a = rot + (TAU * i) / k;
+    C.push([cx + d * Math.cos(a), cy + d * Math.sin(a)]);
+    const phi = rot + (TAU * (i + 0.5)) / k;
+    const t = d * c + Math.sqrt(Math.max(0, rho * rho - d * d * s * s));
+    X.push([cx + t * Math.cos(phi), cy + t * Math.sin(phi)]);
+  }
+  for (let i = 0; i < k; i++) {
+    const S = X[(i - 1 + k) % k], E = X[i], Ci = C[i];
+    const out = [Ci[0] + (Ci[0] - cx) * 3, Ci[1] + (Ci[1] - cy) * 3];
+    if (i === 0) p.moveTo(S[0], S[1]);
+    arcSide(p, Ci, rho, S, E, out);
+  }
+  p.closePath();
+  return p;
+}
+// «рыбий пузырь» (vesica): от r1 до r2 по оси, полуширина h
+function vesica(r1, r2, h) {
+  const L = (r2 - r1) / 2, rm = (r1 + r2) / 2;
+  const c = (L * L - h * h) / (2 * h), R = h + c;
+  const a2 = Math.atan2(c, L);
+  const p = new Path2D();
+  p.moveTo(r2, 0);
+  p.arc(rm, -c, R, a2, Math.PI - a2, false);
+  p.arc(rm, c, R, -(Math.PI - a2), -a2, false);
+  p.closePath();
+  return p;
+}
+// стрельчатое окно между спицами на ±a
+function lancet(r1, r2, a, bar) {
+  const side = (r, s) => { const ang = s * (a - Math.asin(Math.min(0.95, bar / 2 / r))); return [r * Math.cos(ang), r * Math.sin(ang)]; };
+  let rs = r2 - 1.35 * r2 * Math.sin(a);
+  for (let i = 0; i < 3; i++) { const P = side(rs, 1); rs = r2 - 1.35 * P[1] - (r2 - rs - (r2 - P[0])); }
+  rs = Math.max(rs, r1 + (r2 - r1) * 0.38);
+  const B1 = side(r1, 1), B2 = side(r1, -1), P1 = side(rs, 1), P2 = side(rs, -1), A = [r2, 0];
+  const p = new Path2D();
+  p.moveTo(B2[0], B2[1]);
+  p.arc(0, 0, r1, Math.atan2(B2[1], B2[0]), Math.atan2(B1[1], B1[0]), false);
+  p.lineTo(P1[0], P1[1]);
+  const head = pointedHead(p, P1, P2, A);
+  p.closePath();
+  return { path: p, side, r1, r2, rs, P1, P2, A, head };
+}
+
+/* ================================================================
+   Рисование розы. mode: 'color' | 'mat' | 'id'
+   mat: R — стекло, G — камень, B — случайный тон куска
+   id:  R,G — номер класса + 1, B = 255 у внутренних пикселей
+   ================================================================ */
+function paintRose(ctx, S, design, pal, overrides, mode) {
+  const detail = rng(design.seed * 7 + 3);        // одинаково во всех режимах
+  const gri = rng(design.seed * 13 + 5);           // только для росписи в режиме color
+  const sc = (S / 2) * 0.985;
+  const W = 0.026, w = 0.0135, LW = 0.0052;
+  const n = design.n, a = Math.PI / n;
+  const STONE = mode === 'mat' ? '#00ff00' : '#000000';
+  const LEAD = '#000000';
+  let sector = 0;
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = STONE;
+  ctx.fillRect(0, 0, S, S);
+  ctx.setTransform(sc, 0, 0, sc, S / 2, S / 2);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  function glassStyle(cls, pearl) {
+    const j = detail(), j2 = detail();
+    if (mode === 'color') {
+      const hex = pearl ? pal.light[0] : pal.all[colorIndex(design, pal, overrides, cls)];
+      const b = hexRGB(hex);
+      const k = 0.84 + j * 0.3, t = (j2 - 0.5) * 16;
+      return `rgb(${clamp(b[0] * k + t, 0, 255) | 0},${clamp(b[1] * k, 0, 255) | 0},${clamp(b[2] * k - t, 0, 255) | 0})`;
+    }
+    if (mode === 'mat') return `rgb(255,0,${(j * 255) | 0})`;
+    const id = pearl ? 0 : cls + 1;
+    return `rgb(${id & 255},${(id >> 8) & 255},${id ? 255 : 0})`;
+  }
+  const glass = (path, cls, pearl) => { ctx.fillStyle = glassStyle(cls, pearl); ctx.fill(path); };
+  const glassStroke = (path, cls, width) => { ctx.strokeStyle = glassStyle(cls); ctx.lineWidth = width; ctx.stroke(path); };
+  const lead = (path, width = LW) => { ctx.strokeStyle = LEAD; ctx.lineWidth = width; ctx.stroke(path); };
+  const stone = (path, width) => { ctx.strokeStyle = STONE; ctx.lineWidth = width; ctx.stroke(path); };
+  const stoneFill = (path) => { ctx.fillStyle = STONE; ctx.fill(path); };
+  const paint = (fn) => { if (mode === 'color') { ctx.save(); fn(); ctx.restore(); } };
+
+  function pearls(cx, cy, R, pr) {
+    const count = Math.max(6, Math.floor((TAU * R) / (pr * 2.9)));
+    for (let i = 0; i < count; i++) {
+      const t = (i / count) * TAU;
+      const p = circ(cx + R * Math.cos(t), cy + R * Math.sin(t), pr);
+      glass(p, 0, true);
+      lead(p, LW * 0.55);
+    }
+  }
+  // роспись по стеклу (гризайль): тонкие полупрозрачные линии
+  function leafPaint(cx, cy, r, ang) {
+    paint(() => {
+      ctx.strokeStyle = 'rgba(28,14,6,0.38)';
+      ctx.lineWidth = r * 0.07;
+      ctx.translate(cx, cy); ctx.rotate(ang);
+      const p = new Path2D();
+      p.moveTo(-r * 0.55, 0);
+      p.quadraticCurveTo(0, -r * 0.42, r * 0.55, 0);
+      p.quadraticCurveTo(0, r * 0.42, -r * 0.55, 0);
+      p.moveTo(-r * 0.5, 0); p.lineTo(r * 0.45, 0);
+      ctx.stroke(p);
+    });
+  }
+
+  function medallion(cx, cy, r, cBg, cSeg, cSeg2, cMid) {
+    const c = circ(cx, cy, r);
+    glass(c, cBg);
+    const k = design.medSeg, ri = r * 0.7, rb = r * 0.27;
+    for (let i = 0; i < k; i++) {
+      const a0 = (i * TAU) / k + Math.PI / k, a1 = ((i + 1) * TAU) / k + Math.PI / k;
+      const p = new Path2D();
+      p.moveTo(cx + rb * Math.cos(a0), cy + rb * Math.sin(a0));
+      p.arc(cx, cy, ri, a0, a1, false);
+      p.arc(cx, cy, rb, a1, a0, true);
+      p.closePath();
+      glass(p, i % 2 ? cSeg2 : cSeg);
+      lead(p);
+      const am = (a0 + a1) / 2, rr = (ri + rb) / 2;
+      leafPaint(cx + rr * Math.cos(am), cy + rr * Math.sin(am), (ri - rb) * 0.9, am);
+    }
+    const b = circ(cx, cy, rb);
+    glass(b, cMid); lead(b);
+    pearls(cx, cy, (ri + r) / 2, (r - ri) * 0.26);
+    lead(circ(cx, cy, ri));
+    lead(c, LW * 1.2);
+  }
+
+  function lattice(x0, x1, hw, cA, cB, cell) {
+    const type = design.lattice;
+    ctx.save();
+    if (type === 'diamond') {
+      ctx.translate((x0 + x1) / 2, 0); ctx.rotate(Math.PI / 4);
+      const R = Math.hypot(x1 - x0, 2 * hw) / 2 + cell;
+      const N = Math.ceil(R / cell);
+      for (let i = -N; i < N; i++) for (let j = -N; j < N; j++) {
+        const p = new Path2D(); p.rect(i * cell, j * cell, cell, cell);
+        glass(p, ((i + j) & 1) ? cB : cA);
+        if (((i + j) & 1) === 0) paint(() => {
+          ctx.fillStyle = 'rgba(30,14,6,0.3)';
+          ctx.beginPath(); ctx.arc((i + 0.5) * cell, (j + 0.5) * cell, cell * 0.13, 0, TAU); ctx.fill();
+        });
+      }
+      for (let i = -N; i <= N; i++) { lead(seg(i * cell, -R, i * cell, R)); lead(seg(-R, i * cell, R, i * cell)); }
+    } else if (type === 'square') {
+      const N = Math.ceil((x1 - x0) / cell) + 1, M = Math.ceil(hw / cell) + 1;
+      for (let i = -1; i < N; i++) for (let j = -M; j < M; j++) {
+        const p = new Path2D(); p.rect(x0 + i * cell, j * cell, cell, cell);
+        glass(p, ((i + j) & 1) ? cB : cA);
+      }
+      for (let i = -1; i <= N; i++) lead(seg(x0 + i * cell, -hw - cell, x0 + i * cell, hw + cell));
+      for (let j = -M; j <= M; j++) lead(seg(x0 - cell, j * cell, x1 + cell, j * cell));
+    } else { // чешуя
+      const N = Math.ceil((x1 - x0) / (cell * 0.72)) + 2, M = Math.ceil(hw / cell) + 2;
+      for (let i = N; i >= -1; i--) for (let j = -M; j <= M; j++) {
+        const cx = x0 + i * cell * 0.72, cy = j * cell + (i & 1) * cell * 0.5;
+        const p = circ(cx, cy, cell * 0.62);
+        glass(p, (i & 1) ? cB : cA);
+        lead(p);
+      }
+    }
+    ctx.restore();
+  }
+
+  /* ——— центр ——— */
+  function drawCenter() {
+    ctx.save();
+    ctx.rotate(-Math.PI / 2);
+    const R0 = design.rc - W / 2;
+    const disc = circ(0, 0, R0);
+    glass(disc, 1);
+    ctx.save(); ctx.clip(disc);
+    const m = n >= 12 ? n / 2 : n;
+    if (design.center === 'star') {
+      const star = new Path2D();
+      for (let i = 0; i < m * 2; i++) {
+        const t = (i * Math.PI) / m, rr = i % 2 === 0 ? R0 * 0.84 : R0 * 0.47;
+        const x = rr * Math.cos(t), y = rr * Math.sin(t);
+        i === 0 ? star.moveTo(x, y) : star.lineTo(x, y);
+      }
+      star.closePath();
+      glass(star, 2); lead(star);
+      for (let i = 0; i < m; i++) { const t = ((i + 0.5) * TAU) / m; lead(radial(R0 * 0.28, R0 * 0.47, t)); }
+      for (let i = 0; i < m; i++) { const t = (i * TAU) / m; lead(radial(R0 * 0.28, R0 * 0.84, t)); }
+    } else if (design.center === 'foil') {
+      const f = foil(0, 0, R0 * 0.36, R0 * 0.5, 4, Math.PI / 4);
+      glass(f, 2); lead(f);
+      for (let i = 0; i < 4; i++) leafPaint(R0 * 0.52 * Math.cos(Math.PI / 4 + i * Math.PI / 2), R0 * 0.52 * Math.sin(Math.PI / 4 + i * Math.PI / 2), R0 * 0.36, Math.PI / 4 + i * Math.PI / 2);
+    } else {
+      for (let i = 0; i < n; i++) {
+        ctx.save(); ctx.rotate((i * TAU) / n);
+        const v = vesica(R0 * 0.3, R0 * 0.88, Math.min(R0 * 0.88 * Math.sin(Math.PI / n) * 0.95, R0 * 0.2));
+        glass(v, i % 2 ? 4 : 2); lead(v);
+        ctx.restore();
+      }
+    }
+    const boss = circ(0, 0, R0 * 0.28);
+    glass(boss, 3); lead(boss);
+    pearls(0, 0, R0 * 0.93, R0 * 0.042);
+    ctx.restore();
+    lead(disc, LW * 1.3);
+    ctx.restore();
+  }
+
+  /* ——— кольцо A ——— */
+  function drawRingA() {
+    const r1 = design.rc + W / 2, r2 = design.ra - W / 2;
+    const alt = design.altA && sector % 2 === 1 ? 64 : 0;
+    const rm = (r1 + r2) / 2;
+    if (design.ringA === 'petals' || design.ringA === 'arcade') {
+      if (design.spandrelA) {
+        glass(annSector(r1, r2, -a, a), 12);
+        lead(radial(r1, r2, a));
+      }
+      let shape;
+      if (design.ringA === 'petals') {
+        const hw = Math.min(rm * Math.sin(a) * 0.9 - w / 2, (r2 - r1) * 0.3);
+        shape = vesica(r1 + w * 0.7, r2 - w * 0.7, hw);
+        glass(shape, 10 + alt);
+        ctx.save(); ctx.clip(shape);
+        const inner = vesica(r1 + (r2 - r1) * 0.22, r2 - (r2 - r1) * 0.14, hw * 0.52);
+        glass(inner, 11 + alt); lead(inner);
+        lead(seg(r1, 0, r2, 0));
+        const dot = circ(r1 + (r2 - r1) * 0.6, 0, hw * 0.3);
+        glass(dot, 13); lead(dot);
+        ctx.restore();
+      } else {
+        const hw = Math.min(r1 * Math.sin(a) * 0.96 - w / 2, (r2 - r1) * 0.26);
+        shape = new Path2D();
+        shape.moveTo(r1 + w * 0.6, -hw);
+        shape.lineTo(r2 - hw - w * 0.6, -hw);
+        shape.arc(r2 - hw - w * 0.6, 0, hw, -Math.PI / 2, Math.PI / 2, false);
+        shape.lineTo(r1 + w * 0.6, hw);
+        shape.closePath();
+        glass(shape, 10 + alt);
+        ctx.save(); ctx.clip(shape);
+        lead(seg(r1, 0, r2 - hw * 1.6, 0));
+        const dot = circ(r2 - hw - w * 0.6, 0, hw * 0.55);
+        glass(dot, 13); lead(dot);
+        glassStroke(shape, 11 + alt, hw * 0.34); lead(shape, LW);
+        ctx.restore();
+      }
+      if (design.spandrelA) stone(shape, w * 1.3); else lead(shape);
+    } else { // спицы
+      const s1 = Math.asin(Math.min(0.9, W / 2 / r1)), s2 = Math.asin(Math.min(0.9, W / 2 / r2));
+      const p = new Path2D();
+      p.arc(0, 0, r2, -a + s2, a - s2, false);
+      p.arc(0, 0, r1, a - s1, -a + s1, true);
+      p.closePath();
+      glass(p, 10 + alt);
+      ctx.save(); ctx.clip(p);
+      const mr = Math.min(rm * Math.sin(a) * 0.62, (r2 - r1) * 0.3);
+      medallion(rm, 0, mr, 13, 11 + alt, 12, 13);
+      glassStroke(p, 11 + alt, (r2 - r1) * 0.14);
+      lead(p, LW * 1.2);
+      ctx.restore();
+      lead(p);
+    }
+  }
+
+  /* ——— кольцо B: стрельчатые окна ——— */
+  function drawRingB() {
+    const r1 = design.ra + W / 2, r2 = design.rb - W / 2;
+    const alt = design.altB && sector % 2 === 1 ? 64 : 0;
+    const L = lancet(r1, r2, a, W);
+    const hsp = L.P1[1];
+    glass(L.path, 20 + alt);
+    ctx.save(); ctx.clip(L.path);
+    const cell = Math.max(0.018, (2 * ((r1 + L.rs) / 2) * Math.sin(a)) / 3.4);
+    lattice(r1, r2, r2 * Math.sin(a) + 0.02, 20 + alt, 21 + alt, cell);
+    const mullion = design.ringB === 'double';
+    const fieldLen = L.rs - r1;
+    const hwMid = ((r1 + L.rs) / 2) * Math.sin(a) - W / 2;
+    const spots = fieldLen > 3.0 * hwMid ? [0.3, 0.72] : [0.52];
+    for (const f of spots) {
+      const mx = r1 + fieldLen * f;
+      const half = mx * Math.sin(a) - W / 2;
+      if (!mullion) {
+        const mr = Math.min(half * 0.8, fieldLen * 0.2);
+        if (mr > 0.012) medallion(mx, 0, mr, 23 + alt, 24 + alt, 29, 25);
+      } else {
+        const mr = Math.min(half * 0.42, fieldLen * 0.16);
+        if (mr > 0.01) for (const s of [-1, 1]) medallion(mx, s * half * 0.5, mr, 23 + alt, 24 + alt, 29, 25);
+      }
+    }
+    // голова: окулус с лепестками
+    const H = L.r2 - L.P1[0];
+    const C1 = L.head.C1, u = L.head.u;
+    const ox = L.P1[0] + H * 0.34;
+    let rho = u - Math.hypot(ox - C1[0], 0 - C1[1]) - w * 1.3;
+    rho = Math.min(rho, hsp * 0.64);
+    // кайма по контуру окна
+    glassStroke(L.path, 22 + alt, 0.036);
+    lead(L.path, 0.036 + LW * 2);
+    glassStroke(L.path, 22 + alt, 0.034);
+    if (mullion) {
+      // средник и два малых стрельчатых свода
+      const rsub = L.rs - hsp * 0.1;
+      const mw = w * 1.1;
+      for (const s of [-1, 1]) {
+        const Ps = L.side(rsub, s);
+        const Pm = [rsub, s * mw / 2];
+        const span = Math.abs(Ps[1] - Pm[1]);
+        const A = [rsub + span * 0.95, (Ps[1] + Pm[1]) / 2];
+        const p = new Path2D(); p.moveTo(Ps[0], Ps[1]);
+        pointedHead(p, Ps, Pm, A);
+        stone(p, w * 1.15);
+      }
+      stone(seg(r1 - 0.01, 0, rsub, 0), mw);
+    }
+    if (rho > 0.014) {
+      const ring = circ(ox, 0, rho);
+      stoneFill(ring);
+      const inner = rho - w * 0.95;
+      const f = foil(ox, 0, inner * 0.42, inner * 0.56, design.lobes, 0);
+      glass(f, 26 + alt); lead(f);
+      const cc = circ(ox, 0, inner * 0.3);
+      glass(cc, 27); lead(cc);
+      lead(ring);
+    }
+    ctx.restore();
+    lead(L.path, LW * 1.4);
+  }
+
+  /* ——— кольцо C: окулусы / трилистники ——— */
+  function drawRingC() {
+    const r1 = design.rb + W / 2, r2 = 0.958 - W / 2;
+    const alt = design.altC && sector % 2 === 1 ? 64 : 0;
+    const rm = (r1 + r2) / 2;
+    if (design.spandrelC) {
+      glass(annSector(r1, r2, -a, a), 43 + alt);
+      lead(radial(r1, r2, a));
+    }
+    const count = design.ringC === 'oculi2' ? 2 : 1;
+    for (let k = 0; k < count; k++) {
+      const ang = count === 1 ? 0 : (k === 0 ? -a / 2 : a / 2);
+      const cx = rm * Math.cos(ang), cy = rm * Math.sin(ang);
+      const halfA = a / count;
+      const rho = Math.min((r2 - r1) / 2, rm * Math.sin(halfA)) - w * 0.8;
+      if (design.ringC === 'trefoil') {
+        const f = foil(cx, cy, rho * 0.36, rho * 0.56, 3, ang);
+        glass(f, 40 + alt);
+        ctx.save(); ctx.clip(f);
+        const cc = circ(cx, cy, rho * 0.3); glass(cc, 42); lead(cc);
+        for (let i = 0; i < 3; i++) { const t = ang + (i * TAU) / 3; leafPaint(cx + rho * 0.52 * Math.cos(t), cy + rho * 0.52 * Math.sin(t), rho * 0.34, t); lead(seg(cx + rho * 0.3 * Math.cos(t + Math.PI / 3), cy + rho * 0.3 * Math.sin(t + Math.PI / 3), cx + rho * 0.9 * Math.cos(t + Math.PI / 3), cy + rho * 0.9 * Math.sin(t + Math.PI / 3))); }
+        ctx.restore();
+        if (design.spandrelC) stone(f, w * 1.3); else lead(f);
+      } else {
+        const c = circ(cx, cy, rho);
+        const inner = circ(cx, cy, rho - w * 0.75);
+        stoneFill(c);
+        glass(inner, 40 + alt);
+        ctx.save(); ctx.clip(inner);
+        const ri = rho - w * 0.75;
+        const f = foil(cx, cy, ri * 0.4, ri * 0.55, 4, ang + Math.PI / 4);
+        glass(f, 41 + alt); lead(f);
+        const cc = circ(cx, cy, ri * 0.28); glass(cc, 42); lead(cc);
+        pearls(cx, cy, ri * 0.9, ri * 0.055);
+        ctx.restore();
+        lead(inner);
+      }
+    }
+  }
+
+  // ——— сборка ———
+  for (sector = 0; sector < n; sector++) {
+    ctx.save();
+    ctx.rotate(-Math.PI / 2 + sector * 2 * a);
+    drawRingA();
+    drawRingB();
+    drawRingC();
+    ctx.restore();
+  }
+  drawCenter();
+  // внешний каменный обод и кольца-перемычки
+  stone(circ(0, 0, 0.99), 0.05);
+}
+
+/* ================================================================
+   WebGL
+   ================================================================ */
+const canvas = $('#gl');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: false, powerPreference: 'high-performance' });
+if (!gl) {
+  $('#veil').innerHTML = '<p>Для витража нужен WebGL2 — откройте страницу в&nbsp;свежем Chrome, Safari или Firefox.</p>';
+  return;
+}
+const extCBF = gl.getExtension('EXT_color_buffer_float');
+const extAniso = gl.getExtension('EXT_texture_filter_anisotropic');
+const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+const renderer = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+const SOFTWARE = /swiftshader|llvmpipe|software/i.test(renderer);
+const SHOT = !!window.__SHOT__;   // флаг снимка обложки: полное качество, время не идёт
+const HDR_FMT = extCBF ? { internal: gl.RGBA16F, type: gl.HALF_FLOAT } : { internal: gl.RGBA8, type: gl.UNSIGNED_BYTE };
+const OUT_SCALE = extCBF ? 1.0 : 0.25;
+
+const VS = `#version 300 es
+in vec2 aPos; out vec2 vUv;
+void main(){ vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }`;
+
+// общий кусок: свет, прошедший через окно в точку P
+const COMMON = `
+uniform vec3 uL, uSun, uSky, uAmb, uBounce, uPatch;
+uniform sampler2D uWinA, uWinB, uMatA, uMatB;
+uniform float uMix, uMixMode, uHalf, uGlow;
+uniform vec3 uWin;
+const int NCOL = 6;
+const vec3 COLS[6] = vec3[6](
+  vec3(-7.2, 5.0, 0.72), vec3(7.2, 5.0, 0.72),
+  vec3(-7.2, 11.5, 0.72), vec3(7.2, 11.5, 0.72),
+  vec3(-7.2, 18.0, 0.72), vec3(7.2, 18.0, 0.72));
+vec2 wallUV(vec2 w){ return vec2(0.5 + (w.x - uWin.x) / (2.0 * uHalf), 0.5 - (w.y - uWin.y) / (2.0 * uHalf)); }
+float revealB(vec2 uv){
+  if (uMix <= 0.0) return 0.0;
+  if (uMixMode > 0.5) return uMix;
+  float r = length(uv - 0.5) * 2.0;
+  float front = uMix * 1.15;
+  return 1.0 - smoothstep(front - 0.04, front, r);
+}
+vec3 tintLod(vec2 uv, float lod){
+  vec3 a = textureLod(uWinA, uv, lod).rgb;
+  if (uMix > 0.0) a = mix(a, textureLod(uWinB, uv, lod).rgb, revealB(uv));
+  return a * a;
+}
+float colVis(vec3 P, vec3 L, float sMax){
+  float v = 1.0;
+  for (int i = 0; i < NCOL; i++){
+    vec2 o = P.xz - COLS[i].xy; vec2 d = L.xz;
+    float dd = max(dot(d, d), 1e-5);
+    float tca = -dot(o, d) / dd;
+    if (tca <= 0.0 || tca >= sMax) continue;
+    float dist = length(o + d * tca);
+    float w = 0.03 + 0.011 * tca;
+    v *= smoothstep(COLS[i].z - w, COLS[i].z + w, dist);
+  }
+  return v;
+}
+vec3 windowLight(vec3 P, float lodBias){
+  if (P.z <= 0.0) return vec3(0.0);
+  float s = -P.z / uL.z;
+  vec3 Q = P + uL * s;
+  vec2 uv = wallUV(Q.xy);
+  if (uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0) return vec3(0.0);
+  return tintLod(uv, log2(1.0 + s * 1.25) + lodBias) * colVis(P, uL, s);
+}
+`;
+
+const SCENE_FS = `#version 300 es
+precision highp float;
+precision highp sampler3D;
+out vec4 outColor;
+uniform vec2 uRes;
+uniform float uTime, uFrame;
+uniform vec3 uCamPos, uCamFwd, uCamRight, uCamUp;
+uniform float uTanHalf;
+uniform sampler3D uNoise;
+uniform int uSteps;
+uniform float uHaze, uOutScale, uBlend;
+uniform sampler2D uPrev;
+${COMMON}
+float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash12(i), hash12(i + vec2(1,0)), f.x), mix(hash12(i + vec2(0,1)), hash12(i + vec2(1,1)), f.x), f.y); }
+float fbm(vec2 p){ float s = 0.0, a = 0.5; for (int i = 0; i < 4; i++){ s += a * vnoise(p); p = p * 2.07 + 13.7; a *= 0.5; } return s; }
+
+vec3 floorAlbedo(vec2 p){
+  vec2 q = p / 1.25;
+  float row = floor(q.y);
+  q.x += mod(row, 2.0) * 0.5;
+  vec2 cell = floor(q), f = fract(q);
+  float h = hash12(cell + 7.0);
+  vec2 e = min(f, 1.0 - f) * 1.25;
+  float joint = smoothstep(0.004, 0.022, min(e.x, e.y));
+  float wear = fbm(p * 1.6 + h * 9.0);
+  vec3 base = mix(vec3(0.33, 0.30, 0.26), vec3(0.47, 0.43, 0.37), h);
+  base *= 0.78 + 0.4 * wear;
+  // лабиринт-инкрустация (кольца)
+  vec2 c = p - vec2(0.0, 10.5);
+  float r = length(c);
+  float ringBand = abs(fract(r / 0.36) - 0.5) * 0.36;
+  float ring = (r > 0.75 && r < 4.35) ? 1.0 - smoothstep(0.03, 0.05, ringBand) : 0.0;
+  float edge = 1.0 - smoothstep(0.05, 0.08, abs(r - 4.5));
+  float lun = (r > 4.5 && r < 4.78) ? step(0.0, cos(atan(c.y, c.x) * 57.0)) * (1.0 - smoothstep(4.62, 4.78, r)) : 0.0;
+  float rose = (r < 0.72) ? step(0.55, abs(cos(atan(c.y, c.x) * 3.0))) * step(0.2, r) : 0.0;
+  float inlay = clamp(ring + edge + lun * 0.8 + rose, 0.0, 1.0);
+  base = mix(base, vec3(0.10, 0.095, 0.09) * (0.8 + 0.4 * wear), inlay * 0.85);
+  return base * mix(0.45, 1.0, joint);
+}
+vec3 wallAlbedo(vec2 w){
+  float rowH = 0.58;
+  float row = floor(w.y / rowH);
+  float len = 1.0 + 0.7 * hash12(vec2(row, 3.1));
+  float x = w.x / len + hash12(vec2(row, 7.7)) * 10.0;
+  float h = hash12(vec2(floor(x), row));
+  float fx = fract(x), fy = fract(w.y / rowH);
+  float j = min(min(fx, 1.0 - fx) * len, min(fy, 1.0 - fy) * rowH);
+  float joint = smoothstep(0.004, 0.018, j);
+  vec3 base = mix(vec3(0.29, 0.27, 0.24), vec3(0.41, 0.375, 0.33), h);
+  base *= 0.8 + 0.34 * fbm(w * 2.2 + h * 5.0);
+  return base * mix(0.42, 1.0, joint);
+}
+
+vec3 glassRadiance(vec3 tint){ return tint * (uSky + uSun * 0.24) * uGlow; }
+
+vec3 shadeFloor(vec3 P, vec3 rd){
+  vec3 alb = floorAlbedo(P.xz);
+  vec3 direct = windowLight(P, 0.0) * uSun * max(uL.y, 0.0);
+  vec3 dp = P - uPatch;
+  vec3 bounce = uBounce / (1.0 + dot(dp, dp) * 0.03);
+  vec3 amb = uAmb * (0.55 + 0.45 * exp(-P.z * 0.06));
+  vec3 c = alb * (direct + bounce + amb);
+  // отражение окна в полированном камне
+  vec3 r = vec3(rd.x, -rd.y, rd.z);
+  if (r.z < 0.0) {
+    float t = -P.z / r.z;
+    vec3 W = P + r * t;
+    vec2 uv = wallUV(W.xy);
+    if (length(uv - 0.5) < 0.495) {
+      float cosT = clamp(-rd.y, 0.0, 1.0);
+      float F = 0.04 + 0.96 * pow(1.0 - cosT, 5.0);
+      float polish = 0.3 * smoothstep(0.35, 0.8, fbm(P.xz * 0.9 + 3.0));
+      c += glassRadiance(tintLod(uv, 2.5 + log2(1.0 + t * 0.5))) * F * polish;
+    }
+  }
+  return c;
+}
+
+vec3 shadeWall(vec3 P, vec2 uvW, vec2 gx, vec2 gy){
+  float heightDark = exp(-max(P.y - 11.5, 0.0) * 0.2);
+  vec3 dp = P - uPatch;
+  vec3 bounce = uBounce * 0.7 / (1.0 + dot(dp, dp) * 0.02);
+  vec3 amb = uAmb * heightDark;
+  float rr = length(uvW - 0.5) * 2.0;
+  if (rr < 0.985) {
+    vec4 m = textureGrad(uMatA, uvW, gx, gy);
+    vec3 t = textureGrad(uWinA, uvW, gx, gy).rgb;
+    float mb = textureLod(uMatA, uvW, 3.2).r;
+    if (uMix > 0.0) {
+      float k = revealB(uvW);
+      m = mix(m, textureGrad(uMatB, uvW, gx, gy), k);
+      t = mix(t, textureGrad(uWinB, uvW, gx, gy).rgb, k);
+      mb = mix(mb, textureLod(uMatB, uvW, 3.2).r, k);
+    }
+    vec3 tint = t * t;
+    // фактура стекла: полосы, толщина, пузырьки — гаснут при сильном уменьшении
+    float fw = max(length(gx), length(gy)) * 2048.0;
+    float detail = clamp(2.2 - log2(max(fw, 1.0)), 0.0, 1.0);
+    float ang = m.b * 6.2831;
+    vec2 tp = mat2(cos(ang), -sin(ang), sin(ang), cos(ang)) * (uvW * 2048.0);
+    float streak = vnoise(vec2(tp.x * 0.012, tp.y * 0.16));
+    float thick = fbm(uvW * 70.0 + m.b * 17.0);
+    float bub = smoothstep(0.93, 0.97, vnoise(uvW * 900.0 + m.b * 50.0));
+    float var = 0.74 + 0.42 * thick + detail * (0.3 * (streak - 0.5) + 0.25 * bub);
+    float inner = mix(0.5, 1.0, smoothstep(0.3, 0.95, mb));
+    vec3 glassC = glassRadiance(tint) * var * inner;
+    float stoneK = m.g;
+    vec3 stoneC = vec3(0.33, 0.30, 0.27) * (amb * 1.5 + bounce * 0.6) * (0.8 + 0.3 * fbm(uvW * 400.0));
+    vec3 leadC = vec3(0.012, 0.011, 0.01) + glassRadiance(tint) * 0.02;
+    float gk = clamp(m.r, 0.0, 1.0);
+    vec3 c = glassC * gk + stoneC * stoneK + leadC * clamp(1.0 - gk - stoneK, 0.0, 1.0);
+    if (uMix > 0.0 && uMix < 1.0 && uMixMode < 0.5) {
+      float front = uMix * 1.15;
+      c += vec3(1.0, 0.6, 0.24) * 5.0 * exp(-pow((rr - front) / 0.012, 2.0)) * (1.0 - smoothstep(0.85, 1.0, uMix));
+    }
+    return c;
+  }
+  vec3 alb = wallAlbedo(P.xy);
+  float r = (rr - 0.985) / 0.3; // 0..1 — зона обрамления
+  vec3 c;
+  if (r < 1.0) {
+    float prof = 0.5 + 0.5 * cos(r * 3.14159 * 6.0);
+    float lip = smoothstep(0.0, 0.06, r);
+    vec3 mAlb = vec3(0.38, 0.35, 0.31) * (0.55 + 0.6 * prof) * (0.85 + 0.25 * fbm(uvW * 60.0));
+    c = mAlb * (amb + bounce * 0.5) * mix(0.35, 1.0, lip);
+    // отсвет стекла на откосах
+    vec3 avg = tintLod(vec2(0.5), 9.0);
+    c += avg * (uSky + uSun * 0.2) * uGlow * 0.35 * exp(-r * 5.0) * prof;
+  } else {
+    c = alb * (amb + bounce * 0.5);
+  }
+  return c;
+}
+
+vec3 shadeColumn(vec3 P, vec3 N, vec2 cc){
+  float ang = atan(P.z - cc.y, P.x - cc.x);
+  vec3 T = vec3(-sin(ang), 0.0, cos(ang));
+  vec3 n = normalize(N + T * sin(ang * 14.0) * 0.22);
+  float heightDark = exp(-max(P.y - 11.5, 0.0) * 0.2);
+  vec3 alb = vec3(0.40, 0.37, 0.33) * (0.78 + 0.35 * fbm(vec2(ang * 4.0, P.y * 1.3)));
+  vec3 direct = windowLight(P + n * 0.04, 0.0) * uSun * max(dot(n, uL), 0.0);
+  vec3 dp = P - uPatch;
+  vec3 bounce = uBounce * 0.8 / (1.0 + dot(dp, dp) * 0.03);
+  vec3 amb = uAmb * (0.45 + 0.55 * max(-n.z, 0.0)) * heightDark;
+  return alb * (direct + amb + bounce * heightDark);
+}
+
+vec3 volume(vec3 ro, vec3 rd, float tMax, vec2 fc){
+  float jitter = fract(52.9829189 * fract(dot(fc + uFrame * vec2(5.588, 3.113), vec2(0.06711056, 0.00583715))));
+  float dt = tMax / float(uSteps);
+  vec3 acc = vec3(0.0);
+  vec3 drift = vec3(0.021, 0.008, -0.015) * uTime;
+  for (int i = 0; i < 64; i++){
+    if (i >= uSteps) break;
+    float t = (float(i) + jitter) * dt;
+    vec3 X = ro + rd * t;
+    vec3 T = windowLight(X, 1.4);
+    if (T.r + T.g + T.b < 1e-4) continue;
+    float d1 = texture(uNoise, X * 0.085 + drift).r;
+    float d2 = texture(uNoise, X * 0.29 - drift * 1.6).r;
+    float dens = 0.3 + 1.5 * d1 * d1 + 0.5 * d2;
+    acc += T * dens;
+  }
+  float g = 0.42;
+  float cosT = dot(rd, uL);
+  float phase = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * cosT, 1.5);
+  return acc * dt * uSun * phase * uHaze;
+}
+
+void main(){
+  vec2 fc = gl_FragCoord.xy;
+  vec2 p = (fc / uRes) * 2.0 - 1.0;
+  p.x *= uRes.x / uRes.y;
+  vec3 rd = normalize(uCamFwd + uTanHalf * (p.x * uCamRight + p.y * uCamUp));
+  vec3 ro = uCamPos;
+  // стена: uv и производные считаем вне ветвлений
+  float tW = rd.z < 0.0 ? -ro.z / rd.z : 1e5;
+  vec3 PW = ro + rd * tW;
+  vec2 uvW = wallUV(PW.xy);
+  vec2 gx = dFdx(uvW), gy = dFdy(uvW);
+
+  float tHit = 1e5; int mat = 0; vec2 hitC = vec2(0.0);
+  if (rd.y < 0.0) { float t = -ro.y / rd.y; if (t < tHit) { tHit = t; mat = 1; } }
+  if (rd.z < 0.0 && tW < tHit) { tHit = tW; mat = 2; }
+  for (int i = 0; i < NCOL; i++){
+    vec2 o = ro.xz - COLS[i].xy; vec2 d = rd.xz;
+    float a = dot(d, d), b = dot(o, d), c = dot(o, o) - COLS[i].z * COLS[i].z;
+    float disc = b * b - a * c;
+    if (disc > 0.0) {
+      float t = (-b - sqrt(disc)) / a;
+      if (t > 0.0 && t < tHit) { tHit = t; mat = 3; hitC = COLS[i].xy; }
+    }
+  }
+  vec3 P = ro + rd * tHit;
+  vec3 col = vec3(0.0);
+  if (mat == 1) col = shadeFloor(P, rd);
+  else if (mat == 2) col = shadeWall(P, uvW, gx, gy);
+  else if (mat == 3) col = shadeColumn(P, normalize(vec3(P.x - hitC.x, 0.0, P.z - hitC.y)), hitC);
+  col += volume(ro, rd, min(tHit, 46.0), fc);
+  vec3 prev = texture(uPrev, fc / uRes).rgb;
+  outColor = vec4(mix(prev, col * uOutScale, uBlend), 1.0);
+}`;
+
+const DUST_VS = `#version 300 es
+precision highp float;
+in vec4 aSeed;
+uniform float uTime, uTanHalf, uAspect, uPx;
+uniform vec3 uCamPos, uCamFwd, uCamRight, uCamUp;
+${COMMON}
+out vec3 vCol;
+void main(){
+  vec3 lo = vec3(-11.0, 0.2, 0.5), hi = vec3(11.0, 13.5, 23.0);
+  vec3 p = mix(lo, hi, aSeed.xyz);
+  float t = uTime, ph = aSeed.w * 6.2831;
+  p += vec3(sin(t * 0.11 + ph) * 0.7, 0.0, cos(t * 0.09 + ph * 1.7) * 0.7);
+  p.y = lo.y + mod(p.y - lo.y + sin(t * 0.13 + ph * 2.3) * 0.5 - t * (0.02 + 0.05 * aSeed.w), hi.y - lo.y);
+  vec3 T = windowLight(p, 1.0);
+  float tw = 0.45 + 0.55 * pow(0.5 + 0.5 * sin(t * (0.9 + aSeed.w * 2.6) + aSeed.x * 40.0), 2.0);
+  vec3 rel = p - uCamPos;
+  float z = dot(rel, uCamFwd);
+  vec2 q = vec2(dot(rel, uCamRight), dot(rel, uCamUp)) / (z * uTanHalf);
+  gl_Position = z > 0.4 ? vec4(q.x / uAspect, q.y, 0.0, 1.0) : vec4(3.0, 3.0, 3.0, 1.0);
+  float size = uPx * 0.02 / max(z, 0.4);
+  float coc = abs(z - 15.0) * uPx * 0.0009;
+  gl_PointSize = clamp(size + coc, 1.0, 40.0);
+  float soft = (size + 0.6) / (size + coc + 0.6);
+  vCol = T * uSun * tw * 1.35 * soft * soft;
+}`;
+const DUST_FS = `#version 300 es
+precision highp float;
+in vec3 vCol; out vec4 o;
+uniform float uOutScale, uBlend;
+void main(){ vec2 q = gl_PointCoord * 2.0 - 1.0; float r = dot(q, q); if (r > 1.0) discard; o = vec4(vCol * exp(-r * 2.6) * uOutScale * uBlend, 1.0); }`;
+
+const DOWN_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform sampler2D uSrc; uniform vec2 uTexel; uniform float uPrefilter, uThreshold, uInScale;
+vec3 s(vec2 uv){ return texture(uSrc, uv).rgb * uInScale; }
+void main(){
+  vec2 t = uTexel;
+  vec3 a = s(vUv + t * vec2(-2, -2)), b = s(vUv + t * vec2(0, -2)), c = s(vUv + t * vec2(2, -2));
+  vec3 d = s(vUv + t * vec2(-1, -1)), e = s(vUv + t * vec2(1, -1));
+  vec3 f = s(vUv + t * vec2(-2, 0)), g = s(vUv), h = s(vUv + t * vec2(2, 0));
+  vec3 i = s(vUv + t * vec2(-1, 1)), j = s(vUv + t * vec2(1, 1));
+  vec3 k = s(vUv + t * vec2(-2, 2)), l = s(vUv + t * vec2(0, 2)), m = s(vUv + t * vec2(2, 2));
+  vec3 col = g * 0.125 + (d + e + i + j) * 0.125 + (a + c + k + m) * 0.03125 + (b + f + h + l) * 0.0625;
+  if (uPrefilter > 0.5) {
+    float br = max(col.r, max(col.g, col.b));
+    float soft = clamp(br - uThreshold + 0.5, 0.0, 1.0); soft = soft * soft * 0.5;
+    col *= max(soft, br - uThreshold) / max(br, 1e-4);
+  }
+  o = vec4(col, 1.0);
+}`;
+const UP_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform sampler2D uSrc; uniform vec2 uTexel;
+vec3 s(vec2 uv){ return texture(uSrc, uv).rgb; }
+void main(){
+  vec2 t = uTexel;
+  vec3 c = s(vUv + t * vec2(-1, -1)) + s(vUv + t * vec2(1, -1)) + s(vUv + t * vec2(-1, 1)) + s(vUv + t * vec2(1, 1))
+         + 2.0 * (s(vUv + t * vec2(0, -1)) + s(vUv + t * vec2(-1, 0)) + s(vUv + t * vec2(1, 0)) + s(vUv + t * vec2(0, 1)))
+         + 4.0 * s(vUv);
+  o = vec4(c / 16.0, 1.0);
+}`;
+const COMP_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform sampler2D uScene, uBloom;
+uniform float uExposure, uBloomK, uTime, uInScale;
+uniform vec2 uRes;
+vec3 aces(vec3 x){ return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
+void main(){
+  vec3 c = texture(uScene, vUv).rgb * uInScale + texture(uBloom, vUv).rgb * uBloomK;
+  c = aces(c * uExposure);
+  c = pow(c, vec3(1.0 / 2.2));
+  vec2 q = vUv - 0.5; q.x *= uRes.x / uRes.y;
+  c *= 1.0 - 0.42 * dot(q, q);
+  float n = fract(sin(dot(gl_FragCoord.xy + fract(uTime * 7.13) * 91.0, vec2(12.9898, 78.233))) * 43758.5453);
+  c += (n - 0.5) * 0.022;
+  o = vec4(c, 1.0);
+}`;
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) + '\n' + src.split('\n').map((l, i) => (i + 1) + ': ' + l).join('\n'));
+  return s;
+}
+function program(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) { const info = gl.getActiveUniform(p, i); u[info.name.replace(/\[0\]$/, '')] = gl.getUniformLocation(p, info.name); }
+  return { p, u };
+}
+let progScene, progDust, progDown, progUp, progComp;
+try {
+  progScene = program(VS, SCENE_FS);
+  progDust = program(DUST_VS, DUST_FS);
+  progDown = program(VS, DOWN_FS);
+  progUp = program(VS, UP_FS);
+  progComp = program(VS, COMP_FS);
+} catch (e) {
+  $('#veil').innerHTML = '<p>Видеокарта не смогла собрать шейдеры витража.</p>';
+  throw e;
+}
+
+// полноэкранный треугольник
+const triVAO = gl.createVertexArray();
+gl.bindVertexArray(triVAO);
+const triBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, triBuf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+for (const pr of [progScene, progDown, progUp, progComp]) {
+  const loc = gl.getAttribLocation(pr.p, 'aPos');
+  if (loc >= 0) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0); }
+}
+// пылинки
+const DUST_N = SOFTWARE ? 900 : 2600;
+const dustVAO = gl.createVertexArray();
+gl.bindVertexArray(dustVAO);
+const dustBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, dustBuf);
+{
+  const r = rng(77), a = new Float32Array(DUST_N * 4);
+  for (let i = 0; i < a.length; i++) a[i] = r();
+  gl.bufferData(gl.ARRAY_BUFFER, a, gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(progDust.p, 'aSeed');
+  gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 4, gl.FLOAT, false, 0, 0);
+}
+gl.bindVertexArray(null);
+
+// 3D-шум для плотности пыли и ладанного дыма
+function makeNoise3D() {
+  const N = 64, L = 8, r = rng(4242);
+  const lat = new Float32Array(L * L * L);
+  for (let i = 0; i < lat.length; i++) lat[i] = r();
+  const at = (x, y, z) => lat[((z % L) * L + (y % L)) * L + (x % L)];
+  const sm = (t) => t * t * (3 - 2 * t);
+  const out = new Uint8Array(N * N * N);
+  for (let z = 0; z < N; z++) for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let v = 0, amp = 0.62, freq = 1, norm = 0;
+    for (let o = 0; o < 2; o++) {
+      const fx = (x / N) * L * freq, fy = (y / N) * L * freq, fz = (z / N) * L * freq;
+      const ix = Math.floor(fx), iy = Math.floor(fy), iz = Math.floor(fz);
+      const tx = sm(fx - ix), ty = sm(fy - iy), tz = sm(fz - iz);
+      const c = (dx, dy, dz) => at(ix + dx, iy + dy, iz + dz);
+      const x00 = lerp(c(0, 0, 0), c(1, 0, 0), tx), x10 = lerp(c(0, 1, 0), c(1, 1, 0), tx);
+      const x01 = lerp(c(0, 0, 1), c(1, 0, 1), tx), x11 = lerp(c(0, 1, 1), c(1, 1, 1), tx);
+      v += amp * lerp(lerp(x00, x10, ty), lerp(x01, x11, ty), tz);
+      norm += amp; amp *= 0.5; freq *= 2;
+    }
+    out[(z * N + y) * N + x] = Math.round((v / norm) * 255);
+  }
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_3D, t);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage3D(gl.TEXTURE_3D, 0, gl.R8, N, N, N, 0, gl.RED, gl.UNSIGNED_BYTE, out);
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  for (const p of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R]) gl.texParameteri(gl.TEXTURE_3D, p, gl.REPEAT);
+  return t;
+}
+const noiseTex = makeNoise3D();
+
+// текстуры окна (A — текущая, B — следующая)
+function makeWinTex() {
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  if (extAniso) gl.texParameterf(gl.TEXTURE_2D, extAniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(extAniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+  return t;
+}
+const tex = { winA: makeWinTex(), winB: makeWinTex(), matA: makeWinTex(), matB: makeWinTex() };
+function upload(t, source) {
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, source);
+  gl.generateMipmap(gl.TEXTURE_2D);
+}
+
+// рендер-таргеты
+function makeRT(w, h, internal, type) {
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, gl.RGBA, type, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+  return { t, fb, w, h };
+}
+function freeRT(rt) { if (!rt) return; gl.deleteTexture(rt.t); gl.deleteFramebuffer(rt.fb); }
+let sceneRTs = [], bloomRT = [], pp = 0, resetAccum = true, accumN = 0;
+const BLOOM_LEVELS = 5;
+function buildTargets(w, h) {
+  sceneRTs.forEach(freeRT); bloomRT.forEach(freeRT); bloomRT = [];
+  sceneRTs = [makeRT(w, h, HDR_FMT.internal, HDR_FMT.type), makeRT(w, h, HDR_FMT.internal, HDR_FMT.type)];
+  resetAccum = true;
+  let bw = w, bh = h;
+  for (let i = 0; i < BLOOM_LEVELS; i++) {
+    bw = Math.max(1, bw >> 1); bh = Math.max(1, bh >> 1);
+    bloomRT.push(makeRT(bw, bh, HDR_FMT.internal, HDR_FMT.type));
+  }
+}
+
+/* ================================================================
+   Генерация окна → текстуры
+   ================================================================ */
+const S_TEX = SOFTWARE ? 1536 : 2048;
+const colorCv = document.createElement('canvas'); colorCv.width = colorCv.height = S_TEX;
+const matCv = document.createElement('canvas'); matCv.width = matCv.height = S_TEX;
+const idCv = document.createElement('canvas'); idCv.width = idCv.height = 1024;
+const colorCtx = colorCv.getContext('2d');
+const matCtx = matCv.getContext('2d');
+const idCtx = idCv.getContext('2d', { willReadFrequently: true });
+const avgCv = document.createElement('canvas'); avgCv.width = avgCv.height = 48;
+const avgCtx = avgCv.getContext('2d', { willReadFrequently: true });
+
+const state = {
+  design: null, pal: PALETTES[0], overrides: new Map(),
+  hour: 16.6, playing: true, dolly: 0, dollyTarget: 0,
+  mix: 0, mixMode: 0, mixDur: 1.6, mixT0: 0, transitioning: false,
+  avg: [0.2, 0.25, 0.5],
+};
+const WIN = { cx: 0, cy: 7.1, R: 3.35 };
+const HALF = WIN.R / 0.985;
+
+function renderWindowInto(winT, matT) {
+  const { design, pal, overrides } = state;
+  paintRose(colorCtx, S_TEX, design, pal, overrides, 'color');
+  paintRose(matCtx, S_TEX, design, pal, overrides, 'mat');
+  paintRose(idCtx, 1024, design, pal, overrides, 'id');
+  upload(winT, colorCv);
+  upload(matT, matCv);
+  // средний цвет окна — для отражённого света
+  avgCtx.clearRect(0, 0, 48, 48);
+  avgCtx.imageSmoothingQuality = 'high';
+  avgCtx.drawImage(colorCv, 0, 0, 48, 48);
+  const d = avgCtx.getImageData(0, 0, 48, 48).data;
+  let r = 0, g = 0, b = 0, c = 0;
+  for (let y = 0; y < 48; y++) for (let x = 0; x < 48; x++) {
+    if ((x - 23.5) ** 2 + (y - 23.5) ** 2 > 23 * 23) continue;
+    const i = (y * 48 + x) * 4;
+    r += (d[i] / 255) ** 2; g += (d[i + 1] / 255) ** 2; b += (d[i + 2] / 255) ** 2; c++;
+  }
+  state.avgNext = [r / c, g / c, b / c];
+}
+function startTransition(mode, dur) {
+  if (state.transitioning) finishTransition();
+  renderWindowInto(tex.winB, tex.matB);
+  state.transitioning = true;
+  state.mixMode = mode; state.mixDur = dur; state.mixT0 = performance.now() / 1000; state.mix = 0.0001;
+}
+function finishTransition() {
+  [tex.winA, tex.winB] = [tex.winB, tex.winA];
+  [tex.matA, tex.matB] = [tex.matB, tex.matA];
+  state.transitioning = false; state.mix = 0;
+  if (state.avgNext) state.avg = state.avgNext;
+}
+
+/* ================================================================
+   Солнце, камера
+   ================================================================ */
+function sunAt(h) {
+  const u = clamp((h - 5.5) / 15, 0, 1);
+  const elev = (3 + 49 * Math.sin(Math.PI * u)) * Math.PI / 180;
+  const az = (u - 0.5) * 2 * 40 * Math.PI / 180;
+  const L = [Math.sin(az) * Math.cos(elev), Math.sin(elev), -Math.cos(az) * Math.cos(elev)];
+  const e = elev * 180 / Math.PI;
+  const warm = smooth(2, 34, e);
+  const col = [lerp(1.0, 1.0, warm), lerp(0.47, 0.92, warm), lerp(0.2, 0.8, warm)];
+  const inten = 6.2 * smooth(0, 10, e) * (0.62 + 0.38 * Math.sin(elev));
+  const sky = [lerp(0.95, 0.72, warm), lerp(0.55, 0.83, warm), lerp(0.42, 1.0, warm)].map((v) => v * (0.42 + 0.58 * smooth(-2, 22, e)));
+  return { L, sun: col.map((v) => v * inten), sky, elev: e };
+}
+const cam = { pos: [0, 3, 24], fwd: [0, 0, -1], right: [1, 0, 0], up: [0, 1, 0], tanHalf: Math.tan(26 * Math.PI / 180) };
+const ptr = { x: 0, y: 0, sx: 0, sy: 0 };
+function norm3(v) { const l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; }
+function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+function updateCamera(t, aspect) {
+  const d = state.dolly;
+  const portrait = aspect < 1;
+  ptr.sx += (ptr.x - ptr.sx) * 0.05; ptr.sy += (ptr.y - ptr.sy) * 0.05;
+  const sway = reduceMotion ? 0 : 1;
+  const pos = [
+    lerp(0, 0, d) + ptr.sx * lerp(1.1, 0.6, d) + Math.sin(t * 0.07) * 0.35 * sway,
+    lerp(3.4, 2.3, d) + ptr.sy * 0.35 + Math.sin(t * 0.05 + 1) * 0.08 * sway,
+    lerp(21.5, 9.8, d),
+  ];
+  const ty = portrait ? lerp(2.4, 6.2, d) : lerp(4.6, 7.2, d);
+  const target = [0, ty, 0];
+  const fwd = norm3([target[0] - pos[0], target[1] - pos[1], target[2] - pos[2]]);
+  const right = norm3(cross(fwd, [0, 1, 0]));
+  const up = cross(right, fwd);
+  // вертикальный угол обзора: в портрете расширяем, чтобы роза влезала по ширине
+  const dist = pos[2];
+  const needH = (WIN.R + 1.1) / dist;
+  let tanV = Math.tan(26 * Math.PI / 180);
+  tanV = Math.max(tanV, needH / aspect);
+  tanV = Math.min(tanV, Math.tan(42 * Math.PI / 180));
+  Object.assign(cam, { pos, fwd, right, up, tanHalf: tanV });
+}
+
+/* ================================================================
+   Интерфейс: солнечная дуга
+   ================================================================ */
+const svgNS = 'http://www.w3.org/2000/svg';
+const sunSvg = $('#sun');
+const ARC = { x0: 26, x1: 354, base: 104, top: 20 };
+function arcPt(u) {
+  const ang = Math.PI * (1 - u);
+  const cx = (ARC.x0 + ARC.x1) / 2, rx = (ARC.x1 - ARC.x0) / 2, ry = ARC.base - ARC.top;
+  return [cx + rx * Math.cos(ang), ARC.base - ry * Math.sin(ang)];
+}
+function el(tag, attrs, parent) { const e = document.createElementNS(svgNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+const defs = el('defs', {}, sunSvg);
+const grad = el('linearGradient', { id: 'passed', x1: '0', x2: '1', y1: '0', y2: '0' }, defs);
+el('stop', { offset: '0', 'stop-color': '#e98a46' }, grad);
+el('stop', { offset: '0.5', 'stop-color': '#f6e3b5' }, grad);
+el('stop', { offset: '1', 'stop-color': '#e98a46' }, grad);
+el('line', { x1: 6, x2: 374, y1: ARC.base, y2: ARC.base, stroke: 'rgba(240,230,207,0.35)', 'stroke-width': 1 }, sunSvg);
+const arcFull = el('path', { fill: 'none', stroke: 'rgba(240,230,207,0.3)', 'stroke-width': 1, 'stroke-dasharray': '2 5' }, sunSvg);
+const arcDone = el('path', { fill: 'none', stroke: 'url(#passed)', 'stroke-width': 2, 'stroke-linecap': 'round' }, sunSvg);
+const ticks = el('g', {}, sunSvg);
+for (let h = 6; h <= 20; h++) {
+  const [x, y] = arcPt((h - 5.5) / 15);
+  const major = h % 3 === 0;
+  el('circle', { cx: x, cy: y, r: major ? 2.2 : 1.3, fill: 'rgba(240,230,207,0.75)' }, ticks);
+  if (major) {
+    const [cx] = arcPt(0.5);
+    const dx = x - cx, dy = y - ARC.base;
+    const l = Math.hypot(dx, dy) || 1;
+    const t = el('text', { x: x + (dx / l) * 16, y: y + (dy / l) * 16 + 5, 'text-anchor': 'middle', fill: 'rgba(240,230,207,0.72)', 'font-size': 14, 'font-family': 'Cormorant Garamond, Georgia, serif' }, ticks);
+    t.textContent = String(h);
+  }
+}
+const sunRing = el('circle', { r: 14, fill: 'none', stroke: 'rgba(240,230,207,0.4)', 'stroke-width': 1 }, sunSvg);
+const sunDot = el('circle', { r: 8.5, fill: '#fbe6b8', stroke: '#1a1310', 'stroke-width': 1.5 }, sunSvg);
+function arcPath(u0, u1) {
+  let d = '';
+  const steps = 64;
+  for (let i = 0; i <= steps; i++) { const [x, y] = arcPt(lerp(u0, u1, i / steps)); d += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); }
+  return d;
+}
+arcFull.setAttribute('d', arcPath(0, 1));
+const WORDS = [[7, 'рассвет'], [10, 'утро'], [12, 'перед полуднем'], [14, 'полдень'], [17, 'после полудня'], [19, 'вечерний свет'], [24, 'закат']];
+let lastTimeText = '';
+function updateSunUI() {
+  const u = (state.hour - 5.5) / 15;
+  const [x, y] = arcPt(u);
+  sunDot.setAttribute('cx', x); sunDot.setAttribute('cy', y);
+  sunRing.setAttribute('cx', x); sunRing.setAttribute('cy', y);
+  arcDone.setAttribute('d', arcPath(0, Math.max(0.001, u)));
+  const hh = Math.floor(state.hour), mm = Math.floor((state.hour - hh) * 60 / 5) * 5;
+  const text = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  if (text !== lastTimeText) {
+    lastTimeText = text;
+    $('#time').textContent = text;
+    $('#timeWord').textContent = WORDS.find((w) => state.hour < w[0])[1];
+    sunSvg.setAttribute('aria-valuenow', state.hour.toFixed(2));
+    sunSvg.setAttribute('aria-valuetext', text);
+  }
+}
+function hourFromPointer(e) {
+  const r = sunSvg.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width) * 380;
+  const cx = (ARC.x0 + ARC.x1) / 2, rx = (ARC.x1 - ARC.x0) / 2;
+  const u = 1 - Math.acos(clamp((x - cx) / rx, -1, 1)) / Math.PI;
+  return 5.5 + u * 15;
+}
+let dragSun = false;
+sunSvg.addEventListener('pointerdown', (e) => { dragSun = true; sunSvg.setPointerCapture(e.pointerId); state.hour = hourFromPointer(e); setPlaying(false); dismissHint(); });
+sunSvg.addEventListener('pointermove', (e) => { if (dragSun) state.hour = hourFromPointer(e); });
+sunSvg.addEventListener('pointerup', () => { dragSun = false; });
+sunSvg.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { state.hour = clamp(state.hour - 0.25, 5.5, 20.5); setPlaying(false); e.preventDefault(); }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { state.hour = clamp(state.hour + 0.25, 5.5, 20.5); setPlaying(false); e.preventDefault(); }
+});
+
+function setPlaying(v) {
+  state.playing = v;
+  $('#play').setAttribute('aria-label', v ? 'Остановить солнце' : 'Запустить солнце');
+  $('#playIcon').innerHTML = v ? '<path d="M9 6v12M15 6v12"/>' : '<path d="M8 5.5v13l11-6.5z"/>';
+}
+$('#play').addEventListener('click', () => setPlaying(!state.playing));
+
+/* ——— палитры ——— */
+const chipsEl = $('#chips');
+PALETTES.forEach((p, i) => {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button';
+  b.setAttribute('aria-label', `Палитра «${p.name}»`); b.title = p.name;
+  const cols = [p.ground[0], p.accent[0], p.ground[1], p.accent[1], p.light[0], p.accent[2]];
+  const stops = cols.map((c, k) => `${c} ${(k / cols.length) * 360}deg ${((k + 1) / cols.length) * 360}deg`).join(',');
+  b.innerHTML = `<span style="background:conic-gradient(${stops})"></span>`;
+  b.addEventListener('click', () => choosePalette(i));
+  chipsEl.appendChild(b);
+});
+function choosePalette(i) {
+  if (state.pal === PALETTES[i]) return;
+  state.pal = PALETTES[i];
+  state.overrides.clear();
+  syncChips(); updateLabel();
+  startTransition(1, 0.7);
+}
+function syncChips() {
+  [...chipsEl.children].forEach((b, i) => b.setAttribute('aria-pressed', String(PALETTES[i] === state.pal)));
+  $('#palName').textContent = state.pal.name;
+}
+
+/* ——— этикетка ——— */
+const NUM = { 8: 'Восемь лучей', 12: 'Двенадцать лучей', 16: 'Шестнадцать лучей', 20: 'Двадцать лучей', 24: 'Двадцать четыре луча' };
+const PART = {
+  center: { star: 'звезда', foil: 'четырёхлистник', rosette: 'розетка' },
+  ringA: { petals: 'лепестки', arcade: 'аркада', spokes: 'спицы' },
+  ringB: { lancet: 'стрельчатые окна', double: 'сдвоенные стрельчатые окна' },
+  ringC: { oculi: 'окулусы', oculi2: 'двойной венец окулусов', trefoil: 'трилистники' },
+};
+function updateLabel() {
+  const d = state.design;
+  $('#lblNo').textContent = `Роза № ${String(d.seed % 10000).padStart(4, '0')}`;
+  $('#lblRays').textContent = NUM[d.n];
+  $('#lblParts').textContent = [PART.center[d.center], PART.ringA[d.ringA], PART.ringB[d.ringB], PART.ringC[d.ringC]].join(' · ');
+  $('#lblPal').textContent = state.pal.name;
+}
+
+function newWindow() {
+  const seed = (Math.random() * 1e9) >>> 0;
+  state.design = makeDesign(seed);
+  state.overrides.clear();
+  updateLabel();
+  startTransition(0, 1.7);
+}
+$('#newWin').addEventListener('click', () => { newWindow(); dismissHint(); });
+
+/* ——— подсказка ——— */
+const hint = $('#hint');
+let hintTimer = 0;
+function dismissHint() { hint.classList.remove('on'); clearTimeout(hintTimer); }
+
+/* ——— выбор стекла мышью ——— */
+function pickUV(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  const aspect = r.width / r.height;
+  const px = ((clientX - r.left) / r.width * 2 - 1) * aspect;
+  const py = -((clientY - r.top) / r.height * 2 - 1);
+  const rd = norm3([
+    cam.fwd[0] + cam.tanHalf * (px * cam.right[0] + py * cam.up[0]),
+    cam.fwd[1] + cam.tanHalf * (px * cam.right[1] + py * cam.up[1]),
+    cam.fwd[2] + cam.tanHalf * (px * cam.right[2] + py * cam.up[2]),
+  ]);
+  if (rd[2] >= 0) return null;
+  const t = -cam.pos[2] / rd[2];
+  if (rd[1] < 0 && -cam.pos[1] / rd[1] < t) return null; // пол ближе
+  const x = cam.pos[0] + rd[0] * t, y = cam.pos[1] + rd[1] * t;
+  const u = 0.5 + (x - WIN.cx) / (2 * HALF), v = 0.5 - (y - WIN.cy) / (2 * HALF);
+  if (Math.hypot(u - 0.5, v - 0.5) > 0.49) return null;
+  return [u, v];
+}
+function idAt(uv) {
+  if (!uv) return 0;
+  const x = Math.round(uv[0] * 1024), y = Math.round(uv[1] * 1024);
+  const d = idCtx.getImageData(x - 2, y - 2, 5, 5).data;
+  const count = new Map();
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 2] !== 255) continue;
+    const id = d[i] + (d[i + 1] << 8);
+    if (id > 0) count.set(id, (count.get(id) || 0) + 1);
+  }
+  let best = 0, bc = 0;
+  for (const [id, c] of count) if (c > bc) { best = id; bc = c; }
+  return best;
+}
+let down = null;
+canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+canvas.addEventListener('pointermove', (e) => {
+  const r = canvas.getBoundingClientRect();
+  ptr.x = ((e.clientX - r.left) / r.width - 0.5) * 2;
+  ptr.y = -((e.clientY - r.top) / r.height - 0.5) * 2;
+  if (e.pointerType === 'mouse') canvas.classList.toggle('over-glass', idAt(pickUV(e.clientX, e.clientY)) > 0);
+});
+canvas.addEventListener('pointerup', (e) => {
+  if (!down) return;
+  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+  down = null;
+  if (moved > 8) return;
+  const id = idAt(pickUV(e.clientX, e.clientY));
+  if (!id) return;
+  const cls = id - 1;
+  const cur = colorIndex(state.design, state.pal, state.overrides, cls);
+  state.overrides.set(cls, (cur + 1) % state.pal.all.length);
+  const rp = document.createElement('div'); rp.className = 'ripple';
+  rp.style.left = e.clientX + 'px'; rp.style.top = e.clientY + 'px';
+  document.body.appendChild(rp); setTimeout(() => rp.remove(), 800);
+  dismissHint();
+  startTransition(1, 0.45);
+});
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  state.dollyTarget = clamp(state.dollyTarget + (e.deltaY > 0 ? -0.12 : 0.12), 0, 1);
+  dismissHint();
+}, { passive: false });
+let lastTap = 0;
+canvas.addEventListener('touchend', () => {
+  const now = performance.now();
+  if (now - lastTap < 320) state.dollyTarget = state.dollyTarget > 0.5 ? 0 : 1;
+  lastTap = now;
+});
+
+/* ——— клавиатура ——— */
+window.addEventListener('keydown', (e) => {
+  if (e.target === sunSvg) return;
+  if (e.key === ' ') { setPlaying(!state.playing); e.preventDefault(); }
+  else if (e.key === 'n' || e.key === 'N' || e.key === 'т' || e.key === 'Т') newWindow();
+  else if (e.key === 's' || e.key === 'S' || e.key === 'ы' || e.key === 'Ы') saveFrame();
+  else if (e.key >= '1' && e.key <= '5') choosePalette(+e.key - 1);
+  else if (e.key === 'ArrowLeft') { state.hour = clamp(state.hour - 0.25, 5.5, 20.5); setPlaying(false); }
+  else if (e.key === 'ArrowRight') { state.hour = clamp(state.hour + 0.25, 5.5, 20.5); setPlaying(false); }
+  else if (e.key === '+' || e.key === '=') state.dollyTarget = clamp(state.dollyTarget + 0.15, 0, 1);
+  else if (e.key === '-') state.dollyTarget = clamp(state.dollyTarget - 0.15, 0, 1);
+});
+
+/* ——— сохранение кадра ——— */
+function saveFrame() {
+  render(performance.now() / 1000);
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `vitrazh-${String(state.design.seed % 10000).padStart(4, '0')}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }, 'image/png');
+}
+$('#save').addEventListener('click', saveFrame);
+
+/* ================================================================
+   Кадр
+   ================================================================ */
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let quality = SHOT ? 0.8 : SOFTWARE ? 0.55 : 0.85;
+let steps = SHOT ? 34 : SOFTWARE ? 22 : 32;
+let cssW = 0, cssH = 0, dpr = 1, tw = 0, th = 0;
+function resize() {
+  cssW = window.innerWidth; cssH = window.innerHeight;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+  retarget(true);
+}
+function retarget(force) {
+  const base = SHOT ? 1 : Math.min(dpr, 1.5);
+  const w = Math.max(64, Math.round(cssW * base * quality)), h = Math.max(64, Math.round(cssH * base * quality));
+  if (force || Math.abs(w - tw) > tw * 0.04) { tw = w; th = h; buildTargets(w, h); }
+}
+window.addEventListener('resize', resize);
+
+let frameNo = 0, t0 = performance.now() / 1000, lastT = t0, avgDt = 16;
+function setWinUniforms(pr, sun) {
+  const u = pr.u;
+  gl.uniform3fv(u.uL, sun.L); gl.uniform3fv(u.uSun, sun.sun); gl.uniform3fv(u.uSky, sun.sky);
+  const amb = sun.sky.map((v) => v * 0.05 + 0.004);
+  gl.uniform3fv(u.uAmb, amb);
+  const sinE = Math.max(sun.L[1], 0);
+  gl.uniform3fv(u.uBounce, state.avg.map((v, i) => v * sun.sun[i] * sinE * 0.085));
+  const s = WIN.cy / Math.max(sun.L[1], 0.05);
+  gl.uniform3fv(u.uPatch, [WIN.cx - sun.L[0] * s, 0, -sun.L[2] * s]);
+  gl.uniform3fv(u.uWin, [WIN.cx, WIN.cy, WIN.R]);
+  gl.uniform1f(u.uHalf, HALF);
+  gl.uniform1f(u.uMix, state.transitioning ? state.mix : 0);
+  gl.uniform1f(u.uMixMode, state.mixMode);
+  gl.uniform1f(u.uGlow, 1.9);
+  const texs = [['uWinA', tex.winA], ['uWinB', tex.winB], ['uMatA', tex.matA], ['uMatB', tex.matB]];
+  texs.forEach(([name, t], i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, t); if (u[name]) gl.uniform1i(u[name], i); });
+}
+let lastCam = [0, 0, 0], lastHour = 0;
+function render(now) {
+  const t = now - t0;
+  const aspect = cssW / cssH;
+  updateCamera(t, aspect);
+  const sun = sunAt(state.hour);
+  // накопление: чем сильнее изменился кадр, тем меньше берём из прошлого
+  let blend;
+  if (resetAccum) { blend = 1; resetAccum = false; accumN = 1; }
+  else if (SHOT) { accumN++; blend = 1 / accumN; }
+  else {
+    const moved = Math.hypot(cam.pos[0] - lastCam[0], cam.pos[1] - lastCam[1], cam.pos[2] - lastCam[2]);
+    blend = clamp(0.3 + moved * 5 + Math.abs(state.hour - lastHour) * 30 + (state.transitioning ? 0.25 : 0), 0.3, 1);
+  }
+  lastCam = cam.pos.slice(); lastHour = state.hour;
+  const sceneRT = sceneRTs[pp], prevRT = sceneRTs[1 - pp];
+
+  // 1. сцена
+  gl.bindFramebuffer(gl.FRAMEBUFFER, sceneRT.fb);
+  gl.viewport(0, 0, tw, th);
+  gl.disable(gl.BLEND);
+  gl.useProgram(progScene.p);
+  gl.bindVertexArray(triVAO);
+  let u = progScene.u;
+  setWinUniforms(progScene, sun);
+  gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_3D, noiseTex); gl.uniform1i(u.uNoise, 4);
+  gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, prevRT.t); gl.uniform1i(u.uPrev, 5);
+  gl.uniform1f(u.uBlend, blend);
+  gl.uniform2f(u.uRes, tw, th);
+  gl.uniform1f(u.uTime, t); gl.uniform1f(u.uFrame, frameNo % 64);
+  gl.uniform3fv(u.uCamPos, cam.pos); gl.uniform3fv(u.uCamFwd, cam.fwd); gl.uniform3fv(u.uCamRight, cam.right); gl.uniform3fv(u.uCamUp, cam.up);
+  gl.uniform1f(u.uTanHalf, cam.tanHalf);
+  gl.uniform1i(u.uSteps, steps);
+  gl.uniform1f(u.uHaze, 0.021);
+  gl.uniform1f(u.uOutScale, OUT_SCALE);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  // 2. пылинки
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+  gl.useProgram(progDust.p);
+  gl.bindVertexArray(dustVAO);
+  u = progDust.u;
+  setWinUniforms(progDust, sun);
+  gl.uniform1f(u.uTime, t); gl.uniform1f(u.uTanHalf, cam.tanHalf); gl.uniform1f(u.uAspect, aspect);
+  gl.uniform1f(u.uPx, th / (2 * cam.tanHalf));
+  gl.uniform3fv(u.uCamPos, cam.pos); gl.uniform3fv(u.uCamFwd, cam.fwd); gl.uniform3fv(u.uCamRight, cam.right); gl.uniform3fv(u.uCamUp, cam.up);
+  gl.uniform1f(u.uOutScale, OUT_SCALE);
+  gl.uniform1f(u.uBlend, blend);
+  gl.drawArrays(gl.POINTS, 0, DUST_N);
+  gl.disable(gl.BLEND);
+
+  // 3. свечение (bloom)
+  gl.bindVertexArray(triVAO);
+  gl.useProgram(progDown.p);
+  u = progDown.u;
+  let src = sceneRT;
+  for (let i = 0; i < BLOOM_LEVELS; i++) {
+    const dst = bloomRT[i];
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb); gl.viewport(0, 0, dst.w, dst.h);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, src.t); gl.uniform1i(u.uSrc, 0);
+    gl.uniform2f(u.uTexel, 1 / src.w, 1 / src.h);
+    gl.uniform1f(u.uPrefilter, i === 0 ? 1 : 0);
+    gl.uniform1f(u.uThreshold, 1.0);
+    gl.uniform1f(u.uInScale, i === 0 ? 1 / OUT_SCALE : 1);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    src = dst;
+  }
+  gl.useProgram(progUp.p);
+  u = progUp.u;
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+  for (let i = BLOOM_LEVELS - 1; i > 0; i--) {
+    const s2 = bloomRT[i], dst = bloomRT[i - 1];
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb); gl.viewport(0, 0, dst.w, dst.h);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, s2.t); gl.uniform1i(u.uSrc, 0);
+    gl.uniform2f(u.uTexel, 1 / s2.w, 1 / s2.h);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  gl.disable(gl.BLEND);
+
+  // 4. сведение на экран
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.useProgram(progComp.p);
+  u = progComp.u;
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, sceneRT.t); gl.uniform1i(u.uScene, 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bloomRT[0].t); gl.uniform1i(u.uBloom, 1);
+  gl.uniform1f(u.uExposure, 1.25); gl.uniform1f(u.uBloomK, 0.3);
+  gl.uniform1f(u.uInScale, 1 / OUT_SCALE);
+  gl.uniform1f(u.uTime, t); gl.uniform2f(u.uRes, canvas.width, canvas.height);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  pp = 1 - pp;
+  frameNo++;
+}
+
+let lastAdapt = 0;
+function loop() {
+  if (SHOT && frameNo >= 12) return; // для обложки хватает 12 накопленных кадров
+  requestAnimationFrame(loop);
+  if (document.hidden) return;
+  const now = performance.now() / 1000;
+  const dt = Math.min(0.1, now - lastT);
+  lastT = now;
+  avgDt = lerp(avgDt, dt * 1000, 0.08);
+  if (state.playing && !dragSun) {
+    state.hour += dt * (reduceMotion ? 0.02 : 0.075);
+    if (state.hour > 20.5) state.hour = 5.5;
+  }
+  state.dolly += (state.dollyTarget - state.dolly) * Math.min(1, dt * 3);
+  if (state.transitioning) {
+    state.mix = clamp((now - state.mixT0) / state.mixDur, 0.0001, 1);
+    if (state.mix >= 1) finishTransition();
+  }
+  // адаптивное разрешение
+  if (!SOFTWARE && !SHOT && now - lastAdapt > 0.6 && frameNo > 20) {
+    lastAdapt = now;
+    if (avgDt > 24 && quality > 0.42) { quality *= 0.86; retarget(); }
+    else if (avgDt < 14 && quality < 1) { quality = Math.min(1, quality * 1.07); retarget(); }
+  }
+  updateSunUI();
+  render(now);
+}
+
+/* ================================================================
+   Старт
+   ================================================================ */
+window.__vitrazh = {
+  showTexture() {
+    const c = colorCv; c.style.cssText = 'position:fixed;inset:0;margin:auto;height:96vh;width:auto;z-index:9;background:#000';
+    document.body.appendChild(c);
+  },
+  showMat() {
+    const c = matCv; c.style.cssText = 'position:fixed;inset:0;margin:auto;height:96vh;width:auto;z-index:9;background:#000';
+    document.body.appendChild(c);
+  },
+  seed(s) { state.design = makeDesign(s); state.overrides.clear(); updateLabel(); startTransition(0, 0.01); },
+  state,
+};
+
+resize();
+state.design = makeDesign(417);
+updateLabel(); syncChips(); setPlaying(!SHOT);
+if (SHOT) {
+  renderWindowInto(tex.winA, tex.matA);
+  state.avg = state.avgNext;
+} else {
+  // стартовая «сборка» окна от центра: A — тёмное окно, B — готовая роза
+  renderWindowInto(tex.winB, tex.matB);
+  state.avg = state.avgNext;
+  state.transitioning = true; state.mixMode = 0; state.mixDur = 1.9; state.mixT0 = performance.now() / 1000 + 0.35; state.mix = 0.0001;
+}
+if (!SHOT) {
+  const c = document.createElement('canvas'); c.width = c.height = 4;
+  const x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, 4, 4);
+  upload(tex.winA, c);
+  const m = document.createElement('canvas'); m.width = m.height = 4;
+  const y = m.getContext('2d'); y.fillStyle = '#00ff00'; y.fillRect(0, 0, 4, 4);
+  upload(tex.matA, m);
+}
+requestAnimationFrame(() => {
+  $('#veil').classList.add('off');
+  hintTimer = setTimeout(() => { hint.classList.add('on'); hintTimer = setTimeout(dismissHint, 8000); }, 1400);
+  loop();
+});
+}, 30));
+</script>
+</body>
+</html>

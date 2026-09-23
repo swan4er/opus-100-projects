@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Стопа — размер русского стиха</title>
+<meta name="description" content="Стиховед в браузере: ямб, хорей, дактиль, амфибрахий, анапест, дольник и тоника на стихах Пушкина, Лермонтова, Тютчева, Некрасова, Блока, Есенина, Мандельштама и Маяковского.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400;1,7..72,500&family=Manrope:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Стихотворения">
+    <div class="brand">
+      <h1>Стопа</h1>
+      <p>Размер, ритм и&nbsp;рифма русского стиха&nbsp;— прямо на&nbsp;строке</p>
+    </div>
+    <div class="list" id="list"></div>
+    <button class="own" id="ownBtn">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 15.5l1-4 7.5-7.5 3 3L8 14.5z M11 5.5l3 3"/></svg>
+      Свой текст
+    </button>
+  </nav>
+
+  <main class="page" id="page">
+    <header class="poem-head">
+      <p class="author" id="author"></p>
+      <h2 class="title" id="title"></h2>
+      <p class="meta" id="meta"></p>
+    </header>
+    <div class="editor" id="editor" hidden>
+      <label for="own" class="ed-label">Вставьте стихи. Ударения ставятся кликом по&nbsp;гласной; пунктирные&nbsp;— угаданы, их&nbsp;стоит проверить.</label>
+      <textarea id="own" rows="5" spellcheck="false">Мой дядя самых честных правил,
+Когда не в шутку занемог,
+Он уважать себя заставил
+И лучше выдумать не мог.</textarea>
+    </div>
+    <div class="poem" id="poem" aria-live="polite"></div>
+    <p class="hint" id="hint">Кликните по&nbsp;гласной, чтобы перенести ударение, и&nbsp;посмотрите, как изменится размер.</p>
+  </main>
+
+  <aside class="panel" aria-label="Разбор">
+    <div class="play">
+      <button class="play-b" id="play" aria-label="Прослушать ритм">
+        <svg viewBox="0 0 24 24" class="i-play" aria-hidden="true"><path d="M8 5.5l11 6.5-11 6.5z"/></svg>
+        <svg viewBox="0 0 24 24" class="i-stop" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>
+      </button>
+      <div class="play-t">
+        <span class="play-l">Прослушать ритм</span>
+        <span class="play-s">удар&nbsp;— ударный слог, щелчок&nbsp;— сильное место</span>
+      </div>
+    </div>
+
+    <section class="block">
+      <h3 class="cap">Размер</h3>
+      <p class="meter" id="meterName"></p>
+      <p class="scheme" id="scheme" aria-label="Схема размера"></p>
+      <p class="about" id="about"></p>
+    </section>
+
+    <section class="block" id="profileBlock">
+      <h3 class="cap">Профиль ударности</h3>
+      <div class="profile" id="profile"></div>
+      <p class="about small" id="profileNote">Как часто каждое сильное место действительно под ударением.</p>
+    </section>
+
+    <section class="block">
+      <h3 class="cap">Строки</h3>
+      <dl class="facts" id="facts"></dl>
+    </section>
+
+    <section class="block legend">
+      <h3 class="cap">Обозначения</h3>
+      <ul>
+        <li><i class="mk mk-s"></i>ударный слог на&nbsp;сильном месте</li>
+        <li><i class="mk mk-p"></i>пиррихий: сильное место без ударения</li>
+        <li><i class="mk mk-x"></i>сверхсхемное ударение</li>
+        <li><i class="mk mk-u"></i>безударный слог</li>
+      </ul>
+    </section>
+  </aside>
+</div>
+<script src="poems.js"></script>
+<script src="meter.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

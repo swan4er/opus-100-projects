@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Фрактальный полёт</title>
+<meta name="description" content="Полёт сквозь бесконечную архитектуру 3D-фракталов: Мандельбокс, Мандельбульб, губка Менгера и псевдоклейновский собор.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400;1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ivory: #fbf4e7;
+    --ivory-2: rgba(251, 244, 231, .78);
+    --ivory-3: rgba(251, 244, 231, .52);
+    --ivory-line: rgba(251, 244, 231, .22);
+    --umber: rgba(46, 31, 19, .52);
+    --umber-deep: rgba(38, 25, 15, .72);
+    --gold: #f2cc94;
+    --serif: 'Cormorant Garamond', 'Cormorant', Georgia, 'Times New Roman', serif;
+    --sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: #cdb9a0;
+    color: var(--ivory);
+    font: 14px/1.45 var(--sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; touch-action: none; }
+  body[data-mode="manual"] #gl { cursor: none; }
+
+  .scrim { position: fixed; left: 0; right: 0; pointer-events: none; z-index: 1; transition: opacity .6s var(--ease); }
+  .scrim.top { top: 0; height: 340px; background: linear-gradient(to bottom, rgba(40, 25, 14, .62), rgba(40, 25, 14, .28) 55%, rgba(40, 25, 14, 0)); }
+  .scrim.left { top: 0; bottom: 0; left: 0; right: auto; width: 46vw; background: radial-gradient(90% 60% at 0% 18%, rgba(40, 25, 14, .38), rgba(40, 25, 14, 0) 70%); }
+  .scrim.bottom { bottom: 0; height: 300px; background: linear-gradient(to top, rgba(40, 25, 14, .66), rgba(40, 25, 14, .3) 50%, rgba(40, 25, 14, 0)); }
+
+  .ui { position: fixed; z-index: 3; transition: opacity .6s var(--ease), transform .6s var(--ease); }
+  body.ui-hidden .ui, body.ui-hidden .scrim, body[data-mode="photo"] .ui:not(#photoBar), body[data-mode="photo"] .scrim { opacity: 0; pointer-events: none; }
+  body:not(.ready) .ui { opacity: 0; transform: translateY(8px); }
+
+  /* заголовок */
+  .brand { top: clamp(22px, 4.2vh, 44px); left: clamp(20px, 3.4vw, 52px); max-width: min(560px, 82vw); pointer-events: none; }
+  .kicker { font: 600 11px/1 var(--sans); letter-spacing: .24em; text-transform: uppercase; color: var(--ivory-2); display: flex; gap: .9em; align-items: center; }
+  .kicker i { display: inline-block; width: 34px; height: 1px; background: var(--ivory-3); }
+  .brand h1 {
+    margin: .32em 0 0; font: italic 500 clamp(44px, 5.6vw, 84px)/.92 var(--serif);
+    letter-spacing: -.012em; text-shadow: 0 2px 34px rgba(46, 26, 10, .38);
+  }
+  .brand p { margin: .9em 0 0; font: 400 15px/1.55 var(--sans); color: var(--ivory-2); max-width: 36ch; text-shadow: 0 1px 14px rgba(46, 26, 10, .45); }
+
+  /* показания */
+  .hud {
+    top: clamp(24px, 4.4vh, 46px); right: clamp(20px, 3.4vw, 52px);
+    display: grid; grid-template-columns: auto auto; gap: 6px 18px; text-align: right;
+    font: 600 11px/1.2 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--ivory-2);
+    font-variant-numeric: tabular-nums; pointer-events: none;
+  }
+  .hud b { font: 600 13px/1.2 var(--sans); letter-spacing: .02em; color: var(--ivory); text-transform: none; }
+
+  /* титр главы */
+  .chapter {
+    left: 50%; top: 56%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;
+    opacity: 0; transition: opacity 1.6s var(--ease), transform 1.6s var(--ease); width: min(92vw, 760px);
+  }
+  .chapter.show { opacity: 1; transform: translate(-50%, -54%); }
+  .chapter .roman { font: 500 13px/1 var(--sans); letter-spacing: .5em; color: var(--ivory-2); text-indent: .5em; }
+  .chapter h2 {
+    margin: .25em 0 .18em; font: italic 500 clamp(46px, 7vw, 104px)/.95 var(--serif);
+    letter-spacing: -.015em; text-shadow: 0 4px 48px rgba(46, 26, 10, .45);
+  }
+  .chapter .rule { width: 64px; height: 1px; margin: 16px auto 14px; background: var(--gold); opacity: .8; }
+  .chapter .sub { font: 600 11px/1.2 var(--sans); letter-spacing: .22em; text-transform: uppercase; color: var(--ivory-2); }
+  .chapter .line { margin-top: 12px; font: italic 400 clamp(18px, 2vw, 23px)/1.35 var(--serif); color: var(--ivory); text-shadow: 0 1px 18px rgba(46, 26, 10, .5); }
+
+  /* нижняя панель */
+  .dock {
+    left: clamp(20px, 3.4vw, 52px); right: clamp(20px, 3.4vw, 52px); bottom: clamp(18px, 3.6vh, 38px);
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+  }
+  .worlds { display: flex; gap: clamp(14px, 2.4vw, 34px); flex-wrap: wrap; }
+  .worlds button {
+    appearance: none; border: 0; background: none; padding: 8px 0 10px; cursor: pointer; color: var(--ivory-3);
+    font: italic 500 clamp(19px, 1.7vw, 24px)/1 var(--serif); position: relative; display: flex; align-items: baseline; gap: .5em;
+    transition: color .35s var(--ease); text-shadow: 0 1px 14px rgba(46, 26, 10, .45);
+  }
+  .worlds .rn { font: 600 11px/1 var(--sans); letter-spacing: .18em; font-style: normal; opacity: .8; }
+  .worlds button::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 2px; height: 1px; background: var(--gold);
+    transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease);
+  }
+  .worlds button:hover { color: var(--ivory-2); }
+  .worlds button.on { color: var(--ivory); }
+  .worlds button.on::after { transform: scaleX(1); }
+  .worlds button:focus-visible, .tool:focus-visible { outline: 1px solid var(--gold); outline-offset: 4px; }
+
+  .tools { display: flex; gap: 8px; flex-shrink: 0; }
+  .tool {
+    appearance: none; display: inline-flex; align-items: center; gap: 9px; height: 40px; padding: 0 16px 0 13px;
+    border: 1px solid var(--ivory-line); border-radius: 999px; background: var(--umber); color: var(--ivory);
+    font: 600 12px/1 var(--sans); letter-spacing: .06em; cursor: pointer;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    transition: background .3s var(--ease), border-color .3s var(--ease), color .3s var(--ease);
+  }
+  .tool svg { width: 16px; height: 16px; flex: none; }
+  .tool:hover { background: var(--umber-deep); border-color: rgba(251, 244, 231, .4); }
+  .tool.on { border-color: rgba(242, 204, 148, .7); color: var(--gold); }
+  #btnFwd { display: none; }
+
+  /* панель параметров */
+  .panel {
+    right: clamp(20px, 3.4vw, 52px); bottom: calc(clamp(18px, 3.6vh, 38px) + 56px); width: 312px;
+    padding: 18px 20px 16px; border-radius: 6px; background: var(--umber-deep);
+    border: 1px solid var(--ivory-line); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .35s var(--ease), transform .35s var(--ease);
+  }
+  .panel.open { opacity: 1; transform: none; pointer-events: auto; }
+  .panel h3 { margin: 0 0 14px; font: italic 500 22px/1 var(--serif); }
+  .row { display: grid; grid-template-columns: 1fr auto; align-items: baseline; margin: 0 0 4px; font: 500 12px/1.2 var(--sans); color: var(--ivory-2); }
+  .row b { font-weight: 600; color: var(--ivory); font-variant-numeric: tabular-nums; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 22px; margin: 0 0 10px; background: transparent; cursor: pointer; --p: 50%;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 2px; border-radius: 2px;
+    background: linear-gradient(to right, var(--gold) 0 var(--p), rgba(251, 244, 231, .22) var(--p) 100%);
+  }
+  input[type=range]::-moz-range-track { height: 2px; background: rgba(251, 244, 231, .22); }
+  input[type=range]::-moz-range-progress { height: 2px; background: var(--gold); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; margin-top: -6px; border-radius: 50%;
+    background: var(--ivory); border: 0; box-shadow: 0 0 0 4px rgba(251, 244, 231, .14), 0 2px 8px rgba(0, 0, 0, .3);
+    transition: box-shadow .2s var(--ease);
+  }
+  input[type=range]:hover::-webkit-slider-thumb { box-shadow: 0 0 0 7px rgba(251, 244, 231, .18), 0 2px 8px rgba(0, 0, 0, .3); }
+  input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--ivory); border: 0; }
+  input[type=range]:focus-visible { outline: 1px solid var(--gold); outline-offset: 2px; }
+  .switch { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 14px; font: 500 12px/1 var(--sans); color: var(--ivory-2); cursor: pointer; }
+  .switch input { position: absolute; opacity: 0; pointer-events: none; }
+  .switch .knob { width: 34px; height: 20px; border-radius: 20px; background: rgba(251, 244, 231, .2); position: relative; transition: background .25s var(--ease); }
+  .switch .knob::after { content: ''; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--ivory); transition: transform .25s var(--ease); }
+  .switch input:checked + .knob { background: rgba(242, 204, 148, .75); }
+  .switch input:checked + .knob::after { transform: translateX(14px); }
+  .switch input:focus-visible + .knob { outline: 1px solid var(--gold); outline-offset: 3px; }
+  .panel .reset { appearance: none; border: 0; background: none; padding: 6px 0 0; color: var(--gold); font: 600 12px/1 var(--sans); letter-spacing: .06em; cursor: pointer; }
+  .panel .reset:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+  /* подсказка */
+  .hint {
+    left: 50%; bottom: calc(clamp(18px, 3.6vh, 38px) + 64px); transform: translateX(-50%);
+    font: 500 12px/1.4 var(--sans); letter-spacing: .04em; color: var(--ivory-2); text-align: center;
+    white-space: nowrap; text-shadow: 0 1px 12px rgba(46, 26, 10, .6); pointer-events: none;
+  }
+  .hint.empty { opacity: 0; }
+
+  /* фоторежим */
+  #photoBar {
+    left: 50%; top: 22px; transform: translateX(-50%); display: none; align-items: center; gap: 14px;
+    padding: 8px 8px 8px 18px; border-radius: 999px; background: var(--umber-deep); border: 1px solid var(--ivory-line);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font: 600 12px/1 var(--sans); letter-spacing: .04em;
+  }
+  body[data-mode="photo"] #photoBar { display: flex; }
+  #photoBar .meter { width: 110px; height: 2px; background: rgba(251, 244, 231, .2); position: relative; overflow: hidden; }
+  #photoProgress { position: absolute; inset: 0; background: var(--gold); transform-origin: left; transform: scaleX(0); }
+  #photoBar .tool { height: 32px; padding: 0 14px; }
+  #photoSave { opacity: .45; pointer-events: none; }
+  #photoBar.done #photoSave { opacity: 1; pointer-events: auto; border-color: rgba(242, 204, 148, .7); color: var(--gold); }
+  #photoCount { font-variant-numeric: tabular-nums; min-width: 52px; }
+
+  /* нет WebGL2 */
+  .nogl { display: none; position: fixed; inset: 0; z-index: 10; place-items: center; text-align: center; padding: 24px; background: #d8c6ae; color: #3b2a1d; }
+  .nogl h2 { font: italic 500 44px/1 var(--serif); margin: 0 0 12px; }
+  .nogl p { font: 400 15px/1.55 var(--sans); max-width: 42ch; margin: 0 auto; }
+  body.no-gl .nogl { display: grid; }
+  body.no-gl .ui, body.no-gl .scrim { display: none; }
+
+  @media (max-width: 760px) {
+    .brand h1 { font-size: 40px; }
+    .brand p { display: none; }
+    .hud { display: none; }
+    .dock { flex-direction: column; align-items: stretch; gap: 12px; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); }
+    .worlds { flex-wrap: nowrap; overflow-x: auto; gap: 18px; scrollbar-width: none; -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); mask-image: linear-gradient(to right, #000 85%, transparent); }
+    .worlds::-webkit-scrollbar { display: none; }
+    .worlds button { white-space: nowrap; font-size: 20px; }
+    .kicker .k2, .kicker i { display: none; }
+    .tools { justify-content: space-between; gap: 8px; }
+    .tool { flex: 1; justify-content: center; padding: 0 12px; }
+    #btnParams, #btnPhoto { flex: 0 0 44px; padding: 0; }
+    #btnParams span, #btnPhoto span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    #btnFwd { display: inline-flex; }
+    .panel { left: 16px; right: 16px; width: auto; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 104px); }
+    .hint { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 112px); white-space: normal; width: 86vw; }
+    .chapter { top: 44%; }
+    .chapter .line { font-size: 18px; }
+    #photoBar { top: 14px; gap: 10px; padding-left: 14px; }
+    #photoBar .meter { width: 60px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .chapter, .ui, .scrim { transition-duration: .01s; }
+  }
+</style>
+</head>
+<body>
+  <canvas id="gl" aria-label="Полёт сквозь 3D-фрактал"></canvas>
+  <div class="scrim top"></div>
+  <div class="scrim bottom"></div>
+  <div class="scrim left"></div>
+
+  <header class="ui brand">
+    <div class="kicker"><span>Опыт № 114</span><i></i><span class="k2">бесконечная архитектура</span></div>
+    <h1>Фрактальный полёт</h1>
+    <p>Каждая стена здесь — одна и та же формула, повторённая много раз. Приближайтесь сколько угодно: детали не&nbsp;кончатся.</p>
+  </header>
+
+  <div class="ui hud" aria-hidden="true">
+    <span>до стены</span><b id="hudDist">—</b>
+    <span>глубина</span><b id="hudDepth">×1</b>
+    <span>скорость</span><b id="hudSpeed">×1</b>
+    <span>разрешение</span><b id="hudRes">—</b>
+  </div>
+
+  <section class="ui chapter" id="chapter" aria-live="polite">
+    <div class="roman" id="chRoman">I</div>
+    <h2 id="chName">Мандельбокс</h2>
+    <div class="rule"></div>
+    <div class="sub" id="chSub"></div>
+    <div class="line" id="chLine"></div>
+  </section>
+
+  <div class="ui hint" id="hint"></div>
+
+  <aside class="ui panel" id="panel" aria-label="Параметры">
+    <h3>Параметры мира</h3>
+    <div class="row"><span id="lParam">Масштаб</span><b id="vParam"></b></div>
+    <input type="range" id="pParam" aria-labelledby="lParam">
+    <div class="row"><span id="lIter">Итерации</span><b id="vIter"></b></div>
+    <input type="range" id="pIter" aria-labelledby="lIter">
+    <div class="row"><span id="lFog">Дальность тумана</span><b id="vFog"></b></div>
+    <input type="range" id="pFog" min="0.3" max="3" step="0.05" aria-labelledby="lFog">
+    <div class="row"><span id="lSun">Высота солнца</span><b id="vSun"></b></div>
+    <input type="range" id="pSun" min="0" max="1" step="0.01" aria-labelledby="lSun">
+    <div class="row"><span id="lAz">Азимут солнца</span><b id="vAz"></b></div>
+    <input type="range" id="pAz" min="-3.14" max="3.14" step="0.01" aria-labelledby="lAz">
+    <label class="switch"><span>Мягкие тени</span><input type="checkbox" id="pShadows" checked><span class="knob"></span></label>
+    <button class="reset" id="pReset" type="button">Вернуть как было</button>
+  </aside>
+
+  <footer class="ui dock">
+    <nav class="worlds" id="worlds" aria-label="Миры"></nav>
+    <div class="tools">
+      <button class="tool" id="btnFwd" type="button" aria-label="Лететь вперёд">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 13V3M4 7l4-4 4 4"/></svg><span>Вперёд</span>
+      </button>
+      <button class="tool on" id="btnAuto" type="button">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 11c3-6 9-6 12 0"/><circle cx="8" cy="11" r="1.6" fill="currentColor" stroke="none"/></svg><span>Автопилот</span>
+      </button>
+      <button class="tool" id="btnParams" type="button" aria-expanded="false" aria-controls="panel">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h7M12 4h2M2 12h2M7 12h7"/><circle cx="10.5" cy="4" r="1.5"/><circle cx="5.5" cy="12" r="1.5"/></svg><span>Параметры</span>
+      </button>
+      <button class="tool" id="btnPhoto" type="button">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.8" y="4.2" width="12.4" height="9" rx="1.6"/><path d="M5.5 4.2 6.6 2.4h2.8l1.1 1.8"/><circle cx="8" cy="8.7" r="2.4"/></svg><span>Фото</span>
+      </button>
+    </div>
+  </footer>
+
+  <div class="ui" id="photoBar" role="status">
+    <span>Фоторежим</span>
+    <span class="meter"><span id="photoProgress"></span></span>
+    <span id="photoCount">0 / 48</span>
+    <button class="tool" id="photoSave" type="button">Сохранить PNG</button>
+    <button class="tool" id="photoExit" type="button">Выйти</button>
+  </div>
+
+  <div class="nogl">
+    <div>
+      <h2>Нужен WebGL 2</h2>
+      <p>Этот полёт рисуется шейдером на видеокарте. Откройте страницу в свежем Chrome, Safari или Firefox с включённым аппаратным ускорением.</p>
+    </div>
+  </div>
+
+  <script src="core.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дедукция — кто где живёт</title>
+<meta name="description" content="Логические задачи «Эйнштейна» с единственным решением и подсказками, которые объясняют ход мысли.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Rubik:wght@500;700;800&display=swap">
+<style>
+:root {
+  --bg: #FBF6EC;
+  --paper: #FFFDF8;
+  --ink: #1F1B2D;
+  --muted: #5E586E;
+  --line: #E4DACA;
+  --blue: #3E63DD;
+  --yellow: #FFE8A3;
+  --n: 5;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font: 400 15px/1.45 "Onest", system-ui, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; overflow-x: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+/* ---------- Шапка ---------- */
+.top { display: flex; align-items: center; gap: 22px; padding: 18px 32px 14px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 14px; margin-right: auto; }
+h1 { margin: 0; font: 800 30px/1 "Rubik", sans-serif; letter-spacing: -.01em; }
+h1 i { font-style: normal; color: var(--blue); }
+.brand p { margin: 0; color: var(--muted); font-size: 15px; }
+.levels { display: flex; border: 2px solid var(--ink); border-radius: 14px; overflow: hidden; background: var(--paper); box-shadow: 0 3px 0 var(--ink); }
+.levels button { border: 0; background: none; padding: 8px 16px 7px; font-weight: 600; font-size: 14px; display: grid; justify-items: center; line-height: 1.15; transition: background-color .2s, color .2s; }
+.levels button + button { border-left: 2px solid var(--ink); }
+.levels button small { font-weight: 500; font-size: 12px; color: var(--muted); }
+.levels button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.levels button[aria-pressed="true"] small { color: #CFC9DD; }
+.levels button:hover:not([aria-pressed="true"]) { background: #F3ECDF; }
+.meta { display: flex; gap: 14px; font: 600 14px/1 "Rubik", sans-serif; color: var(--muted); font-variant-numeric: tabular-nums; }
+.meta #timer { color: var(--ink); min-width: 3.2em; }
+.btn {
+  height: 42px; padding: 0 16px; border: 2px solid var(--ink); border-radius: 12px; background: var(--paper);
+  font-weight: 600; font-size: 14px; box-shadow: 0 3px 0 var(--ink); display: inline-flex; align-items: center; gap: 8px;
+  transition: transform .12s, box-shadow .12s, background-color .2s;
+}
+.btn:hover { background: #fff; }
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.btn.primary { background: var(--blue); color: #fff; }
+.btn.primary:hover { background: #3557c8; }
+.btn svg { width: 16px; height: 16px; }
+.toggle::before { content: ""; width: 16px; height: 16px; border-radius: 5px; border: 2px solid var(--ink); background: var(--paper); transition: background-color .15s; }
+.toggle[aria-pressed="true"]::before { background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat; }
+
+/* ---------- Раскладка ---------- */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 26px; padding: 4px 32px 32px; align-items: start; }
+.board-wrap { min-width: 0; }
+.grid-cols { display: grid; grid-template-columns: 112px repeat(var(--n), minmax(0, 1fr)); gap: 8px; }
+.street-row { display: grid; grid-template-columns: 112px 1fr; gap: 8px; }
+.street-row .note { align-self: end; padding-bottom: 12px; font: 600 12px/1.3 "Onest", sans-serif; color: var(--muted); }
+#street svg { display: block; width: 100%; height: auto; max-height: 190px; }
+#street .hn { font: 700 13px "Rubik", sans-serif; fill: var(--ink); }
+#street .nm { font: 600 11.5px "Onest", sans-serif; fill: var(--ink); }
+#street .q { font: 700 18px "Rubik", sans-serif; fill: #A79F8E; }
+#street .lit .win { fill: #FFD66B; animation: lamp .9s var(--d) both; }
+@keyframes lamp { 0% { fill: #E8E2D6; } 60% { fill: #FFF3C4; } 100% { fill: #FFD66B; } }
+.board { display: grid; grid-template-columns: 112px repeat(var(--n), minmax(0, 1fr)); gap: 8px; margin-top: 6px; }
+.row { display: contents; }
+.rh { display: flex; flex-direction: column; justify-content: center; gap: 5px; }
+.rh-name { display: flex; align-items: center; gap: 7px; font: 700 14px/1.1 "Rubik", sans-serif; }
+.rh-name::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--cc); flex: none; }
+.mini { list-style: none; margin: 0; padding: 0 0 0 1px; display: grid; gap: 1px; }
+.mini li { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 14px; color: var(--muted); }
+.mini .dot { width: 10px; height: 10px; }
+.mini .ltr { width: 13px; height: 13px; font-size: 8.5px; line-height: 13px; }
+.mini .ico svg { width: 13px; height: 13px; }
+.cell {
+  position: relative; min-height: 76px; padding: 8px 6px; border-radius: 14px; background: var(--paper); border: 1.5px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 5px; align-content: center; justify-content: center; transition: border-color .2s, background-color .2s;
+}
+.cell.one { border-color: var(--ink); background: #fff; }
+.cell.hl { box-shadow: 0 0 0 3px var(--blue); border-color: var(--blue); }
+.cell.shake { animation: shake .35s; }
+@keyframes shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+.chip {
+  width: 34px; height: 34px; border-radius: 10px; border: 0; background: #F3ECDF; padding: 0;
+  display: grid; place-items: center; position: relative; transition: transform .15s cubic-bezier(.2, .8, .2, 1), background-color .15s, opacity .2s;
+}
+.chip:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 0 0 1.5px var(--ink); }
+.chip.off { opacity: .28; background: transparent; }
+.chip.off::after { content: ""; position: absolute; left: 5px; right: 5px; top: 50%; height: 2px; background: var(--ink); transform: rotate(-35deg); border-radius: 2px; }
+.chip.off:hover { opacity: .6; box-shadow: none; }
+.chip.mark { box-shadow: 0 0 0 2.5px #E03131; background: #FFE3E3; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 5px rgba(224, 49, 49, .25); } }
+.cell.one .chip { width: 52px; height: 52px; background: transparent; cursor: default; }
+.cell.one .chip:hover { transform: none; box-shadow: none; }
+.cell.one .dot { width: 34px; height: 34px; }
+.cell.one .ltr { width: 36px; height: 36px; font-size: 18px; }
+.cell.one .ico svg { width: 36px; height: 36px; }
+.dot { width: 20px; height: 20px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1.5px rgba(31, 27, 45, .28); display: block; }
+.ltr { width: 22px; height: 22px; border-radius: 50%; background: #E9E3FF; color: #5F3DC4; font: 700 12.5px/22px "Rubik", sans-serif; font-style: normal; text-align: center; display: block; }
+.ico { display: grid; place-items: center; font-style: normal; }
+.ico svg { width: 24px; height: 24px; display: block; }
+.ico.pet { color: #C2410C; }
+.ico.drink { color: var(--ink); }
+
+.tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 18px; padding-left: 120px; }
+.progress { margin-left: auto; display: flex; align-items: center; gap: 10px; font: 700 14px "Rubik", sans-serif; }
+.progress i { width: 120px; height: 10px; border-radius: 6px; background: #EDE5D6; overflow: hidden; position: relative; }
+.progress i::after { content: ""; position: absolute; inset: 0; background: #30A46C; transform-origin: 0 50%; transform: scaleX(var(--p, 0)); transition: transform .4s cubic-bezier(.2, .8, .2, 1); }
+.howto { margin: 12px 0 0; padding-left: 120px; color: var(--muted); font-size: 14px; }
+
+/* ---------- Правая колонка ---------- */
+.side { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 14px; max-height: calc(100vh - 104px); }
+.side .clues { flex: 1 1 auto; min-height: 0; }
+.side h2 { margin: 0; font: 800 20px/1 "Rubik", sans-serif; display: flex; justify-content: space-between; align-items: baseline; }
+.side h2 small { font: 500 13px "Onest", sans-serif; color: var(--muted); }
+.clues { list-style: none; margin: 0; padding: 2px 6px 6px 2px; display: grid; gap: 8px; overflow: auto; align-content: start; }
+.clue {
+  width: 100%; display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: start; text-align: left;
+  padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--ink); background: var(--paper); box-shadow: 0 2px 0 var(--ink);
+  font-size: 15px; line-height: 1.35; transition: opacity .2s, background-color .2s, transform .15s;
+}
+.clue:hover { background: #fff; }
+.clue b { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--paper); font: 700 13px/26px "Rubik", sans-serif; text-align: center; }
+.clue em { font: 700 13px/26px "Rubik", sans-serif; font-style: normal; color: var(--muted); }
+.clue.used { opacity: .42; box-shadow: none; }
+.clue.used span { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.clue.hl { background: var(--yellow); transform: translateX(-4px); }
+.legend-wrap { border: 1.5px solid var(--line); border-radius: 12px; background: var(--paper); padding: 10px 12px; }
+.legend-wrap summary { cursor: pointer; font: 700 14px "Rubik", sans-serif; }
+#legend { display: grid; gap: 8px; margin-top: 10px; }
+.lg { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 13.5px; }
+.lg b { font: 700 13px "Rubik", sans-serif; min-width: 70px; color: var(--ink); }
+.lg-item { display: inline-flex; align-items: center; gap: 5px; }
+.lg-item .dot { width: 14px; height: 14px; }
+.lg-item .ltr { width: 18px; height: 18px; font-size: 11px; line-height: 18px; }
+.lg-item .ico svg { width: 18px; height: 18px; }
+
+.hint { border: 2px solid var(--ink); border-radius: 16px; background: var(--yellow); padding: 14px 16px 14px; box-shadow: 0 4px 0 var(--ink); opacity: 0; transform: translateY(-6px); transition: opacity .25s, transform .3s cubic-bezier(.2, .8, .2, 1); }
+.hint.on { opacity: 1; transform: none; }
+.hint h3 { margin: 0 0 6px; font: 800 15px "Rubik", sans-serif; letter-spacing: .02em; }
+.hint p { margin: 0 0 12px; font-size: 15px; line-height: 1.45; }
+.hint .acts { display: flex; gap: 8px; }
+.hint .btn { height: 38px; }
+
+/* ---------- Победа, шторка, тост ---------- */
+.win { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(31, 27, 45, .28); opacity: 0; transition: opacity .35s; z-index: 30; padding: 16px; }
+.win.on { opacity: 1; }
+.win-card { background: var(--paper); border: 2px solid var(--ink); border-radius: 22px; box-shadow: 0 6px 0 var(--ink); padding: 28px 30px 26px; max-width: 420px; text-align: center; transform: scale(.94); transition: transform .45s cubic-bezier(.2, 1.4, .3, 1); }
+.win.on .win-card { transform: none; }
+.win-card h2 { margin: 0 0 8px; font: 800 28px/1.1 "Rubik", sans-serif; }
+.win-card p { margin: 0 0 18px; color: var(--muted); font-size: 16px; }
+#confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 40; }
+.sheet { position: fixed; inset: 0; background: rgba(31, 27, 45, .3); z-index: 35; opacity: 0; transition: opacity .25s; }
+.sheet.on { opacity: 1; }
+.sheet-card { position: absolute; left: 0; right: 0; bottom: 0; background: var(--paper); border-top: 2px solid var(--ink); border-radius: 20px 20px 0 0; padding: 16px 16px 24px; transform: translateY(24px); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
+.sheet.on .sheet-card { transform: none; }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.sheet-head h2 { margin: 0; font: 800 18px "Rubik", sans-serif; }
+.sheet-head button { width: 42px; height: 42px; border-radius: 12px; border: 2px solid var(--ink); background: var(--paper); font-size: 20px; line-height: 1; }
+.sh-item { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; }
+.sh-main { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border-radius: 12px; border: 1.5px solid var(--line); background: #fff; font-size: 16px; font-weight: 600; text-align: left; }
+.sh-item.off .sh-main { opacity: .4; text-decoration: line-through; }
+.sh-pick { min-width: 84px; border-radius: 12px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); font-weight: 600; }
+.sh-pick:disabled { opacity: .3; }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 16px); opacity: 0; background: var(--ink); color: var(--paper); padding: 11px 16px; border-radius: 12px; font-weight: 600; font-size: 14px; transition: opacity .25s, transform .3s cubic-bezier(.2, .8, .2, 1); z-index: 50; pointer-events: none; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (min-width: 761px) { .legend-wrap, .m-only { display: none; } }
+@media (max-width: 760px) { .d-only { display: none; } }
+@media (max-width: 1180px) {
+  .layout { grid-template-columns: 1fr; }
+  .side { position: static; max-height: none; }
+}
+@media (max-width: 760px) {
+  .top { padding: 14px 16px 10px; gap: 10px; }
+  .brand { width: 100%; flex-direction: column; gap: 4px; }
+  h1 { font-size: 26px; }
+  .brand p { font-size: 14px; }
+  .levels { flex: 1 1 100%; }
+  .levels button { flex: 1; padding: 7px 4px 6px; }
+  .meta { flex: 1 1 auto; justify-content: space-between; align-self: center; }
+  .top > .btn { height: 44px; }
+  .layout { padding: 0 16px 28px; gap: 18px; }
+  .board { grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 5px; row-gap: 4px; }
+  .street-row { grid-template-columns: 1fr; }
+  .street-row .note { display: none; }
+  .rh { grid-column: 1 / -1; flex-direction: row; justify-content: flex-start; padding: 8px 0 1px; }
+  .rh-name { font-size: 13px; }
+  .mini { display: none; }
+  .cell { min-height: 58px; padding: 4px 2px; gap: 2px; border-radius: 10px; cursor: pointer; }
+  .chip { width: 18px; height: 18px; border-radius: 5px; pointer-events: none; }
+  .chip .dot { width: 12px; height: 12px; }
+  .chip .ltr { width: 14px; height: 14px; font-size: 8.5px; line-height: 14px; }
+  .chip .ico svg { width: 14px; height: 14px; }
+  .chip.off { display: none; }
+  .cell.one .chip { width: 36px; height: 36px; }
+  .cell.one .dot { width: 26px; height: 26px; }
+  .cell.one .ltr { width: 28px; height: 28px; font-size: 14px; line-height: 28px; }
+  .cell.one .ico svg { width: 28px; height: 28px; }
+  .tools, .howto { padding-left: 0; }
+  .tools .btn { flex: 1 1 calc(50% - 10px); justify-content: center; }
+  .progress { width: 100%; margin: 4px 0 0; }
+  .progress i { flex: 1; }
+  .howto { font-size: 13.5px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><h1>Дедук<i>ция</i></h1><p>Кто где живёт? Решение одно — и&nbsp;до&nbsp;него можно дойти только логикой.</p></div>
+  <div class="levels" id="levels" role="group" aria-label="Сложность">
+    <button type="button" data-lv="easy" aria-pressed="false">Лёгкая<small>4 дома</small></button>
+    <button type="button" data-lv="medium" aria-pressed="true">Средняя<small>5 домов</small></button>
+    <button type="button" data-lv="hard" aria-pressed="false">Сложная<small>6 домов</small></button>
+  </div>
+  <div class="meta"><span id="num">№ 00000</span><span id="timer">0:00</span></div>
+  <button type="button" id="newBtn" class="btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3.2h-3.2"/></svg>Новая задача</button>
+</header>
+
+<main class="layout">
+  <section class="board-wrap" aria-label="Поле">
+    <div class="street-row"><div class="note">Улица заполняется по&nbsp;мере ваших выводов</div><div id="street"></div></div>
+    <div class="board" id="board"></div>
+    <div class="tools">
+      <button type="button" id="hintBtn" class="btn primary"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a4.8 4.8 0 0 0-2.9 8.6c.5.4.8.9.8 1.5v.4h4.2v-.4c0-.6.3-1.1.8-1.5A4.8 4.8 0 0 0 8 1.5zM6 13.2h4v.8a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1z"/></svg>Подсказка</button>
+      <button type="button" id="undoBtn" class="btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5L2.5 6.5l3 3M2.5 6.5h7a4 4 0 0 1 0 8h-2"/></svg>Отменить</button>
+      <button type="button" id="checkBtn" class="btn">Проверить</button>
+      <button type="button" id="auto" class="btn toggle" aria-pressed="true" title="Выбранный вариант сам вычёркивается в остальных домах">Автоисключение</button>
+      <div class="progress" id="progress" aria-label="Прогресс"><i></i><span>0%</span></div>
+    </div>
+    <p class="howto"><span class="d-only">Клик по значку — вычеркнуть, двойной клик или правая кнопка — «он живёт здесь». Клавиши: H — подсказка, Z — отменить.</span><span class="m-only">Нажмите на клетку, чтобы вычеркнуть варианты или выбрать верный.</span></p>
+  </section>
+
+  <aside class="side">
+    <div class="hint" id="hint" hidden role="status">
+      <h3>Следующий шаг</h3>
+      <p id="hintText"></p>
+      <div class="acts"><button type="button" id="hintApply" class="btn primary">Применить</button><button type="button" id="hintClose" class="btn">Сам разберусь</button></div>
+    </div>
+    <h2>Условия <small>клик — отметить как использованное</small></h2>
+    <ol class="clues" id="clues"></ol>
+    <details class="legend-wrap"><summary>Кто есть кто</summary><div id="legend"></div></details>
+  </aside>
+</main>
+
+<div class="win" id="win" hidden><div class="win-card"><h2>Улица сложилась!</h2><p id="winText"></p><button type="button" id="winNext" class="btn primary">Следующая задача</button></div></div>
+<div class="sheet" id="sheet" hidden><div class="sheet-card"><div class="sheet-head"><h2 id="sheetTitle"></h2><button type="button" id="sheetClose" aria-label="Закрыть">×</button></div><div id="sheetChips"></div></div></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

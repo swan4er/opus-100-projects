@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Конструктивизм — плакатная мастерская</title>
+<meta name="description" content="Генератор плакатов в духе русского авангарда 1920-х: клин Лисицкого, мегафон Родченко, лучи Клуциса, спирали Стенбергов.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Oswald:wght@300;500;700&family=Rubik+Mono+One&family=Russo+One&display=swap">
+<style>
+:root {
+  --wall: #141110;
+  --panel: #1b1715;
+  --ink: #ece3cd;
+  --muted: #a39987;
+  --dim: #6b6256;
+  --red: #d8341f;
+  --red-hi: #ef4a33;
+  --red-btn: #b02717;
+  --red-btn-hi: #bd2a19;
+  --line: rgba(236, 227, 205, .13);
+  --line-2: rgba(236, 227, 205, .3);
+  --grain: none;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--wall); color: var(--ink); }
+body {
+  font: 400 15px/1.45 "Oswald", "Arial Narrow", sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+:focus-visible { outline: 2px solid var(--red-hi); outline-offset: 3px; }
+
+/* ---------- Раскладка ---------- */
+.app {
+  display: grid;
+  grid-template-columns: 384px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+}
+.mast, .controls { background: var(--panel); border-right: 1px solid var(--line); position: relative; }
+.mast { grid-column: 1; grid-row: 1; padding: 30px 34px 0 38px; overflow: hidden; }
+.controls { grid-column: 1; grid-row: 2; padding: 20px 34px 26px 38px; display: flex; flex-direction: column; gap: 18px; }
+.stage { grid-column: 2; grid-row: 1 / span 2; }
+
+/* ---------- Шапка ---------- */
+.mast::after {
+  content: ""; position: absolute; top: 0; right: 0; width: 96px; height: 58px;
+  background: var(--red); clip-path: polygon(100% 0, 100% 100%, 0 0);
+}
+.mast-top {
+  display: flex; gap: 14px; align-items: baseline;
+  font: 500 13px/1 "Oswald", sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+}
+.mast-top b { color: var(--ink); font-weight: 500; }
+h1 {
+  margin: 16px 0 0; font-family: "Rubik Mono One", "Arial Black", sans-serif; font-weight: 400;
+  line-height: .9; letter-spacing: 0;
+}
+h1 span { display: block; white-space: nowrap; font-size: 36px; }
+h1 span + span { color: var(--red); margin-top: .06em; }
+.lede { margin: 16px 0 0; color: var(--muted); font: 300 15px/1.5 "Oswald", sans-serif; max-width: 30em; }
+
+/* ---------- Поля ---------- */
+.label {
+  display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px;
+  font: 500 12.5px/1 "Oswald", sans-serif; letter-spacing: .18em; text-transform: uppercase; color: var(--muted);
+}
+.label i { font-style: normal; color: var(--red-hi); letter-spacing: .04em; }
+.slogan { display: flex; align-items: stretch; border-bottom: 2px solid var(--ink); }
+.slogan input {
+  flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; padding: 8px 0 9px;
+  font: 500 18px/1.2 "Oswald", sans-serif; letter-spacing: .03em; text-transform: uppercase; color: var(--ink);
+}
+.slogan input::placeholder { color: var(--muted); text-transform: none; letter-spacing: .01em; font-weight: 300; }
+.icon { width: 44px; display: grid; place-items: center; color: var(--ink); transition: color .2s, transform .2s cubic-bezier(.2, .8, .2, 1); }
+.icon:hover { color: var(--red-hi); transform: translateX(3px); }
+.icon svg { width: 22px; height: 22px; }
+.hint { margin-top: 7px; color: var(--muted); font: 300 13px/1.35 "Oswald", sans-serif; }
+
+.styles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.chip {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 9px 2px 7px;
+  border: 1px solid var(--line); color: var(--ink);
+  font: 500 12.5px/1 "Oswald", sans-serif; letter-spacing: .06em;
+  transition: border-color .2s, background-color .2s, transform .2s cubic-bezier(.2, .8, .2, 1);
+}
+.chip svg { width: 28px; height: 28px; color: var(--ink); }
+.chip:hover { border-color: var(--line-2); transform: translateY(-2px); }
+.chip[aria-pressed="true"] { background: var(--ink); color: #17120e; border-color: var(--ink); }
+.chip[aria-pressed="true"] svg { color: #17120e; --wall: var(--ink); }
+
+.palettes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.swatch {
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 8px 8px 9px; border: 1px solid var(--line);
+  font: 500 13px/1 "Oswald", sans-serif; letter-spacing: .04em; text-align: left; transition: border-color .2s;
+}
+.swatch b { display: flex; height: 10px; }
+.swatch i { flex: 1; display: block; }
+.swatch:hover { border-color: var(--line-2); }
+.swatch[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+
+.primary {
+  position: relative; width: 100%; display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 18px; background: var(--red-btn); color: var(--ink);
+  font: 400 16px/1 "Rubik Mono One", "Arial Black", sans-serif; letter-spacing: .01em;
+  box-shadow: 0 0 0 0 #0c0a09; transition: transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .18s cubic-bezier(.2, .8, .2, 1), background-color .2s;
+}
+.primary:hover { transform: translate(-4px, -4px); box-shadow: 4px 4px 0 0 #050404; background: var(--red-btn-hi); }
+.primary:active { transform: translate(0, 0); box-shadow: 0 0 0 0 #050404; }
+.primary kbd {
+  font: 500 12px/1 "Oswald", sans-serif; letter-spacing: .14em; text-transform: uppercase;
+  border: 1.5px solid rgba(236, 227, 205, .7); padding: 5px 7px 4px;
+}
+.row { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 6px; margin-top: 6px; }
+.ghost {
+  position: relative; overflow: hidden; min-height: 42px; border: 1px solid var(--line-2);
+  font: 500 13.5px/1 "Oswald", sans-serif; letter-spacing: .1em; text-transform: uppercase;
+  transition: border-color .2s, background-color .2s, color .2s;
+}
+.ghost:hover { border-color: var(--ink); background: rgba(236, 227, 205, .06); }
+.toggle { display: flex; align-items: center; justify-content: center; gap: 9px; }
+.toggle::before { content: ""; width: 9px; height: 9px; border: 1.5px solid var(--ink); transition: background-color .2s; }
+.toggle[aria-pressed="true"]::before { background: var(--red-hi); border-color: var(--red-hi); }
+.toggle .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: transparent; }
+.toggle .bar em { display: block; height: 100%; background: var(--red-hi); transform: scaleX(0); transform-origin: 0 50%; }
+
+.archive { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; }
+.thumb {
+  aspect-ratio: 2 / 3; background: #25201c; border: 1px solid var(--line); overflow: hidden;
+  transition: transform .2s cubic-bezier(.2, .8, .2, 1), border-color .2s;
+}
+.thumb img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.thumb:hover { transform: translateY(-3px); border-color: var(--line-2); }
+.thumb[aria-current="true"] { border-color: var(--red-hi); box-shadow: 0 0 0 1px var(--red-hi); }
+.archive:empty::before { content: "Листы появятся здесь"; grid-column: 1 / -1; color: var(--muted); font: 300 13px/1.3 "Oswald", sans-serif; }
+.foot { margin-top: auto; color: var(--muted); font: 300 13px/1.45 "Oswald", sans-serif; border-top: 1px solid var(--line); padding-top: 12px; }
+
+/* ---------- Сцена ---------- */
+.stage {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  padding: 34px 56px 26px; overflow: hidden;
+  background:
+    radial-gradient(ellipse 58% 52% at 50% 45%, rgba(255, 236, 205, .075), rgba(0, 0, 0, 0) 70%),
+    linear-gradient(180deg, #181412 0%, #110e0c 100%);
+}
+.stage::before { content: ""; position: absolute; inset: 0; background-image: var(--grain); opacity: .9; pointer-events: none; }
+.poster-fig { position: relative; margin: 0; display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
+.poster-wrap {
+  position: relative; height: min(calc(100vh - 104px), 1100px); aspect-ratio: 2 / 3; cursor: pointer;
+  transform: rotate(-.45deg);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, .5), 0 26px 40px -12px rgba(0, 0, 0, .75), 0 70px 120px -40px rgba(0, 0, 0, .7);
+  transition: transform .5s cubic-bezier(.2, .8, .2, 1);
+}
+.poster-wrap:hover { transform: rotate(-.2deg) translateY(-2px); }
+.poster-wrap canvas { display: block; width: 100%; height: 100%; background: #e9dfc7; }
+figcaption {
+  display: flex; justify-content: space-between; gap: 16px; align-items: baseline;
+  font: 400 13.5px/1.3 "Oswald", sans-serif; color: var(--muted); letter-spacing: .02em;
+}
+#capStyle { color: var(--ink); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; margin-right: 8px; }
+.cap-hint { white-space: nowrap; }
+.toast {
+  position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  background: var(--ink); color: #17120e; padding: 11px 16px; font: 500 14px/1 "Oswald", sans-serif; letter-spacing: .04em;
+  transition: opacity .25s, transform .35s cubic-bezier(.2, .8, .2, 1); z-index: 20;
+}
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-height: 980px) and (min-width: 861px) {
+  .foot { display: none; }
+}
+@media (max-height: 820px) and (min-width: 861px) {
+  .lede { display: none; }
+  .controls { gap: 14px; }
+}
+@media (max-width: 1100px) and (min-width: 861px) {
+  .app { grid-template-columns: 340px minmax(0, 1fr); }
+  .stage { padding: 30px 30px 24px; }
+}
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; }
+  .mast, .controls { border-right: 0; }
+  .mast { grid-column: 1; grid-row: 1; padding: 22px 16px 4px; }
+  .mast::after { width: 74px; height: 74px; }
+  .lede { font-size: 14px; }
+  .stage { grid-column: 1; grid-row: 2; padding: 18px 16px 14px; }
+  .controls { grid-column: 1; grid-row: 3; padding: 16px 16px 40px; gap: 20px; }
+  .poster-fig { width: 100%; max-width: 560px; }
+  .poster-wrap { height: auto; width: 100%; transform: none; }
+  .poster-wrap:hover { transform: none; }
+  figcaption { flex-direction: column; gap: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="mast">
+    <div class="mast-top"><span>Лист № <b id="sheetNo">1920</b></span></div>
+    <h1 id="title" aria-label="Конструктивизм"><span>КОНСТРУК-</span><span>ТИВИЗМ</span></h1>
+    <p class="lede">Генератор плакатов в&nbsp;духе русского авангарда. Алгоритм собирает лист по&nbsp;правилам 1920-х: диагональ, клин, контраст масштабов, фотомонтаж.</p>
+  </header>
+
+  <main class="stage">
+    <figure class="poster-fig">
+      <div class="poster-wrap" id="posterWrap" title="Клик — новый лист"><canvas id="poster" aria-label="Плакат"></canvas></div>
+      <figcaption><span><span id="capStyle">Приём «Клин»</span><span id="capNote">по мотивам Эль Лисицкого</span></span><span class="cap-hint">Клик по&nbsp;листу или пробел — следующий</span></figcaption>
+    </figure>
+  </main>
+
+  <aside class="controls" aria-label="Настройки плаката">
+    <section>
+      <h2 class="label"><i>01</i>Лозунг</h2>
+      <div class="slogan">
+        <input id="slogan" type="text" maxlength="64" placeholder="Впишите свой лозунг" autocomplete="off" spellcheck="false" aria-label="Свой лозунг">
+        <button id="sloganApply" class="icon" type="button" aria-label="Набрать лозунг"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12h16M13 5l7 7-7 7"/></svg></button>
+      </div>
+      <p class="hint">Enter — набрать. Пустое поле — лозунги мастерской.</p>
+    </section>
+    <section>
+      <h2 class="label"><i>02</i>Приём</h2>
+      <div class="styles" id="styles"></div>
+    </section>
+    <section>
+      <h2 class="label"><i>03</i>Краски</h2>
+      <div class="palettes" id="palettes"></div>
+    </section>
+    <section>
+      <button id="shuffle" class="primary" type="button"><span>Новый лист</span><kbd>Пробел</kbd></button>
+      <div class="row">
+        <button id="png" class="ghost" type="button">PNG</button>
+        <button id="svg" class="ghost" type="button">SVG</button>
+        <button id="auto" class="ghost toggle" type="button" aria-pressed="true"><span>Автопоказ</span><span class="bar"><em id="autoBar"></em></span></button>
+      </div>
+    </section>
+    <section>
+      <h2 class="label"><i>04</i>Архив <span id="archCount"></span></h2>
+      <div class="archive" id="archive"></div>
+    </section>
+    <p class="foot">Приёмы Лисицкого, Родченко, Клуциса и&nbsp;братьев Стенберг, пересобранные алгоритмом. Шрифты: Rubik Mono One, Dela Gothic One, Russo One, Oswald.</p>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

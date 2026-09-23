@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Модуляр</title>
+<meta name="description" content="Модульный синтезатор в браузере: генераторы, фильтр, огибающие, секвенсор, эхо и реверберация. Соединяйте гнёзда кабелями.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <h1>Модуляр</h1>
+    <p>Тяните кабель из гнезда в гнездо. Крутите ручки. Слушайте.</p>
+  </div>
+  <nav class="patches" id="patches" aria-label="Готовые патчи"></nav>
+  <div class="top-right">
+    <button class="help-btn" id="btn-help" aria-expanded="false" title="Как играть">?</button>
+    <button class="power" id="btn-power" aria-pressed="false" title="Питание: включить звук">
+      <span class="power-led" aria-hidden="true"></span>
+      <span class="rocker" aria-hidden="true"><i></i></span>
+      <span class="power-text">Питание</span>
+    </button>
+  </div>
+</header>
+
+<main class="rack-wrap">
+  <div class="rack" id="rack">
+    <svg class="cables" id="cables" aria-hidden="true">
+      <g id="cable-layer"></g>
+    </svg>
+  </div>
+</main>
+
+<aside class="help" id="help" hidden>
+  <h2>Как играть</h2>
+  <ul>
+    <li><b>Кабель</b> — тяните из любого гнезда в другое. Выходы — гнёзда на тёмной подложке. Из одного выхода можно вести несколько кабелей.</li>
+    <li><b>Убрать кабель</b> — вытащите штекер из входа и отпустите в пустом месте, или дважды щёлкните по гнезду.</li>
+    <li><b>Ручки</b> — тяните вверх и вниз, с Shift точнее; колесо тоже работает; двойной щелчок — значение по умолчанию.</li>
+    <li><b>Гейт</b> огибающих понимает импульсы секвенсора и меандр НЧГ.</li>
+    <li>Пока вы ведёте кабель над входом, звук уже меняется — можно «примерить» соединение.</li>
+  </ul>
+</aside>
+
+<div class="toast" id="toast" role="status"></div>
+<div class="ktip" id="ktip" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

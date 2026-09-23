@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Табло — перекидной дисплей с кириллическим барабаном</title>
+<meta name="description" content="Вокзальное перекидное табло: каждая буква пролистывает весь барабан символов с физикой и синтезированным щелчком.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=PT+Sans+Narrow:wght@700&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --hall: #0b0d10;
+    --ink: #efebe1;
+    --muted: #9c998f;
+    --line: rgba(239, 235, 225, 0.14);
+    --yellow: #ffc93c;
+    --red: #ff5a45;
+    --sans: 'Golos Text', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --ease: cubic-bezier(.2, .7, .1, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--hall); color: var(--ink); }
+  body { font-family: var(--sans); -webkit-font-smoothing: antialiased; overflow: hidden; }
+  button, input { font: inherit; color: inherit; }
+
+  .hall { position: fixed; inset: 0; background:
+      radial-gradient(ellipse 55% 38% at 50% 0%, rgba(255, 214, 150, .16), transparent 70%),
+      radial-gradient(ellipse 90% 60% at 50% 110%, rgba(60, 70, 90, .25), transparent 60%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 120px),
+      linear-gradient(180deg, #11141a 0%, #0b0d10 55%, #08090b 100%); }
+  .beam { position: fixed; top: 0; left: 50%; width: 60vw; height: 70vh; transform: translateX(-50%); background: linear-gradient(180deg, rgba(255, 220, 160, .07), transparent 80%); clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); pointer-events: none; }
+
+  .wrap { position: relative; height: 100%; display: grid; grid-template-rows: auto 1fr auto; gap: 18px; padding: clamp(16px, 2.6vw, 34px) clamp(16px, 3vw, 44px); }
+  .top { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+  .top h1 { margin: 0; font: 600 clamp(22px, 2.4vw, 30px)/1.05 var(--sans); letter-spacing: -.01em; }
+  .top h1 span { display: block; margin-top: 6px; font: 400 14px/1.4 var(--sans); letter-spacing: 0; color: var(--muted); }
+  .modes { margin-left: auto; display: flex; padding: 4px; gap: 4px; border: 1px solid var(--line); border-radius: 999px; background: rgba(0,0,0,.3); }
+  .modes button { appearance: none; border: 0; background: transparent; height: 38px; padding: 0 18px; border-radius: 999px; font: 500 14px/1 var(--sans); color: #d9d5ca; cursor: pointer; transition: background .2s var(--ease), color .2s; }
+  .modes button:hover { background: rgba(239,235,225,.08); }
+  .modes button[aria-pressed="true"] { background: var(--ink); color: #111; }
+  .snd { appearance: none; border: 1px solid var(--line); background: rgba(0,0,0,.3); height: 46px; padding: 0 16px; border-radius: 999px; display: inline-flex; align-items: center; gap: 9px; font: 500 14px/1 var(--sans); cursor: pointer; }
+  .snd svg { width: 16px; height: 16px; }
+  .snd[aria-pressed="true"] { border-color: rgba(255, 201, 60, .6); color: var(--yellow); }
+  .modes button:focus-visible, .snd:focus-visible, .chips button:focus-visible, .msg input:focus-visible, .msg .go:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+
+  .stage { position: relative; min-height: 0; display: grid; place-items: center; }
+  .frame { position: relative; padding: clamp(14px, 1.6vw, 22px); border-radius: 10px; background: linear-gradient(180deg, #17181a, #0f1011); box-shadow: 0 30px 60px rgba(0, 0, 0, .55), 0 2px 0 rgba(255,255,255,.06) inset, 0 -2px 0 rgba(0,0,0,.6) inset; }
+  .frame::before, .frame::after { content: ''; position: absolute; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #8b8d90, #2c2d2f 70%); }
+  .frame::before { left: 5px; } .frame::after { right: 5px; }
+  #board { display: block; }
+  .legend { position: absolute; left: 0; right: 0; top: 0; height: 0; }
+  .legend span { position: absolute; transform: translateY(-100%); padding-bottom: 7px; font: 600 12px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+
+  .bottom { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; min-height: 52px; }
+  .note { font-size: 13.5px; line-height: 1.5; color: var(--muted); max-width: 640px; }
+  .note b { color: var(--ink); font-weight: 500; }
+  .msg { display: none; flex: 1; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .msg.on { display: flex; }
+  .msg input { flex: 1 1 280px; min-width: 0; height: 46px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line); background: rgba(0,0,0,.35); font-size: 16px; letter-spacing: .04em; text-transform: uppercase; outline: none; }
+  .msg input::placeholder { color: #6f6c65; text-transform: none; letter-spacing: 0; }
+  .msg .go { appearance: none; height: 46px; padding: 0 20px; border-radius: 8px; border: 0; background: var(--yellow); color: #1a1405; font-weight: 600; cursor: pointer; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips button { appearance: none; height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; font-size: 13px; color: #d9d5ca; cursor: pointer; }
+  .chips button:hover { border-color: rgba(239,235,225,.35); }
+  .stats { margin-left: auto; font: 500 13px/1 var(--sans); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  @media (max-width: 760px) {
+    body { overflow: auto; }
+    .wrap { height: auto; min-height: 100%; gap: 14px; }
+    .top h1 span { display: none; }
+    .modes { margin-left: 0; order: 3; width: 100%; }
+    .modes button { flex: 1; padding: 0 8px; }
+    .snd { margin-left: auto; }
+    .snd .t { display: none; }
+    .stats { display: none; }
+    .legend span { font-size: 11px; letter-spacing: .08em; }
+  }
+</style>
+</head>
+<body>
+<div class="hall" aria-hidden="true"></div>
+<div class="beam" aria-hidden="true"></div>
+<div class="wrap">
+  <header class="top">
+    <h1>Табло<span>Перекидной дисплей: каждая буква пролистывает весь барабан из&nbsp;61&nbsp;символа.</span></h1>
+    <nav class="modes" id="modes" aria-label="Режим">
+      <button type="button" data-m="station" aria-pressed="true">Вокзал</button>
+      <button type="button" data-m="clock" aria-pressed="false">Часы</button>
+      <button type="button" data-m="message" aria-pressed="false">Своё</button>
+    </nav>
+    <button type="button" class="snd" id="snd" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3.5v11L5 10H2z" fill="currentColor"/><path d="M11 5.2a3.6 3.6 0 0 1 0 5.6M12.8 3.5a6 6 0 0 1 0 9" fill="none" stroke="currentColor" stroke-width="1.2"/></svg><span class="t">Щелчки</span></button>
+  </header>
+
+  <main class="stage" id="stage">
+    <div class="frame" id="frame">
+      <div class="legend" id="legend"></div>
+      <canvas id="board" aria-label="Табло" role="img"></canvas>
+    </div>
+  </main>
+
+  <footer class="bottom">
+    <p class="note" id="note"><b>Вокзал.</b> Поезда уходят каждые двенадцать секунд, строки сдвигаются, новые рейсы встают в&nbsp;очередь. Расписание вымышленное.</p>
+    <div class="msg" id="msg">
+      <input id="msgIn" maxlength="120" placeholder="Напишите что угодно — табло соберёт" aria-label="Текст для табло">
+      <button type="button" class="go" id="msgGo">Показать</button>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

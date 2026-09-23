@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Консенсус Raft</title>
+<meta name="description" content="Пять серверов договариваются о едином журнале: выборы лидера, репликация, падения и разрезанная сеть — живая реализация Raft.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEEBE3;
+  --paper2:#E4E0D6;
+  --ink:#121212;
+  --ink2:#4F4B44;
+  --line:rgba(18,18,18,.14);
+  --red:#E1261C;
+  --sans:'Golos Text',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+body{min-height:100vh}
+.app{display:grid;grid-template-columns:minmax(330px,392px) 1fr;min-height:100vh}
+aside{border-right:1.5px solid var(--ink);padding:34px 34px 28px;display:flex;flex-direction:column;gap:22px;min-width:0}
+.kicker{font:500 12px/1 var(--mono);letter-spacing:.04em;display:flex;justify-content:space-between;border-bottom:1.5px solid var(--ink);padding-bottom:12px}
+.kicker span:last-child{color:var(--red)}
+h1{margin:0;font:700 clamp(46px,4.6vw,66px)/.92 var(--sans);letter-spacing:-.035em}
+h1 em{font-style:normal;color:var(--red);display:block}
+.lead{margin:0;font:400 16px/1.45 var(--sans);color:var(--ink2);max-width:22em}
+
+.story{border-top:1.5px solid var(--ink);padding-top:14px;min-height:150px}
+.story-top{display:flex;justify-content:space-between;align-items:center;font:500 12px/1 var(--mono);margin-bottom:12px}
+.story-top .step{color:var(--red)}
+.story p{margin:0;font:500 19px/1.34 var(--sans);letter-spacing:-.01em;transition:opacity .35s}
+.story p.fade{opacity:0}
+.linkbtn{appearance:none;background:none;border:0;padding:0;font:500 12px/1 var(--mono);color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.linkbtn:hover{color:var(--red)}
+.linkbtn:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{appearance:none;border:1.5px solid var(--ink);background:transparent;color:var(--ink);font:500 13.5px/1.1 var(--sans);min-height:44px;padding:10px 12px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .15s,color .15s}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff}
+.btn.primary:hover{background:var(--ink);border-color:var(--ink)}
+.btn.on{background:var(--ink);color:var(--paper)}
+.btn svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6}
+.seg{grid-column:1/-1;display:grid;grid-template-columns:auto 1fr 1fr 1fr;border:1.5px solid var(--ink)}
+.seg .cap{font:500 12px/1 var(--mono);padding:0 12px;display:flex;align-items:center;border-right:1.5px solid var(--ink)}
+.seg button{appearance:none;border:0;border-right:1.5px solid var(--ink);background:none;font:500 13px/1 var(--mono);min-height:40px;cursor:pointer;color:var(--ink)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink);color:var(--paper)}
+.seg button:focus-visible{outline:2px solid var(--red);outline-offset:-4px}
+
+.feed{border-top:1.5px solid var(--ink);padding-top:12px;flex:1;min-height:120px}
+.feed h2{margin:0 0 10px;font:500 12px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase}
+.feed ol{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.feed li{font:400 12.5px/1.35 var(--mono);color:var(--ink2);display:grid;grid-template-columns:62px 1fr;gap:8px}
+.feed li time{color:var(--ink);font-weight:500}
+.feed li.hot{color:var(--ink)}
+.feed li.hot::before{content:none}
+.feed li b{color:var(--red);font-weight:500}
+
+main{display:grid;grid-template-rows:1fr auto;min-width:0;min-height:100vh}
+.stage{position:relative;min-height:420px}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.legend{position:absolute;right:26px;top:24px;display:grid;gap:7px;font:400 12px/1.2 var(--mono);color:var(--ink2);pointer-events:none;background:rgba(238,235,227,.86);padding:8px 10px}
+.legend div{display:flex;align-items:center;gap:9px}
+.legend i{display:inline-block;flex:none}
+.lg-rv{width:11px;height:11px;border:2px solid var(--red);border-radius:50%}
+.lg-vote{width:9px;height:9px;background:var(--ink);border-radius:50%;margin:0 1px}
+.lg-hb{width:7px;height:7px;background:var(--ink);border-radius:50%;margin:0 2px}
+.lg-ae{width:12px;height:12px;background:var(--red)}
+.lg-cl{width:10px;height:10px;border:2px solid var(--ink);background:var(--paper)}
+.hint{position:absolute;left:26px;top:22px;font:400 12.5px/1.45 var(--mono);color:var(--ink2);pointer-events:none;max-width:min(300px,36%)}
+
+.logs{border-top:1.5px solid var(--ink);padding:18px 26px 22px;display:grid;gap:14px;min-width:0}
+.logs-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+.logs-head h2{margin:0;font:600 15px/1 var(--sans)}
+.logs-head .keys{display:flex;gap:16px;font:400 12px/1 var(--mono);color:var(--ink2)}
+.keys span{display:inline-flex;align-items:center;gap:6px}
+.k-c{width:12px;height:12px;background:var(--ink);display:inline-block}
+.k-u{width:12px;height:12px;border:1.5px solid var(--ink);display:inline-block}
+.table{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
+.grid{display:grid;grid-auto-rows:40px;gap:4px;min-width:min-content}
+.row{display:grid;grid-template-columns:118px repeat(var(--cols),40px);gap:4px;align-items:stretch}
+.row.head{grid-auto-rows:18px}
+.rh{display:flex;align-items:center;gap:8px;font:500 13px/1 var(--sans)}
+.rh .badge{width:26px;height:26px;display:grid;place-items:center;border:1.5px solid var(--ink);font:600 14px/1 var(--sans);flex:none}
+.rh.leader .badge{background:var(--red);border-color:var(--red);color:#fff}
+.rh.cand .badge{border-color:var(--red);border-style:dashed;color:var(--red)}
+.rh.down{color:var(--ink2)}
+.rh.down .badge{background:var(--paper2);border-color:var(--ink2);color:var(--ink2);text-decoration:line-through}
+.rh small{font:400 12px/1 var(--mono);color:var(--ink2)}
+.idx{font:400 12px/18px var(--mono);color:var(--ink2);text-align:center}
+.cell{border:1.5px solid var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 13px/1 var(--mono);transition:background .3s,color .3s;position:relative}
+.cell small{font:400 12px/1 var(--mono)}
+.cell.c{background:var(--ink);color:var(--paper)}
+.cell.e{border-color:transparent;border-style:dashed}
+.cell.e.slot{border-color:var(--line)}
+.cell.cut{animation:cut .9s ease-out forwards}
+@keyframes cut{0%{background:var(--red);color:#fff;border-color:var(--red)}100%{background:transparent;color:transparent;border-color:transparent}}
+.cell.fresh{animation:fresh .6s ease-out}
+@keyframes fresh{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}
+.terms{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font:400 12px/1 var(--mono);color:var(--ink2)}
+.terms .t{border:1.5px solid var(--ink);padding:6px 8px;color:var(--ink);font-weight:500;min-width:44px;text-align:center}
+.terms .t.none{border-style:dashed;color:var(--ink2)}
+.terms .t.cur{border-color:var(--red);color:var(--red)}
+
+@media (max-width:980px){
+  .app{grid-template-columns:1fr}
+  aside{border-right:0;border-bottom:1.5px solid var(--ink);padding:22px 18px 18px;gap:16px}
+  h1{font-size:44px}
+  .lead{font-size:15px}
+  .story{min-height:0}
+  .story p{font-size:17px}
+  .feed{display:none}
+  main{min-height:0}
+  .stage{height:112vw;min-height:0;max-height:620px}
+  .legend{right:10px;top:10px;font-size:11px;gap:5px;padding:6px 8px}
+  .hint{left:14px;top:auto;bottom:10px;max-width:92%;font-size:12px}
+  .logs{padding:16px 14px 20px}
+  .row{grid-template-columns:96px repeat(var(--cols),36px)}
+  .grid{grid-auto-rows:36px}
+}
+@media (prefers-reduced-motion:reduce){ .cell.fresh,.cell.cut{animation:none} .story p{transition:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="kicker"><span>056 · распределённые системы</span><span>живая модель</span></div>
+    <h1>Консенсус <em>Raft</em></h1>
+    <p class="lead">Пять серверов договариваются об одном журнале — даже когда падают и&nbsp;теряют связь.</p>
+
+    <section class="story" aria-live="polite">
+      <div class="story-top"><span class="step" id="stepNo">01 / 11</span><button class="linkbtn" id="tourBtn">Пропустить экскурсию</button></div>
+      <p id="caption">Кластер запускается.</p>
+    </section>
+
+    <div class="controls">
+      <button class="btn primary" id="reqBtn"><svg viewBox="0 0 16 16"><path d="M2 8h11M9 4l4 4-4 4"/></svg>Запрос клиента</button>
+      <button class="btn" id="crashBtn"><svg viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13"/></svg>Уронить лидера</button>
+      <button class="btn" id="splitBtn"><svg viewBox="0 0 16 16"><path d="M8 1v14" stroke-dasharray="2 2"/><circle cx="4" cy="8" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="12" cy="11" r="2"/></svg>Разделить 2&nbsp;|&nbsp;3</button>
+      <button class="btn" id="healBtn"><svg viewBox="0 0 16 16"><path d="M2 8h12"/><path d="M5 5l-3 3 3 3M11 5l3 3-3 3"/></svg>Починить сеть</button>
+      <div class="seg" role="group" aria-label="Скорость времени">
+        <span class="cap">время</span>
+        <button data-s="0">пауза</button><button data-s="0.5">×0,5</button><button data-s="1" class="on">×1</button>
+      </div>
+    </div>
+
+    <section class="feed">
+      <h2>Журнал событий</h2>
+      <ol id="feed"></ol>
+    </section>
+  </aside>
+
+  <main>
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="Схема кластера: пять серверов, клиент в центре, сообщения между ними"></canvas>
+      <div class="legend" aria-hidden="true">
+        <div><i class="lg-rv"></i>просьба голосовать</div>
+        <div><i class="lg-vote"></i>голос «за»</div>
+        <div><i class="lg-hb"></i>пульс лидера</div>
+        <div><i class="lg-ae"></i>новые записи</div>
+        <div><i class="lg-cl"></i>запрос клиента</div>
+      </div>
+      <div class="hint">Клик по серверу — уронить или поднять. Проведите линию через связи — сеть разрежется.</div>
+    </div>
+    <section class="logs">
+      <div class="logs-head">
+        <h2>Журналы серверов</h2>
+        <div class="keys"><span><i class="k-c"></i>зафиксировано</span><span><i class="k-u"></i>ещё нет большинства</span></div>
+      </div>
+      <div class="table"><div class="grid" id="grid"></div></div>
+      <div class="terms" id="terms"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+'use strict';
+(function () {
+/* ============================================================
+   Модель Raft: выборы, репликация журнала, фиксация большинством.
+   Время модельное (мс кластера); по умолчанию 1 с экрана = 110 мс.
+   ============================================================ */
+const NAMES = ['А', 'Б', 'В', 'Г', 'Д'];
+const N = 5, MAJ = 3, CLIENT = 5;
+const EL_MIN = 150, EL_MAX = 300, HB = 60, BATCH = 4;
+const SIM_PER_SEC = 110;
+const KEYS = ['x', 'y', 'z'];
+
+let sim = 0, speed = 1, reqSeq = 0, msgSeq = 0;
+const servers = [], msgs = [], cuts = [], feed = [], terms = new Map();
+let groups = null; // разделение на группы (экскурсия и кнопка «2 | 3»)
+const client = { hint: null, pending: new Map() };
+// случайность с зерном: предыстория кластера всегда одна и та же, дальше — живой случай
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+let rnd = mulberry32(38);
+
+for (let i = 0; i < N; i++) servers.push({
+  id: i, name: NAMES[i], state: 'follower', term: 0, votedFor: null, log: [], commit: 0, applied: 0,
+  kv: {}, crashed: false, deadline: 0, tStart: 0, votes: new Set(), nextIndex: [], matchIndex: [],
+  hbDue: 0, leaderId: null, pulse: -1, won: -1, cutAt: []
+});
+
+const lastIndex = s => s.log.length;
+const termAt = (s, i) => i <= 0 ? 0 : (s.log[i - 1] ? s.log[i - 1].term : -1);
+const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? b : c; };
+
+function resetTimer(s) { s.tStart = sim; s.deadline = sim + EL_MIN + rnd() * (EL_MAX - EL_MIN); }
+servers.forEach(s => { resetTimer(s); s.deadline += 40; });
+
+function note(text, hot) {
+  feed.unshift({ t: sim, text, hot: !!hot });
+  if (feed.length > 7) feed.length = 7;
+  renderFeed();
+}
+function termInfo(t) { if (!terms.has(t)) terms.set(t, { leader: null }); return terms.get(t); }
+
+/* ——— сеть ——— */
+const unitPos = i => i === CLIENT ? [0, 0] : [Math.cos(-Math.PI / 2 + i * 2 * Math.PI / N), Math.sin(-Math.PI / 2 + i * 2 * Math.PI / N)];
+function segX(a, b, c, d) { // пересечение отрезков ab и cd, возвращает параметр вдоль ab или -1
+  const r = [b[0] - a[0], b[1] - a[1]], s = [d[0] - c[0], d[1] - c[1]];
+  const den = r[0] * s[1] - r[1] * s[0]; if (Math.abs(den) < 1e-9) return -1;
+  const qp = [c[0] - a[0], c[1] - a[1]];
+  const t = (qp[0] * s[1] - qp[1] * s[0]) / den, u = (qp[0] * r[1] - qp[1] * r[0]) / den;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? t : -1;
+}
+function cutParam(a, b) { // где линия связи a→b пересекает разрез (или -1)
+  const A = unitPos(a), B = unitPos(b);
+  let best = -1;
+  for (const c of cuts) { const t = segX(A, B, c[0], c[1]); if (t >= 0 && (best < 0 || t < best)) best = t; }
+  if (groups && a !== CLIENT && b !== CLIENT && groups[a] !== groups[b]) best = best < 0 ? 0.5 : Math.min(best, 0.5);
+  return best;
+}
+const blocked = (a, b) => cutParam(a, b) >= 0;
+
+function send(from, to, type, data) {
+  const lat = 22 + rnd() * 30;
+  const m = Object.assign({ id: ++msgSeq, from, to, type, sent: sim, arrive: sim + lat }, data);
+  const cp = cutParam(from, to);
+  if (cp >= 0) m.dropAt = cp;
+  msgs.push(m);
+  return m;
+}
+
+/* ——— роли ——— */
+function becomeCandidate(s) {
+  s.state = 'candidate'; s.term++; s.votedFor = s.id; s.votes = new Set([s.id]); s.leaderId = null;
+  resetTimer(s); termInfo(s.term);
+  note(`Срок ${s.term}: ${s.name} выдвинулся в кандидаты`);
+  for (let j = 0; j < N; j++) if (j !== s.id) send(s.id, j, 'RV', { term: s.term, lastIndex: lastIndex(s), lastTerm: termAt(s, lastIndex(s)) });
+}
+function becomeLeader(s) {
+  s.state = 'leader'; s.leaderId = s.id; s.won = sim;
+  s.nextIndex = Array(N).fill(lastIndex(s) + 1); s.matchIndex = Array(N).fill(0); s.matchIndex[s.id] = lastIndex(s);
+  termInfo(s.term).leader = s.id;
+  const voters = [...s.votes].map(i => NAMES[i]).join(', ');
+  note(`Срок ${s.term}: <b>${s.name} — лидер</b> (голоса: ${voters})`, true);
+  broadcast(s); s.hbDue = sim + HB;
+}
+function stepDown(s, term) {
+  if (term > s.term) { s.term = term; s.votedFor = null; termInfo(term); }
+  if (s.state !== 'follower') {
+    if (s.state === 'leader') note(`${s.name} видит срок ${s.term} и перестаёт быть лидером`);
+    s.state = 'follower';
+  }
+}
+function broadcast(s) { for (let j = 0; j < N; j++) if (j !== s.id) sendAppend(s, j); }
+function sendAppend(s, j) {
+  const prev = s.nextIndex[j] - 1;
+  const entries = s.log.slice(prev, prev + BATCH).map(e => ({ ...e }));
+  send(s.id, j, 'AE', { term: s.term, prevIndex: prev, prevTerm: termAt(s, prev), entries, commit: s.commit });
+}
+function upToDate(lastTerm, lastIdx, s) {
+  const myT = termAt(s, lastIndex(s));
+  return lastTerm > myT || (lastTerm === myT && lastIdx >= lastIndex(s));
+}
+function apply(s) {
+  while (s.applied < s.commit) { s.applied++; const e = s.log[s.applied - 1]; s.kv[e.key] = e.val; }
+}
+function advanceCommit(s) {
+  for (let n = lastIndex(s); n > s.commit; n--) {
+    if (s.log[n - 1].term !== s.term) break;
+    let c = 0; for (let j = 0; j < N; j++) if ((j === s.id ? lastIndex(s) : s.matchIndex[j]) >= n) c++;
+    if (c >= MAJ) {
+      const from = s.commit + 1; s.commit = n; apply(s);
+      for (let k = from; k <= n; k++) {
+        const e = s.log[k - 1];
+        if (e.req != null && client.pending.has(e.req)) send(s.id, CLIENT, 'CACK', { req: e.req, index: k });
+      }
+      note(n - from + 1 === 1 ? `Запись №${n} «${s.log[n - 1].key} ← ${s.log[n - 1].val}» зафиксирована большинством` : `Записи №${from}–${n} зафиксированы большинством`);
+      break;
+    }
+  }
+}
+
+/* ——— приём сообщений ——— */
+function deliver(m) {
+  if (m.to === CLIENT) return onClient(m);
+  const s = servers[m.to];
+  if (m.type === 'CREQ') return onClientReq(s, m);
+  if (m.term > s.term) stepDown(s, m.term);
+  switch (m.type) {
+    case 'RV': {
+      let ok = false;
+      if (m.term >= s.term && (s.votedFor === null || s.votedFor === m.from) && upToDate(m.lastTerm, m.lastIndex, s)) {
+        ok = true; s.votedFor = m.from; resetTimer(s);
+      }
+      send(s.id, m.from, 'RVR', { term: s.term, ok });
+      break;
+    }
+    case 'RVR':
+      if (s.state === 'candidate' && m.term === s.term && m.ok) { s.votes.add(m.from); if (s.votes.size >= MAJ) becomeLeader(s); }
+      break;
+    case 'AE': {
+      if (m.term < s.term) { send(s.id, m.from, 'AER', { term: s.term, ok: false, hint: lastIndex(s) }); break; }
+      if (s.state !== 'follower') { s.state = 'follower'; }
+      s.leaderId = m.from; resetTimer(s);
+      if (m.prevIndex > lastIndex(s) || termAt(s, m.prevIndex) !== m.prevTerm) {
+        send(s.id, m.from, 'AER', { term: s.term, ok: false, hint: Math.min(lastIndex(s), m.prevIndex - 1) });
+        break;
+      }
+      let idx = m.prevIndex;
+      for (const e of m.entries) {
+        idx++;
+        if (lastIndex(s) >= idx) {
+          if (s.log[idx - 1].term !== e.term) {
+            const removed = s.log.length - (idx - 1);
+            for (let k = idx; k <= s.log.length; k++) s.cutAt.push({ index: k, t: performance.now(), e: s.log[k - 1] });
+            s.log.length = idx - 1; s.log.push(e);
+            note(`${s.name} стирает ${removed} ${plural(removed, 'запись', 'записи', 'записей')} — ${removed === 1 ? 'её' : 'их'} нет в журнале лидера`, true);
+          }
+        } else s.log.push(e);
+      }
+      const lastNew = m.prevIndex + m.entries.length;
+      if (m.commit > s.commit) { s.commit = Math.min(m.commit, lastNew); apply(s); }
+      send(s.id, m.from, 'AER', { term: s.term, ok: true, match: lastNew, n: m.entries.length });
+      break;
+    }
+    case 'AER':
+      if (s.state !== 'leader' || m.term !== s.term) break;
+      if (m.ok) {
+        s.matchIndex[m.from] = Math.max(s.matchIndex[m.from], m.match);
+        s.nextIndex[m.from] = s.matchIndex[m.from] + 1;
+        advanceCommit(s);
+      } else {
+        s.nextIndex[m.from] = Math.max(1, Math.min(s.nextIndex[m.from] - 1, m.hint + 1));
+        sendAppend(s, m.from);
+      }
+      break;
+  }
+}
+function onClientReq(s, m) {
+  if (s.state === 'leader') {
+    if (!s.log.some(e => e.req === m.req)) {
+      s.log.push({ term: s.term, key: m.key, val: m.val, req: m.req });
+      s.matchIndex[s.id] = lastIndex(s);
+      broadcast(s); s.hbDue = sim + HB;
+    }
+  } else send(s.id, CLIENT, 'CREDIR', { req: m.req, leader: s.leaderId });
+}
+function onClient(m) {
+  const p = client.pending.get(m.req);
+  if (m.type === 'CACK') { client.pending.delete(m.req); client.hint = m.from; return; }
+  if (m.type === 'CREDIR' && p) {
+    client.hint = m.leader;
+    const to = m.leader != null ? m.leader : pickOther(m.from);
+    p.deadline = sim + 360; p.target = to;
+    send(CLIENT, to, 'CREQ', { req: m.req, key: p.key, val: p.val });
+  }
+}
+const pickOther = not => { let j; do { j = Math.floor(rnd() * N); } while (j === not); return j; };
+function clientRequest(to) {
+  const req = ++reqSeq, key = KEYS[Math.floor(rnd() * KEYS.length)], val = Math.floor(rnd() * 10);
+  const target = to != null ? to : (client.hint != null ? client.hint : Math.floor(rnd() * N));
+  client.pending.set(req, { key, val, deadline: sim + 360, target });
+  send(CLIENT, target, 'CREQ', { req, key, val });
+}
+
+/* ——— падения и сеть ——— */
+function crash(s) {
+  if (s.crashed) return;
+  s.crashed = true; s.state = 'follower'; s.leaderId = null; s.votes = new Set();
+  note(`${s.name} упал`, true);
+}
+function restart(s) {
+  if (!s.crashed) return;
+  s.crashed = false; s.commit = 0; s.applied = 0; s.kv = {}; s.state = 'follower'; resetTimer(s);
+  note(`${s.name} снова в строю: срок ${s.term}, в журнале ${lastIndex(s)}`);
+}
+function currentLeader() {
+  let best = null;
+  for (const s of servers) if (!s.crashed && s.state === 'leader' && (!best || s.term > best.term)) best = s;
+  return best;
+}
+function splitAround(li) { // лидер и его сосед против трёх остальных
+  const g = Array(N).fill(1); g[li] = 0; g[(li + 1) % N] = 0; groups = g;
+  note(`Сеть разделена: {${NAMES[li]}, ${NAMES[(li + 1) % N]}} | {${servers.filter((_, i) => g[i]).map(s => s.name).join(', ')}}`, true);
+}
+function heal() {
+  if (!groups && !cuts.length) return;
+  groups = null; cuts.length = 0; note('Сеть восстановлена', true);
+}
+
+/* ——— шаг модели ——— */
+function tick(dtSim) {
+  const end = sim + dtSim;
+  while (true) {
+    msgs.sort((a, b) => a.arrive - b.arrive);
+    const next = msgs.find(m => !m.done);
+    const tNext = next ? next.arrive : Infinity;
+    // таймеры
+    let tTimer = Infinity, who = null;
+    for (const s of servers) {
+      if (s.crashed) continue;
+      const t = s.state === 'leader' ? s.hbDue : s.deadline;
+      if (t < tTimer) { tTimer = t; who = s; }
+    }
+    const t = Math.min(tNext, tTimer);
+    if (t > end) break;
+    sim = t;
+    if (t === tNext) {
+      next.done = true; next.doneAt = sim;
+      const dst = next.to === CLIENT ? null : servers[next.to];
+      if (next.dropAt != null || blocked(next.from, next.to)) { next.dropped = true; if (next.dropAt == null) next.dropAt = 0.97; }
+      else if (dst && dst.crashed) { next.dropped = true; next.dropAt = 0.93; }
+      else deliver(next);
+    } else if (who) {
+      if (who.state === 'leader') { broadcast(who); who.hbDue = sim + HB; who.pulse = sim; }
+      else becomeCandidate(who);
+    }
+  }
+  sim = end;
+  // тайм-ауты клиента
+  for (const [req, p] of client.pending) if (sim > p.deadline) {
+    client.hint = null; const to = pickOther(p.target); p.target = to; p.deadline = sim + 360;
+    send(CLIENT, to, 'CREQ', { req, key: p.key, val: p.val });
+  }
+  // чистим доставленные сообщения после анимации исчезания
+  for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].done && sim - msgs[i].doneAt > 45) msgs.splice(i, 1);
+}
+
+/* ——— предыстория: кластер уже работает ——— */
+(function warmup() {
+  // ждём лидера и даём клиенту записать пять значений, пока большинство их не зафиксирует
+  let sent = 0, nextReq = 0;
+  while (sim < 4000) {
+    tick(5);
+    const L = currentLeader();
+    if (L && sent < 5 && sim >= nextReq) { clientRequest(L.id); sent++; nextReq = sim + 70; }
+    if (sent >= 5 && servers.every(s => s.commit >= 5) && !client.pending.size) break;
+  }
+  const settle = sim + 90; while (sim < settle) tick(5);
+  msgs.length = 0; // летящие сообщения предыстории не показываем
+  rnd = Math.random;
+  feed.length = 0;
+  const L = currentLeader();
+  note(L ? `Кластер работает: лидер ${L.name}, срок ${L.term}` : 'Кластер запускается', true);
+})();
+
+/* ============================================================
+   Экскурсия
+   ============================================================ */
+let tour = { i: -1, t: 0, active: true, mark: {} };
+const TOUR = [
+  { text: () => { const L = currentLeader(); return L ? `Пять серверов ведут один журнал. Красный — лидер ${L.name}: он раздаёт записи и каждые 60 мс шлёт «пульс», чтобы остальные не устраивали выборов.` : 'Пять серверов ведут один журнал. Пока лидера нет, у каждого тикает таймер выборов.'; }, until: t => t > 7 },
+  { text: 'Клиент в центре шлёт запись лидеру. Запись становится зафиксированной — чёрной, — когда её сохранили три сервера из пяти.', enter() { clientRequest(); setTimeout(() => tour.active && clientRequest(), 1600); }, until: t => t > 7.5 },
+  { text: 'Уроним лидера.', enter() { const L = currentLeader(); if (L) { tour.mark.old = L.id; crash(L); } }, until: t => t > 2.2 },
+  { text: 'Пульса больше нет. Чей таймер выборов истечёт первым, тот станет кандидатом, поднимет номер срока и попросит голоса.', until: t => t > 2 && currentLeader() && currentLeader().id !== tour.mark.old },
+  { text: () => { const L = currentLeader(); return L ? `Новый лидер — ${L.name}, срок ${L.term}. Для победы нужно большинство: три голоса из пяти, поэтому двух лидеров в одном сроке не бывает.` : 'Выборы продолжаются.'; }, until: t => t > 6.5 },
+  { text: 'Старый лидер поднимается. Он узнаёт о новом сроке, становится последователем и догоняет журнал.', enter() { if (tour.mark.old != null) restart(servers[tour.mark.old]); clientRequest(); }, until: t => t > 7 },
+  { text: 'Разрежем сеть: лидер и его сосед оказываются в меньшинстве, а клиент по старой памяти пишет именно лидеру.', enter() { const L = currentLeader(); if (L) { tour.mark.min = L.id; splitAround(L.id); setTimeout(() => tour.active && clientRequest(tour.mark.min), 700); } }, until: t => t > 5 },
+  { text: 'Лидер в меньшинстве принял запись, но зафиксировать её не может: без большинства никак. Трое остальных тем временем выбирают своего лидера.', until: t => { const L = currentLeader(); return t > 4 && L && L.id !== tour.mark.min && groups && groups[L.id] === 1; } },
+  { text: 'Большинство работает дальше и фиксирует новые записи.', enter() { const L = currentLeader(); const maj = servers.find(s => s.state === 'leader' && groups && groups[s.id] === 1 && !s.crashed); clientRequest(maj ? maj.id : undefined); setTimeout(() => { const m2 = servers.find(s => s.state === 'leader' && groups && groups[s.id] === 1); tour.active && clientRequest(m2 ? m2.id : undefined); }, 1500); }, until: t => t > 7 },
+  { text: 'Сеть починили. Бывший лидер видит больший срок и уступает, а его незафиксированную запись стирает: в журнале большинства её нет.', enter() { heal(); }, until: t => t > 8 },
+  { text: 'Теперь сами: кликайте по серверам, режьте сеть линией прямо на схеме, отправляйте запросы.', final: true }
+];
+const caption = document.getElementById('caption'), stepNo = document.getElementById('stepNo'), tourBtn = document.getElementById('tourBtn');
+function setCaption(text) {
+  caption.classList.add('fade');
+  setTimeout(() => { caption.textContent = text; caption.classList.remove('fade'); }, 220);
+}
+function nextStep() {
+  tour.i++; tour.t = 0;
+  const st = TOUR[tour.i];
+  if (!st) return;
+  stepNo.textContent = String(tour.i + 1).padStart(2, '0') + ' / ' + TOUR.length;
+  if (st.enter) st.enter();
+  setCaption(typeof st.text === 'function' ? st.text() : st.text);
+  if (st.final) endTour(false);
+}
+function endTour(user) {
+  tour.active = false;
+  tourBtn.textContent = 'Экскурсия заново';
+  if (user) { stepNo.textContent = 'сами'; setCaption(TOUR[TOUR.length - 1].text); }
+}
+tourBtn.addEventListener('click', () => {
+  if (tour.active) { endTour(true); return; }
+  tour = { i: -1, t: 0, active: true, mark: {} }; tourBtn.textContent = 'Пропустить экскурсию';
+  heal(); for (const s of servers) restart(s); nextStep();
+});
+function userTookOver() { if (tour.active) endTour(true); }
+
+/* ============================================================
+   Управление
+   ============================================================ */
+document.getElementById('reqBtn').addEventListener('click', () => { userTookOver(); clientRequest(); });
+document.getElementById('crashBtn').addEventListener('click', () => { userTookOver(); const L = currentLeader(); if (L) crash(L); });
+document.getElementById('splitBtn').addEventListener('click', () => { userTookOver(); const L = currentLeader() || servers.find(s => !s.crashed); if (L) splitAround(L.id); });
+document.getElementById('healBtn').addEventListener('click', () => { userTookOver(); heal(); });
+for (const b of document.querySelectorAll('.seg button')) b.addEventListener('click', () => {
+  speed = +b.dataset.s; document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b));
+});
+
+/* ============================================================
+   Рисование
+   ============================================================ */
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d'), stage = document.getElementById('stage');
+let W = 0, H = 0, DPR = 1, C = [0, 0], R = 100, NR = 36;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = stage.clientWidth; H = stage.clientHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  const small = W < 600;
+  R = Math.min(W, H) * (small ? 0.31 : 0.3);
+  NR = Math.max(26, Math.min(44, R * 0.19));
+  C = [W * (small ? 0.5 : 0.47), H * (small ? 0.5 : 0.535)];
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+const pos = i => { const u = unitPos(i); return [C[0] + u[0] * R, C[1] + u[1] * R]; };
+const toUnit = (x, y) => [(x - C[0]) / R, (y - C[1]) / R];
+
+const INK = '#121212', RED = '#E1261C', PAPER = '#EEEBE3', INK2 = '#4F4B44';
+function lane(a, b, t, side) { // точка на связи со смещением в «свою» полосу
+  const A = pos(a), B = pos(b), dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1;
+  const off = side * 5;
+  return [A[0] + dx * t - dy / L * off, A[1] + dy * t + dx / L * off];
+}
+
+function drawMsg(m, now) {
+  const dur = m.arrive - m.sent;
+  let t = Math.min(1, (sim - m.sent) / dur);
+  let alpha = 1;
+  if (m.dropped && m.dropAt != null) { t = Math.min(t, m.dropAt); if (m.done) alpha = Math.max(0, 1 - (sim - m.doneAt) / 45); }
+  else if (m.done) alpha = Math.max(0, 1 - (sim - m.doneAt) / 18);
+  if (m.dropAt != null && !m.done && (sim - m.sent) / dur >= m.dropAt) { t = m.dropAt; alpha = Math.max(0, 1 - ((sim - m.sent) / dur - m.dropAt) * 4); }
+  if (alpha <= 0) return;
+  const [x, y] = lane(m.from, m.to, ease(t), 1);
+  ctx.globalAlpha = alpha;
+  // короткий след
+  const [tx, ty] = lane(m.from, m.to, ease(Math.max(0, t - 0.08)), 1);
+  ctx.strokeStyle = m.type === 'RV' || (m.type === 'AE' && m.entries.length) ? RED : INK;
+  ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x, y); ctx.stroke();
+  switch (m.type) {
+    case 'RV': ctx.strokeStyle = RED; ctx.lineWidth = 2; ctx.fillStyle = PAPER; circle(x, y, 6, true, true); break;
+    case 'RVR': ctx.fillStyle = m.ok ? INK : PAPER; ctx.strokeStyle = INK; ctx.lineWidth = 1.5; circle(x, y, 4.5, true, true);
+      if (!m.ok) { ctx.beginPath(); ctx.moveTo(x - 3, y - 3); ctx.lineTo(x + 3, y + 3); ctx.stroke(); } break;
+    case 'AE':
+      if (m.entries.length) { ctx.fillStyle = RED; ctx.fillRect(x - 6.5, y - 6.5, 13, 13); ctx.fillStyle = '#fff'; ctx.font = '600 10px "IBM Plex Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(m.entries.length, x, y + 0.5); }
+      else { ctx.fillStyle = INK; circle(x, y, 3.5, true, false); }
+      break;
+    case 'AER': ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.fillStyle = PAPER; circle(x, y, 3.2, true, true); break;
+    case 'CREQ': ctx.fillStyle = PAPER; ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.fillRect(x - 5.5, y - 5.5, 11, 11); ctx.strokeRect(x - 5.5, y - 5.5, 11, 11); break;
+    case 'CACK': case 'CREDIR': ctx.fillStyle = INK; ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-4, -4, 8, 8); ctx.restore(); break;
+  }
+  if (m.dropped && m.done) { // потеря: красный крестик
+    ctx.strokeStyle = RED; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 5, y - 5); ctx.lineTo(x + 5, y + 5); ctx.moveTo(x + 5, y - 5); ctx.lineTo(x - 5, y + 5); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+function circle(x, y, r, fill, stroke) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); if (fill) ctx.fill(); if (stroke) ctx.stroke(); }
+
+let hover = -1, cutDraft = null;
+function draw(now) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  // швейцарская сетка
+  ctx.strokeStyle = 'rgba(18,18,18,.05)'; ctx.lineWidth = 1;
+  const g = 48; ctx.beginPath();
+  for (let x = (C[0] % g); x < W; x += g) { ctx.moveTo(x + .5, 0); ctx.lineTo(x + .5, H); }
+  for (let y = (C[1] % g); y < H; y += g) { ctx.moveTo(0, y + .5); ctx.lineTo(W, y + .5); }
+  ctx.stroke();
+
+  // меньшинство при разделении — подложка
+  if (groups) {
+    const minority = servers.filter(s => groups[s.id] === 0);
+    ctx.fillStyle = 'rgba(225,38,28,.07)';
+    for (const s of minority) { const [x, y] = pos(s.id); circle(x, y, NR * 2.1, true, false); }
+  }
+  // связи
+  for (let a = 0; a <= CLIENT; a++) for (let b = a + 1; b <= CLIENT; b++) {
+    const A = pos(a), B = pos(b), cp = cutParam(a, b);
+    if (cp >= 0) {
+      ctx.strokeStyle = 'rgba(225,38,28,.55)'; ctx.setLineDash([4, 5]); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke(); ctx.setLineDash([]);
+      const mx = A[0] + (B[0] - A[0]) * cp, my = A[1] + (B[1] - A[1]) * cp;
+      ctx.strokeStyle = RED; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mx - 5, my - 5); ctx.lineTo(mx + 5, my + 5); ctx.moveTo(mx + 5, my - 5); ctx.lineTo(mx - 5, my + 5); ctx.stroke();
+    } else {
+      ctx.strokeStyle = b === CLIENT ? 'rgba(18,18,18,.10)' : 'rgba(18,18,18,.16)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
+    }
+  }
+  // разрезы
+  ctx.strokeStyle = RED; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  for (const c of cuts) { ctx.beginPath(); ctx.moveTo(C[0] + c[0][0] * R, C[1] + c[0][1] * R); ctx.lineTo(C[0] + c[1][0] * R, C[1] + c[1][1] * R); ctx.stroke(); }
+  if (cutDraft) { ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(cutDraft[0][0], cutDraft[0][1]); ctx.lineTo(cutDraft[1][0], cutDraft[1][1]); ctx.stroke(); ctx.setLineDash([]); }
+  ctx.lineCap = 'butt';
+
+  for (const m of msgs) drawMsg(m, now);
+
+  // клиент
+  const [cx, cy] = pos(CLIENT);
+  ctx.fillStyle = PAPER; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+  ctx.fillRect(cx - 17, cy - 17, 34, 34); ctx.strokeRect(cx - 17, cy - 17, 34, 34);
+  ctx.fillStyle = INK; ctx.font = '500 12px "IBM Plex Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('клиент', cx, cy + 24);
+  ctx.textBaseline = 'middle'; ctx.font = '600 13px "IBM Plex Mono", monospace';
+  ctx.fillText(client.pending.size ? '…' + client.pending.size : '✓', cx, cy + 1);
+
+  // серверы
+  for (const s of servers) {
+    const [x, y] = pos(s.id);
+    // таймер выборов — дуга вокруг
+    if (!s.crashed && s.state !== 'leader') {
+      const f = Math.max(0, Math.min(1, (s.deadline - sim) / (s.deadline - s.tStart)));
+      ctx.strokeStyle = 'rgba(18,18,18,.14)'; ctx.lineWidth = 3; circle(x, y, NR + 8, false, true);
+      ctx.strokeStyle = s.state === 'candidate' ? RED : INK; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(x, y, NR + 8, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); ctx.stroke();
+    }
+    if (s.state === 'leader' && !s.crashed) { // пульс
+      const k = Math.min(1, (sim - s.pulse) / 55);
+      if (k < 1) { ctx.strokeStyle = `rgba(225,38,28,${0.5 * (1 - k)})`; ctx.lineWidth = 2; circle(x, y, NR + 6 + k * 26, false, true); }
+      const w = (sim - s.won) / 90;
+      if (w < 1) { ctx.strokeStyle = `rgba(225,38,28,${1 - w})`; ctx.lineWidth = 4; circle(x, y, NR + 10 + w * 60, false, true); }
+    }
+    // тело
+    ctx.lineWidth = 2.5;
+    if (s.crashed) { ctx.fillStyle = '#DAD6CC'; ctx.strokeStyle = INK2; circle(x, y, NR, true, true); }
+    else if (s.state === 'leader') { ctx.fillStyle = RED; ctx.strokeStyle = RED; circle(x, y, NR, true, true); }
+    else if (s.state === 'candidate') { ctx.fillStyle = PAPER; ctx.strokeStyle = RED; ctx.setLineDash([5, 4]); circle(x, y, NR, true, true); ctx.setLineDash([]); }
+    else { ctx.fillStyle = PAPER; ctx.strokeStyle = INK; circle(x, y, NR, true, true); }
+    if (hover === s.id) { ctx.strokeStyle = s.state === 'leader' ? INK : RED; ctx.lineWidth = 1.5; circle(x, y, NR + 3, false, true); }
+    const light = s.state === 'leader' && !s.crashed;
+    ctx.fillStyle = light ? '#fff' : (s.crashed ? INK2 : INK);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const cmp = W < 600;
+    ctx.font = `700 ${Math.round(NR * (cmp ? 0.9 : 0.72))}px "Golos Text", sans-serif`;
+    ctx.fillText(s.name, x, y - (cmp ? 0 : NR * 0.12));
+    if (!cmp) { ctx.font = `500 ${Math.max(12, Math.round(NR * 0.3))}px "IBM Plex Mono", monospace`; ctx.fillText('срок ' + s.term, x, y + NR * 0.45); }
+    if (s.crashed) { ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x - NR * 0.7, y - NR * 0.7); ctx.lineTo(x + NR * 0.7, y + NR * 0.7); ctx.stroke(); }
+    // голоса кандидата
+    if (s.state === 'candidate' && !s.crashed) {
+      let k = 0; for (const v of s.votes) { const a = -Math.PI / 2 + k * 0.42 - (s.votes.size - 1) * 0.21; ctx.fillStyle = RED; circle(x + Math.cos(a) * (NR + 18), y + Math.sin(a) * (NR + 18), 3.5, true, false); k++; }
+    }
+    // подпись: роль и состояние машины
+    const u = unitPos(s.id), compact = W < 600;
+    const lx = compact ? x : x + u[0] * (NR + 30), ly = compact ? y + NR + 14 : y + u[1] * (NR + 30);
+    ctx.textAlign = compact || Math.abs(u[0]) < 0.3 ? 'center' : (u[0] > 0 ? 'left' : 'right');
+    ctx.textBaseline = compact ? 'top' : u[1] < -0.5 ? 'bottom' : (u[1] > 0.5 ? 'top' : 'middle');
+    const role = s.crashed ? 'упал' : s.state === 'leader' ? 'лидер' : s.state === 'candidate' ? 'кандидат' : 'последователь';
+    ctx.font = '600 13px "Golos Text", sans-serif'; ctx.fillStyle = s.state === 'leader' && !s.crashed ? RED : INK;
+    const kv = KEYS.map(k => k + '=' + (s.kv[k] != null ? s.kv[k] : '·')).join(' ');
+    const dy = ctx.textBaseline === 'bottom' ? -17 : 17;
+    ctx.fillText(compact ? role + ' · ' + s.term : role, lx, ly);
+    ctx.font = '400 12px "IBM Plex Mono", monospace'; ctx.fillStyle = INK2;
+    ctx.fillText(kv, lx, ly + (ctx.textBaseline === 'bottom' ? -0 : 0) + dy);
+  }
+  // подсказка по серверу
+  if (hover >= 0) {
+    const s = servers[hover], [x, y] = pos(hover);
+    const lines = [`${s.name} · ${s.crashed ? 'упал' : s.state === 'leader' ? 'лидер' : s.state === 'candidate' ? 'кандидат' : 'последователь'}`,
+      `срок ${s.term} · голос: ${s.votedFor == null ? '—' : NAMES[s.votedFor]}`,
+      `журнал ${lastIndex(s)} · зафикс. ${s.commit}`, s.crashed ? 'клик — поднять' : 'клик — уронить'];
+    ctx.font = '400 12px "IBM Plex Mono", monospace';
+    const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 20, h = lines.length * 17 + 14;
+    let bx = x + NR + 14, by = y - h / 2;
+    if (bx + w > W - 8) bx = x - NR - 14 - w;
+    by = Math.max(8, Math.min(H - h - 8, by));
+    ctx.fillStyle = INK; ctx.fillRect(bx, by, w, h);
+    ctx.fillStyle = PAPER; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    lines.forEach((l, i) => { ctx.font = (i === 0 ? '600 ' : '400 ') + '12px "IBM Plex Mono", monospace'; ctx.fillText(l, bx + 10, by + 8 + i * 17); });
+  }
+}
+
+/* ——— таблица журналов ——— */
+const gridEl = document.getElementById('grid'), termsEl = document.getElementById('terms');
+let lastSig = '';
+function renderLogs() {
+  const maxLen = Math.max(1, ...servers.map(lastIndex));
+  const cols = Math.min(W < 600 ? 7 : 16, Math.max(maxLen, 8));
+  const start = Math.max(1, maxLen - cols + 1);
+  const L = currentLeader();
+  const sig = servers.map(s => [s.state, s.crashed, s.term, s.commit, s.log.map(e => e.term + e.key + e.val).join(','), s.cutAt.length].join('|')).join('#') + cols + start;
+  if (sig === lastSig) return; lastSig = sig;
+  gridEl.style.setProperty('--cols', cols);
+  let html = `<div class="row head" style="--cols:${cols}"><div></div>`;
+  for (let i = start; i < start + cols; i++) html += `<div class="idx">${i}</div>`;
+  html += '</div>';
+  const nowMs = performance.now();
+  for (const s of servers) {
+    const cls = s.crashed ? 'down' : s.state === 'leader' ? 'leader' : s.state === 'candidate' ? 'cand' : '';
+    html += `<div class="row" style="--cols:${cols}"><div class="rh ${cls}"><span class="badge">${s.name}</span><span>срок ${s.term}<br><small>зафикс. ${s.commit}</small></span></div>`;
+    for (let i = start; i < start + cols; i++) {
+      const e = s.log[i - 1];
+      const gone = s.cutAt.find(c => c.index === i && nowMs - c.t < 900 && (!e || e !== c.e));
+      if (e) html += `<div class="cell ${i <= s.commit ? 'c' : ''} ${s.fresh === i ? 'fresh' : ''}">${e.term}<small>${e.key}←${e.val}</small></div>`;
+      else if (gone) html += `<div class="cell cut">${gone.e.term}<small>${gone.e.key}←${gone.e.val}</small></div>`;
+      else html += `<div class="cell e ${L && i <= lastIndex(L) ? 'slot' : ''}"></div>`;
+    }
+    html += '</div>';
+  }
+  gridEl.innerHTML = html;
+  s_cleanup(nowMs);
+  // сроки
+  const list = [...terms.entries()].filter(([t]) => t > 0).slice(-12);
+  const cur = Math.max(...servers.map(s => s.term));
+  termsEl.innerHTML = '<span>Сроки:</span>' + list.map(([t, v]) => `<span class="t ${v.leader == null ? 'none' : ''} ${t === cur ? 'cur' : ''}">${t}·${v.leader == null ? '—' : NAMES[v.leader]}</span>`).join('');
+}
+function s_cleanup(nowMs) { for (const s of servers) s.cutAt = s.cutAt.filter(c => nowMs - c.t < 900); }
+
+/* ——— журнал событий ——— */
+function renderFeed() {
+  const feedEl = document.getElementById('feed');
+  feedEl.innerHTML = feed.map(f => `<li class="${f.hot ? 'hot' : ''}"><time>${Math.round(f.t)} мс</time><span>${f.text}</span></li>`).join('');
+}
+
+/* ——— мышь: клик по серверу, разрез сети ——— */
+function hitNode(x, y) { for (let i = 0; i < N; i++) { const p = pos(i); if (Math.hypot(x - p[0], y - p[1]) < NR + 6) return i; } return -1; }
+function hitClient(x, y) { const p = pos(CLIENT); return Math.abs(x - p[0]) < 22 && Math.abs(y - p[1]) < 22; }
+let down = null;
+cv.addEventListener('pointerdown', e => {
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  down = { x, y, node: hitNode(x, y), client: hitClient(x, y) };
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  if (down && down.node < 0 && !down.client && Math.hypot(x - down.x, y - down.y) > 8) cutDraft = [[down.x, down.y], [x, y]];
+  hover = down ? -1 : hitNode(x, y);
+  cv.style.cursor = hover >= 0 || hitClient(x, y) ? 'pointer' : 'crosshair';
+});
+cv.addEventListener('pointerup', e => {
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  if (down) {
+    if (cutDraft && Math.hypot(x - down.x, y - down.y) > 20) {
+      userTookOver(); cuts.push([toUnit(down.x, down.y), toUnit(x, y)]);
+      let n = 0; for (let a = 0; a <= CLIENT; a++) for (let b = a + 1; b <= CLIENT; b++) if (blocked(a, b)) n++;
+      note(`Сеть разрезана: ${n} ${plural(n, 'связь потеряна', 'связи потеряны', 'связей потеряно')}`, true);
+    } else if (down.node >= 0 && down.node === hitNode(x, y)) {
+      userTookOver(); const s = servers[down.node]; s.crashed ? restart(s) : crash(s);
+    } else if (down.client && hitClient(x, y)) { userTookOver(); clientRequest(); }
+  }
+  down = null; cutDraft = null;
+});
+cv.addEventListener('pointerleave', () => { if (!down) hover = -1; });
+
+/* ——— цикл ——— */
+let last = performance.now(), feedCD = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  const dSim = dt * SIM_PER_SEC * speed;
+  if (dSim > 0) tick(dSim);
+  if (tour.active && speed > 0) {
+    tour.t += dt * speed;
+    const st = TOUR[tour.i];
+    if (st && !st.final && st.until(tour.t)) nextStep();
+  }
+  if (!tour.active && speed > 0) { // после экскурсии клиент иногда пишет сам
+    feedCD -= dt * speed;
+    if (feedCD <= 0) { feedCD = 5 + rnd() * 4; if (currentLeader() && client.pending.size < 2) clientRequest(); }
+  }
+  draw(now);
+  renderLogs();
+}
+nextStep();
+requestAnimationFrame(frame);
+window.__raft = { servers, msgs, terms, feed, tour: () => tour, sim: () => sim, groups: () => groups };
+})();
+</script>
+</body>
+</html>

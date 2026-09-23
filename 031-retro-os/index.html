@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru" data-theme="dawn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Рассвет-86</title>
+<meta name="description" content="Вымышленная операционная система 1986 года: окна, файлы, терминал, рисовалка, сапёр и пианола — всё работает.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tiny5&family=PT+Mono&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- загрузка -->
+<div id="boot" aria-live="polite">
+  <div class="bios" id="bios"></div>
+  <div class="logo" id="bootLogo">
+    <canvas id="bootSun" width="96" height="56"></canvas>
+    <div class="lt">РАССВЕТ-86</div>
+    <div class="bar"><i id="bootBar"></i></div>
+  </div>
+  <div class="skip">щёлкните, чтобы пропустить</div>
+</div>
+
+<!-- выключено -->
+<div id="off" hidden>
+  <p>Теперь компьютер можно выключить.</p>
+  <button id="powerOn" class="btn">Включить снова</button>
+</div>
+
+<div id="os">
+  <header id="menubar">
+    <button class="mb sys" data-menu="sys" aria-label="Системное меню"><i class="ico" data-icon="sun"></i> <span>Рассвет</span></button>
+    <button class="mb" data-menu="apps">Программы</button>
+    <button class="mb" data-menu="wins">Окна</button>
+    <button class="mb hide-m" data-menu="help">Справка</button>
+    <div class="mb-title" id="mbTitle"></div>
+    <button class="mb mb-snd" id="mbSound" aria-label="Звуки интерфейса"></button>
+    <button class="mb mb-clock" id="mbClock" data-menu="cal"></button>
+  </header>
+  <main id="desk">
+    <canvas id="wall"></canvas>
+    <div id="icons"></div>
+    <div id="wins"></div>
+  </main>
+  <footer id="tray">
+    <span class="tray-l">Окна:</span>
+    <div id="trayWins"></div>
+    <span class="tray-r" id="trayMem"></span>
+  </footer>
+</div>
+<div id="menus"></div>
+<div id="crt" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

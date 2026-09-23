@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Лаборатория узлов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prata&family=Geologica:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #111615;
+    --ink: #eee7da;
+    --ink-2: #b9b3a6;
+    --ink-3: #8f8a80;
+    --brass: #cfa864;
+    --line: rgba(238, 231, 218, .16);
+    --panel: rgba(17, 22, 21, .72);
+    --serif: "Prata", "Didot", "Bodoni 72", Georgia, serif;
+    --sans: "Geologica", "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--sans); overflow: hidden; }
+  canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  canvas#gl:active { cursor: grabbing; }
+
+  /* Музейная табличка */
+  .placard {
+    position: fixed; left: clamp(18px, 3vw, 44px); top: clamp(18px, 4vh, 40px);
+    width: min(360px, calc(100vw - 36px)); pointer-events: auto;
+  }
+  .kicker { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--brass); font-weight: 500; }
+  .placard h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(34px, 3.4vw, 50px); line-height: 1.04; margin: 10px 0 6px; letter-spacing: -.005em; }
+  .notation { font-family: var(--serif); font-size: 19px; color: var(--ink-2); }
+  .notation sub { font-size: .62em; font-family: var(--sans); font-weight: 500; }
+  .desc { font-size: 14.5px; line-height: 1.55; color: var(--ink-2); margin: 14px 0 16px; max-width: 34ch; font-weight: 300; }
+  .inv { margin: 0; padding: 12px 0 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: auto 1fr; gap: 7px 18px; font-size: 13px; }
+  .inv dt { color: var(--ink-3); font-weight: 400; }
+  .inv dd { margin: 0; color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 400; }
+  .inv dd.poly { font-family: var(--serif); font-size: 15px; letter-spacing: .01em; }
+  .diagram { margin-top: 16px; display: flex; align-items: center; gap: 14px; color: var(--ink-3); font-size: 12px; line-height: 1.4; }
+  .diagram svg { width: 76px; height: 76px; flex: none; color: var(--ink); }
+
+  /* Конструктор */
+  .builder { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: none; }
+  .builder.on { display: block; }
+  .row { display: grid; grid-template-columns: 74px 1fr 34px; align-items: center; gap: 10px; min-height: 34px; }
+  .row label { font-size: 13px; color: var(--ink-2); }
+  .row output { font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
+  .warn { font-size: 12.5px; color: #e8b48a; margin-top: 6px; min-height: 1.2em; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 30px; background: transparent; margin: 0; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 2px; background: linear-gradient(to right, var(--brass) var(--p, 50%), var(--line) var(--p, 50%)); border-radius: 2px; }
+  input[type=range]::-moz-range-track { height: 2px; background: var(--line); }
+  input[type=range]::-moz-range-progress { height: 2px; background: var(--brass); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -6px; border-radius: 50%; background: var(--ink); border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--brass); transition: transform .2s ease; }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--ink); border: 2px solid var(--bg); }
+  input[type=range]:active::-webkit-slider-thumb { transform: scale(1.2); }
+  input[type=range]:focus-visible { outline: 1px dashed var(--ink-3); outline-offset: 2px; }
+
+  /* Полка экспонатов */
+  .shelf {
+    position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    display: flex; gap: 6px; padding: 6px; max-width: calc(100vw - 24px); overflow-x: auto; scrollbar-width: none;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  .shelf::-webkit-scrollbar { display: none; }
+  .ex {
+    appearance: none; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; border-radius: 10px;
+    width: 64px; flex: none; padding: 6px 4px 5px; display: flex; flex-direction: column; align-items: center; gap: 3px; font: inherit;
+    transition: background .25s ease, color .25s ease, transform .25s ease;
+  }
+  .ex svg { width: 38px; height: 38px; }
+  .ex span { font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ex:hover { background: rgba(238, 231, 218, .06); color: var(--ink); }
+  .ex[aria-current=true] { background: rgba(207, 168, 100, .14); color: var(--ink); }
+  .ex:focus-visible { outline: 1px solid var(--brass); outline-offset: -1px; }
+
+  /* Материалы */
+  .tools { position: fixed; right: clamp(18px, 3vw, 44px); top: clamp(18px, 4vh, 40px); display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  .tools .kicker { color: var(--ink-3); }
+  .swatches { display: flex; gap: 8px; }
+  .sw {
+    appearance: none; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); cursor: pointer; padding: 0; position: relative;
+    transition: transform .25s ease, border-color .25s ease;
+  }
+  .sw:hover { transform: translateY(-2px); }
+  .sw[aria-pressed=true] { border-color: var(--ink); }
+  .sw[aria-pressed=true]::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 1px solid rgba(238, 231, 218, .45); }
+  .sw:focus-visible { outline: 1px dashed var(--ink); outline-offset: 4px; }
+  .sw.glass { background: radial-gradient(circle at 35% 30%, #ffffff 0 8%, #bfe6dc 22%, #5f9d91 60%, #29423d); }
+  .sw.brass { background: radial-gradient(circle at 35% 30%, #fff2cf 0 8%, #d8b36c 30%, #8a6327 75%, #4a3413); }
+  .sw.porcelain { background: radial-gradient(circle at 35% 30%, #ffffff 0 10%, #ece6da 40%, #b8b0a2 90%); }
+  .sw.obsidian { background: radial-gradient(circle at 35% 30%, #8b8b96 0 6%, #25252c 30%, #070709 80%); }
+  .matname { font-size: 13px; color: var(--ink-2); min-height: 1.2em; }
+  .toggle { appearance: none; border: 1px solid var(--line); background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; border-radius: 999px; padding: 8px 14px; min-height: 36px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; transition: color .2s, border-color .2s; }
+  .toggle:hover { color: var(--ink); border-color: rgba(238, 231, 218, .35); }
+  .toggle[aria-pressed=true] { color: var(--ink); }
+  .toggle svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.4; stroke-linecap: round; }
+  .toggle:focus-visible { outline: 1px dashed var(--ink); outline-offset: 3px; }
+
+  .note {
+    position: fixed; left: 50%; bottom: 112px; transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
+    font-size: 13px; color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px;
+    transition: opacity .4s ease, transform .4s ease; white-space: nowrap;
+  }
+  .note.show { opacity: 1; transform: translate(-50%, 0); }
+  .hint { position: fixed; right: clamp(18px, 3vw, 44px); bottom: calc(26px + env(safe-area-inset-bottom)); font-size: 12px; color: var(--ink-3); line-height: 1.5; text-align: right; }
+
+  .fallback { position: fixed; inset: 0; display: none; place-items: center; text-align: center; padding: 32px; font-family: var(--serif); font-size: 22px; color: var(--ink-2); background: var(--bg); }
+  .fallback.on { display: grid; }
+
+  @media (max-width: 820px) {
+    .hint { display: none; }
+  }
+  @media (max-width: 640px) {
+    .placard { top: 14px; left: 16px; width: calc(100vw - 32px); }
+    .placard h1 { font-size: 32px; margin-top: 6px; }
+    .desc { display: none; }
+    .inv, .diagram { display: none; }
+    .placard.open .desc, .placard.open .inv, .placard.open .diagram { display: grid; }
+    .placard.open .desc { display: block; }
+    .placard.open .diagram { display: flex; }
+    .placard.open { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; left: 10px; width: calc(100vw - 20px); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+    .more { display: inline-flex !important; }
+    .tools { top: auto; bottom: calc(96px + env(safe-area-inset-bottom)); right: 12px; flex-direction: row; align-items: center; }
+    .tools .kicker, .matname { display: none; }
+    .sw { width: 36px; height: 36px; }
+    .note { bottom: 150px; white-space: normal; width: calc(100vw - 40px); text-align: center; border-radius: 12px; }
+  }
+  .more { display: none; margin-top: 8px; }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration: .01s !important; } }
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Трёхмерный экспонат-узел на музейной подставке"></canvas>
+
+<aside class="placard" id="placard">
+  <div class="kicker" id="kicker">Экспонат 01 из 11</div>
+  <h1 id="name">Трилистник</h1>
+  <div class="notation" id="notation">3<sub>1</sub> · T(2,&nbsp;3)</div>
+  <p class="desc" id="desc"></p>
+  <dl class="inv" id="inv"></dl>
+  <div class="builder" id="builder"></div>
+  <div class="diagram" id="diagramWrap"><svg id="diagram" viewBox="0 0 100 100" aria-hidden="true"></svg><span>Диаграмма — проекция узла на&nbsp;плоскость: в&nbsp;разрывах нить уходит вниз.</span></div>
+  <button class="toggle more" id="more" aria-expanded="false">Подробнее</button>
+</aside>
+
+<div class="tools">
+  <div class="kicker">Материал</div>
+  <div class="swatches" role="group" aria-label="Материал экспоната">
+    <button class="sw glass" data-mat="glass" aria-pressed="true" title="Стекло"></button>
+    <button class="sw brass" data-mat="brass" aria-pressed="false" title="Латунь"></button>
+    <button class="sw porcelain" data-mat="porcelain" aria-pressed="false" title="Фарфор"></button>
+    <button class="sw obsidian" data-mat="obsidian" aria-pressed="false" title="Обсидиан"></button>
+  </div>
+  <div class="matname" id="matname">Стекло с дисперсией</div>
+  <button class="toggle" id="spin" aria-pressed="true"><svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.6 2.2v2.4h-2.4"/></svg>Вращение</button>
+</div>
+
+<nav class="shelf" id="shelf" aria-label="Экспонаты"></nav>
+<div class="note" id="note">Смена экспоната проходит сквозь себя — настоящий узел так не переделать без разреза</div>
+<div class="hint">тяните — осмотреть · колесо — ближе<br>← → — соседний экспонат</div>
+<div class="fallback" id="fallback">Экспонаты не загрузились: для трёхмерной сцены нужна библиотека three.js из&nbsp;интернета.</div>
+
+<script>
+  // если three.js с CDN не загрузится, через 9 с покажем понятное сообщение
+  setTimeout(() => { if (!window.__knotReady) document.getElementById('fallback').classList.add('on'); }, 9000);
+</script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const SHOT = !!window.__SHOT__;
+const TAU = Math.PI * 2;
+const $ = (id) => document.getElementById(id);
+
+// ─────────────────────────────────────────────────────────────
+// Математика узлов
+// ─────────────────────────────────────────────────────────────
+const gcd = (a, b) => (b ? gcd(b, a % b) : Math.abs(a));
+
+// Торический узел/зацепление T(p, q): обходит ось тора p раз, трубку — q раз.
+// При d = НОД(p, q) > 1 получается зацепление из d компонент (qφ − pθ ≡ 2πk/d).
+function torus(p, q, N = 720) {
+  const d = gcd(p, q), comps = [];
+  for (let k = 0; k < d; k++) {
+    const pts = [];
+    for (let i = 0; i < N; i++) {
+      const t = (i / N) * TAU;
+      const phi = (p / d) * t + (TAU * k) / q, th = (q / d) * t;
+      const r = 2 + Math.cos(th);
+      pts.push(new THREE.Vector3(r * Math.cos(phi), r * Math.sin(phi), -Math.sin(th)));
+    }
+    comps.push(pts);
+  }
+  return comps;
+}
+function figureEight(N = 720) {
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * TAU;
+    pts.push(new THREE.Vector3((2 + Math.cos(2 * t)) * Math.cos(3 * t), (2 + Math.cos(2 * t)) * Math.sin(3 * t), Math.sin(4 * t)));
+  }
+  return [pts];
+}
+function lissajous(nx, ny, nz, px, py, pz = 0, N = 900) {
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * TAU;
+    pts.push(new THREE.Vector3(2 * Math.cos(nx * t + px), 2 * Math.cos(ny * t + py), 2 * Math.cos(nz * t + pz)));
+  }
+  return [pts];
+}
+function hopf(N = 360) {
+  const a = [], b = [];
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * TAU;
+    a.push(new THREE.Vector3(Math.cos(t) - 0.5, Math.sin(t), 0));
+    b.push(new THREE.Vector3(Math.cos(t) + 0.5, 0, Math.sin(t)));
+  }
+  return [a, b];
+}
+// Кольца Борромео: три взаимно перпендикулярных эллипса
+function borromean(N = 400) {
+  const a = [], b = [], c = [];
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * TAU, C = Math.cos(t), S = Math.sin(t);
+    a.push(new THREE.Vector3(2 * C, S, 0));
+    b.push(new THREE.Vector3(0, 2 * C, S));
+    c.push(new THREE.Vector3(S, 0, 2 * C));
+  }
+  return [a, b, c];
+}
+
+// Полиномы с целыми коэффициентами: массив, индекс = степень
+const pMul = (a, b) => { const r = new Array(a.length + b.length - 1).fill(0); a.forEach((x, i) => b.forEach((y, j) => { r[i + j] += x * y; })); return r; };
+function pDiv(num, den) {
+  const n = num.slice(), q = new Array(Math.max(1, num.length - den.length + 1)).fill(0);
+  for (let i = n.length - den.length; i >= 0; i--) {
+    const c = n[i + den.length - 1] / den[den.length - 1];
+    q[i] = c;
+    for (let j = 0; j < den.length; j++) n[i + j] -= c * den[j];
+  }
+  return q;
+}
+const tPow = (n) => { const r = new Array(n + 1).fill(0); r[n] = 1; r[0] = -1; return r; }; // t^n − 1
+// Полином Александера торического узла: (t^{pq} − 1)(t − 1) / ((t^p − 1)(t^q − 1))
+const alexTorus = (p, q) => pDiv(pMul(tPow(p * q), [-1, 1]), pMul(tPow(p), tPow(q))).map(Math.round);
+const evalPoly = (c, x) => c.reduce((s, a, i) => s + a * Math.pow(x, i), 0);
+function polyStr(c) {
+  const sup = (n) => String(n).split('').map((d) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('');
+  let s = '';
+  for (let i = c.length - 1; i >= 0; i--) {
+    const a = c[i];
+    if (!a) continue;
+    const abs = Math.abs(a), sign = a < 0 ? ' − ' : (s ? ' + ' : '');
+    const coef = abs === 1 && i > 0 ? '' : String(abs);
+    const v = i === 0 ? '' : i === 1 ? 't' : 't' + sup(i);
+    s += sign + coef + v;
+  }
+  return s.trim().replace(/^−\s/, '−');
+}
+function torusInfo(p, q) {
+  const d = gcd(p, q);
+  if (p <= 1 || q <= 1) return { trivial: true };
+  if (d > 1) return { link: d };
+  const A = alexTorus(p, q);
+  const det = Math.abs(evalPoly(A, -1));
+  const g = ((p - 1) * (q - 1)) / 2;
+  return { A, det, g, cross: Math.min(p * (q - 1), q * (p - 1)), bridge: Math.min(p, q) };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Экспонаты
+// ─────────────────────────────────────────────────────────────
+const sub = (s) => s.replace(/_(\d+)/g, '<sub>$1</sub>');
+function invTorus(p, q, extra = []) {
+  const I = torusInfo(p, q);
+  return [
+    ['Пересечений', I.cross],
+    ['Развязывание', I.g],
+    ['Род', I.g],
+    ['Мостовое число', I.bridge],
+    ['Определитель', I.det],
+    ['3-раскраска', I.det % 3 === 0 ? 'есть' : 'нет'],
+    ['Зеркальность', 'хирален'],
+    ['Полином Александера', polyStr(I.A), 'poly'],
+    ...extra,
+  ];
+}
+const EXHIBITS = [
+  { id: '3_1', name: 'Трилистник', short: '3₁', note: '3_1 · T(2,&nbsp;3)', build: () => torus(2, 3),
+    desc: 'Самый простой нетривиальный узел. У него есть левый и правый варианты: трилистник не совпадает со своим зеркальным отражением.',
+    inv: () => invTorus(2, 3) },
+  { id: '4_1', name: 'Восьмёрка', short: '4₁', note: '4_1', build: () => figureEight(),
+    desc: 'Единственный узел с четырьмя пересечениями. Совпадает со своим отражением. Его дополнение — гиперболическое многообразие наименьшего объёма среди всех узлов: 2,0298…',
+    inv: () => [['Пересечений', 4], ['Развязывание', 1], ['Род', 1], ['Мостовое число', 2], ['Определитель', 5], ['3-раскраска', 'нет'], ['Зеркальность', 'амфихирален'], ['Полином Александера', 't² − 3t + 1', 'poly']] },
+  { id: '5_1', name: 'Пятилистник', short: '5₁', note: '5_1 · T(2,&nbsp;5)', build: () => torus(2, 5),
+    desc: 'Торический узел: дважды обходит ось тора и пять раз — вокруг его трубки. Похож на звезду с пятью лучами.',
+    inv: () => invTorus(2, 5) },
+  { id: '7_1', name: 'Семилистник', short: '7₁', note: '7_1 · T(2,&nbsp;7)', build: () => torus(2, 7),
+    desc: 'Следующий в семействе T(2, n): каждый шаг добавляет два пересечения и ещё одну «розетку».',
+    inv: () => invTorus(2, 7) },
+  { id: '8_19', name: 'Узел T(3, 4)', short: '8₁₉', note: '8_19 · T(3,&nbsp;4)', build: () => torus(3, 4),
+    desc: 'Первый неальтернирующий узел таблицы: его нельзя нарисовать так, чтобы проходы «над» и «под» чередовались вдоль нити.',
+    inv: () => invTorus(3, 4) },
+  { id: '10_124', name: 'Узел T(3, 5)', short: '10₁₂₄', note: '10_124 · T(3,&nbsp;5)', build: () => torus(3, 5),
+    desc: 'Определитель равен 1, как у незаузленной петли, — но это настоящий узел: его выдаёт полином Александера.',
+    inv: () => invTorus(3, 5) },
+  { id: 'liss', name: 'Узел Лиссажу', short: 'Лис', note: '(3, 2, 7) · фазы 0,7 и 0,2', build: () => lissajous(3, 2, 7, 0.7, 0.2),
+    desc: 'Трёхмерная фигура Лиссажу: каждая координата — косинус со своей частотой. Если частоты попарно взаимно просты, кривая замкнута и не пересекает себя.',
+    inv: () => [['Частоты', '3, 2, 7'], ['Фазы', 'φₓ = 0,7, φᵧ = 0,2'], ['Вид', 'x = cos(3t + φₓ)'], ['', 'y = cos(2t + φᵧ)'], ['', 'z = cos 7t']] },
+  { id: 'hopf', name: 'Зацепление Хопфа', short: 'Хопф', note: 'L2a1 · 2 компоненты', build: () => hopf(),
+    desc: 'Две петли, сцепленные ровно один раз. Каждая по отдельности — не узел, вместе — не разнять.',
+    inv: () => [['Компонент', 2], ['Пересечений', 2], ['Коэффициент зацепления', '±1'], ['Как T(p, q)', 'T(2, 2)']] },
+  { id: 'borr', name: 'Кольца Борромео', short: 'Бор', note: 'L6a4 · 3 компоненты', build: () => borromean(),
+    desc: 'Три кольца держатся вместе, хотя любые два из них не сцеплены. Разрежь одно — рассыплются все.',
+    inv: () => [['Компонент', 3], ['Пересечений', 6], ['Попарное зацепление', '0'], ['Сборка', 'три эллипса в перпендикулярных плоскостях']] },
+  { id: 'tpq', name: 'Конструктор T(p, q)', short: 'T(p,q)', builder: 'torus', build: () => torus(builderState.p, builderState.q),
+    desc: 'Любой торический узел. Если p и q имеют общий делитель d, получится зацепление из d петель.' },
+  { id: 'lpq', name: 'Конструктор Лиссажу', short: 'Лис+', builder: 'liss', build: () => lissajous(builderState.nx, builderState.ny, builderState.nz, builderState.px, builderState.py),
+    desc: 'Выберите частоты и фазы. Попарно взаимно простые частоты дают узел, остальные — вырожденные кривые.' },
+];
+const builderState = { p: 3, q: 7, nx: 3, ny: 4, nz: 7, px: 0.1, py: 0.7 };
+
+// Нормировка: центр в нуле, радиус 1.85
+function normalize(comps) {
+  const c = new THREE.Vector3(); let n = 0;
+  comps.forEach((pts) => pts.forEach((p) => { c.add(p); n++; }));
+  c.divideScalar(n);
+  let R = 0;
+  comps.forEach((pts) => pts.forEach((p) => { p.sub(c); R = Math.max(R, p.length()); }));
+  const s = 1.5 / R;
+  comps.forEach((pts) => pts.forEach((p) => p.multiplyScalar(s)));
+  return comps;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Диаграмма узла (SVG): ищем пересечения проекции и рвём нижнюю нить —
+// как в учебнике, и на любом фоне
+// ─────────────────────────────────────────────────────────────
+function segX(a, b, c, d) {
+  const r1x = b.x - a.x, r1y = b.y - a.y, r2x = d.x - c.x, r2y = d.y - c.y;
+  const den = r1x * r2y - r1y * r2x;
+  if (Math.abs(den) < 1e-12) return null;
+  const s = ((c.x - a.x) * r2y - (c.y - a.y) * r2x) / den;
+  const t = ((c.x - a.x) * r1y - (c.y - a.y) * r1x) / den;
+  return s >= 0 && s <= 1 && t >= 0 && t <= 1 ? { s, t } : null;
+}
+function diagramSVG(comps, size = 100, stroke = 3) {
+  const tilt = new THREE.Euler(-0.35, 0, 0);
+  const polys = comps.map((pts) => {
+    const step = Math.max(1, Math.floor(pts.length / 260));
+    const P = [];
+    for (let i = 0; i < pts.length; i += step) P.push(pts[i].clone().applyEuler(tilt));
+    return P;
+  });
+  const segs = [], totals = [];
+  polys.forEach((P, ci) => {
+    let acc = 0;
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length];
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      segs.push({ ci, i, a, b, s0: acc, len });
+      acc += len;
+    }
+    totals.push(acc);
+  });
+  const gaps = polys.map(() => []);
+  for (let u = 0; u < segs.length; u++) {
+    const A = segs[u];
+    for (let v = u + 1; v < segs.length; v++) {
+      const B = segs[v];
+      if (A.ci === B.ci) { const n = polys[A.ci].length, d = Math.abs(A.i - B.i); if (d <= 1 || d >= n - 1) continue; }
+      const r = segX(A.a, A.b, B.a, B.b);
+      if (!r) continue;
+      const za = A.a.z + (A.b.z - A.a.z) * r.s, zb = B.a.z + (B.b.z - B.a.z) * r.t;
+      if (za < zb) gaps[A.ci].push(A.s0 + A.len * r.s); else gaps[B.ci].push(B.s0 + B.len * r.t);
+    }
+  }
+  const k = (size / 2 - stroke * 1.5) / 1.9, o = size / 2;
+  const G = (stroke * 1.9) / k;                       // полудлина разрыва в единицах кривой
+  let out = '';
+  polys.forEach((P, ci) => {
+    const T = totals[ci], gs = gaps[ci];
+    const inGap = (pos) => gs.some((g) => { const d = Math.abs(pos - g); return Math.min(d, T - d) < G; });
+    let d = '', pos = 0, pen = false;
+    for (let i = 0; i <= P.length; i++) {
+      const p = P[i % P.length];
+      if (i > 0) { const q = P[i - 1]; pos += Math.hypot(p.x - q.x, p.y - q.y); }
+      const vis = !inGap(pos % T);
+      const X = (o + p.x * k).toFixed(2), Y = (o - p.y * k).toFixed(2);
+      if (vis) { d += (pen ? 'L' : 'M') + X + ' ' + Y; pen = true; } else pen = false;
+    }
+    out += `<path d="${d}" fill="none" stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  });
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Сцена
+// ─────────────────────────────────────────────────────────────
+const canvas = $('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, SHOT ? 1 : 2));
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const BG = new THREE.Color('#111615');
+scene.fog = new THREE.Fog(BG, 13, 26);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.5;
+
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 0.9, 9.2);
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, -0.15, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 5.5;
+controls.maxDistance = 15;
+controls.maxPolarAngle = 1.72;
+controls.enablePan = false;
+controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+controls.autoRotateSpeed = 0.55;
+
+// Задник: сфера с вертикальным градиентом и мягким пятном света
+const backdrop = new THREE.Mesh(
+  new THREE.SphereGeometry(40, 48, 24),
+  new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: new THREE.Color('#1c2422') }, mid: { value: new THREE.Color('#161c1b') }, bot: { value: new THREE.Color('#0d1110') } },
+    vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform vec3 top, mid, bot; varying vec3 vP;
+      void main(){ float y = vP.y; vec3 c = y > 0.0 ? mix(mid, top, smoothstep(0.0, 0.7, y)) : mix(mid, bot, smoothstep(0.0, 0.35, -y));
+        c += vec3(0.16, 0.13, 0.09) * exp(-pow(length(vP.xy - vec2(0.0, 0.12)) * 2.6, 2.0));   // тёплое пятно прожектора на стене
+        c += vec3(0.05, 0.045, 0.035) * exp(-pow(length(vP.xy - vec2(0.0, 0.1)) * 1.1, 2.0));
+        gl_FragColor = vec4(c, 1.0); }`,
+  }),
+);
+scene.add(backdrop);
+
+// Пол и постамент
+const floor = new THREE.Mesh(new THREE.CircleGeometry(30, 64), new THREE.MeshStandardMaterial({ color: '#141a19', roughness: 0.92 }));
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -2.85;
+floor.receiveShadow = true;
+scene.add(floor);
+const plinthMat = new THREE.MeshStandardMaterial({ color: '#d9d3c7', roughness: 0.78 });
+const plinth = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.62, 1.25, 96), plinthMat);
+plinth.position.y = -2.85 + 0.625;
+plinth.castShadow = true; plinth.receiveShadow = true;
+scene.add(plinth);
+const ring = new THREE.Mesh(new THREE.TorusGeometry(1.56, 0.012, 8, 128), new THREE.MeshStandardMaterial({ color: '#b08a4a', metalness: 1, roughness: 0.35 }));
+ring.rotation.x = Math.PI / 2; ring.position.y = -1.6;
+scene.add(ring);
+
+// Свет: тёплый прожектор сверху, холодный контровой, мягкое заполнение
+const spot = new THREE.SpotLight('#ffe6c4', 260, 0, 0.42, 0.85, 2);
+spot.position.set(2.2, 8.5, 3.6);
+spot.target.position.set(0, -1.2, 0);
+spot.castShadow = true;
+spot.shadow.mapSize.set(SHOT ? 1024 : 2048, SHOT ? 1024 : 2048);
+spot.shadow.bias = -0.0004;
+spot.shadow.radius = 6;
+scene.add(spot, spot.target);
+const rim = new THREE.DirectionalLight('#9fc7ff', 1.3);
+rim.position.set(-5, 3, -6);
+scene.add(rim);
+scene.add(new THREE.HemisphereLight('#cfd9d4', '#1a1410', 0.35));
+
+// Материалы экспонатов
+const MATERIALS = {
+  glass: { label: 'Стекло с дисперсией', m: new THREE.MeshPhysicalMaterial({ color: '#ffffff', transmission: 1, roughness: 0.03, thickness: 0.55, ior: 1.5, dispersion: 4, attenuationColor: new THREE.Color('#9fdccd'), attenuationDistance: 1.4, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.4 }) },
+  brass: { label: 'Полированная латунь', m: new THREE.MeshPhysicalMaterial({ color: '#d2ac66', metalness: 1, roughness: 0.24, clearcoat: 0.35, clearcoatRoughness: 0.2, envMapIntensity: 1.3 }) },
+  porcelain: { label: 'Глазурованный фарфор', m: new THREE.MeshPhysicalMaterial({ color: '#f1ece2', roughness: 0.38, clearcoat: 1, clearcoatRoughness: 0.08, sheen: 0.4, sheenColor: new THREE.Color('#fff4e0') }) },
+  obsidian: { label: 'Обсидиан', m: new THREE.MeshPhysicalMaterial({ color: '#0b0b0e', roughness: 0.07, clearcoat: 1, clearcoatRoughness: 0.02, iridescence: 0.55, iridescenceIOR: 1.35, envMapIntensity: 1.6 }) },
+};
+let matKey = 'glass';
+
+const knot = new THREE.Group();
+knot.rotation.x = -0.35;
+const holder = new THREE.Group();
+holder.position.y = 0.35;
+holder.add(knot);
+scene.add(holder);
+
+const TUBE_R = 0.15;
+const RESAMPLE = 420;
+
+// Равномерная по длине перевыборка замкнутой кривой
+function resample(pts, M = RESAMPLE) {
+  const L = [0];
+  for (let i = 1; i <= pts.length; i++) L.push(L[i - 1] + pts[i % pts.length].distanceTo(pts[i - 1]));
+  const total = L[L.length - 1], out = [];
+  let j = 0;
+  for (let k = 0; k < M; k++) {
+    const s = (k / M) * total;
+    while (L[j + 1] < s) j++;
+    const u = (s - L[j]) / (L[j + 1] - L[j] || 1);
+    out.push(pts[j].clone().lerp(pts[(j + 1) % pts.length], u));
+  }
+  return out;
+}
+function tubeFrom(pts) {
+  const curve = new THREE.CatmullRomCurve3(pts, true, 'centripetal');
+  return new THREE.TubeGeometry(curve, Math.min(900, pts.length * 2), TUBE_R, 28, true);
+}
+let meshes = [];
+function setMeshes(comps) {
+  meshes.forEach((m) => { knot.remove(m); m.geometry.dispose(); });
+  meshes = comps.map((pts) => {
+    const mesh = new THREE.Mesh(tubeFrom(pts), MATERIALS[matKey].m);
+    mesh.castShadow = true;
+    knot.add(mesh);
+    return mesh;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// Переходы: морфинг одной петли в другую или «смена витрины» для зацеплений
+// ─────────────────────────────────────────────────────────────
+let current = null;      // массив компонент (перевыбранных)
+let morph = null;        // { from, to, t0, dur }
+let swap = null;         // { comps, t0 }
+
+function alignTo(a, b) {
+  // сдвиг начала и направление обхода b, чтобы минимизировать путь точек
+  const M = a.length;
+  let best = { cost: Infinity, off: 0, rev: false };
+  for (const rev of [false, true]) {
+    const bb = rev ? b.slice().reverse() : b;
+    for (let off = 0; off < M; off += 6) {
+      let cost = 0;
+      for (let i = 0; i < M; i += 7) cost += a[i].distanceToSquared(bb[(i + off) % M]);
+      if (cost < best.cost) best = { cost, off, rev };
+    }
+  }
+  const bb = best.rev ? b.slice().reverse() : b;
+  return a.map((_, i) => bb[(i + best.off) % M]);
+}
+
+function showExhibit(comps, animate = true) {
+  const next = normalize(comps).map((c) => resample(c));
+  if (!current || !animate || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    current = next; setMeshes(current); return;
+  }
+  if (current.length === 1 && next.length === 1) {
+    morph = { from: current[0], to: alignTo(current[0], next[0]), t0: performance.now(), dur: 1500 };
+    current = [morph.to];
+    $('note').classList.add('show');
+    clearTimeout(showExhibit.tm);
+    showExhibit.tm = setTimeout(() => $('note').classList.remove('show'), 3600);
+  } else {
+    swap = { comps: next, t0: performance.now(), done: false };
+    current = next;
+  }
+}
+const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+
+// ─────────────────────────────────────────────────────────────
+// Интерфейс
+// ─────────────────────────────────────────────────────────────
+let idx = 0;
+const shelf = $('shelf');
+EXHIBITS.forEach((ex, i) => {
+  const b = document.createElement('button');
+  b.className = 'ex';
+  b.setAttribute('aria-label', ex.name);
+  const comps = normalize(ex.build());
+  b.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true">${diagramSVG(comps, 100, 5)}</svg><span>${ex.short}</span>`;
+  b.addEventListener('click', () => select(i));
+  shelf.appendChild(b);
+});
+
+function fillInv(rows) {
+  $('inv').innerHTML = rows.map(([k, v, cls]) => `<dt>${k}</dt><dd${cls ? ` class="${cls}"` : ''}>${v}</dd>`).join('');
+}
+
+function buildBuilder(kind) {
+  const el = $('builder');
+  if (!kind) { el.classList.remove('on'); el.innerHTML = ''; return; }
+  el.classList.add('on');
+  const rows = kind === 'torus'
+    ? [['p', 'p (ось)', 1, 9, 1], ['q', 'q (трубка)', 1, 11, 1]]
+    : [['nx', 'частота x', 1, 9, 1], ['ny', 'частота y', 1, 9, 1], ['nz', 'частота z', 1, 11, 1], ['px', 'фаза x', 0, 3.14, 0.01], ['py', 'фаза y', 0, 3.14, 0.01]];
+  el.innerHTML = rows.map(([key, lab, mn, mx, st]) =>
+    `<div class="row"><label for="b_${key}">${lab}</label><input id="b_${key}" type="range" min="${mn}" max="${mx}" step="${st}" value="${builderState[key]}"><output id="o_${key}"></output></div>`).join('') + '<div class="warn" id="warn"></div>';
+  rows.forEach(([key]) => {
+    const inp = $('b_' + key);
+    const upd = () => {
+      builderState[key] = +inp.value;
+      $('o_' + key).textContent = st(key);
+      inp.style.setProperty('--p', ((inp.value - inp.min) / (inp.max - inp.min)) * 100 + '%');
+    };
+    const st = (k) => (k === 'px' || k === 'py' ? builderState[k].toFixed(2).replace('.', ',') : builderState[k]);
+    upd();
+    let tm;
+    inp.addEventListener('input', () => { upd(); clearTimeout(tm); tm = setTimeout(() => refreshBuilder(true), 60); });
+  });
+  refreshBuilder(false);
+}
+
+function refreshBuilder(apply) {
+  const ex = EXHIBITS[idx];
+  const w = $('warn');
+  if (ex.builder === 'torus') {
+    const { p, q } = builderState, I = torusInfo(p, q);
+    if (I.trivial) {
+      $('notation').innerHTML = `T(${p},&nbsp;${q}) · незаузленная петля`;
+      fillInv([['Пересечений', 0], ['Почему', 'при p или q = 1 петля развязывается']]);
+      w.textContent = 'При p = 1 или q = 1 узла нет — это просто кольцо.';
+    } else if (I.link) {
+      $('notation').innerHTML = `T(${p},&nbsp;${q}) · зацепление`;
+      fillInv([['Компонент', I.link], ['Каждая петля', `T(${p / I.link}, ${q / I.link})`], ['НОД(p, q)', I.link]]);
+      w.textContent = `НОД(${p}, ${q}) = ${I.link}: вместо узла — ${I.link} сцепленные петли.`;
+    } else {
+      $('notation').innerHTML = `T(${p},&nbsp;${q})`;
+      fillInv(invTorus(p, q));
+      w.textContent = '';
+    }
+  } else if (ex.builder === 'liss') {
+    const { nx, ny, nz } = builderState;
+    const ok = gcd(nx, ny) === 1 && gcd(ny, nz) === 1 && gcd(nx, nz) === 1;
+    $('notation').innerHTML = `(${nx}, ${ny}, ${nz})`;
+    fillInv([['Частоты', `${nx}, ${ny}, ${nz}`], ['Попарно взаимно просты', ok ? 'да' : 'нет'], ['Фазы', `${builderState.px.toFixed(2).replace('.', ',')} и ${builderState.py.toFixed(2).replace('.', ',')}`]]);
+    w.textContent = ok ? '' : 'Частоты имеют общий делитель: кривая проходит сама по себе или вырождается.';
+  }
+  if (apply) showExhibit(ex.build(), true);
+  drawDiagram();
+}
+
+function drawDiagram() {
+  $('diagram').innerHTML = diagramSVG(current || normalize(EXHIBITS[idx].build()), 100, 2.8);
+}
+
+function select(i, animate = true) {
+  idx = (i + EXHIBITS.length) % EXHIBITS.length;
+  const ex = EXHIBITS[idx];
+  shelf.querySelectorAll('.ex').forEach((b, j) => b.setAttribute('aria-current', String(j === idx)));
+  shelf.children[idx].scrollIntoView({ block: 'nearest', inline: 'center', behavior: animate ? 'smooth' : 'auto' });
+  $('kicker').textContent = `Экспонат ${String(idx + 1).padStart(2, '0')} из ${EXHIBITS.length}`;
+  $('name').textContent = ex.name;
+  $('desc').textContent = ex.desc;
+  if (ex.builder) {
+    buildBuilder(ex.builder);
+    showExhibit(ex.build(), animate);
+    refreshBuilder(false);
+  } else {
+    buildBuilder(null);
+    $('notation').innerHTML = sub(ex.note);
+    fillInv(ex.inv());
+    showExhibit(ex.build(), animate);
+  }
+  drawDiagram();
+}
+
+document.querySelectorAll('.sw').forEach((b) => b.addEventListener('click', () => {
+  matKey = b.dataset.mat;
+  document.querySelectorAll('.sw').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  $('matname').textContent = MATERIALS[matKey].label;
+  meshes.forEach((m) => { m.material = MATERIALS[matKey].m; });
+}));
+$('spin').addEventListener('click', () => {
+  controls.autoRotate = !controls.autoRotate;
+  $('spin').setAttribute('aria-pressed', String(controls.autoRotate));
+});
+$('more').addEventListener('click', () => {
+  const open = $('placard').classList.toggle('open');
+  $('more').setAttribute('aria-expanded', String(open));
+  $('more').textContent = open ? 'Свернуть' : 'Подробнее';
+});
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight') select(idx + 1);
+  if (e.key === 'ArrowLeft') select(idx - 1);
+});
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  // на узком экране отодвигаем камеру, чтобы экспонат помещался
+  camera.position.setLength(camera.aspect < 0.8 ? 12.5 : 9.6);
+  // на широком экране экспонат сдвигаем вправо от таблички, не меняя центр вращения
+  if (camera.aspect > 1.25) camera.setViewOffset(innerWidth, innerHeight, -innerWidth * 0.1, 0, innerWidth, innerHeight);
+  else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+select(0, false);
+
+// ─────────────────────────────────────────────────────────────
+// Цикл
+// ─────────────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+function frame() {
+  requestAnimationFrame(frame);
+  if (document.hidden) return;
+  const t = clock.getElapsedTime();
+  holder.position.y = 0.35 + Math.sin(t * 0.9) * 0.05;
+  knot.rotation.z = Math.sin(t * 0.21) * 0.08;
+
+  if (morph) {
+    const u = Math.min(1, (performance.now() - morph.t0) / morph.dur);
+    const e = ease(u);
+    const pts = morph.from.map((a, i) => a.clone().lerp(morph.to[i], e));
+    // вспучивание в середине перехода — нить «пролетает» сквозь себя красивее
+    const bulge = Math.sin(u * Math.PI) * 0.12;
+    pts.forEach((p) => p.multiplyScalar(1 + bulge));
+    setMeshes([pts]);
+    knot.rotation.y = Math.sin(u * Math.PI) * 0.6;
+    if (u >= 1) { morph = null; setMeshes(current); knot.rotation.y = 0; }
+  } else if (swap) {
+    const u = Math.min(1, (performance.now() - swap.t0) / 900);
+    if (u < 0.5) { const s = 1 - ease(u * 2); knot.scale.setScalar(Math.max(0.001, s)); knot.rotation.y = u * 2.2; }
+    else {
+      if (!swap.done) { setMeshes(swap.comps); swap.done = true; }
+      const s = ease((u - 0.5) * 2); knot.scale.setScalar(Math.max(0.001, s)); knot.rotation.y = (1 - u) * 2.2;
+    }
+    if (u >= 1) { swap = null; knot.scale.setScalar(1); knot.rotation.y = 0; }
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+  window.__knotReady = true;
+}
+frame();
+</script>
+</body>
+</html>

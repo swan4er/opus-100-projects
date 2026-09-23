@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Кофейник Жорж — мультфильм</title>
+<meta name="description" content="Короткий «резиновый» мультфильм в духе 1930-х: чёрно-белая плёнка, руки-шланги в белых перчатках и регтайм. Всё нарисовано и сыграно кодом.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yeseva+One&family=Kelly+Slab&family=Oswald:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="head">
+    <div class="title">
+      <span class="num">№ 063</span>
+      <h1>Кофейник Жорж</h1>
+      <p class="sub">резиновая анимация 1930-х · 1&nbsp;мин 55&nbsp;с</p>
+    </div>
+  </header>
+
+  <button class="ticket" id="ticket" type="button">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z" fill="currentColor"/><path d="M15.2 8.8a4.6 4.6 0 0 1 0 6.4M17.6 6.4a8 8 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <span>Смотреть со&nbsp;звуком</span>
+  </button>
+
+  <div class="screen" id="screen">
+    <canvas id="film" role="img" aria-label="Мультфильм «Кофейник Жорж»"></canvas>
+  </div>
+
+  <div class="player" id="player">
+    <button class="btn play" id="play" type="button" aria-label="Пауза">
+      <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="3.6" height="14" rx="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1"/></svg>
+      <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 5.2v13.6a.8.8 0 0 0 1.2.7l11-6.8a.8.8 0 0 0 0-1.4l-11-6.8a.8.8 0 0 0-1.2.7z"/></svg>
+      <svg class="i-again" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.2 12a6.8 6.8 0 1 0 2-4.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M4.4 4.2v4.6H9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="lbl">Пауза</span>
+    </button>
+    <div class="timeline">
+    <span class="time" id="cur">0:00</span>
+    <div class="track" id="track" role="slider" tabindex="0" aria-label="Перемотка" aria-valuemin="0" aria-valuemax="115" aria-valuenow="0">
+      <div class="rail"><div class="fill" id="fill"></div></div>
+      <div class="marks" id="marks"></div>
+      <div class="knob" id="knob"></div>
+      <div class="tip" id="tip"></div>
+    </div>
+    <span class="time dur" id="dur">1:55</span>
+    </div>
+    <span class="scene" id="scene">Титры</span>
+    <div class="tools">
+      <button class="btn icon" id="snd" type="button" aria-label="Звук выключен" aria-pressed="false">
+        <svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z"/><path d="M15.2 8.8a4.6 4.6 0 0 1 0 6.4M17.6 6.4a8 8 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z"/><path d="M15.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button class="btn icon" id="replay" type="button" aria-label="Смотреть сначала">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.2 12a6.8 6.8 0 1 0 2-4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4.4 4.2v4.6H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="btn icon" id="fs" type="button" aria-label="Во весь экран">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <p class="note" id="note">Кофейник Жорж будит кухню, а самая маленькая чашка боится спрыгнуть с&nbsp;полки. <span class="keys">Пробел&nbsp;— пауза, ←&nbsp;→&nbsp;— на&nbsp;5&nbsp;секунд, F&nbsp;— весь экран.</span></p>
+</div>
+
+<script src="engine.js"></script>
+<script src="cast.js"></script>
+<script src="set.js"></script>
+<script src="acting.js"></script>
+<script src="story.js"></script>
+<script src="score.js"></script>
+<script src="player.js"></script>
+</body>
+</html>

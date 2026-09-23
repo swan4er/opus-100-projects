@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>От кварка до квазара</title>
+<meta name="description" content="Непрерывный зум через 45 порядков величины: от кварка внутри протона до наблюдаемой Вселенной. Центр экрана — всегда вы.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js" async id="topojs"></script>
+<style>
+:root{
+  --text:#f2ede4;
+  --soft:#b4ab9f;
+  --dim:#8f877d;
+  --acc:#ffcf7a;
+  --line:rgba(242,237,228,.16);
+  --display:'Unbounded','Arial Black',sans-serif;
+  --sans:'Onest','Helvetica Neue',Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#0c0a0d;color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:ns-resize}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+.title{position:fixed;left:40px;top:34px;z-index:2;pointer-events:none;max-width:460px}
+.title .k{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);font-weight:500}
+.title h1{font-family:var(--display);font-weight:700;font-size:40px;line-height:1.02;letter-spacing:-.02em;margin:10px 0 12px}
+.title p{font-size:15px;line-height:1.5;color:var(--soft);max-width:34ch}
+
+/* шкала порядков справа */
+.rail{position:fixed;right:34px;top:50%;transform:translateY(-50%);height:min(72vh,640px);width:120px;z-index:3;cursor:ns-resize;touch-action:none}
+.rail .track{position:absolute;right:52px;top:0;bottom:0;width:1px;background:var(--line)}
+.rail .tick{position:absolute;right:52px;height:1px;background:rgba(242,237,228,.35)}
+.rail .lab{position:absolute;right:0;transform:translateY(-50%);font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rail .obj{position:absolute;right:48px;width:9px;height:1px;background:rgba(255,207,122,.5)}
+.rail .cur{position:absolute;right:40px;width:26px;height:2px;background:var(--acc);transform:translateY(-50%)}
+.rail .cur b{position:absolute;right:32px;top:-9px;font-size:12px;font-weight:600;color:var(--acc);white-space:nowrap}
+
+/* карточка объекта в фокусе */
+.card{position:fixed;left:40px;bottom:34px;z-index:2;max-width:430px;pointer-events:none;transition:opacity .35s}
+.card .name{font-family:var(--display);font-weight:600;font-size:26px;line-height:1.1;margin-bottom:6px}
+.card .size{font-size:15px;color:var(--acc);font-weight:500;margin-bottom:8px;font-variant-numeric:tabular-nums}
+.card .fact{font-size:15px;line-height:1.5;color:var(--soft)}
+.card .cmp{display:inline-block;margin-left:8px;font-size:12px;color:var(--dim);border:1px solid var(--line);padding:1px 6px;vertical-align:2px}
+
+/* линейка и кнопки */
+.bottom{position:fixed;right:34px;bottom:30px;z-index:3;display:flex;flex-direction:column;align-items:flex-end;gap:14px}
+.ruler{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.ruler .bar{height:8px;border:1px solid rgba(242,237,228,.7);border-top:0}
+.ruler span{font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}
+.jumps{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;max-width:520px}
+.jumps button{font-size:13px;padding:7px 10px;border:1px solid var(--line);color:var(--soft);transition:border-color .2s,color .2s,background .2s}
+.jumps button:hover{border-color:rgba(255,207,122,.6);color:var(--text)}
+.jumps button.tour{background:var(--acc);border-color:var(--acc);color:#1d1406;font-weight:600}
+.hint{position:fixed;left:50%;top:26px;transform:translateX(-50%);z-index:2;font-size:13px;color:var(--dim);pointer-events:none;transition:opacity .6s}
+
+@media (max-width:820px){
+  .title{left:18px;top:18px;right:18px}
+  .title h1{font-size:26px}
+  .title p{display:none}
+  .rail{right:6px;width:84px;height:46vh;top:44%}
+  .rail .track,.rail .tick{right:40px}
+  .rail .obj{right:36px}
+  .rail .cur{right:30px;width:20px}
+  .rail .lab{font-size:11px}
+  .card{left:18px;right:18px;bottom:128px;max-width:none}
+  .card .name{font-size:20px}
+  .card .fact{font-size:14px}
+  .bottom{right:12px;left:12px;bottom:14px;align-items:stretch}
+  .ruler{align-items:flex-end}
+  .jumps{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;max-width:none;padding-bottom:2px;scrollbar-width:none}
+  .jumps button{flex:none}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Зум через масштабы Вселенной. Колесо мыши или перетаскивание вверх-вниз меняет масштаб."></canvas>
+<header class="title">
+  <div class="k">45 порядков величины</div>
+  <h1>От кварка до&nbsp;квазара</h1>
+  <p>Центр экрана&nbsp;— всегда вы. Внутрь&nbsp;— к&nbsp;атомам вашего тела, наружу&nbsp;— к&nbsp;краю наблюдаемой Вселенной.</p>
+</header>
+<div class="hint" id="hint">колесо вверх&nbsp;— внутрь, к&nbsp;кварку · вниз&nbsp;— наружу, к&nbsp;квазару</div>
+<div class="rail" id="rail"><div class="track"></div></div>
+<div class="card" id="card"><div class="name" id="cName"></div><div class="size" id="cSize"></div><div class="fact" id="cFact"></div></div>
+<div class="bottom">
+  <div class="ruler"><div class="bar" id="rBar"></div><span id="rText"></span></div>
+  <div class="jumps" id="jumps">
+    <button class="tour" id="tour">Путешествие</button>
+    <button data-s="-14.9">Протон</button>
+    <button data-s="-9.3">Атом</button>
+    <button data-s="-4.3">Клетка</button>
+    <button data-s="0.35">Человек</button>
+    <button data-s="4.75">Москва</button>
+    <button data-s="7.25">Земля</button>
+    <button data-s="12.2">Планеты</button>
+    <button data-s="21.2">Галактика</button>
+    <button data-s="26.95">Вселенная</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════════
+   S — десятичный логарифм высоты экрана в метрах.
+   Каждый объект задан размером (м) и положением относительно «вас» (м).
+   Центральная цепочка вложена: кварк ⊂ протон ⊂ ядро ⊂ атом ⊂ ДНК ⊂ ядро клетки
+   ⊂ клетка ⊂ человек ⊂ Москва ⊂ Земля; дальше — честные положения:
+   Солнце в 1 а. е. сбоку, центр Галактики в 26 000 св. лет и т. д.
+   ════════════════════════════════════════════════════════════════ */
+const $ = (s) => document.querySelector(s);
+const cv = $('#c'), mainCtx = cv.getContext('2d');
+let ctx = mainCtx;
+let W = 0, H = 0, DPR = 1;
+const LY = 9.4607e15, AU = 1.496e11, KM = 1e3;
+const TAU = Math.PI * 2;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* детерминированный ГПСЧ для процедурных текстур */
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+function glow(x, y, r, color, a = 1) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, color.replace('A', a)); g.addColorStop(1, color.replace('A', 0));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+}
+function sprite(size, painter) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  painter(c.getContext('2d'), size); return c;
+}
+const spriteCache = {};
+const spr = (name, size, painter) => spriteCache[name] || (spriteCache[name] = sprite(size, painter));
+function drawSprite(s, R, rot = 0) {
+  ctx.save(); ctx.rotate(rot); ctx.drawImage(s, -R, -R, R * 2, R * 2); ctx.restore();
+}
+
+/* ── Земля: настоящие материки (world-atlas), если есть сеть ──
+   Суша растеризуется в равнопромежуточную карту, а глобус над Москвой
+   строится попиксельно обратной ортографической проекцией — без артефактов на горизонте. */
+let earthSprite = null;
+async function loadLand() {
+  try {
+    await new Promise((res, rej) => {
+      if (window.topojson) return res();
+      const sc = $('#topojs'); sc.addEventListener('load', res); sc.addEventListener('error', rej);
+      setTimeout(() => (window.topojson ? res() : rej()), 8000);
+    });
+    const topo = await (await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json')).json();
+    const land = window.topojson.feature(topo, topo.objects.land);
+    const EW = 2048, EH = 1024;
+    const eq = document.createElement('canvas'); eq.width = EW; eq.height = EH;
+    const e = eq.getContext('2d');
+    e.fillStyle = '#fff'; e.beginPath();
+    const feats = land.type === 'FeatureCollection' ? land.features : [land];
+    const polys = [];
+    for (const f of feats) {
+      if (!f.geometry) continue;
+      if (f.geometry.type === 'MultiPolygon') polys.push(...f.geometry.coordinates);
+      else if (f.geometry.type === 'Polygon') polys.push(f.geometry.coordinates);
+    }
+    for (const poly of polys) for (const ring of poly) {
+      ring.forEach(([lon, lat], i) => { const x = ((lon + 180) / 360) * EW, y = ((90 - lat) / 180) * EH; i ? e.lineTo(x, y) : e.moveTo(x, y); });
+      e.closePath();
+    }
+    e.fill('evenodd');
+    const src = e.getImageData(0, 0, EW, EH).data;
+    const N = 900, lat0 = 55.756 * Math.PI / 180, lon0 = 37.617 * Math.PI / 180;
+    const sp = document.createElement('canvas'); sp.width = sp.height = N;
+    const x = sp.getContext('2d'), img = x.createImageData(N, N), d = img.data;
+    const sl = Math.sin(lat0), cl = Math.cos(lat0), r = rng(4);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const u = ((i + 0.5) / N) * 2 - 1, v = 1 - ((j + 0.5) / N) * 2, rho = Math.hypot(u, v);
+      if (rho >= 1) continue;
+      const c = Math.asin(rho), sc = Math.sin(c), cc = Math.cos(c);
+      const lat = rho ? Math.asin(cc * sl + (v * sc * cl) / rho) : lat0;
+      const lon = lon0 + Math.atan2(u * sc, rho * cl * cc - v * sl * sc);
+      let lx = Math.floor(((((lon * 180) / Math.PI + 540) % 360) / 360) * EW), ly = Math.floor(((90 - (lat * 180) / Math.PI) / 180) * EH);
+      ly = Math.min(EH - 1, Math.max(0, ly));
+      if (src[(ly * EW + lx) * 4 + 3] < 128) continue;
+      const k = (j * N + i) * 4, alat = Math.abs(lat * 180 / Math.PI), n = r() * 14 - 7;
+      let col = alat > 66 ? [214, 224, 226] : alat < 33 && alat > 12 ? [176, 150, 102] : [104, 138, 84];
+      d[k] = col[0] + n; d[k + 1] = col[1] + n; d[k + 2] = col[2] + n; d[k + 3] = 255;
+    }
+    x.putImageData(img, 0, 0);
+    earthSprite = sp;
+  } catch (err) { earthSprite = null; }
+}
+loadLand();
+
+/* ── объекты ─────────────────────────────────────────────────── */
+const OBJ = [];
+const add = (o) => OBJ.push(Object.assign({ pos: [0, 0], cmp: false }, o));
+
+add({ id: 'quark', name: 'Кварк', size: 1e-18, fact: 'Размер кварка не измерен: эксперименты дают только верхнюю границу — меньше 10⁻¹⁸ м. Возможно, он вообще точечный.',
+  draw(R, t) { glow(0, 0, R * 3.2, 'rgba(255,90,110,A)', 0.55); glow(0, 0, R * 1.2, 'rgba(255,220,220,A)', 1); } });
+add({ id: 'proton', name: 'Протон', size: 1.7e-15, fact: 'Три кварка, склеенные глюонами. Почти вся масса протона — энергия этого поля, а не масса самих кварков.',
+  draw(R, t) {
+    glow(0, 0, R * 1.15, 'rgba(160,90,255,A)', 0.55);
+    const q = [[0, 0, '#ff5a6e'], [R * 0.52, -R * 0.3, '#5ee37c'], [R * 0.12, R * 0.55, '#5aa8ff']];
+    ctx.lineWidth = Math.max(1, R * 0.02);
+    for (let i = 0; i < 3; i++) { const a = q[i], b = q[(i + 1) % 3];
+      ctx.strokeStyle = 'rgba(255,230,160,.55)'; ctx.beginPath();
+      for (let k = 0; k <= 40; k++) { const u = k / 40, x = a[0] + (b[0] - a[0]) * u, y = a[1] + (b[1] - a[1]) * u, n = [-(b[1] - a[1]), b[0] - a[0]], L = Math.hypot(...n) || 1, w = Math.sin(u * 28 + t * 6) * R * 0.035;
+        const px = x + n[0] / L * w, py = y + n[1] / L * w; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+      ctx.stroke(); }
+    for (const [x, y, c] of q) { glow(x, y, R * 0.16, 'rgba(255,255,255,A)', 0.4); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, R * 0.075, 0, TAU); ctx.fill(); }
+  } });
+add({ id: 'nucleus', name: 'Ядро атома углерода', size: 5.5e-15, fact: '6 протонов и 6 нейтронов. Ядро в 60 000 раз меньше атома, но в нём 99,97 % массы.',
+  draw(R) {
+    const pts = [[0.42, 0.1], [-0.36, 0.28], [0.1, -0.46], [-0.2, -0.36], [0.4, -0.3], [-0.46, -0.12], [0.2, 0.44], [-0.12, 0.46], [0.5, 0.36], [-0.5, 0.42], [0.05, 0.0]];
+    pts.forEach(([x, y], i) => {
+      if (i === 10) return;
+      const g = ctx.createRadialGradient(x * R - R * 0.08, y * R - R * 0.08, R * 0.02, x * R, y * R, R * 0.26);
+      g.addColorStop(0, i % 2 ? '#e8b7ff' : '#ff9a8a'); g.addColorStop(1, i % 2 ? '#6d4a9a' : '#9a3a3a');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x * R, y * R, R * 0.25, 0, TAU); ctx.fill();
+    });
+  } });
+add({ id: 'uranium', name: 'Ядро урана-238', size: 1.5e-14, pos: [1.35e-14, 0.2e-14], cmp: true, fact: '238 нуклонов — самое тяжёлое из ядер, которых в природе много. И всё равно в тысячи раз меньше атома.',
+  draw(R) {
+    const r = rng(238);
+    for (let i = 0; i < 170; i++) { const a = r() * TAU, d = Math.sqrt(r()) * R * 0.86, x = Math.cos(a) * d, y = Math.sin(a) * d;
+      ctx.fillStyle = r() < 0.39 ? '#ff8f7e' : '#b98be6'; ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.arc(x, y, R * 0.075, 0, TAU); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  } });
+add({ id: 'atom', name: 'Атом углерода', size: 3.4e-10, fact: 'Почти целиком пустота: электронное облако в поперечнике около 0,34 нм, а ядро в центре в 60 000 раз меньше.',
+  draw(R, t) {
+    const s = spr('atom', 512, (x, n) => {
+      const r = rng(6);
+      for (let i = 0; i < 9000; i++) { const a = r() * TAU, rr = -Math.log(1 - r() * 0.985) * 0.2, d = Math.min(0.98, rr) * n / 2;
+        x.fillStyle = `rgba(120,200,255,${0.08 + r() * 0.12})`; x.fillRect(n / 2 + Math.cos(a) * d, n / 2 + Math.sin(a) * d, 2, 2); }
+      const g = x.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+      g.addColorStop(0, 'rgba(110,190,255,.28)'); g.addColorStop(0.6, 'rgba(60,120,220,.1)'); g.addColorStop(1, 'rgba(40,80,200,0)');
+      x.fillStyle = g; x.fillRect(0, 0, n, n);
+    });
+    drawSprite(s, R, t * 0.05);
+    ctx.fillStyle = '#ffd7a0'; ctx.beginPath(); ctx.arc(0, 0, Math.max(1.2, R * 0.004), 0, TAU); ctx.fill();
+  } });
+add({ id: 'water', name: 'Молекула воды', size: 2.8e-10, pos: [4.3e-10, 0.9e-10], cmp: true, fact: 'Кислород и два водорода под углом 104,5°. В стакане воды таких молекул около 10²⁵.',
+  draw(R) {
+    const ball = (x, y, r, c1, c2) => { const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r); g.addColorStop(0, c1); g.addColorStop(1, c2); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); };
+    const a = 104.5 / 2 * Math.PI / 180;
+    ball(Math.sin(a) * R * 0.62, Math.cos(a) * R * 0.5, R * 0.3, '#ffffff', '#9aa6b8');
+    ball(-Math.sin(a) * R * 0.62, Math.cos(a) * R * 0.5, R * 0.3, '#ffffff', '#9aa6b8');
+    ball(0, -R * 0.12, R * 0.48, '#ff8a7a', '#b3332c');
+  } });
+add({ id: 'dna', name: 'ДНК', size: 1.2e-8, fact: 'Двойная спираль шириной 2 нм. Один виток — 3,4 нм и 10 пар оснований. В каждой клетке её около двух метров.',
+  draw(R, t) {
+    const h = R, w = R * (2e-9 / 1.2e-8) * 1.0, turns = 1.2e-8 / 3.4e-9;
+    const cols = ['#ff7a6b', '#ffd36b', '#6be1ff', '#8f7bff'];
+    for (let k = 0; k <= 36; k++) {
+      const u = k / 36, y = -h + u * 2 * h, ph = u * turns * TAU + t * 0.4;
+      const x1 = Math.sin(ph) * w, x2 = Math.sin(ph + Math.PI * 0.8) * w;
+      ctx.strokeStyle = cols[k % 4]; ctx.lineWidth = Math.max(1, w * 0.18); ctx.globalAlpha = 0.85;
+      ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    for (const off of [0, Math.PI * 0.8]) {
+      ctx.strokeStyle = off ? '#9fd8ff' : '#e9f6ff'; ctx.lineWidth = Math.max(1.5, w * 0.3); ctx.beginPath();
+      for (let k = 0; k <= 200; k++) { const u = k / 200, y = -h + u * 2 * h, x = Math.sin(u * turns * TAU + t * 0.4 + off) * w; k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke();
+    }
+  } });
+add({ id: 'hemo', name: 'Гемоглобин', size: 5.5e-9, pos: [-8e-9, 3e-9], cmp: true, fact: 'Белок, который носит кислород: четыре субъединицы, в каждой — атом железа.',
+  draw(R) {
+    const c = [['#e0625a', -0.3, -0.25], ['#c94a6a', 0.3, -0.25], ['#d9745a', -0.3, 0.28], ['#b8506e', 0.3, 0.28]];
+    for (const [col, x, y] of c) { const g = ctx.createRadialGradient(x * R - R * 0.1, y * R - R * 0.1, R * 0.05, x * R, y * R, R * 0.5); g.addColorStop(0, '#ffb3a6'); g.addColorStop(1, col); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x * R, y * R, R * 0.46, 0, TAU); ctx.fill(); }
+    for (const [, x, y] of c) { ctx.fillStyle = '#ffe28a'; ctx.beginPath(); ctx.arc(x * R * 0.9, y * R * 0.9, R * 0.06, 0, TAU); ctx.fill(); }
+  } });
+add({ id: 'ribo', name: 'Рибосома', size: 2.5e-8, pos: [3.4e-8, -1.0e-8], cmp: true, fact: 'Молекулярная машина, которая по записи в РНК собирает белки — по несколько аминокислот в секунду.',
+  draw(R) {
+    ctx.fillStyle = '#8fd6a8'; ctx.beginPath(); ctx.ellipse(0, R * 0.25, R * 0.8, R * 0.55, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#f2c46b'; ctx.beginPath(); ctx.ellipse(-R * 0.1, -R * 0.42, R * 0.6, R * 0.4, -0.2, 0, TAU); ctx.fill();
+  } });
+add({ id: 'virus', name: 'Вирус гриппа', size: 1.0e-7, pos: [-1.5e-7, 0.4e-7], cmp: true, fact: 'Около 100 нм: в оптический микроскоп не увидеть. На поверхности — белки-шипы, которыми он цепляется к клеткам.',
+  draw(R) {
+    for (let i = 0; i < 40; i++) { const a = (i / 40) * TAU; ctx.strokeStyle = i % 3 ? '#d8b36a' : '#ff8a6b'; ctx.lineWidth = Math.max(1, R * 0.05);
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * R * 0.78, Math.sin(a) * R * 0.78); ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R); ctx.stroke();
+      ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(Math.cos(a) * R, Math.sin(a) * R, R * 0.045, 0, TAU); ctx.fill(); }
+    const g = ctx.createRadialGradient(-R * 0.25, -R * 0.25, R * 0.1, 0, 0, R * 0.8); g.addColorStop(0, '#f6e0b0'); g.addColorStop(1, '#8a6a3a');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R * 0.8, 0, TAU); ctx.fill();
+  } });
+add({ id: 'cellnuc', name: 'Ядро клетки', size: 6e-6, fact: 'Здесь хранится ДНК: два метра нити, свёрнутые в шар диаметром около 6 мкм.',
+  draw(R, t) {
+    const s = spr('nuc', 512, (x, n) => {
+      const g = x.createRadialGradient(n * 0.42, n * 0.4, n * 0.05, n / 2, n / 2, n / 2); g.addColorStop(0, '#6f5bb8'); g.addColorStop(0.92, '#3b2e73'); g.addColorStop(1, 'rgba(59,46,115,0)');
+      x.fillStyle = g; x.beginPath(); x.arc(n / 2, n / 2, n / 2, 0, TAU); x.fill();
+      const r = rng(77); x.strokeStyle = 'rgba(210,190,255,.35)'; x.lineWidth = 1.4;
+      for (let i = 0; i < 70; i++) { let px = n / 2 + (r() - 0.5) * n * 0.7, py = n / 2 + (r() - 0.5) * n * 0.7; x.beginPath(); x.moveTo(px, py);
+        for (let k = 0; k < 14; k++) { px += (r() - 0.5) * 24; py += (r() - 0.5) * 24; if (Math.hypot(px - n / 2, py - n / 2) < n * 0.44) x.lineTo(px, py); } x.stroke(); }
+      x.fillStyle = 'rgba(255,190,120,.55)'; x.beginPath(); x.arc(n * 0.62, n * 0.38, n * 0.09, 0, TAU); x.fill();
+    });
+    drawSprite(s, R, t * 0.02);
+  } });
+add({ id: 'ecoli', name: 'Кишечная палочка', size: 2e-6, pos: [5.4e-6, 1.6e-6], cmp: true, fact: 'Бактерия длиной 2 мкм. Жгутики крутятся, как гребные винты, — до сотни оборотов в секунду.',
+  draw(R, t) {
+    ctx.strokeStyle = 'rgba(200,230,160,.7)'; ctx.lineWidth = Math.max(1, R * 0.03);
+    for (let f = 0; f < 4; f++) { ctx.beginPath(); for (let k = 0; k <= 40; k++) { const u = k / 40, x = R * 0.9 + u * R * 1.6, y = (f - 1.5) * R * 0.12 + Math.sin(u * 12 - t * 8 + f) * R * 0.08; k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }
+    const g = ctx.createLinearGradient(0, -R * 0.25, 0, R * 0.25); g.addColorStop(0, '#c9e88f'); g.addColorStop(1, '#6f9a3c');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(-R, -R * 0.25, R * 2, R * 0.5, R * 0.25); ctx.fill();
+  } });
+add({ id: 'rbc', name: 'Эритроцит', size: 7.5e-6, pos: [-2.1e-5, 0.55e-5], cmp: true, fact: 'Двояковогнутый диск 7,5 мкм без ядра. За 120 дней жизни он проходит по сосудам несколько сотен километров.',
+  draw(R) {
+    const g = ctx.createRadialGradient(0, 0, R * 0.15, 0, 0, R); g.addColorStop(0, '#8e1d24'); g.addColorStop(0.45, '#c8323a'); g.addColorStop(0.85, '#e0474d'); g.addColorStop(1, '#a52a31');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+  } });
+add({ id: 'cell', name: 'Клетка человека', size: 2.5e-5, fact: 'В вас около 30 триллионов клеток. Эта — примерно 25 мкм: как раз на пределе того, что видно в хороший микроскоп.',
+  draw(R, t) {
+    const s = spr('cell', 768, (x, n) => {
+      const c = n / 2, r = rng(12);
+      const g = x.createRadialGradient(c, c, n * 0.05, c, c, n * 0.49); g.addColorStop(0, 'rgba(120,200,170,.35)'); g.addColorStop(0.9, 'rgba(70,150,130,.45)'); g.addColorStop(1, 'rgba(160,240,210,.9)');
+      x.fillStyle = g; x.beginPath();
+      for (let k = 0; k <= 64; k++) { const a = (k / 64) * TAU, rr = n * 0.47 * (1 + 0.03 * Math.sin(a * 5) + 0.02 * Math.sin(a * 11)); k ? x.lineTo(c + Math.cos(a) * rr, c + Math.sin(a) * rr) : x.moveTo(c + Math.cos(a) * rr, c + Math.sin(a) * rr); }
+      x.closePath(); x.fill();
+      x.strokeStyle = 'rgba(190,255,230,.8)'; x.lineWidth = 3; x.stroke();
+      for (let i = 0; i < 22; i++) { const a = r() * TAU, d = n * (0.18 + r() * 0.24), mx = c + Math.cos(a) * d, my = c + Math.sin(a) * d;
+        x.save(); x.translate(mx, my); x.rotate(r() * TAU); x.fillStyle = 'rgba(255,150,110,.75)'; x.beginPath(); x.ellipse(0, 0, n * 0.035, n * 0.014, 0, 0, TAU); x.fill(); x.restore(); }
+      x.strokeStyle = 'rgba(170,220,255,.35)'; x.lineWidth = 2;
+      for (let i = 0; i < 9; i++) { x.beginPath(); const a = r() * TAU; x.arc(c, c, n * (0.14 + i * 0.012), a, a + 1.2); x.stroke(); }
+      for (let i = 0; i < 120; i++) { const a = r() * TAU, d = n * (0.13 + r() * 0.32); x.fillStyle = 'rgba(230,240,200,.4)'; x.beginPath(); x.arc(c + Math.cos(a) * d, c + Math.sin(a) * d, 1.8, 0, TAU); x.fill(); }
+    });
+    drawSprite(s, R, 0);
+  } });
+add({ id: 'hair', name: 'Толщина волоса', size: 7e-5, pos: [6.4e-5, -1.2e-5], cmp: true, fact: 'Около 70 мкм. На нём поместится в ряд три клетки или десять эритроцитов.',
+  draw(R) {
+    ctx.save(); ctx.rotate(-0.5);
+    const g = ctx.createLinearGradient(0, -R * 0.5, 0, R * 0.5); g.addColorStop(0, '#6b4a2e'); g.addColorStop(0.5, '#b88a5a'); g.addColorStop(1, '#5a3a22');
+    ctx.fillStyle = g; ctx.fillRect(-R * 5, -R * 0.5, R * 10, R);
+    ctx.strokeStyle = 'rgba(40,24,10,.45)'; ctx.lineWidth = Math.max(1, R * 0.03);
+    for (let k = -5; k < 5; k += 0.35) { ctx.beginPath(); ctx.moveTo(k * R, -R * 0.5); ctx.quadraticCurveTo((k + 0.15) * R, 0, k * R, R * 0.5); ctx.stroke(); }
+    ctx.restore();
+  } });
+add({ id: 'tardi', name: 'Тихоходка', size: 5e-4, pos: [-6.5e-4, 1.5e-4], cmp: true, fact: 'Полмиллиметра. Переживает вакуум, радиацию и годы без воды — и не только в лаборатории.',
+  draw(R) {
+    ctx.fillStyle = '#d8c59a';
+    ctx.beginPath(); ctx.ellipse(0, 0, R, R * 0.45, 0, 0, TAU); ctx.fill();
+    for (let i = 0; i < 4; i++) { const x = -R * 0.65 + i * R * 0.43; ctx.beginPath(); ctx.ellipse(x, R * 0.45, R * 0.13, R * 0.2, 0, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#3a2f22'; ctx.beginPath(); ctx.arc(R * 0.78, -R * 0.1, R * 0.05, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(90,70,40,.5)'; ctx.lineWidth = Math.max(1, R * 0.02);
+    for (let i = 1; i < 5; i++) { ctx.beginPath(); ctx.moveTo(-R + i * R * 0.4, -R * 0.42); ctx.quadraticCurveTo(-R + i * R * 0.4 + R * 0.05, 0, -R + i * R * 0.4, R * 0.42); ctx.stroke(); }
+  } });
+add({ id: 'ant', name: 'Муравей', size: 5e-3, pos: [7.5e-3, -1.2e-3], cmp: true, fact: 'Пять миллиметров — и способен нести груз в десятки раз тяжелее себя.',
+  draw(R) {
+    ctx.fillStyle = '#2a1a12'; ctx.strokeStyle = '#2a1a12'; ctx.lineWidth = Math.max(1, R * 0.035);
+    ctx.beginPath(); ctx.ellipse(-R * 0.55, 0, R * 0.4, R * 0.26, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, R * 0.22, R * 0.14, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(R * 0.42, -R * 0.05, R * 0.2, R * 0.18, 0, 0, TAU); ctx.fill();
+    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(i * R * 0.1, 0); ctx.lineTo(i * R * 0.25 - R * 0.1, R * 0.5); ctx.lineTo(i * R * 0.4 - R * 0.2, R * 0.62); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i * R * 0.1, 0); ctx.lineTo(i * R * 0.25 - R * 0.1, -R * 0.45); ctx.lineTo(i * R * 0.4 - R * 0.2, -R * 0.58); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(R * 0.55, -R * 0.15); ctx.quadraticCurveTo(R * 0.8, -R * 0.55, R * 0.95, -R * 0.4); ctx.stroke();
+  } });
+add({ id: 'human', name: 'Вы', size: 1.75, fact: 'Около 1,75 м. От вас до атома — десять порядков вниз, до края Вселенной — двадцать шесть вверх.',
+  draw(R) {
+    const h = R * 2, s = h / 175;
+    ctx.fillStyle = '#e9dccb';
+    ctx.beginPath(); ctx.arc(0, -h / 2 + 12 * s, 11 * s, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-20 * s, -h / 2 + 30 * s); ctx.quadraticCurveTo(0, -h / 2 + 24 * s, 20 * s, -h / 2 + 30 * s);
+    ctx.lineTo(27 * s, -h / 2 + 88 * s); ctx.lineTo(19 * s, -h / 2 + 90 * s); ctx.lineTo(15 * s, -h / 2 + 50 * s);
+    ctx.lineTo(14 * s, -h / 2 + 96 * s); ctx.lineTo(12 * s, h / 2); ctx.lineTo(3 * s, h / 2); ctx.lineTo(0, -h / 2 + 104 * s);
+    ctx.lineTo(-3 * s, h / 2); ctx.lineTo(-12 * s, h / 2); ctx.lineTo(-14 * s, -h / 2 + 96 * s); ctx.lineTo(-15 * s, -h / 2 + 50 * s);
+    ctx.lineTo(-19 * s, -h / 2 + 90 * s); ctx.lineTo(-27 * s, -h / 2 + 88 * s); ctx.closePath(); ctx.fill();
+  } });
+add({ id: 'whale', name: 'Синий кит', size: 25, pos: [-26, 5], cmp: true, fact: 'Самое крупное животное в истории Земли: до 30 м и 150 тонн.',
+  draw(R) {
+    const g = ctx.createLinearGradient(0, -R * 0.2, 0, R * 0.2); g.addColorStop(0, '#5f7f9f'); g.addColorStop(1, '#2d4660');
+    ctx.fillStyle = g; ctx.beginPath();
+    ctx.moveTo(R, 0); ctx.quadraticCurveTo(R * 0.8, -R * 0.2, 0, -R * 0.19); ctx.quadraticCurveTo(-R * 0.6, -R * 0.15, -R * 0.82, -R * 0.03);
+    ctx.lineTo(-R, -R * 0.14); ctx.lineTo(-R * 0.94, 0); ctx.lineTo(-R, R * 0.12); ctx.lineTo(-R * 0.82, R * 0.03);
+    ctx.quadraticCurveTo(-R * 0.4, R * 0.14, 0, R * 0.15); ctx.quadraticCurveTo(R * 0.8, R * 0.14, R, 0); ctx.fill();
+  } });
+add({ id: 'ostankino', name: 'Останкинская башня', size: 540, pos: [430, 0], cmp: true, fact: '540 м — самое высокое сооружение Европы. Стоит на десяти опорах, а бетонный ствол стянут изнутри 149 стальными тросами.',
+  draw(R) {
+    const h = R * 2, s = h / 540, base = h / 2;
+    ctx.fillStyle = '#d9d3c6';
+    ctx.beginPath(); ctx.moveTo(-32 * s, base); ctx.lineTo(-7 * s, base - 60 * s); ctx.lineTo(-5 * s, base - 385 * s); ctx.lineTo(-2 * s, base - 540 * s); ctx.lineTo(2 * s, base - 540 * s);
+    ctx.lineTo(5 * s, base - 385 * s); ctx.lineTo(7 * s, base - 60 * s); ctx.lineTo(32 * s, base); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#9ec2d8'; ctx.fillRect(-9 * s, base - 345 * s, 18 * s, 18 * s);
+    ctx.fillStyle = '#e24b3f'; for (let i = 0; i < 4; i++) ctx.fillRect(-4 * s, base - (420 + i * 30) * s, 8 * s, 10 * s);
+  } });
+add({ id: 'everest', name: 'Эверест', size: 8849, pos: [-9500, -600], cmp: true, fact: '8849 м над уровнем моря. Реактивный лайнер летит всего на пару километров выше.',
+  draw(R) {
+    const g = ctx.createLinearGradient(0, -R, 0, R); g.addColorStop(0, '#f4f1ea'); g.addColorStop(0.35, '#b9b3a8'); g.addColorStop(1, '#4e4a45');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-R * 1.6, R); ctx.lineTo(-R * 0.7, R * 0.1); ctx.lineTo(-R * 0.4, R * 0.3); ctx.lineTo(0, -R); ctx.lineTo(R * 0.35, -R * 0.2);
+    ctx.lineTo(R * 0.6, -R * 0.35); ctx.lineTo(R * 1.6, R); ctx.closePath(); ctx.fill();
+  } });
+const RINGS = [[17.5, 'МКАД'], [5.8, 'ТТК'], [2.6, 'Садовое'], [1.25, 'Бульварное']];
+add({ id: 'moscow', name: 'Москва', size: 4e4, fact: 'Вы — в центре, на Красной площади. Кольца — Бульварное, Садовое, ТТК и МКАД (109 км по окружности).',
+  draw(R, t) {
+    const k = R / 20;   // пикселей на километр
+    ctx.fillStyle = 'rgba(80,110,90,.18)'; ctx.beginPath(); ctx.arc(0, 0, 21 * k, 0, TAU); ctx.fill();
+    // Москва-река: стилизованная кривая через центр
+    ctx.strokeStyle = 'rgba(110,170,220,.8)'; ctx.lineWidth = Math.max(1.5, k * 0.3); ctx.beginPath();
+    const riv = [[-20, 4], [-14, 9], [-9, 3], [-6, 6], [-3, 1.5], [0, 0.6], [2, -1], [1, -4], [4, -6], [7, -3], [10, -7], [15, -9], [21, -13]];
+    riv.forEach(([x, y], i) => (i ? ctx.lineTo(x * k, y * k) : ctx.moveTo(x * k, y * k))); ctx.stroke();
+    RINGS.forEach(([r, name], i) => {
+      ctx.strokeStyle = i ? 'rgba(255,207,122,.7)' : 'rgba(255,207,122,.95)'; ctx.lineWidth = Math.max(1, k * (i ? 0.18 : 0.3));
+      ctx.beginPath(); for (let a = 0; a <= 64; a++) { const an = (a / 64) * TAU, rr = r * (1 + 0.05 * Math.sin(an * 3 + i) + 0.03 * Math.sin(an * 7)) * k; a ? ctx.lineTo(Math.cos(an) * rr, Math.sin(an) * rr) : ctx.moveTo(Math.cos(an) * rr, Math.sin(an) * rr); }
+      ctx.closePath(); ctx.stroke();
+      if (r * k > 40) { ctx.fillStyle = 'rgba(255,207,122,.85)'; ctx.font = '500 12px Onest, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(name, 0, -r * k - 6); }
+    });
+    // радиальные вылетные магистрали
+    ctx.strokeStyle = 'rgba(255,207,122,.25)'; ctx.lineWidth = Math.max(1, k * 0.1);
+    for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU + 0.2; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 1.3 * k, Math.sin(a) * 1.3 * k); ctx.lineTo(Math.cos(a) * 20 * k, Math.sin(a) * 20 * k); ctx.stroke(); }
+    ctx.fillStyle = '#e24b3f'; ctx.beginPath(); ctx.arc(0, 0, Math.max(2, k * 0.35), 0, TAU); ctx.fill();
+  } });
+add({ id: 'baikal', name: 'Байкал', size: 6.36e5, pos: [-5.2e5, 2.2e5], cmp: true, fact: '636 км в длину и до 1642 м в глубину — в нём около пятой части пресной озёрной воды планеты.',
+  draw(R) {
+    ctx.save(); ctx.rotate(0.9);
+    ctx.fillStyle = '#3f86b8'; ctx.beginPath();
+    ctx.moveTo(-R, R * 0.02); ctx.bezierCurveTo(-R * 0.6, -R * 0.14, -R * 0.1, -R * 0.12, R * 0.4, -R * 0.06); ctx.bezierCurveTo(R * 0.7, -R * 0.03, R * 0.9, -R * 0.12, R, -R * 0.1);
+    ctx.bezierCurveTo(R * 0.9, 0, R * 0.7, R * 0.05, R * 0.4, R * 0.04); ctx.bezierCurveTo(-R * 0.1, R * 0.02, -R * 0.6, R * 0.06, -R, R * 0.02); ctx.fill();
+    ctx.restore();
+  } });
+add({ id: 'earth', name: 'Земля', size: 1.2742e7, fact: 'Вид из космоса прямо над Москвой. Диаметр 12 742 км; свет обегает её по экватору за 0,13 секунды.',
+  draw(R, t) {
+    const g = ctx.createRadialGradient(-R * 0.35, -R * 0.35, R * 0.1, 0, 0, R); g.addColorStop(0, '#2c6ca0'); g.addColorStop(1, '#0b2a4a');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.clip();
+    if (earthSprite) {
+      ctx.drawImage(earthSprite, -R, -R, R * 2, R * 2);
+    } else {
+      ctx.strokeStyle = 'rgba(160,210,255,.25)'; ctx.lineWidth = 1;
+      for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.ellipse(0, 0, R * i / 6, R, 0, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-R, (i / 3 - 1) * R); ctx.lineTo(R, (i / 3 - 1) * R); ctx.stroke(); }
+    }
+    const cl = spr('clouds', 640, (x, n) => {
+      const r = rng(5), c = n / 2;
+      for (let i = 0; i < 70; i++) {
+        let a = r() * TAU, d = Math.sqrt(r()) * n * 0.46, curl = (r() - 0.5) * 0.08;
+        const len = 5 + (r() * 9 | 0), size = n * (0.012 + r() * 0.022), alpha = 0.05 + r() * 0.07;
+        for (let k = 0; k < len; k++) {
+          const px = c + Math.cos(a) * d, py = c + Math.sin(a) * d * 0.98;
+          const g = x.createRadialGradient(px, py, 0, px, py, size); g.addColorStop(0, `rgba(255,255,255,${alpha})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+          x.fillStyle = g; x.beginPath(); x.arc(px, py, size, 0, TAU); x.fill();
+          a += 0.035 + curl; d += (r() - 0.5) * size * 0.4;
+        }
+      }
+    });
+    drawSprite(cl, R, t * 0.01);
+    const sh = ctx.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.4, 0, 0, R * 1.05); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,10,.55)');
+    ctx.fillStyle = sh; ctx.fillRect(-R, -R, R * 2, R * 2);
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(140,200,255,.55)'; ctx.lineWidth = Math.max(1, R * 0.012); ctx.beginPath(); ctx.arc(0, 0, R * 1.005, 0, TAU); ctx.stroke();
+    if (R > 30) { ctx.fillStyle = '#ff5a4a'; ctx.beginPath(); ctx.arc(0, 0, Math.max(2.5, R * 0.012), 0, TAU); ctx.fill(); }
+  } });
+add({ id: 'moon', name: 'Луна', size: 3.4748e6, pos: [1.0e7, -1.6e6], cmp: true, fact: '3474 км — чуть больше четверти Земли. Настоящая Луна в 30 диаметрах Земли от нас.',
+  draw(R) {
+    const g = ctx.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.1, 0, 0, R); g.addColorStop(0, '#e2ddd3'); g.addColorStop(1, '#6d6860');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+    const r = rng(9); ctx.fillStyle = 'rgba(70,66,60,.35)';
+    for (let i = 0; i < 16; i++) { const a = r() * TAU, d = r() * R * 0.8; ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, R * (0.04 + r() * 0.12), 0, TAU); ctx.fill(); }
+  } });
+add({ id: 'earthmoon', name: 'Земля и орбита Луны', size: 7.688e8, fact: 'Луна в 384 400 км: между ней и Землёй поместятся все остальные планеты Солнечной системы.',
+  draw(R, t) {
+    ctx.strokeStyle = 'rgba(230,225,215,.35)'; ctx.lineWidth = 1; ctx.setLineDash([3, 6]);
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    const a = -0.7 + t * 0.02;
+    const mr = Math.max(1.5, R * (3474.8 / 768800));
+    ctx.fillStyle = '#d6d1c7'; ctx.beginPath(); ctx.arc(Math.cos(a) * R, Math.sin(a) * R, mr, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(214,209,199,.9)'; ctx.font = '500 13px Onest, sans-serif'; ctx.textAlign = 'left';
+    if (R > 60) ctx.fillText('Луна', Math.cos(a) * R + mr + 6, Math.sin(a) * R + 4);
+  } });
+add({ id: 'jupiter', name: 'Юпитер', size: 1.3982e8, pos: [-1.55e8, 0.35e8], cmp: true, fact: 'В 11 раз шире Земли. Большое Красное пятно — шторм, который больше нашей планеты.',
+  draw(R) {
+    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.clip();
+    const bands = ['#e8d2b0', '#c79a6b', '#f0e0c4', '#b27a4f', '#ecd9b8', '#c9956a', '#e6cfae', '#a86f47', '#efdfc4'];
+    bands.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(-R, -R + (i / bands.length) * 2 * R, 2 * R, (2 * R) / bands.length + 1); });
+    ctx.fillStyle = '#c0553a'; ctx.beginPath(); ctx.ellipse(R * 0.35, R * 0.3, R * 0.17, R * 0.09, 0, 0, TAU); ctx.fill();
+    const sh = ctx.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.3, 0, 0, R); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.5)'); ctx.fillStyle = sh; ctx.fillRect(-R, -R, 2 * R, 2 * R);
+    ctx.restore();
+  } });
+add({ id: 'sun', name: 'Солнце', size: 1.3927e9, pos: [1.3e9, -0.1e9], cmp: true, fact: 'Диаметр 1,39 млн км — внутри уместилось бы больше миллиона Земель. Настоящее Солнце — в 150 млн км.',
+  draw(R, t) {
+    glow(0, 0, R * 1.5, 'rgba(255,170,60,A)', 0.35);
+    const g = ctx.createRadialGradient(-R * 0.2, -R * 0.2, R * 0.1, 0, 0, R); g.addColorStop(0, '#fff3c4'); g.addColorStop(0.7, '#ffbf45'); g.addColorStop(1, '#f07a22');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+  } });
+const PLANETS = [['Меркурий', 0.387, '#b8aea0'], ['Венера', 0.723, '#e8cf9a'], ['Земля', 1.0, '#6fb6ff'], ['Марс', 1.524, '#e0704a'], ['Юпитер', 5.2, '#e0b98a'], ['Сатурн', 9.54, '#e8d49a'], ['Уран', 19.19, '#9fe0e8'], ['Нептун', 30.07, '#6f8cff']];
+function orbits(R, maxAU, list, t, labelMin) {
+  const k = R / maxAU;
+  glow(0, 0, Math.max(6, R * 0.03), 'rgba(255,200,90,A)', 1);
+  ctx.fillStyle = '#ffd66b'; ctx.beginPath(); ctx.arc(0, 0, Math.max(2.5, R * 0.006), 0, TAU); ctx.fill();
+  for (const [name, a, col] of list) {
+    const r = a * k; if (r < 3) continue;
+    ctx.strokeStyle = name === 'Земля' ? 'rgba(111,182,255,.7)' : 'rgba(230,225,215,.28)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+    // Земля стоит там, где «вы»: в центре экрана, справа от Солнца
+    const ang = name === 'Земля' ? 0 : (t * 0.2) / Math.pow(a, 1.5) + a * 2.1;
+    const px = Math.cos(ang) * r, py = -Math.sin(ang) * r;
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(px, py, 3.2, 0, TAU); ctx.fill();
+    if (r > labelMin) { ctx.fillStyle = 'rgba(242,237,228,.85)'; ctx.font = '500 12px Onest, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(name, px + 7, py - 6); }
+  }
+}
+add({ id: 'inner', name: 'Внутренние планеты', size: 2 * 1.524 * AU, pos: [-AU, 0], fact: 'Вы в центре экрана, Солнце — в 150 млн км левее. Свет идёт от него 8 минут 20 секунд.',
+  draw(R, t) { orbits(R, 1.524, PLANETS.slice(0, 4), t, 30); } });
+add({ id: 'betel', name: 'Бетельгейзе', size: 1.1e12, pos: [-1.5e12, 0.45e12], cmp: true, fact: 'Красный сверхгигант: помещённый на место Солнца, он вышел бы за орбиту Марса, почти до Юпитера. Оценки размера разнятся.',
+  draw(R) {
+    glow(0, 0, R * 1.4, 'rgba(255,90,40,A)', 0.4);
+    const g = ctx.createRadialGradient(-R * 0.2, -R * 0.2, R * 0.1, 0, 0, R); g.addColorStop(0, '#ffc07a'); g.addColorStop(1, '#c2361c');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+  } });
+add({ id: 'outer', name: 'Солнечная система', size: 2 * 30.07 * AU, pos: [-AU, 0], fact: 'До Нептуна — 30 а. е., свет идёт туда больше четырёх часов. Планеты на картинке — точки: иначе их не было бы видно.',
+  draw(R, t) { orbits(R, 30.07, PLANETS, t, 60); } });
+add({ id: 'helio', name: 'Гелиосфера и «Вояджер-1»', size: 2 * 125 * AU, pos: [-AU, 0], fact: 'Пузырь солнечного ветра. «Вояджер-1», запущенный в 1977 году, вышел за его край в 2012-м и сейчас примерно в 170 а. е. от Солнца.',
+  draw(R, t) {
+    const g = ctx.createRadialGradient(0, 0, R * 0.2, 0, 0, R); g.addColorStop(0, 'rgba(90,140,255,0)'); g.addColorStop(0.8, 'rgba(90,140,255,.07)'); g.addColorStop(1, 'rgba(120,170,255,.28)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(-R * 0.08, 0, R, R * 0.88, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(140,180,255,.5)'; ctx.lineWidth = 1; ctx.stroke();
+    orbits(R * (30.07 / 125), 30.07, PLANETS.slice(4), t, 1e9);
+    const vr = R * (170 / 125), va = 0.62;
+    ctx.fillStyle = '#ffcf7a'; ctx.beginPath(); ctx.arc(Math.cos(va) * vr, -Math.sin(va) * vr, 3.5, 0, TAU); ctx.fill();
+    ctx.font = '500 12px Onest, sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = '#ffcf7a'; ctx.fillText('«Вояджер-1»', Math.cos(va) * vr + 8, -Math.sin(va) * vr + 4);
+  } });
+add({ id: 'oort', name: 'Облако Оорта', size: 2 * 100000 * AU, fact: 'Рой ледяных тел на окраине Солнечной системы — до 100 000 а. е. Его никто не видел напрямую: о нём судят по орбитам комет.',
+  draw(R, t) {
+    const s = spr('oort', 900, (x, n) => { const r = rng(31); for (let i = 0; i < 7000; i++) { const a = r() * TAU, d = (0.03 + Math.pow(r(), 0.5) * 0.47) * n; x.fillStyle = `rgba(190,215,255,${0.1 + r() * 0.35})`; x.fillRect(n / 2 + Math.cos(a) * d, n / 2 + Math.sin(a) * d * 0.94, 1.6, 1.6); } });
+    drawSprite(s, R, t * 0.003);
+  } });
+/* соседние звёзды: галактическая долгота и расстояние (проекция на плоскость Галактики, приблизительно) */
+const NEIGH = [['α Центавра', 4.37, 315.7, '#fff0c8'], ['Звезда Барнарда', 5.96, 31.0, '#ff9a6b'], ['Вольф 359', 7.9, 244.1, '#ff8a6b'], ['Сириус', 8.6, 227.2, '#cfe0ff'], ['Процион', 11.46, 213.7, '#f4f0ff'], ['61 Лебедя', 11.4, 82.3, '#ffc98a']];
+add({ id: 'neigh', name: 'Ближайшие звёзды', size: 2 * 12 * LY, fact: 'До ближайшей системы, α Центавра, — 4,37 световых года. «Вояджеру» лететь туда около 75 000 лет. Положения — проекция на плоскость Галактики, приблизительно.',
+  draw(R) {
+    const k = R / 12;
+    ctx.strokeStyle = 'rgba(230,225,215,.14)';
+    for (const r of [4, 8, 12]) { ctx.beginPath(); ctx.arc(0, 0, r * k, 0, TAU); ctx.stroke(); }
+    ctx.fillStyle = '#ffd66b'; ctx.beginPath(); ctx.arc(0, 0, 3, 0, TAU); ctx.fill();
+    ctx.font = '500 12px Onest, sans-serif'; ctx.textAlign = 'left';
+    if (R > 120) { ctx.fillStyle = 'rgba(255,214,107,.9)'; ctx.fillText('Солнце', 7, -6); }
+    for (const [n, d, l, c] of NEIGH) {
+      const a = l * Math.PI / 180, x = Math.cos(a) * d * k, y = -Math.sin(a) * d * k;
+      glow(x, y, 9, 'rgba(255,240,210,A)', 0.35);
+      ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, TAU); ctx.fill();
+      if (R > 120) { ctx.fillStyle = 'rgba(242,237,228,.85)'; ctx.fillText(n, x + 7, y - 5); }
+    }
+  } });
+add({ id: 'omega', name: 'Омега Центавра', size: 1.6e18, pos: [1.9e18, -0.35e18], cmp: true, fact: 'Шаровое скопление: около 10 миллионов звёзд в шаре поперечником ~150 световых лет.',
+  draw(R) {
+    const s = spr('omega', 600, (x, n) => { const r = rng(55); glowOn(x, n / 2, n / 2, n * 0.35, 'rgba(255,230,190,A)', 0.35);
+      for (let i = 0; i < 6000; i++) { const a = r() * TAU, d = Math.pow(r(), 1.9) * n * 0.48; x.fillStyle = `rgba(255,${200 + r() * 55 | 0},${160 + r() * 80 | 0},${0.3 + r() * 0.6})`; x.fillRect(n / 2 + Math.cos(a) * d, n / 2 + Math.sin(a) * d, 1.4, 1.4); } });
+    drawSprite(s, R);
+  } });
+function glowOn(x, cx, cy, r, color, a) { const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, color.replace('A', a)); g.addColorStop(1, color.replace('A', 0)); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, TAU); x.fill(); }
+function galaxySprite(name, seed, arms, tint) {
+  return spr(name, 1200, (x, n) => {
+    const r = rng(seed), c = n / 2;
+    glowOn(x, c, c, n * 0.5, `rgba(${tint},A)`, 0.12);
+    glowOn(x, c, c, n * 0.13, 'rgba(255,225,170,A)', 0.9);
+    for (let i = 0; i < 26000; i++) {
+      const arm = Math.floor(r() * arms), t = Math.pow(r(), 0.8) * 3.2, spread = (r() - 0.5) * (0.28 + t * 0.06);
+      const ang = arm * (TAU / arms) + t * 1.35 + spread, rad = (0.06 + t * 0.14) * n * 0.5 * (1 + (r() - 0.5) * 0.12);
+      const px = c + Math.cos(ang) * rad, py = c + Math.sin(ang) * rad;
+      const blue = r() < 0.55;
+      x.fillStyle = blue ? `rgba(170,200,255,${0.25 + r() * 0.5})` : `rgba(255,220,180,${0.2 + r() * 0.4})`;
+      x.fillRect(px, py, r() < 0.04 ? 2.2 : 1.2, r() < 0.04 ? 2.2 : 1.2);
+      if (r() < 0.012) { x.fillStyle = 'rgba(255,120,170,.5)'; x.beginPath(); x.arc(px, py, 2.4, 0, TAU); x.fill(); }
+    }
+    x.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 1600; i++) { const arm = Math.floor(r() * arms), t = 0.3 + r() * 2.6, ang = arm * (TAU / arms) + t * 1.35 - 0.12, rad = (0.06 + t * 0.14) * n * 0.5;
+      x.fillStyle = 'rgba(0,0,0,.18)'; x.beginPath(); x.arc(c + Math.cos(ang) * rad, c + Math.sin(ang) * rad, 3 + r() * 5, 0, TAU); x.fill(); }
+    x.globalCompositeOperation = 'source-over';
+    x.save(); x.translate(c, c); x.rotate(0.45); glowOn(x, 0, 0, n * 0.1, 'rgba(255,215,160,A)', 0.5); x.fillStyle = 'rgba(255,220,170,.35)'; x.beginPath(); x.ellipse(0, 0, n * 0.1, n * 0.035, 0, 0, TAU); x.fill(); x.restore();
+  });
+}
+add({ id: 'milkyway', name: 'Млечный Путь', size: 1e5 * LY, pos: [2.6e4 * LY, 0], fact: 'Около 100 000 световых лет и несколько сотен миллиардов звёзд. Солнце — в 26 000 св. лет от центра, в центре экрана.',
+  draw(R, t) { drawSprite(galaxySprite('mw', 7, 4, '150,170,255'), R, Math.PI + t * 0.004); } });
+/* Местная группа: положения по галактическим координатам (проекция) */
+const LG = [['Туманность Андромеды', 2.5e6, 121.2, -21.6, 2.2e5, 'm31'], ['Галактика Треугольника', 2.73e6, 133.6, -31.3, 6e4, 'm33'], ['Большое Магелланово Облако', 1.6e5, 280.5, -32.9, 3e4, 'lmc'], ['Малое Магелланово Облако', 2e5, 302.8, -44.3, 1.9e4, 'smc']];
+add({ id: 'localgroup', name: 'Местная группа', size: 1e7 * LY, fact: 'Около 80 галактик. Туманность Андромеды — в 2,5 млн св. лет — летит нам навстречу, столкновение ожидают через несколько миллиардов лет.',
+  draw(R, t) {
+    const k = R / 5e6;
+    drawAt(0, 0, () => drawSprite(galaxySprite('mw', 7, 4, '150,170,255'), Math.max(2, 5e4 * k), Math.PI + t * 0.004));
+    ctx.font = '500 12px Onest, sans-serif'; ctx.textAlign = 'left';
+    for (const [n, d, l, b, sz, key] of LG) {
+      const dp = d * Math.cos(b * Math.PI / 180), a = l * Math.PI / 180, x = Math.cos(a) * dp * k, y = -Math.sin(a) * dp * k;
+      const rr = Math.max(2, (sz / 2) * k);
+      drawAt(x, y, () => { ctx.save(); ctx.scale(1, key === 'm31' ? 0.34 : 0.6); drawSprite(galaxySprite(key, key.length * 17 + d % 97, key === 'm31' ? 2 : 3, '170,190,255'), rr, 0.6); ctx.restore(); });
+      if (R > 150) { ctx.fillStyle = 'rgba(242,237,228,.85)'; ctx.fillText(n, x + rr + 6, y + 4); }
+    }
+    if (R > 150) { ctx.fillStyle = 'rgba(255,207,122,.95)'; ctx.fillText('Млечный Путь', Math.max(8, 5e4 * k) + 6, 4); }
+  } });
+function drawAt(x, y, fn) { ctx.save(); ctx.translate(x, y); fn(); ctx.restore(); }
+add({ id: 'laniakea', name: 'Сверхскопление Ланиакея', size: 5.2e8 * LY, pos: [1.53e8 * LY, 1.29e8 * LY], fact: '«Необъятные небеса» по-гавайски: около 100 000 галактик, чьи потоки текут к Великому аттрактору. Наша Галактика — на окраине.',
+  draw(R, t) {
+    const s = spr('lani', 1000, (x, n) => {
+      const r = rng(88), c = n / 2;
+      glowOn(x, c, c, n * 0.46, 'rgba(120,140,255,A)', 0.1);
+      for (let i = 0; i < 520; i++) {
+        let a = r() * TAU, d = (0.1 + r() * 0.4) * n; let px = c + Math.cos(a) * d, py = c + Math.sin(a) * d;
+        x.strokeStyle = `rgba(170,190,255,${0.08 + r() * 0.15})`; x.lineWidth = 1; x.beginPath(); x.moveTo(px, py);
+        for (let k = 0; k < 40; k++) { const dx = c - px, dy = c - py, L = Math.hypot(dx, dy) || 1; const sw = Math.sin(k * 0.3 + i) * 0.8; px += (dx / L) * 5 + (-dy / L) * sw * 3; py += (dy / L) * 5 + (dx / L) * sw * 3; x.lineTo(px, py); if (L < 12) break; }
+        x.stroke();
+        x.fillStyle = 'rgba(255,230,200,.7)'; x.fillRect(c + Math.cos(a) * d, c + Math.sin(a) * d, 1.8, 1.8);
+      }
+      glowOn(x, c, c, n * 0.05, 'rgba(255,220,170,A)', 0.6);
+    });
+    drawSprite(s, R, 0);
+  } });
+function webSprite(name, seed, n, count, tintA, tintB) {
+  return spr(name, n, (x) => {
+    const r = rng(seed), pts = [];
+    for (let i = 0; i < count; i++) pts.push([r() * n, r() * n]);
+    x.lineWidth = 1.2;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], near = pts.map((q, j) => [Math.hypot(q[0] - p[0], q[1] - p[1]), j]).sort((a, b) => a[0] - b[0]).slice(1, 4);
+      for (const [d, j] of near) { if (d > n * 0.14) continue; const q = pts[j];
+        const g = x.createLinearGradient(p[0], p[1], q[0], q[1]); g.addColorStop(0, tintA); g.addColorStop(0.5, tintB); g.addColorStop(1, tintA);
+        x.strokeStyle = g; x.beginPath(); x.moveTo(p[0], p[1]); x.lineTo(q[0], q[1]); x.stroke();
+        for (let k = 0; k < 12; k++) { const u = r(); x.fillStyle = 'rgba(255,235,210,.55)'; x.fillRect(p[0] + (q[0] - p[0]) * u + (r() - 0.5) * 3, p[1] + (q[1] - p[1]) * u + (r() - 0.5) * 3, 1.3, 1.3); } }
+      glowOn(x, p[0], p[1], 7, 'rgba(255,220,190,A)', 0.4);
+    }
+  });
+}
+add({ id: 'web', name: 'Космическая паутина и квазар 3C 273', size: 5e9 * LY, fact: 'Галактики лежат на нитях вокруг гигантских пустот. 3C 273 — первый опознанный квазар (1963): светящийся диск у сверхмассивной чёрной дыры в 2,4 млрд св. лет. Направление на рисунке условное.',
+  draw(R, t) {
+    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.clip();
+    drawSprite(webSprite('web', 3, 1100, 260, 'rgba(120,110,255,.18)', 'rgba(200,170,255,.42)'), R * 1.02, 0);
+    ctx.restore();
+    const qd = (2.4e9 / 2.5e9) * R, qa = 0.75, qx = Math.cos(qa) * qd, qy = -Math.sin(qa) * qd;
+    glow(qx, qy, 26, 'rgba(160,210,255,A)', 0.7);
+    ctx.strokeStyle = 'rgba(160,210,255,.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(qx + 22, qy - 14); ctx.stroke();
+    ctx.fillStyle = '#eaf6ff'; ctx.beginPath(); ctx.arc(qx, qy, 3.5, 0, TAU); ctx.fill();
+    ctx.font = '600 13px Onest, sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = '#cfe8ff'; ctx.fillText('квазар 3C 273', qx + 12, qy + 18);
+    ctx.fillStyle = '#ffcf7a'; ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, TAU); ctx.fill();
+  } });
+add({ id: 'universe', name: 'Наблюдаемая Вселенная', size: 8.8e26, fact: 'Около 93 млрд св. лет в поперечнике. Край — реликтовое излучение, свет, отпущенный на волю через 380 000 лет после Большого взрыва. Вы — в центре своей наблюдаемой Вселенной; как и любой наблюдатель.',
+  draw(R, t) {
+    const s = spr('cmb', 1000, (x, n) => {
+      const c = n / 2, r = rng(2718);
+      x.save(); x.beginPath(); x.arc(c, c, n * 0.5, 0, TAU); x.clip();
+      x.drawImage(webSprite('web2', 11, 1000, 420, 'rgba(120,110,255,.12)', 'rgba(210,180,255,.32)'), 0, 0);
+      for (let i = 0; i < 9000; i++) { const a = r() * TAU, d = (0.9 + r() * 0.1) * n * 0.5; const hot = r();
+        x.fillStyle = hot > 0.5 ? `rgba(255,${120 + hot * 100 | 0},60,${0.25 + hot * 0.35})` : `rgba(70,${120 + hot * 150 | 0},255,${0.25 + (1 - hot) * 0.35})`;
+        x.beginPath(); x.arc(c + Math.cos(a) * d, c + Math.sin(a) * d, 3 + r() * 7, 0, TAU); x.fill(); }
+      x.restore();
+    });
+    drawSprite(s, R, t * 0.002);
+    ctx.fillStyle = '#ffcf7a'; ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, TAU); ctx.fill();
+  } });
+add({ id: 'quasars', name: 'Самые далёкие квазары', size: 2.6e26, pos: [2.2e26, -2.2e26], cmp: false, fact: 'Их свет шёл к нам больше 13 млрд лет: мы видим их такими, какими они были, когда Вселенной было меньше 700 млн лет.',
+  draw(R) { for (let i = 0; i < 5; i++) { const a = i * 1.3, d = R * 0.4 * (i % 3); const x = Math.cos(a) * d, y = Math.sin(a) * d; glow(x, y, 16, 'rgba(170,215,255,A)', 0.7); ctx.fillStyle = '#eef8ff'; ctx.beginPath(); ctx.arc(x, y, 2.4, 0, TAU); ctx.fill(); } } });
+
+/* ── фон по масштабу ─────────────────────────────────────────── */
+const BG = [[-18, [18, 10, 30]], [-15, [27, 15, 44]], [-12, [18, 22, 52]], [-9.5, [10, 34, 46]], [-7, [12, 40, 34]], [-4.5, [26, 34, 22]], [-2, [34, 28, 20]], [0.5, [30, 26, 23]], [3, [22, 31, 40]], [5, [14, 30, 48]], [7, [8, 18, 34]], [8.8, [6, 9, 15]], [12, [5, 5, 8]], [17, [6, 5, 10]], [21, [8, 6, 16]], [25, [10, 7, 20]], [27, [12, 8, 22]]];
+function bgAt(S) {
+  for (let i = 0; i < BG.length - 1; i++) {
+    const [s0, c0] = BG[i], [s1, c1] = BG[i + 1];
+    if (S <= s1) { const k = Math.max(0, Math.min(1, (S - s0) / (s1 - s0))); return c0.map((v, j) => v + (c1[j] - v) * k); }
+  }
+  return BG[BG.length - 1][1];
+}
+const STARS = Array.from({ length: 360 }, () => { const r = Math.random; return [r(), r(), r(), r() * TAU]; });
+
+/* ── форматирование размеров ─────────────────────────────────── */
+function fmtNum(x, d) {
+  const s = x >= 100 ? Math.round(x).toString() : x >= 10 ? x.toFixed(d > 0 ? 1 : 0) : x.toFixed(d);
+  return s.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ').replace(/,0$/, '');
+}
+function fmtSize(m) {
+  if (m < 1e-15) return 'меньше 10⁻¹⁸ м';
+  if (m < 1e-12) return fmtNum(m / 1e-15, 1) + ' фм';
+  if (m < 1e-9) return fmtNum(m / 1e-12, 0) + ' пм';
+  if (m < 1e-6) return fmtNum(m / 1e-9, 1) + ' нм';
+  if (m < 1e-3) return fmtNum(m / 1e-6, 1) + ' мкм';
+  if (m < 0.01) return fmtNum(m / 1e-3, 1) + ' мм';
+  if (m < 1) return fmtNum(m / 0.01, 1) + ' см';
+  if (m < 1e4) return fmtNum(m, m < 10 ? 2 : 0) + ' м';
+  if (m < 1e10) return fmtNum(m / 1e3, 0) + ' км';
+  if (m < 2e15) return fmtNum(m / AU, m < 1e13 ? 1 : 0) + ' а. е.';
+  if (m < 1e6 * LY) return fmtNum(m / LY, 1) + ' св. лет';
+  if (m < 1e9 * LY) return fmtNum(m / LY / 1e6, 1) + ' млн св. лет';
+  return fmtNum(m / LY / 1e9, 1) + ' млрд св. лет';
+}
+
+/* ── шкала справа ────────────────────────────────────────────── */
+const SMIN = -18.6, SMAX = 27.2;
+const rail = $('#rail');
+const railY = (S) => ((SMAX - S) / (SMAX - SMIN)) * 100;
+function buildRail() {
+  const unitLabels = { '-15': 'фм', '-12': 'пм', '-9': 'нм', '-6': 'мкм', '-3': 'мм', '0': 'метр', '3': 'км', '6': '1000 км', '11.17': 'а. е.', '15.98': 'св. год', '21.98': 'млн св. л.', '24.98': 'млрд св. л.' };
+  let html = '<div class="track"></div>';
+  for (let s = -18; s <= 27; s++) html += `<div class="tick" style="top:${railY(s)}%;width:${s % 3 === 0 ? 10 : 5}px"></div>`;
+  for (const [s, l] of Object.entries(unitLabels)) html += `<div class="lab" style="top:${railY(+s)}%">${l}</div>`;
+  for (const o of OBJ) html += `<div class="obj" style="top:${railY(Math.log10(o.size))}%" title="${o.name}"></div>`;
+  html += '<div class="cur" id="railCur"><b id="railCurT"></b></div>';
+  rail.innerHTML = html;
+}
+buildRail();
+
+/* ── состояние и ввод ────────────────────────────────────────── */
+let S = 7.25, target = 7.25, tour = null, lastInput = 0;
+const clampS = (s) => Math.max(SMIN, Math.min(SMAX, s));
+function userZoom(d) { target = clampS(target + d); tour = null; lastInput = performance.now(); $('#hint').style.opacity = 0; syncTourBtn(); }
+cv.addEventListener('wheel', (e) => { e.preventDefault(); userZoom((e.deltaY > 0 ? 1 : -1) * Math.min(0.5, Math.abs(e.deltaY) * 0.0035)); }, { passive: false });
+const pointers = new Map();
+let pinch0 = 0;
+cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+cv.addEventListener('pointermove', (e) => {
+  if (!pointers.has(e.pointerId)) return;
+  const prev = pointers.get(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pointers.size === 2) { const [a, b] = [...pointers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch0) userZoom(-Math.log10(d / pinch0)); pinch0 = d; }
+  else userZoom((e.clientY - prev[1]) * -0.012);
+});
+const endP = (e) => { pointers.delete(e.pointerId); pinch0 = 0; };
+cv.addEventListener('pointerup', endP); cv.addEventListener('pointercancel', endP);
+let railDrag = false;
+const railSet = (e) => { const r = rail.getBoundingClientRect(); const k = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)); target = clampS(SMAX - k * (SMAX - SMIN)); tour = null; syncTourBtn(); lastInput = performance.now(); };
+rail.addEventListener('pointerdown', (e) => { railDrag = true; rail.setPointerCapture(e.pointerId); railSet(e); });
+rail.addEventListener('pointermove', (e) => { if (railDrag) railSet(e); });
+rail.addEventListener('pointerup', () => { railDrag = false; });
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowUp' || e.key === '+' || e.key === '=') userZoom(0.25);
+  if (e.key === 'ArrowDown' || e.key === '-') userZoom(-0.25);
+  if (e.key === ' ') { e.preventDefault(); startTour(); }
+});
+$('#jumps').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b || b.id === 'tour') return;
+  target = +b.dataset.s; tour = null; syncTourBtn(); lastInput = performance.now();
+});
+function startTour() {
+  if (tour) { tour = null; syncTourBtn(); return; }
+  tour = { phase: 0 };
+  syncTourBtn();
+}
+function syncTourBtn() { $('#tour').textContent = tour ? 'Стоп' : 'Путешествие'; }
+$('#tour').onclick = startTour;
+
+/* ── кадр ────────────────────────────────────────────────────── */
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+}
+window.addEventListener('resize', resize);
+resize();
+
+let last = performance.now(), t = 0, focusId = null;
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  t += dt;
+  if (tour) {
+    const speed = 0.55;
+    if (tour.phase === 0) { target = clampS(target - speed * dt * 1.6); if (target <= -17.7) { tour.phase = 1; tour.hold = 1.6; } }
+    else if (tour.phase === 1) { tour.hold -= dt; if (tour.hold <= 0) tour.phase = 2; }
+    else { target = clampS(target + speed * 1.3 * dt); if (target >= 27.0) { tour = null; syncTourBtn(); } }
+  }
+  S += (target - S) * Math.min(1, dt * (tour ? 6 : 5));
+  const D = Math.min(H, W * 1.25);    // опорный размер: высота, но не шире экрана
+  const mpp = Math.pow(10, S) / D;   // метров на CSS-пиксель
+  const bg = bgAt(S);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const grd = ctx.createRadialGradient(W * 0.5, H * 0.5, 0, W * 0.5, H * 0.5, Math.max(W, H) * 0.75);
+  grd.addColorStop(0, `rgb(${bg.map((v) => Math.min(255, v * 1.6 + 6) | 0).join(',')})`);
+  grd.addColorStop(1, `rgb(${bg.map((v) => v * 0.6 | 0).join(',')})`);
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
+  // звёзды — в космических масштабах
+  const starA = Math.max(0, Math.min(1, (S - 6.2) / 1.2));
+  if (starA > 0) for (const [x, y, b, ph] of STARS) { ctx.fillStyle = `rgba(240,236,228,${starA * (0.15 + b * 0.5) * (0.75 + 0.25 * Math.sin(t * 1.5 + ph))})`; ctx.fillRect(x * W, y * H, b > 0.9 ? 2 : 1.2, b > 0.9 ? 2 : 1.2); }
+  // квантовая «пена» в самых малых масштабах
+  const qA = Math.max(0, Math.min(1, (-11 - S) / 2));
+  if (qA > 0) { const r = rng(Math.floor(t * 8)); for (let i = 0; i < 70; i++) { ctx.fillStyle = `rgba(200,160,255,${qA * r() * 0.25})`; ctx.beginPath(); ctx.arc(r() * W, r() * H, r() * 3, 0, TAU); ctx.fill(); } }
+
+  const cx = W * (W > 820 ? 0.47 : 0.5), cy = H * (W > 820 ? 0.5 : 0.46);
+  let best = null, bestD = 1e9;
+  const order = OBJ.slice().sort((a, b) => b.size - a.size);
+  const vis = [];
+  for (const o of order) {
+    const R = o.size / 2 / mpp;
+    if (R < 1.2 || R > D * 5) continue;
+    const fadeIn = Math.min(1, (R - 1.2) / 10), fadeOut = Math.min(1, Math.max(0, (D * 5 - R) / (D * 3.2)));
+    // объект «для сравнения» показываем, только пока он сам заметен, иначе он повиснет на центральном
+    const cmpK = o.cmp ? Math.max(0, Math.min(1, (R - D * 0.035) / (D * 0.05))) : 1;
+    const alpha = fadeIn * fadeOut * cmpK;
+    if (alpha <= 0.01) continue;
+    const x = cx + o.pos[0] / mpp, y = cy - o.pos[1] / mpp;
+    if (x + R < -50 || x - R > W + 50 || y + R < -50 || y - R > H + 50) continue;
+    vis.push({ o, R, alpha, x, y });
+    const d = Math.abs(Math.log(R / (D * 0.36)));
+    if (!o.cmp && d < bestD) { bestD = d; best = o; }
+  }
+  for (const { o, R, alpha, x, y } of vis) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y);
+    o.draw(R, t);
+    ctx.restore();
+    // подписи у объектов среднего размера (у объекта в фокусе — карточка слева)
+    if (o !== best && R > 16 && R < D * 0.42 && alpha > 0.35) {
+      ctx.globalAlpha = Math.min(1, alpha * 1.2) * Math.min(1, (D * 0.42 - R) / (D * 0.1));
+      ctx.textAlign = 'center';
+      ctx.font = '600 14px Onest, sans-serif'; ctx.fillStyle = '#f2ede4';
+      ctx.fillText(o.name, x, y + R + 22);
+      ctx.font = '500 12.5px Onest, sans-serif'; ctx.fillStyle = o.cmp ? '#b4ab9f' : '#ffcf7a';
+      ctx.fillText(fmtSize(o.size) + (o.cmp ? ' · для сравнения' : ''), x, y + R + 40);
+      ctx.globalAlpha = 1;
+    }
+  }
+  // «вы здесь» — перекрестие в центре на средних масштабах
+  const hereA = Math.max(0, Math.min(1, (S - 3.2) * 2)) * Math.max(0, Math.min(1, (12.5 - S) / 1.5));
+  if (hereA > 0) {
+    ctx.globalAlpha = hereA; ctx.strokeStyle = '#ff5a4a'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, 9, 0, TAU); ctx.stroke();
+    ctx.font = '600 12px Onest, sans-serif'; ctx.fillStyle = '#ff8a7a'; ctx.textAlign = 'left'; ctx.fillText('вы здесь', cx + 14, cy - 10);
+    ctx.globalAlpha = 1;
+  }
+  if (best && best.id !== focusId) {
+    focusId = best.id;
+    $('#cName').textContent = best.name;
+    $('#cSize').textContent = fmtSize(best.size);
+    $('#cFact').textContent = best.fact;
+  }
+  // линейка
+  const barPx = W > 820 ? 150 : 110, meters = barPx * mpp;
+  $('#rBar').style.width = barPx + 'px';
+  $('#rText').textContent = fmtSize(meters);
+  const rc = $('#railCur'); if (rc) { rc.style.top = railY(S) + '%'; $('#railCurT').textContent = `10${sup(Math.round(S))} м`; }
+}
+const SUP = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
+const sup = (n) => String(n).split('').map((c) => SUP[c]).join('');
+requestAnimationFrame(frame);
+setTimeout(() => { if (!lastInput && !reduceMotion) $('#hint').style.opacity = 1; }, 400);
+/* прогрев: по одному объекту в простое рисуем в невидимый холст, чтобы спрайты были готовы до зума */
+(function prewarm() {
+  const off = document.createElement('canvas').getContext('2d');
+  const queue = OBJ.slice();
+  const step = () => {
+    const o = queue.shift(); if (!o) return;
+    ctx = off; try { o.draw(8, 0); } catch (e) { /* пропускаем */ } ctx = mainCtx;
+    if (window.requestIdleCallback) window.requestIdleCallback(step, { timeout: 400 }); else setTimeout(step, 60);
+  };
+  setTimeout(step, 1800);
+})();
+</script>
+</body>
+</html>

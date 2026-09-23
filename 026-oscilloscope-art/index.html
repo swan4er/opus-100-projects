@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Осциллограф ОЛ-86</title>
+<meta name="description" content="Векторная графика звуком: левый и правый каналы рисуют лучом на экране осциллографа, и всё, что видно, можно услышать.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jura:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+:root{
+  --bench:#121412; --panel:#343a32; --panel-hi:#434a40; --panel-lo:#262a24; --ink:#ecebe1; --ink2:#b9bcaa; --ink3:#aeb29d;
+  --red:#ff5a3c; --lcd:#0c120e; --lcd-ink:#9ff5c2; --knob:#1d1f1c; --metal:#c9ccc2;
+  --phos:#3dff8f; --phos-core:#d8ffe6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:radial-gradient(ellipse at 50% -10%,#2a2f29 0%,var(--bench) 60%),var(--bench);color:var(--ink);
+  font-family:'Jura',system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible,[role=slider]:focus-visible{outline:2px solid #9ff5c2;outline-offset:3px}
+.bench{min-height:100vh;display:grid;place-items:center;padding:14px}
+
+/* ---------- корпус ---------- */
+.scope{width:min(1320px,100%);background-color:var(--panel);background-image:var(--hammer);border-radius:14px;padding:18px 22px 20px;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.08),inset 0 -3px 0 rgba(0,0,0,.35),0 30px 60px rgba(0,0,0,.55),0 6px 14px rgba(0,0,0,.4);position:relative}
+.scope::before,.scope::after{content:"";position:absolute;top:14px;width:14px;height:14px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#d9dbd2,#6d7068 60%,#3c3f38);box-shadow:0 1px 1px rgba(0,0,0,.6)}
+.scope::before{left:14px}.scope::after{right:14px}
+.plate{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 26px 14px;border-bottom:1px solid rgba(0,0,0,.35);
+  box-shadow:0 1px 0 rgba(255,255,255,.06)}
+.brand{display:flex;align-items:baseline;gap:14px}
+.brand b{font-size:30px;font-weight:700;letter-spacing:.14em}
+.brand span{font-size:14px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink2)}
+.power{display:flex;align-items:center;gap:10px;font-size:13px;letter-spacing:.2em;color:var(--ink2)}
+.lamp{width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#ffd2c4,var(--red) 45%,#7a1606);box-shadow:0 0 12px rgba(255,90,60,.7),inset 0 -2px 3px rgba(0,0,0,.4)}
+.deck{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:26px;padding-top:18px}
+
+/* ---------- кинескоп ---------- */
+.tube{display:flex;flex-direction:column;gap:12px;align-items:center}
+.tube>*{width:min(100%,calc((100vh - 290px) * 1.25 + 36px))}
+.bezel{background:linear-gradient(180deg,#1a1b19,#0d0e0c);border-radius:26px;padding:18px;box-shadow:inset 0 2px 4px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.07)}
+.screen{position:relative;aspect-ratio:5/4;border-radius:18px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#0e1c14 0%,#07100b 65%,#030604 100%);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.8),inset 0 0 40px rgba(0,0,0,.85)}
+.screen canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#crt{touch-action:none}
+.screen .glass{position:absolute;inset:0;pointer-events:none;border-radius:18px;
+  background:radial-gradient(ellipse at 28% 18%,rgba(255,255,255,.085),transparent 42%),radial-gradient(ellipse at 50% 50%,transparent 62%,rgba(0,0,0,.5) 100%)}
+.screen .hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-family:'IBM Plex Mono',monospace;font-size:12px;color:rgba(159,245,194,.9);background:rgba(4,8,6,.72);padding:5px 10px;border-radius:6px;
+  pointer-events:none;transition:opacity .5s;white-space:nowrap}
+.screen.drawmode{cursor:crosshair}
+.readout{display:flex;justify-content:space-between;gap:12px;align-items:center;background:var(--lcd);border-radius:8px;padding:9px 14px;
+  font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--lcd-ink);box-shadow:inset 0 2px 6px rgba(0,0,0,.7);min-height:38px;white-space:nowrap;overflow:hidden}
+.readout .dim{color:#5fa27c}
+
+/* ---------- панель ручек ---------- */
+.panel{display:grid;grid-template-columns:repeat(3,1fr);gap:18px 10px;align-content:start}
+.grp{grid-column:1/-1;font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:var(--ink2);display:flex;align-items:center;gap:10px;margin-top:4px}
+.grp::before,.grp::after{content:"";height:1px;background:rgba(236,235,225,.28);flex:1}
+.knob{display:flex;flex-direction:column;align-items:center;gap:6px;user-select:none;-webkit-user-select:none}
+.knob .lb{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+.dial{position:relative;width:78px;height:78px;touch-action:none;cursor:ns-resize}
+.dial svg{position:absolute;inset:0;width:100%;height:100%}
+.cap{position:absolute;left:14px;top:14px;width:50px;height:50px;border-radius:50%;
+  background:radial-gradient(circle at 38% 32%,#4a4d47 0%,#262824 55%,#121311 100%);
+  box-shadow:0 4px 8px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.18)}
+.cap::before{content:"";position:absolute;inset:-3px;border-radius:50%;z-index:-1;
+  background:repeating-conic-gradient(#3a3d37 0 5deg,#191a18 5deg 10deg);box-shadow:0 3px 6px rgba(0,0,0,.6)}
+.cap i{position:absolute;left:50%;top:5px;width:3px;height:15px;margin-left:-1.5px;border-radius:2px;background:var(--ink)}
+.knob .val{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink2);min-width:64px;text-align:center}
+.tgl{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.tgl .sw{position:relative;width:34px;height:54px;border-radius:17px;background:linear-gradient(180deg,#1a1b19,#2d302b);box-shadow:inset 0 2px 5px rgba(0,0,0,.8)}
+.tgl .sw::after{content:"";position:absolute;left:5px;width:24px;height:24px;border-radius:50%;top:25px;transition:transform .16s cubic-bezier(.3,1.5,.5,1);
+  background:radial-gradient(circle at 40% 35%,#f1f2ec,#a9ada2 55%,#5b5f56);box-shadow:0 3px 5px rgba(0,0,0,.6)}
+.tgl.on .sw::after{transform:translateY(-20px)}
+.tgl .st{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink3);font-size:12px}
+.tgl .st b{font-weight:600;color:var(--ink)}
+.phos{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.phos .row{display:flex;gap:6px}
+.phos button{width:34px;height:34px;border-radius:6px;background:linear-gradient(180deg,#4a4f46,#2b2e28);box-shadow:0 3px 0 #161815,inset 0 1px 0 rgba(255,255,255,.12);
+  font-family:'Jura',sans-serif;font-weight:700;font-size:13px;display:grid;place-items:center;position:relative}
+.phos button::before{content:"";position:absolute;top:-9px;width:6px;height:6px;border-radius:50%;background:#2a2d28;box-shadow:inset 0 1px 1px rgba(0,0,0,.6)}
+.phos button.on::before{background:var(--c);box-shadow:0 0 8px var(--c)}
+.phos button:active{transform:translateY(2px);box-shadow:0 1px 0 #161815}
+
+/* ---------- клавиши программ ---------- */
+.keys{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:18px 8px;margin-top:6px}
+.key{position:relative;min-width:0;height:44px;padding:0 6px;border-radius:7px;font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase;
+  background:linear-gradient(180deg,#e9e8df,#c6c5b9);color:#1d1f1b;box-shadow:0 5px 0 #7c7d73,0 7px 10px rgba(0,0,0,.45),inset 0 1px 0 #fff;
+  transition:transform .08s,box-shadow .08s}
+.key::before{content:"";position:absolute;left:50%;top:-12px;margin-left:-4px;width:8px;height:8px;border-radius:50%;background:#1b1d1a;box-shadow:inset 0 1px 1px rgba(0,0,0,.7)}
+.key.on{transform:translateY(4px);box-shadow:0 1px 0 #7c7d73,0 2px 4px rgba(0,0,0,.45),inset 0 1px 0 #fff}
+.key.on::before{background:#7dffb0;box-shadow:0 0 10px #7dffb0}
+.key.demo{grid-column:1/-1;background:linear-gradient(180deg,#ff8a5c,#e0512a);color:#2a0d05;box-shadow:0 5px 0 #8f2f13,0 7px 10px rgba(0,0,0,.45),inset 0 1px 0 #ffc4a8}
+.key.demo.on{box-shadow:0 1px 0 #8f2f13,0 2px 4px rgba(0,0,0,.45),inset 0 1px 0 #ffc4a8}
+.opts{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:44px}
+.opts .note{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink2)}
+.chip{height:36px;padding:0 11px;border-radius:6px;background:var(--panel-lo);color:var(--ink);font-size:13px;font-weight:600;letter-spacing:.06em;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.07);transition:background .15s,color .15s}
+.chip:hover{background:#1f231e}
+.chip.on{background:#9ff5c2;color:#0c1a11;box-shadow:0 1px 0 rgba(255,255,255,.1)}
+.chip small{font-weight:500;opacity:.75;margin-left:6px;letter-spacing:0}
+.field{height:40px;min-width:0;width:min(420px,100%);border-radius:6px;border:0;background:var(--lcd);color:var(--lcd-ink);padding:0 14px;
+  font-family:'IBM Plex Mono',monospace;font-size:15px;letter-spacing:.06em;text-transform:uppercase;box-shadow:inset 0 2px 6px rgba(0,0,0,.7)}
+.field:focus{outline:2px solid #9ff5c2;outline-offset:2px}
+
+/* ---------- адаптив ---------- */
+@media (max-width:1100px){
+  .deck{grid-template-columns:1fr}
+  .panel{grid-template-columns:repeat(6,1fr)}
+  .grp{display:none}
+  .keys{grid-template-columns:repeat(4,1fr)}
+  .key.demo{grid-column:auto}
+  .tube>*{width:100%}
+}
+@media (max-width:700px){
+  .bench{padding:0}
+  .scope{border-radius:0;padding:14px 12px 18px}
+  .scope::before,.scope::after{display:none}
+  .plate{padding:0 2px 12px}
+  .brand b{font-size:22px}
+  .brand span{display:none}
+  .bezel{padding:10px;border-radius:18px}
+  .screen{border-radius:12px}
+  .panel{grid-template-columns:repeat(3,1fr);gap:14px 6px}
+  .dial{width:70px;height:70px}
+  .cap{left:12px;top:12px;width:46px;height:46px}
+  .keys{grid-template-columns:repeat(3,1fr)}
+  .key.demo{grid-column:1/-1}
+  .key{font-size:12px;letter-spacing:.06em}
+  .readout{font-size:12px}
+  .readout .dim{display:none}
+}
+@media (prefers-reduced-motion:reduce){.key,.tgl .sw::after{transition:none}}
+</style>
+</head>
+<body>
+<main class="bench">
+  <div class="scope" id="scope">
+    <header class="plate">
+      <div class="brand"><b>ОЛ-86</b><span>осциллограф-синтезатор</span></div>
+      <div class="power"><span class="lamp" aria-hidden="true"></span>сеть</div>
+    </header>
+    <div class="deck">
+      <section class="tube" aria-label="Экран">
+        <div class="bezel">
+          <div class="screen" id="screen">
+            <canvas id="crt" aria-label="Экран осциллографа"></canvas>
+            <canvas id="grat" aria-hidden="true"></canvas>
+            <div class="glass"></div>
+            <div class="hint" id="hint">щёлкните где угодно — включится звук</div>
+          </div>
+        </div>
+        <div class="readout" id="readout" aria-live="polite"><span id="roL"></span><span class="dim" id="roR"></span></div>
+      </section>
+      <section class="panel" id="panel" aria-label="Органы управления">
+        <div class="grp">Развёртка и луч</div>
+        <div id="kFreq"></div><div id="kBright"></div><div id="kFocus"></div>
+        <div id="kPersist"></div><div id="kSpeed"></div><div id="kVol"></div>
+        <div class="grp">Режимы</div>
+        <div class="tgl on" id="tSound" role="switch" aria-checked="true" tabindex="0"><div class="st"><b>звук</b></div><div class="sw"></div><div class="st">выкл</div></div>
+        <div class="tgl on" id="tMode" role="switch" aria-checked="true" tabindex="0"><div class="st"><b>X–Y</b></div><div class="sw"></div><div class="st">Y(t)</div></div>
+        <div class="phos"><span>люминофор</span><div class="row" id="phos"></div></div>
+        <div class="grp">Программа</div>
+        <div class="keys" id="keys"></div>
+        <div class="opts" id="opts"></div>
+      </section>
+    </div>
+
+  </div>
+</main>
+<script src="scope.js"></script>
+</body>
+</html>

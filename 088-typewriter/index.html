@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Машинка — пишущая машинка в браузере</title>
+<meta name="description" content="Печатайте, как на пишущей машинке: удар литеры, каретка, звонок в конце строки, неровная краска ленты. Удаления нет — только шаг назад и корректор.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cousine:wght@400;700&family=Cormorant+Garamond:ital,wght@1,600&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="view" aria-label="Пишущая машинка с листом бумаги"></canvas>
+<textarea id="input" aria-label="Ввод текста для машинки" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
+
+<header class="title">
+  <h1>Машинка</h1>
+  <p>Просто печатайте. Удаления нет: <kbd>Backspace</kbd> — шаг назад, дальше можно печатать поверх, <kbd>Shift</kbd>+<kbd>Backspace</kbd> — корректор.</p>
+</header>
+
+<aside class="panel" aria-label="Настройки машинки">
+  <div class="grp">
+    <span class="lbl">Лента</span>
+    <div class="seg" id="ribbon">
+      <button data-v="black" class="on"><i class="dot black"></i>Чёрная</button>
+      <button data-v="red"><i class="dot red"></i>Красная</button>
+    </div>
+  </div>
+  <div class="grp">
+    <span class="lbl">Интервал</span>
+    <div class="seg" id="spacing">
+      <button data-v="1">1</button>
+      <button data-v="1.5" class="on">1,5</button>
+      <button data-v="2">2</button>
+    </div>
+  </div>
+  <div class="grp">
+    <span class="lbl">Раскладка</span>
+    <div class="seg" id="layout">
+      <button data-v="ru" class="on" title="Всегда печатает кириллицу по расположению клавиш ЙЦУКЕН">ЙЦУКЕН</button>
+      <button data-v="sys" title="Печатает то, что выдаёт раскладка системы">Системная</button>
+    </div>
+  </div>
+  <div class="grp row">
+    <button class="btn" id="sound" aria-pressed="true">Звук вкл.</button>
+    <button class="btn" id="newSheet">Новый лист</button>
+  </div>
+  <div class="grp row">
+    <button class="btn" id="png">Сохранить PNG</button>
+    <button class="btn" id="txt">Текст .txt</button>
+  </div>
+  <div class="count" id="count">Лист 1 · строка 1 · знак 1</div>
+</aside>
+
+<div class="tap" id="tap">Коснитесь листа, чтобы печатать</div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ления — непрерывная жизнь</title>
+<meta name="description" content="Непрерывный клеточный автомат Lenia на GPU: девять видов из атласа Берта Чана плавают, делятся и сталкиваются.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#030a0d;
+  --ink:#e4f2ec;
+  --muted:#9dbcb1;
+  --faint:#7a998f;
+  --line:rgba(150,230,205,.16);
+  --line-strong:rgba(150,230,205,.32);
+  --teal:#3ff0c8;
+  --lime:#d6ff5c;
+  --panel:rgba(3,11,14,.86);
+  --serif:"Cormorant Garamond","Iowan Old Style",Georgia,serif;
+  --sans:Manrope,"Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --hand:Caveat,"Segoe Print","Bradley Hand",cursive;
+  --ease:cubic-bezier(.22,.8,.24,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+canvas#world{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+canvas#world.tool-lens{cursor:none}
+canvas#world.tool-soup,canvas#world.tool-erase{cursor:cell}
+svg#overlay{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+button{font:inherit;color:inherit}
+
+/* ---------- заголовок ---------- */
+.title{position:fixed;left:28px;top:22px;pointer-events:none;max-width:330px}
+.kicker{font:500 11px/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0}
+h1{font:italic 600 68px/.86 var(--serif);letter-spacing:-.01em;margin:8px 0 6px;color:var(--ink)}
+.sub{font:400 14px/1.45 var(--sans);color:var(--muted);margin:0}
+
+/* ---------- панели ---------- */
+.panel{position:fixed;background:var(--panel);border:1px solid var(--line);border-radius:3px;
+  transition:opacity .35s var(--ease),transform .35s var(--ease)}
+.panel h2{font:500 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.panel .count{color:var(--faint);letter-spacing:.04em}
+.icon-btn{display:inline-grid;place-items:center;width:32px;height:32px;border:1px solid transparent;border-radius:2px;background:none;color:var(--muted);cursor:pointer;transition:color .2s,border-color .2s,background .2s}
+.icon-btn:hover{color:var(--ink);border-color:var(--line)}
+.icon-btn:focus-visible,.tool:focus-visible,.sp:focus-visible,.text-btn:focus-visible{outline:1.5px solid var(--ink);outline-offset:2px}
+.icon-btn svg{width:16px;height:16px}
+
+/* атлас */
+.atlas{left:20px;top:178px;bottom:92px;width:286px;display:flex;flex-direction:column;padding:14px 0 10px}
+.atlas h2{padding:0 14px 10px 16px;border-bottom:1px solid var(--line)}
+.sp-list{list-style:none;margin:0;padding:6px 6px 4px;overflow:auto;flex:1;scrollbar-width:thin;scrollbar-color:rgba(150,230,205,.25) transparent}
+.sp{display:grid;grid-template-columns:54px 1fr;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:8px 10px;cursor:pointer;border-radius:3px;transition:background .25s var(--ease)}
+.sp:hover{background:rgba(63,240,200,.05)}
+.sp[aria-pressed="true"]{background:rgba(63,240,200,.09)}
+.sp[aria-pressed="true"] .latin{color:var(--teal)}
+.sp[aria-pressed="true"] canvas{box-shadow:inset 0 0 0 1.5px var(--teal)}
+.sp canvas{width:54px;height:54px;display:block;border-radius:50%;background:radial-gradient(circle at 50% 45%,#07202a 0%,#040f13 70%);box-shadow:inset 0 0 0 1px rgba(150,230,205,.14)}
+.sp .latin{display:block;font:italic 600 18px/1.05 var(--serif);color:var(--ink)}
+.sp .ru{display:block;font:400 12.5px/1.35 var(--sans);color:var(--muted);margin-top:3px}
+.sp .num{display:block;font:400 11px/1.2 var(--mono);color:var(--faint);margin-top:4px;letter-spacing:.02em}
+.atlas .note{font:500 19px/1.1 var(--hand);color:#8fe9cd;margin:10px 16px 0;transform:rotate(-1.2deg)}
+
+/* параметры */
+.params{right:20px;top:20px;width:272px;padding:14px 16px 14px}
+.params .species-name{font:italic 600 21px/1.1 var(--serif);margin:12px 0 2px}
+.params .species-ru{font:400 12.5px/1.4 var(--sans);color:var(--muted);margin:0 0 12px}
+.row{margin:10px 0 0}
+.row label{display:flex;justify-content:space-between;align-items:baseline;font:500 13px/1.2 var(--sans);color:var(--ink)}
+.row label span.v{font:500 13px/1 var(--mono);color:var(--teal)}
+.row small{display:block;font:400 12px/1.3 var(--sans);color:var(--faint);margin-top:2px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:2px 0 0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:1px;background:linear-gradient(90deg,var(--teal) var(--p,50%),rgba(150,230,205,.28) var(--p,50%))}
+input[type=range]::-moz-range-track{height:1px;background:rgba(150,230,205,.28)}
+input[type=range]::-moz-range-progress{height:1px;background:var(--teal)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;margin-top:-6px;border-radius:50%;background:var(--bg);border:1.5px solid var(--teal);transition:transform .2s var(--ease)}
+input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--bg);border:1.5px solid var(--teal)}
+input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.25)}
+input[type=range]:focus-visible{outline:1.5px solid var(--ink);outline-offset:2px}
+figure{margin:14px 0 0}
+figure svg{display:block;width:100%;height:auto;overflow:visible}
+figcaption{font:italic 500 13.5px/1.25 var(--serif);color:var(--muted);margin-top:4px}
+figcaption b{font-style:normal;font-weight:600;color:var(--ink)}
+.kernel-wrap{display:grid;grid-template-columns:1fr 64px;gap:10px;align-items:end}
+.kernel-wrap canvas{width:64px;height:64px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(150,230,205,.14)}
+.text-btn{margin-top:14px;width:100%;height:38px;background:none;border:1px solid var(--line-strong);border-radius:2px;font:500 13px/1 var(--sans);color:var(--ink);cursor:pointer;transition:background .2s,border-color .2s}
+.text-btn:hover{background:rgba(63,240,200,.07);border-color:var(--teal)}
+.params.collapsed .params-body{display:none}
+.params.collapsed{width:auto}
+
+/* ---------- панель инструментов ---------- */
+.toolbar{left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:2px;padding:5px;border-radius:999px}
+.toolbar .sep{width:1px;height:22px;background:var(--line);margin:0 6px}
+.tool{display:flex;align-items:center;gap:7px;height:40px;padding:0 13px;border:0;border-radius:999px;background:none;color:var(--muted);font:500 13px/1 var(--sans);cursor:pointer;white-space:nowrap;transition:color .2s,background .25s var(--ease)}
+.tool svg{width:17px;height:17px;flex:none}
+.tool:hover{color:var(--ink);background:rgba(150,230,205,.06)}
+.tool[aria-pressed="true"]{color:#04110e;background:var(--teal)}
+.tool.speed{font-family:var(--mono);min-width:48px;justify-content:center}
+.tool.mobile-only{display:none}
+
+/* ---------- строка состояния и подсказки ---------- */
+.status{position:fixed;left:26px;bottom:26px;font:400 12px/1.5 var(--mono);color:var(--muted);pointer-events:none;letter-spacing:.01em;text-shadow:0 1px 8px rgba(3,10,13,.95)}
+.status b{color:var(--ink);font-weight:500}
+.hint{position:fixed;right:28px;bottom:22px;font:500 21px/1.05 var(--hand);color:#8fe9cd;text-shadow:0 1px 10px rgba(3,10,13,.95),0 0 3px rgba(3,10,13,.9);pointer-events:none;text-align:right;max-width:250px;transform:rotate(-1.5deg);transition:opacity .6s var(--ease)}
+.readout{position:fixed;left:0;top:0;pointer-events:none;font:400 12px/1.45 var(--mono);color:var(--ink);background:rgba(3,11,14,.9);border:1px solid var(--line-strong);padding:7px 10px;border-radius:2px;white-space:nowrap;opacity:0;transition:opacity .25s}
+.readout .k{color:var(--muted)}
+.readout .pos{color:var(--lime)}
+.readout .neg{color:#ff9fb6}
+.fallback{position:fixed;inset:0;display:grid;place-items:center;text-align:center;padding:24px;background:var(--bg)}
+.fallback p{max-width:440px;font:400 15px/1.5 var(--sans);color:var(--muted)}
+.fallback h2{font:italic 600 34px/1 var(--serif);margin:0 0 10px;color:var(--ink)}
+.hidden{opacity:0!important;pointer-events:none!important}
+
+/* ---------- мобильная раскладка ---------- */
+@media (max-width:760px){
+  .title{left:16px;top:14px}
+  h1{font-size:44px;margin:4px 0 2px}
+  .sub{display:none}
+  .kicker{font-size:11px}
+  .status{left:16px;top:84px;bottom:auto;font-size:11px}
+  .hint{display:none}
+  .toolbar{left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));transform:none;justify-content:space-between;border-radius:14px;padding:4px}
+  .tool{padding:0 10px;height:44px}
+  .tool .lbl{display:none}
+  .tool.mobile-only{display:flex}
+  .toolbar .sep{display:none}
+  .atlas{left:10px;right:10px;top:auto;bottom:74px;width:auto;height:auto;padding:10px 0 8px;border-radius:12px}
+  .atlas h2{padding:0 12px 8px}
+  .sp-list{display:flex;overflow-x:auto;overflow-y:hidden;padding:8px 8px 2px;gap:4px}
+  .sp{grid-template-columns:1fr;justify-items:center;text-align:center;min-width:112px;padding:6px 6px 8px}
+  .sp .latin{font-size:15px}
+  .sp .ru,.sp .num{display:none}
+  .atlas .note{display:none}
+  .params{left:10px;right:10px;top:auto;bottom:74px;width:auto;border-radius:12px;max-height:62vh;overflow:auto}
+  .params .collapse-btn{display:none}
+  .sheet-closed{opacity:0;transform:translateY(16px);pointer-events:none}
+}
+@media (min-width:761px){ .sheet-closed{opacity:1;transform:none} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<canvas id="world" aria-label="Чашка Петри с существами Ленией"></canvas>
+<svg id="overlay" aria-hidden="true"></svg>
+
+<header class="title">
+  <p class="kicker">Полевой журнал · тетрадь № 2</p>
+  <h1>Ления</h1>
+  <p class="sub">Непрерывный клеточный автомат Берта Чана: существа-формулы плавают, держат форму и&nbsp;делятся.</p>
+</header>
+
+<aside class="panel atlas sheet-closed" id="atlas" aria-label="Атлас видов">
+  <h2>Атлас видов <span class="count" id="spCount"></span></h2>
+  <ol class="sp-list" id="spList"></ol>
+  <p class="note">все виды — из атласа Б.&nbsp;Чана; русские имена — наши</p>
+</aside>
+
+<aside class="panel params sheet-closed" id="params" aria-label="Параметры мира">
+  <h2><span>Параметры мира</span>
+    <button class="icon-btn collapse-btn" id="collapseParams" aria-label="Свернуть панель" aria-expanded="true">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 6l5 5 5-5"/></svg>
+    </button>
+  </h2>
+  <div class="params-body">
+    <p class="species-name" id="pName"></p>
+    <p class="species-ru" id="pRu"></p>
+    <div class="row">
+      <label for="mu">Центр роста μ <span class="v" id="muV"></span></label>
+      <input type="range" id="mu" min="0.05" max="0.6" step="0.001">
+      <small>какая плотность соседей нужна для роста</small>
+    </div>
+    <div class="row">
+      <label for="sigma">Ширина роста σ <span class="v" id="sigmaV"></span></label>
+      <input type="range" id="sigma" min="0.003" max="0.12" step="0.0005">
+      <small>насколько вид терпим к отклонениям</small>
+    </div>
+    <figure>
+      <svg id="figGrowth" viewBox="0 0 240 96" role="img" aria-label="График функции роста"></svg>
+      <figcaption><b>Рис. 1.</b> Функция роста G(u): выше нуля клетка крепнет, ниже — тает</figcaption>
+    </figure>
+    <figure>
+      <div class="kernel-wrap">
+        <svg id="figKernel" viewBox="0 0 170 64" role="img" aria-label="Профиль ядра"></svg>
+        <canvas id="kernel2d" width="128" height="128" aria-hidden="true"></canvas>
+      </div>
+      <figcaption><b>Рис. 2.</b> Ядро K(r): кольца, которыми клетка «видит» соседей, R&nbsp;=&nbsp;<span id="rV"></span></figcaption>
+    </figure>
+    <figure>
+      <svg id="figMass" viewBox="0 0 240 44" role="img" aria-label="Масса популяции во времени"></svg>
+      <figcaption><b>Рис. 3.</b> Масса популяции ΣA</figcaption>
+    </figure>
+    <button class="text-btn" id="resetParams">Вернуть μ и σ вида</button>
+  </div>
+</aside>
+
+<nav class="panel toolbar" aria-label="Инструменты">
+  <button class="tool" id="playBtn" aria-label="Пауза" title="Пауза / пуск — пробел">
+    <svg id="playIcon" viewBox="0 0 18 18" fill="currentColor"><rect x="4" y="3" width="3.2" height="12" rx=".6"/><rect x="10.8" y="3" width="3.2" height="12" rx=".6"/></svg>
+  </button>
+  <button class="tool" id="stepBtn" aria-label="Шаг" title="Один шаг — стрелка вправо">
+    <svg viewBox="0 0 18 18" fill="currentColor"><path d="M4 3.5v11l8-5.5z"/><rect x="13" y="3.5" width="2" height="11" rx=".5"/></svg>
+  </button>
+  <button class="tool speed" id="speedBtn" aria-label="Скорость" title="Скорость симуляции">×1</button>
+  <span class="sep"></span>
+  <button class="tool" data-tool="plant" aria-pressed="true" title="Посадить существо — P">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="11" r="4"/><path d="M10 8l5-5M11.5 3H15v3.5"/></svg><span class="lbl">Посадить</span>
+  </button>
+  <button class="tool" data-tool="soup" aria-pressed="false" title="Первичный бульон — B">
+    <svg viewBox="0 0 18 18" fill="currentColor"><circle cx="5" cy="6" r="1.6"/><circle cx="11" cy="4.5" r="1.1"/><circle cx="9" cy="10" r="2"/><circle cx="14" cy="10.5" r="1.3"/><circle cx="5.5" cy="13.5" r="1.2"/><circle cx="12" cy="15" r="1"/></svg><span class="lbl">Бульон</span>
+  </button>
+  <button class="tool" data-tool="erase" aria-pressed="false" title="Ластик — E">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12.5l6.5-6.5 5 5L11 14.5H6.5z"/><path d="M8 14.5h7"/></svg><span class="lbl">Ластик</span>
+  </button>
+  <button class="tool" data-tool="lens" aria-pressed="false" title="Лупа — L">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7.5" cy="7.5" r="4.8"/><path d="M11 11l4.5 4.5"/></svg><span class="lbl">Лупа</span>
+  </button>
+  <span class="sep"></span>
+  <button class="tool" id="newBtn" title="Новая чашка — N">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="9" cy="9.5" rx="6.5" ry="5"/><path d="M4 7.5c1.5-1.2 3-1.6 5-1.6"/></svg><span class="lbl">Новая чашка</span>
+  </button>
+  <button class="tool mobile-only" id="atlasBtn" aria-pressed="false" aria-label="Атлас видов">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3.5h4.5v11H3zM10.5 3.5H15v11h-4.5z"/></svg>
+  </button>
+  <button class="tool mobile-only" id="paramsBtn" aria-pressed="false" aria-label="Параметры">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h12M3 13h12"/><circle cx="7" cy="5" r="1.8" fill="var(--bg)"/><circle cx="11.5" cy="13" r="1.8" fill="var(--bg)"/></svg>
+  </button>
+</nav>
+
+<div class="status" id="status" aria-live="off"></div>
+<p class="hint" id="hint">нажми и&nbsp;потяни —<br>существо поплывёт туда</p>
+<div class="readout" id="readout"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   ДАННЫЕ: девять видов из атласа Lenia (Bert Chan, github.com/Chakazul/Lenia,
+   файл Python/animals.json). Параметры и клетки — оригинальные.
+   Ядро и функция роста — полиномиальные (kn = gn = 1 в исходнике):
+     K_C(r) = (4r(1−r))^4,   G(u) = 2·max(0, 1 − (u−μ)²/(9σ²))^4 − 1
+   heading — собственный курс вида (радианы), измерен нашей симуляцией.
+   ===================================================================== */
+const SPECIES = [{"code":"O2u","name":"Orbium unicaudatus","R":13,"T":10,"b":"1","m":0.15,"s":0.015,"cells":"7.MD6.qL$6.pKqEqFURpApBRAqQ$5.VqTrSsBrOpXpWpTpWpUpCrQ$4.CQrQsTsWsApITNPpGqGvL$3.IpIpWrOsGsBqXpJ4.LsFrL$A.DpKpSpJpDqOqUqSqE5.ExD$qL.pBpTT2.qCrGrVrWqM5.sTpP$.pGpWpD3.qUsMtItQtJ6.tL$.uFqGH3.pXtOuR2vFsK5.sM$.tUqL4.GuNwAwVxBwNpC4.qXpA$2.uH5.vBxGyEyMyHtW4.qIpL$2.wV5.tIyG3yOxQqW2.FqHpJ$2.tUS4.rM2yOyJyOyHtVpPMpFqNV$2.HsR4.pUxAyOxLxDxEuVrMqBqGqKJ$3.sLpE3.pEuNxHwRwGvUuLsHrCqTpR$3.TrMS2.pFsLvDvPvEuPtNsGrGqIP$4.pRqRpNpFpTrNtGtVtStGsMrNqNpF$5.pMqKqLqRrIsCsLsIrTrFqJpHE$6.RpSqJqPqVqWqRqKpRXE$8.OpBpIpJpFTK!"},{"code":"OG2g","name":"Gyrorbium gyrans","R":13,"T":10,"b":"1","m":0.156,"s":0.0224,"cells":"10.EL2QLE$7.TpU2qHqCpXpUpNpFL$4.JrVtTuKuPuKtLrXqTqHqCpPpDG$3.qWtDqRpKqEsMuXvBtGrApXpUpSpIO$2.rQrN4.pAuAvRtTrIpUpIpKpFO$.pSsM6.tJwFuNsPsFrVpPpDL$.uFB6.tJ2yO2yLyOyDsKL$pDuC6.pFxW3yOwIwD2xPqH$rNtV5.EsMxCyIyOwXtJsMtJwFuX$sHuSV3.EpDvOwFxEwQsRqR2qHsFvWE$rQvJsWpPQpKpSqCvEvBuCpD3.BpDtGrQ$pXuKvMuPtLsWsCrIuCtBrS6.qWrQ$EsKvEwXyBwLtVrVsCrDqH6.pXrG$.qHtVxJyOwQrQpNqJpPV6.qJqE$.JsUxMyOrX10.pFqRJ$2.rQxPwIpI9.pKqJT$2.qJxEuPpKB7.qCpP$2.EvOvMpPO5.TrGqH$3.sCyOqEpIOEBOqHqEsRtG$4.xMsMqJqCpXqJqRpIqOuCtBsF$5.xPrAqTqMpSE.rSsMrLqRqHV.TpS$6.vErDE2.VpPB$7.pIrNqHpKQ!"},{"code":"S1s","name":"Scutium solidus","R":13,"T":10,"b":"1","m":0.29,"s":0.045,"cells":"5.pGQ$6.sUsDqRR$4.VpXrJwKvNtXrW$2.ApVrGrWsIwKyOyDwTuNO$2.qArOrIqIpPpTxH2yOyIvKqG$rVpIrNrJpH4.xP3yOvFqWA$sKvNsKqE5.pI4yOuHqPC$sNxBuMpD5.JuN3yOwXsUpN$sGxFyOT5.pCtIyF3yOuKqUH$rPwXyOxT5.qKtSxS3yOvIrQT$pQwK2yOtWXJXqHsGuWxW3yOvPsApC$.vQ3yOuVsLsGsXuMwOyK3yOvHrVpC$.rKyK3yOxEwBwCwXyE3yOxQuMrJU$.WvC5yOyM5yOwFtJqOL$2.rVwO9yOwWuMsApOC$2.pLtBwK6yOyJwQuTsQqLP$3.qHsWvEwUxTyCxRwWvRuGsNqSpA$3.HqBrUtHuGuPuLtVsXrSqIXB$4.DpDqEqW2rIqWqGpJN$6.ENTUPHA!"},{"code":"PG1a","name":"Gyropteron arcus","R":13,"T":10,"b":"1","m":0.283,"s":0.0481,"cells":"8.O2pATKA$7.pLqSrMrSrPrCqHpGH$6.pIrOtHuKvAvCuRtUsOqTpB$5.qXtSvWxNyFyL2yOxSwKuLsApMA$3.rJuFvUxBxXyM6yOxSvJsIpJ$2.qOtKvOxGyH9yOxQvErRU$.pCsJvDxGyL2yOwVvBuTvBvNwJxHyCyDwVtXqKE$.qXuEwTxBuBqR2.OpRqUrArPtDvHxBxIvLrXW$pDsRqDrMrIpH4.JpNqLqJqWsUvPxDwGtEpRA$pQ.qHrKqGD5.XqDqRqTsAuTwVwPtUqHE$.GqMrFpN6.XqFrLrRsQvDxDwWuFqPI$.IqNrCpO5.ApMqUsHtNuRwPxTxCuFqPJ$2.qDrGqHJ4.VqNsFuBwIyB2yOxAtUqKI$2.pIrBrGpTF2.UqWtDvKxL4yOwLtEpXF$2.CqGrTrWqXtXvGwVyE6yOyBvKsEpLC$3.pArPyE11yOwLtWrCW$4.sGwOxWyM7yOyBwKuMsGqAJ$4.rDtKvKwRtMwC4yOxDvPuCsKqPpAA$9.GvByOxUwEuRtGrUqMpFE$10.rCtUuItMsEqVpUXE$10.pTrFrHqNpQVIA$10.C2MGB!"},{"code":"H3s","name":"Helicium solidus","R":13,"T":10,"b":"1","m":0.35,"s":0.06,"cells":"9.BG2LID$7.GXpSqIqOqMqFpRpEPE$5.DXqGrOsOtEtHtEsUsKrXrJqPpRTC$4.JpPrKtFuQvMvUvWvX2wAvVvMuRtLrUqCO$3.KqBsEuMwJxNyByI6yOyHwKuErUpRH$2.FpXsKvDxO11yOxIuLrUpRI$2.pKsBvCyE12yOwDtCqQWB9.O$.KrBuHxV4yOyM2yGyM4yOyCuRsNrLpUA9.pEqKpHF$.pKsSwO4yOyFwXwGwJxCyC8yOxOuHrPpWpARNLG2.tArSqLpKXB$.qMuI5yOwEuHtRtWuRwBxO9yOxHuMsTrVrKrBqRqKpWtFuFsSrJqOqM$.rJvO4yOxLtJrQrGrLsGtKvAwWyI7yOyGvSuAsSsBrQ2rOrNsEwNuWtJsHrVpA$BrXwK4yOvKqOpDQVpLqMrVtNvNxFyG2yOwMvGuOtQsLrGqEpLpFpIqArBrWyGwWvHuAtJrC$.sCwRyK3yOtLB5.JpNrBsOtS3.BOSMD5.QqKyCyHxAvPuTsXQ$.rSwJxVyL2yOsP25.JvQyOyGxBwEuMqC$.qXvMwVxT2yOtO26.tP2yOyBxHvQrC$.pTuFvPwNxVyOvWX14.pPpB9.tH3yOyCwHrQ$.HsNuFvBwLxXyBrEpLLB.CJXpRqFqEpOUpJvUwBuPsVrDpQL4.pCuN3yOyNwJrU$2.qNsRtIuQwHxSrVrMqVqKqJqTrPsUuKwGyG5yOyDwSuUtArMqKpTpPqDrSwO4yOvVrN$2.JrGrOsQuEvSrPrDrKrPrVsHtBuFwF9yOxQvVuHtCsIsDsRuPyH4yOuVqU$3.pUpWqQrWtJsNpApNpVqEqLqSrNtAvQ9yOyCwRvMuSuQvJxG4yOxOtMpV$4.GRpQqWsD8.pCrDtRwFyByOyHyG3yOyIxQ2xDxT5yOvLrVU$7.LpMP9.ASqJsPvN6yOyMyN5yOwPtEqEB$19.FpLrNuFxH12yOwUtUrAS$19.MqDsKvAxP10yOyDwGtTrGpE$19.GpPrOtSvRxGyFyOyLyDxTxNxKxDwLvCtDqXpEB$20.GpJqSsDtEtUuHuNuRuVuXuUuKtKrWqGUA$22.FUpNqFqUrJrVsFsHsCrJqJpFH$25.FPpBpL2pQpJUG$28.ACB!"},{"code":"P4al","name":"Paraptera arcus labens","R":13,"T":10,"b":"1","m":0.347,"s":0.057,"cells":"10.C2DC$7.KpBpOpXqDqCpUpMpAMD$5.JpOqVrWsQtAtBsVsMrXrGqMpPTE$4.TqTsUuLvLvXwAvSvIuUuFtOsSrTqRpOPA$3.SrPuKwSyH2yOyJxRxEwPwDvNuTtUsSrMqGpCH$3.rOvFyJ6yOyMyGxXxLwRvTuQtLsEqWpRQA$2.qMuU13yOxRwNvHuCsUrOqGpCG$.JtGxX6yO2yDyL5yOyGxAvTuPtKsDqVpON$.qOvQxQyM4yOwRwBwMxLyI5yOyHxBvXuWtWsSrKqBVD$.sMvLwXyI3yOvNtJtLuLvUxGyH4yOyLxHwLvVvHuKtFrWqMpFG$VsOuHwIyF2yOwKrFqJrGsOuCvRxAxTyCyBxWwUwCvXwDwEvSuXtSsHqUpMJ$pLrCtHvUyB2yOrL.BpIqUsLtVvCvRvTvNuNtTtUuOvSwRxBwOvLuCsPrDpRN$.pXsOvKxTyOvJK3.pEqQrWsRsVsPrSqVqTrOtCvFxGyJyExEvVuJsWrKpVP$.pDsAuVxIyDrSpF4.SpQpWpQW2.JpTsAuWxX3yOxNwCuPtDrOqAQ$.MrKuDwNsUrUqMpAD10.NrLvGxV4yOxNwBuRtFrQqBR$2.qRtEqUqMrJrNqWqDpKpBMC7.rQvHxR4yOyIxAvTuPtFrRqAQ$2.pSK.RpWqUrJrNrOrHqSpRN6.sFvPxRyKyN2yOxWwXwHvOuPtGrQqAQ$7.UpPqGqRrCrHrEqKpFH3.pXtXwRxSxUxOxHwUwAvUwBwDvRuRtGrPpXP$10.FUpOqMrCrAqKpVpNqTuTxPyJxPwGvDuLtMtJuDvIwKwRwBuTtFrOpVM$13.QpUqSrFrMsEwO3yOwQtKrUqOqIrBsLuOwRxSxKwHuUtDrLpRH$15.SpOqEuTxUyI2yOuPpW3.pDrHuDxF2yOxUwHuRtArDpHB$17.rCuWvRwXyHyGrT5.qOuFxT3yOxUwDuJsOqPS$17.rTsMtSvLxMvBpW5.qNuRxN4yOxKvQtVrWpSD$16.FpIqLsDuGtVrOqMG4.rAuKxF4yOyMwQuXtBqTQ$18.TqUrFpHqXrDpD4.qWuAwNyD4yOxLvUuBrTpI$19.K2.qArFqJN3.qNtHvJwXyC3yOyDwQuXsQpXD$22.TqLrBqDM2.pWsDtUvHwPxTyM2yOxLvTtKqNH$23.pCqQrDqBI.VqPsCtMuVwKxV2yOyHwPuArAM$24.pJrDrFpH2.VqHrQtFvExI3yOxJuMrEO$24.DqGrPqIF2.KpXrWuLxJ3yOxXuPrDM$25.pIrJrDV3.NrEvAyL3yOyGuLqSH$25.JqQrNqCJ2.FsQxX4yOxVtTqCB$26.pQrHrFpWUJrWyI5yOwTsOpE$26.KqIrMrNrDtN7yOuXqWF$27.pAqPrTuF7yOwQsMpA$28.pCrNxMxSxTxRxPxSyCxGtIpQ$29.uHvD3vJvOwFwOtFpQ$28.qDsBsIsKsLsStMuPrXV$28.WpHpKpLpRqKrQqA$33.L!"},{"code":"3GH2n","name":"Hydrogeminium natans","R":18,"T":10,"b":"1/2,1,2/3","m":0.26,"s":0.036,"cells":"37.BEG3JGE$35.JpApPqCqJqOqMqEpUpKpAQG$33.BVqCrLsPtLtVuCtTtJsPrVrDqJpPTB$33.pIrAsRuIvWwXxMxPxHwQvTuStTsUrSqOpFG$32.pKrXuIwFxU6yOyLxJwFvBtVsPrDpNJ$31.TsCvT11yOyIwXvTuNsWrDpKG$31.rIwA14yOxHvWuKsRqTpDB$30.rQwS16yOxHvRuArXpXL$29.tG7yOyL4yOyL6yOwXvBsWqTpDB$28.tT7yOxUwSwIwVxHxJxMxUyI4yOyIwIuArNpNG$27.sW7yOxMvOtQsPtBuIvJwAwQxPyL4yOxPvBsHpXL$26.qTyL4yOxMvMuUtTrXqCpKqErStLuSvRwVyB5yOwFtDqMQ$25.pKuPyD3yOwVpS7.pIrQtJuSwDxPyL4yOxHuCrAV$24.QrXvOyB3yOqH9.pDrLtGvBxCyL4yOyBuSrLpA$23.rItDvMxU3yOtV11.pArGtLwIyI4yOyIvBrQpD$22.BuIwSyI2yOvE14.pNrXvMyG4yOyGvBrQpD$23.tJyD2yOpU15.VrNvEyB4yOxPuKrIpA$22.pItVyL2yO16.pSsRwAyD4yOwQtLqRQ$21.rLvJxW2yOsP16.rLvExPyL4yOvMsKpXG$20.tOxJ3yOwLsMJ15.sWxC5yOyBuCrIpF$20.wDyLyOyGuCsHrLpU15.tQyB5yOwLsPqEO$19.sCwS2yOtTpDLpNqHO14.uCyL5yOuFrApDB$16.JtTwNxCyG2yOtG2.BVG13.qRwF5yOuXrQpIG$16.rL6yOxUpD15.qJvRyB5yOuNrQpF$16.tJ7yOvO15.7yOtVqOV$14.pFrX3yOuXTtT3yOG13.rQ6yOvBpF$12.uI6yOtD2.xEyOxH14.6yOvJQ$9.JqEtB8yO2.JsKqR9.pFqErNuC3yOyLyGyLsU$9.tG4yOyD.rG3yOtO8.qCqE3.qT6yOxEtLB$8.wV5yO3.wS2yOtL7.qRwQuFE2.sU5yOxMtT$7.sCyL4yOwFJ3.xUxR8.vG2yOrS2.2yOuUuXyGxEtQ$4.tTvWuFvT2yO2.vWvMpU10.rA2.sR7yOsWsCvMqO$4.vGwNwLxRyOpI2.pIxWuC9.2yOrN.J7yOqM$4.uPwXxMyIyOV2.EyOuS8.uF2yOwV2.6yOuS$4.uSuUvB2yOqEB.JE9.vG3yOrArV2yOuIuPyOwV$4.sP2vRwXyOyGqJL8.O3.yG6yOrLqMvB$3.pFtT2xM3yOsMJ7.rGtQ3.xH6yO$3.rAvM4yOwIqW8.sFwDtQ2.xE5yOrG$.pPqTsHvOyL2yOwQsKV8.pAtT2uCwDyL4yOuP$rGtBsRsUuPxHyOwSuFqWO9.rIvJyB4yOvJuCpFJ$qJtQtOtBuAuFuUuPtTrQpIGEVvTyOV3.rIxC4yOuAsPrGpPB$.rGsRrGpUqWsCsWtQtGrQqCpPqWvWyOsKB2.uI4yOtJrAV$5.pKrDsFtQvMvTuUtDrQqTsW2uIvOyI4yOuUrL$5.OrLtOvGxWyLyOwVsHpPpNyD7yOvRpI$6.sKxC2yIyLyOxWuPrIuN7yOuUqJ$5.QuNyB2yOyLyIyL7yOyIpK$5.GsUxJ2yOyGwSvWwNxW4yOyLG$6.pKuAxHxUwNuCsRtBuSxCyG2yLsK$8.qJsRsWsCrApXqCsUqWG$10.TqHqMpN$11.QqHpK!"},{"code":"K4s","name":"Kronium solidus","R":18,"T":10,"b":"1,1/3","m":0.24,"s":0.029,"cells":"9.GL2OGB$6.BpPrIsM2tDsPrVqTpPO$5.pKsRvRyD4yOxHvRtVrVpUE$4.qEuS10yOwFtLqRJ$3.OuF6yOyL5yOxHuCqTE$3.sFyG3yOxEuCtDtTvJxHyL3yOxHtQpX$2.pPwX3yOsC3.BqHtBvWyG3yOwIsFO$2.uP3yO7.pIsMvRyG2yOyLuFpS$.qMyI2yO9.pPtBwN3yOvWrA$.vGyOwN4.qJsHrQqEB2.qTuNyB2yOxCrSB$pPxMyOpN3.yLwSqMpUrIrA2.TsUxC2yOxRsFG$sHyGvEJ2.xWxC3.GrXL2.rQwL2yOxRsCE$sUxEtVJ.tVuXpN4.sPO2.qWwN2yOxErN$rIvRuFpFrIqRsHpU3.pDtT3.rAxP2yOvWqM$pItTuUwFqMrAsFrQpD2.yBqE3.tG3yOuApF$.tVyGwFvMtBrVrXsHtQyOsK3.ByG2yOxUrQB$.sWtVyLyOvBqTpFvJwDpD4.yB3yOuCpF$2.tBxCyOvJpDqWqM5.4yOwAqE$2.qTuUwVuAsRTB.BLsW4yOwLqM$3.rGsHvWuAsUsCsPuI4yOxHuNpX$4.2sCuIvMwSyLyOyLxWvWtJqOB$6.qJsKuKuStTsHpP$7.B!"},{"code":"3Es","name":"Echinium solidus","R":18,"T":10,"b":"3/4,1,1/2","m":0.226,"s":0.0272,"cells":"18.EIC$17.qRvEwOuQpN$17.vK3yOsN$17.wT3yOtV$10.UrArKpSG2.4yOxSV$9.UxH3yOtDpLuI5yOuFpLDAJqOpW$10.5yOvQ2yO2yN3yOyHwQwWyGyOwMpR$9.qE8yOrPxH9yOsW$9.pG7yOsF.xW9yOtC$9.uF2yOtSuHyM2yO2.xJ4yOyB2yOyFuA$6.rRrIQ3yO2.tPyIyC2.sKxL2yOwBtR2yOrA$5.wJ5yOvM3.rM4.TsTtN.sM2yO$5.yL5yOvN12.3yOpGE$5.wO5yOxL11.uU3yOwKuApP$5.uK2yOyJwWwV11.S6yOxHpE$5.uG2yO14.rBvRxQyK4yOtE$5.vA2yO16.pXuH4yOtT$3.PIvNyNyOC16.rL3yOxU$2.sCwHwUxN2yOqV16.3yOtK$2.6yOqN14.rJ3yOuR$.rJyC3yOyKxE14.pG4yO$2.vO2yOsS16.tP4yOqV$2.tC2yOU17.xN4yOpV$2.pExMyOwCpR16.uK4yOrI$2.EwX3yOtAF14.4yOyL$2.vN5yOqF11.qPtMxC2yOwFqU$.tC6yO11.qQ3yOyLvC$.5yOwPJ11.wE3yOvO$sE4yOuIpA12.pU3yOsQ$sGxM4yOtOtGuArGE3.CuPrUG2.xV2yOxUpI$qHvDvEuCvNyM4yOuGpC2.yM2yOvQrSrF4yOpH$.L3.vE5yOuKG.yJ8yOyN$5.vG6yOrJpIwV3yOyJwVwDuNuL$5.2yOyExU4yOwKxC3yOvJU$5.2yOpXvC2yOxFyE5yOrS$5.xTyOuC2yOuT.qOxO4yOG$5.sRyB2yOxK3.tK4yO$6.qItMtG4.qBwQxOwV$13.pItMrV!"}];
+const EXTRA = {
+  O2u:  {ru:'Орбиум однохвостый',      note:'классический глайдер, скользит по прямой',      heading:-0.764, speed:3.2},
+  OG2g: {ru:'Гирорбиум кружащий',      note:'родственник орбиума, ходит по кругу',            heading:2.551,  speed:0.36},
+  S1s:  {ru:'Скутиум плотный',         note:'щитовидное тело, быстрый прямой ход',            heading:0.921,  speed:3.56},
+  PG1a: {ru:'Гироптерон дуговой',      note:'крылатый, описывает дуги',                       heading:2.033,  speed:0.49},
+  H3s:  {ru:'Гелициум плотный',        note:'почти неподвижен, тело из двух завитков',        heading:-0.545, speed:0.03},
+  P4al: {ru:'Параптера скользящая',    note:'крылатая, плавный прямой ход',                   heading:-0.876, speed:4.59},
+  '3GH2n':{ru:'Гидрогеминиум плавающий', note:'трёхкольцевое ядро: растёт и делится на капли', heading:-0.767, speed:4.25},
+  K4s:  {ru:'Крониум плотный',         note:'двухкольцевое ядро, ровный прямой ход',          heading:-0.701, speed:2.39},
+  '3Es':{ru:'Эхиниум плотный',         note:'«морской ёж» из трёх колец ядра, медленный',     heading:-1.102, speed:0.88}
+};
+
+/* ---------- декодер RLE Ленией (порт rle2arr из LeniaND.py) ---------- */
+function ch2val(c){
+  if (c === '.' || c === 'b') return 0;
+  if (c === 'o') return 255;
+  if (c.length === 1) return c.charCodeAt(0) - 64;
+  return (c.charCodeAt(0) - 112) * 24 + (c.charCodeAt(1) - 65 + 25);
+}
+function rle2arr(st){
+  st = st.replace(/!$/, '') + '$';
+  const rows = []; let row = [], last = '', count = '';
+  for (const ch of st){
+    if (ch >= '0' && ch <= '9'){ count += ch; continue; }
+    if ('pqrstuvwxy@'.includes(ch)){ last = ch; continue; }
+    const tok = last + ch, n = count === '' ? 1 : parseInt(count, 10);
+    if (tok === '$'){ rows.push(row); for (let i = 1; i < n; i++) rows.push([]); row = []; }
+    else { const v = ch2val(tok) / 255; for (let i = 0; i < n; i++) row.push(v); }
+    last = ''; count = '';
+  }
+  const w = Math.max(...rows.map(r => r.length));
+  const h = rows.length, data = new Float32Array(w * h);
+  rows.forEach((r, y) => r.forEach((v, x) => { data[y * w + x] = v; }));
+  return {w, h, data};
+}
+const fracs = b => String(b).split(',').map(f => { const [a, c] = f.split('/'); return c ? +a / +c : +a; });
+
+for (const s of SPECIES){
+  Object.assign(s, EXTRA[s.code] || {});
+  s.rings = fracs(s.b);
+  s.pattern = rle2arr(s.cells);
+}
+
+/* ---------- ядро: список ненулевых «отводов» свёртки ---------- */
+function kernelTaps(R, rings){
+  const B = rings.length, taps = [];
+  for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++){
+    const r = Math.hypot(dx, dy) / R;
+    if (r >= 1) continue;
+    const Br = B * r, i = Math.min(Math.floor(Br), B - 1), x = Math.min(Br % 1, 1);
+    const w = rings[i] * Math.pow(4 * x * (1 - x), 4);
+    if (w > 0) taps.push(dx, dy, w);
+  }
+  let max = 0; for (let i = 2; i < taps.length; i += 3) max = Math.max(max, taps[i]);
+  const kept = [];
+  for (let i = 0; i < taps.length; i += 3) if (taps[i + 2] > max * 1e-4) kept.push(taps[i], taps[i + 1], taps[i + 2]);
+  let sum = 0; for (let i = 2; i < kept.length; i += 3) sum += kept[i];
+  const out = new Float32Array((kept.length / 3) * 4);
+  for (let i = 0, j = 0; i < kept.length; i += 3, j += 4){ out[j] = kept[i]; out[j + 1] = kept[i + 1]; out[j + 2] = kept[i + 2] / sum; }
+  return out;
+}
+const growthFn = (u, m, s) => { const q = Math.max(0, 1 - (u - m) * (u - m) / (9 * s * s)); return 2 * q * q * q * q - 1; };
+const kernelShell = (r, rings) => {
+  if (r >= 1) return 0;
+  const B = rings.length, Br = B * r, i = Math.min(Math.floor(Br), B - 1), x = Math.min(Br % 1, 1);
+  return rings[i] * Math.pow(4 * x * (1 - x), 4);
+};
+
+/* ---------- палитра (общая для GPU и миниатюр) ---------- */
+const STOPS = [[0,[3,11,14]],[.14,[5,48,55]],[.38,[13,158,143]],[.6,[77,240,199]],[.82,[214,255,107]],[1,[255,251,219]]];
+function rampRGB(a){
+  a = Math.min(1, Math.max(0, a));
+  for (let i = 1; i < STOPS.length; i++){
+    if (a <= STOPS[i][0]){
+      const [t0, c0] = STOPS[i - 1], [t1, c1] = STOPS[i], k = (a - t0) / (t1 - t0), s = k * k * (3 - 2 * k);
+      return c0.map((v, j) => Math.round(v + (c1[j] - v) * s));
+    }
+  }
+  return STOPS[STOPS.length - 1][1];
+}
+
+/* =====================================================================
+   WebGL2
+   ===================================================================== */
+const canvas = document.getElementById('world');
+const gl = canvas.getContext('webgl2', {antialias:false, alpha:false, premultipliedAlpha:false, preserveDrawingBuffer:false, powerPreference:'high-performance'});
+function fail(msg){
+  const d = document.createElement('div');
+  d.className = 'fallback';
+  d.innerHTML = '<div><h2>Чашка не открылась</h2><p>' + msg + '</p></div>';
+  document.body.appendChild(d);
+}
+if (!gl || !gl.getExtension('EXT_color_buffer_float')){
+  fail('Для Ленией нужен WebGL2 с поддержкой float-текстур. Попробуй свежий Chrome, Safari или Firefox на компьютере.');
+  throw new Error('no webgl2 float');
+}
+
+const VS = `#version 300 es
+in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`;
+
+const SIM_FS = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+uniform sampler2D uState;
+layout(std140) uniform Taps { vec4 uTap[1024]; };
+uniform int uTapCount; uniform vec2 uInv; uniform float uM, uS, uDt;
+out vec4 o;
+void main(){
+  vec2 c = floor(gl_FragCoord.xy);
+  float A = texture(uState, (c + 0.5) * uInv).r;
+  float U = 0.0;
+  for (int i = 0; i < uTapCount; i++){
+    vec4 t = uTap[i];
+    U += t.z * texture(uState, (c + t.xy + 0.5) * uInv).r;
+  }
+  float d = U - uM;
+  float q = max(0.0, 1.0 - d * d / (9.0 * uS * uS)); q *= q; q *= q;
+  float G = 2.0 * q - 1.0;
+  o = vec4(clamp(A + uDt * G, 0.0, 1.0), U, G, 1.0);
+}`;
+
+const EDIT_FS = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+uniform sampler2D uState; uniform vec2 uSize;
+uniform vec4 uBrush; uniform float uSeed;
+uniform sampler2D uStamp; uniform vec4 uStampRect; uniform vec2 uStampRot; uniform int uStampOn;
+out vec4 o;
+float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+void main(){
+  vec2 c = floor(gl_FragCoord.xy);
+  vec4 s = texelFetch(uState, ivec2(c), 0);
+  float A = s.r;
+  if (uBrush.w > 0.5){
+    vec2 d = c + 0.5 - uBrush.xy; d -= uSize * floor(d / uSize + 0.5);
+    float r = length(d) / uBrush.z;
+    if (r < 1.0){
+      float f = 1.0 - smoothstep(0.45, 1.0, r);
+      if (uBrush.w < 1.5) A = max(A, f * hash(c + uSeed));
+      else A *= 1.0 - f;
+    }
+  }
+  if (uStampOn == 1){
+    vec2 d = c + 0.5 - uStampRect.xy; d -= uSize * floor(d / uSize + 0.5);
+    vec2 q = vec2(uStampRot.x * d.x + uStampRot.y * d.y, -uStampRot.y * d.x + uStampRot.x * d.y);
+    vec2 uv = q / uStampRect.zw + 0.5;
+    if (uv.x >= 0.0 && uv.y >= 0.0 && uv.x <= 1.0 && uv.y <= 1.0) A = max(A, texture(uStamp, uv).r);
+  }
+  o = vec4(A, s.g, s.b, 1.0);
+}`;
+
+const COPY_FS = `#version 300 es
+precision highp float; precision highp sampler2D;
+uniform sampler2D uState; out vec4 o;
+void main(){ o = texelFetch(uState, ivec2(gl_FragCoord.xy), 0); }`;
+
+// Общая функция «как выглядит мир в точке» — для сцены и для лупы
+const SHADE_LIB = `
+uniform sampler2D uDisp; uniform vec2 uWorld; uniform float uM; uniform float uTime; uniform float uFade;
+vec4 tap(vec2 p){ return texture(uDisp, p / uWorld); }
+vec4 cubicW(vec2 x){
+  x -= 0.5; vec2 i = floor(x), f = x - i, f2 = f * f, f3 = f2 * f;
+  vec2 w0 = (-f3 + 3.0 * f2 - 3.0 * f + 1.0) / 6.0;
+  vec2 w1 = (3.0 * f3 - 6.0 * f2 + 4.0) / 6.0;
+  vec2 w2 = (-3.0 * f3 + 3.0 * f2 + 3.0 * f + 1.0) / 6.0;
+  vec2 w3 = f3 / 6.0;
+  vec2 g0 = w0 + w1, g1 = w2 + w3;
+  vec2 h0 = i - 0.5 + w1 / g0, h1 = i + 1.5 + w3 / g1;
+  return g0.y * (g0.x * tap(vec2(h0.x, h0.y)) + g1.x * tap(vec2(h1.x, h0.y)))
+       + g1.y * (g0.x * tap(vec2(h0.x, h1.y)) + g1.x * tap(vec2(h1.x, h1.y)));
+}
+vec3 ramp(float a){
+  a = clamp(a, 0.0, 1.0);
+  vec3 c = mix(vec3(0.012,0.043,0.055), vec3(0.016,0.150,0.170), smoothstep(0.00,0.12,a));
+  c = mix(c, vec3(0.035,0.470,0.440), smoothstep(0.08,0.36,a));
+  c = mix(c, vec3(0.200,0.840,0.690), smoothstep(0.30,0.62,a));
+  c = mix(c, vec3(0.700,0.950,0.380), smoothstep(0.56,0.86,a));
+  c = mix(c, vec3(0.930,1.000,0.700), smoothstep(0.88,1.00,a));
+  return c;
+}
+float hash12(vec2 p){ vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+vec3 background(vec2 px){
+  vec2 p = px / 190.0;
+  float v = 0.0; vec2 q = p;
+  for (int i = 0; i < 3; i++){
+    q += 0.32 * vec2(sin(q.y * 1.9 + uTime * 0.07 + float(i) * 1.7), cos(q.x * 1.6 - uTime * 0.05));
+    v += pow(abs(sin((q.x + q.y) * 3.1)), 8.0);
+  }
+  vec3 base = mix(vec3(0.008,0.030,0.040), vec3(0.012,0.048,0.058), smoothstep(0.0, 1.0, p.y * 0.4 + 0.3));
+  return base + vec3(0.004,0.015,0.016) * v;
+}
+vec3 shadeWorld(vec2 cell, vec2 px){
+  vec4 s = cubicW(cell);
+  float A = s.r, U = s.g, G = s.b;
+  float e = 0.85;
+  float ax = tap(cell + vec2(e, 0.0)).r - tap(cell - vec2(e, 0.0)).r;
+  float ay = tap(cell + vec2(0.0, e)).r - tap(cell - vec2(0.0, e)).r;
+  vec3 n = normalize(vec3(-ax * 3.2, -ay * 3.2, 1.0));
+  vec3 L = normalize(vec3(-0.45, 0.55, 0.75));
+  float diff = max(dot(n, L), 0.0);
+  float spec = pow(max(dot(reflect(-L, n), vec3(0.0, 0.0, 1.0)), 0.0), 28.0);
+  float body = smoothstep(0.015, 0.2, A);
+  vec3 col = background(px);
+  // ореол: поле влияния U вокруг существ
+  float halo = smoothstep(0.004, uM * 1.35, U) * (1.0 - body);
+  col += vec3(0.020, 0.150, 0.170) * halo * 0.9;
+  // тело
+  vec3 b = ramp(A) * (0.70 + 0.40 * diff);
+  b += vec3(0.80, 1.0, 0.90) * spec * 0.22 * smoothstep(0.1, 0.5, A);
+  b += vec3(0.06, 0.42, 0.38) * (1.0 - n.z) * 0.9 * body;
+  // изолинии плотности через 0,1 — как на таблицах научного журнала
+  float lv = A * 6.0, fw = max(fwidth(lv), 1e-4);
+  float iso = 1.0 - smoothstep(0.0, fw * 1.1, abs(fract(lv - 0.5) - 0.5));
+  b = mix(b, b * 0.5, iso * 0.4 * smoothstep(0.06, 0.2, A));
+  // растущая кромка светится лаймом
+  b += vec3(0.55, 0.85, 0.12) * max(G, 0.0) * smoothstep(0.03, 0.25, A) * (1.0 - smoothstep(0.35, 0.8, A)) * 0.35;
+  col = mix(col, b, body);
+  return col * uFade + background(px) * (1.0 - uFade) * 0.0;
+}`;
+
+const SCENE_FS = `#version 300 es
+precision highp float; precision highp sampler2D;
+${SHADE_LIB}
+uniform float uPxPerCell; out vec4 o;
+void main(){
+  vec2 px = gl_FragCoord.xy;
+  o = vec4(shadeWorld(px / uPxPerCell, px), 1.0);
+}`;
+
+const BRIGHT_FS = `#version 300 es
+precision highp float; precision highp sampler2D;
+uniform sampler2D uSrc; uniform vec2 uTexel; out vec4 o;
+void main(){
+  vec2 uv = gl_FragCoord.xy * uTexel;
+  vec3 c = vec3(0.0);
+  c += texture(uSrc, uv + uTexel * vec2(-0.25,-0.25)).rgb;
+  c += texture(uSrc, uv + uTexel * vec2( 0.25,-0.25)).rgb;
+  c += texture(uSrc, uv + uTexel * vec2(-0.25, 0.25)).rgb;
+  c += texture(uSrc, uv + uTexel * vec2( 0.25, 0.25)).rgb;
+  c *= 0.25;
+  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  o = vec4(c * smoothstep(0.42, 1.0, l) * 1.1, 1.0);
+}`;
+
+const BLUR_FS = `#version 300 es
+precision highp float; precision highp sampler2D;
+uniform sampler2D uSrc; uniform vec2 uDir; uniform vec2 uTexel; out vec4 o;
+void main(){
+  vec2 uv = gl_FragCoord.xy * uTexel;
+  vec3 c = texture(uSrc, uv).rgb * 0.2270270270;
+  c += texture(uSrc, uv + uDir * 1.3846153846).rgb * 0.3162162162;
+  c += texture(uSrc, uv - uDir * 1.3846153846).rgb * 0.3162162162;
+  c += texture(uSrc, uv + uDir * 3.2307692308).rgb * 0.0702702703;
+  c += texture(uSrc, uv - uDir * 3.2307692308).rgb * 0.0702702703;
+  o = vec4(c, 1.0);
+}`;
+
+const FINAL_FS = `#version 300 es
+precision highp float; precision highp sampler2D;
+${SHADE_LIB}
+uniform sampler2D uScene; uniform sampler2D uBloomA; uniform sampler2D uBloomB;
+uniform vec2 uRes; uniform float uPxPerCell;
+uniform vec4 uLens; uniform float uLensAlpha;
+out vec4 o;
+void main(){
+  vec2 px = gl_FragCoord.xy, uv = px / uRes;
+  vec3 col = texture(uScene, uv).rgb;
+  vec3 bloom = texture(uBloomA, uv).rgb * 0.32 + texture(uBloomB, uv).rgb * 0.5;
+  col += bloom;
+  // лупа
+  if (uLensAlpha > 0.001){
+    vec2 d = px - uLens.xy; float r = length(d), R = uLens.z;
+    if (r < R + 3.0){
+      float zoomPx = uPxPerCell * uLens.w;
+      vec2 cell = uLens.xy / uPxPerCell + d / zoomPx;
+      vec3 lc = shadeWorld(cell, uLens.xy + d / uLens.w);
+      vec2 f = fract(cell);
+      float g = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)) * zoomPx;
+      lc = mix(lc, lc * 0.55 + vec3(0.06, 0.20, 0.18), (1.0 - smoothstep(0.0, 1.1, g)) * 0.45);
+      float edge = smoothstep(R - 18.0, R, r);
+      lc *= 1.0 - edge * 0.55;
+      lc += vec3(0.75, 1.0, 0.9) * pow(max(0.0, dot(normalize(d + 1e-4), normalize(vec2(-0.6, 0.8)))), 6.0) * smoothstep(R - 10.0, R - 2.0, r) * 0.35;
+      float inside = 1.0 - smoothstep(R - 1.0, R, r);
+      col = mix(col, lc, inside * uLensAlpha);
+      float ring = 1.0 - smoothstep(0.4, 2.4, abs(r - R));
+      col = mix(col, vec3(0.62, 0.92, 0.82), ring * 0.85 * uLensAlpha);
+    }
+  }
+  // виньетка и зерно (в самом кадре, без CSS-наложений)
+  vec2 q = (uv - 0.5) * vec2(uRes.x / uRes.y, 1.0);
+  col *= mix(1.0, 1.0 - smoothstep(0.2, 1.3, length(q)), 0.6);
+  col += (hash12(px + fract(uTime * 13.0) * 97.0) - 0.5) * 0.016;
+  o = vec4(col, 1.0);
+}`;
+
+function compile(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) + '\n' + src.split('\n').map((l, i) => (i + 1) + ': ' + l).join('\n'));
+  return s;
+}
+function program(fs){
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, VS));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.bindAttribLocation(p, 0, 'aPos');
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {};
+  const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++){ const info = gl.getActiveUniform(p, i); u[info.name] = gl.getUniformLocation(p, info.name); }
+  return {p, u};
+}
+const RED_FS = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+uniform sampler2D uState; uniform ivec2 uSize; uniform ivec2 uBlock; out vec4 o;
+void main(){
+  ivec2 b = ivec2(gl_FragCoord.xy) * uBlock;
+  float s = 0.0;
+  for (int y = 0; y < 64; y++){
+    if (y >= uBlock.y) break;
+    int yy = b.y + y; if (yy >= uSize.y) break;
+    for (int x = 0; x < 64; x++){
+      if (x >= uBlock.x) break;
+      int xx = b.x + x; if (xx >= uSize.x) break;
+      s += texelFetch(uState, ivec2(xx, yy), 0).r;
+    }
+  }
+  o = vec4(s, 0.0, 0.0, 1.0);
+}`;
+const P = {red:program(RED_FS), sim:program(SIM_FS), edit:program(EDIT_FS), copy:program(COPY_FS), scene:program(SCENE_FS), bright:program(BRIGHT_FS), blur:program(BLUR_FS), final:program(FINAL_FS)};
+
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+function tex(w, h, internal, format, type, filter, wrap, data = null){
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, format, type, data);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+  return t;
+}
+function fbo(t){
+  const f = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+  return f;
+}
+function bindTex(unit, t){ gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t); }
+function draw(target, w, h){ gl.bindFramebuffer(gl.FRAMEBUFFER, target); gl.viewport(0, 0, w, h); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+
+/* =====================================================================
+   МИР
+   ===================================================================== */
+const mobile = matchMedia('(max-width: 760px)').matches;
+let cellPx = mobile ? 3.1 : 4.1;                       // CSS-пикселей на клетку
+if ((innerWidth / cellPx) * (innerHeight / cellPx) > 150000) cellPx = Math.sqrt(innerWidth * innerHeight / 150000);
+const W = Math.max(96, Math.round(innerWidth / cellPx));
+const H = Math.max(96, Math.round(innerHeight / cellPx));
+cellPx = innerWidth / W;
+
+const world = {
+  state:[0, 1].map(() => tex(W, H, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST, gl.REPEAT)),
+  cur:0,
+  disp:tex(W, H, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.LINEAR, gl.REPEAT),
+  taps:null, tapCount:0,
+  m:.15, s:.015, dt:.1, species:null,
+  gen:0, time:0
+};
+world.fb = world.state.map(fbo);
+world.dispFb = fbo(world.disp);
+const stampTex = tex(1, 1, gl.R8, gl.RED, gl.UNSIGNED_BYTE, gl.LINEAR, gl.CLAMP_TO_EDGE, new Uint8Array([0]));
+
+// отводы ядра живут в uniform-буфере: чтение из константной памяти вместо текстуры
+const tapUbo = gl.createBuffer();
+gl.bindBuffer(gl.UNIFORM_BUFFER, tapUbo);
+gl.bufferData(gl.UNIFORM_BUFFER, 1024 * 16, gl.DYNAMIC_DRAW);
+gl.uniformBlockBinding(P.sim.p, gl.getUniformBlockIndex(P.sim.p, 'Taps'), 0);
+gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, tapUbo);
+function setKernel(sp){
+  const taps = kernelTaps(sp.R, sp.rings);
+  world.tapCount = Math.min(1024, taps.length / 4);
+  gl.bindBuffer(gl.UNIFORM_BUFFER, tapUbo);
+  gl.bufferSubData(gl.UNIFORM_BUFFER, 0, taps.subarray(0, world.tapCount * 4));
+}
+
+// Поворот узора на CPU (для стартовой чашки): билинейная выборка
+function stampCPU(buf, pat, cx, cy, rot){
+  const c = Math.cos(rot), s = Math.sin(rot);
+  const rad = Math.ceil(Math.hypot(pat.w, pat.h) / 2) + 1;
+  for (let y = -rad; y <= rad; y++) for (let x = -rad; x <= rad; x++){
+    const dx = x + 0.5, dy = y + 0.5;
+    const qx = c * dx + s * dy + pat.w / 2 - 0.5, qy = -s * dx + c * dy + pat.h / 2 - 0.5;
+    if (qx < -1 || qy < -1 || qx > pat.w || qy > pat.h) continue;
+    const x0 = Math.floor(qx), y0 = Math.floor(qy), fx = qx - x0, fy = qy - y0;
+    const at = (i, j) => (i < 0 || j < 0 || i >= pat.w || j >= pat.h) ? 0 : pat.data[j * pat.w + i];
+    const v = (at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx) * (1 - fy) + (at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx) * fy;
+    const wx = ((Math.floor(cx) + x) % W + W) % W, wy = ((Math.floor(cy) + y) % H + H) % H;
+    const k = (wy * W + wx) * 4;
+    if (v > buf[k]) buf[k] = v;
+  }
+}
+
+// Псевдослучайность с зерном: одна и та же чашка при одном зерне
+let seed = 20190416;
+const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+
+const creatures = [];   // стартовые позиции — для демонстрационной лупы
+let demoIdx = 0;
+function newDish(sp, opts = {}){
+  world.species = sp;
+  world.m = sp.m; world.s = sp.s; world.dt = 1 / sp.T;
+  setKernel(sp);
+  const buf = new Float32Array(W * H * 4);
+  const size = Math.max(sp.pattern.w, sp.pattern.h);
+  const count = Math.max(3, Math.min(opts.count || 14, Math.round((W * H) / (size * size * 12))));
+  const minD = size * 1.9;
+  creatures.length = 0;
+  let tries = 0;
+  while (creatures.length < count && tries++ < 4000){
+    const x = rnd() * W, y = rnd() * H;
+    let ok = true;
+    for (const c of creatures){
+      let dx = Math.abs(c.x - x), dy = Math.abs(c.y - y);
+      dx = Math.min(dx, W - dx); dy = Math.min(dy, H - dy);
+      if (Math.hypot(dx, dy) < minD){ ok = false; break; }
+    }
+    if (!ok) continue;
+    // стайка: у большинства общий курс, у пары — встречный
+    const base = opts.course ?? 0.35;
+    const course = creatures.length % 4 === 3 ? base + Math.PI + (rnd() - .5) * .6 : base + (rnd() - .5) * .9;
+    const rot = course - (sp.heading || 0);
+    stampCPU(buf, sp.pattern, x, y, rot);
+    creatures.push({x, y, course});
+  }
+  const t = world.state[world.cur];
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, W, H, gl.RGBA, gl.FLOAT, buf);
+  world.gen = 0; world.time = 0;
+  massHist.length = 0;
+  // для демо-лупы — существо ближе всего к центру свободной области экрана
+  const fx = W * 0.56, fy = H * 0.5;
+  demoIdx = 0; let best = 1e9;
+  creatures.forEach((c, i) => { const d = Math.hypot(c.x - fx, c.y - fy); if (d < best){ best = d; demoIdx = i; } });
+  if (creatures.length){ track.x = creatures[demoIdx].x; track.y = creatures[demoIdx].y; track(); lens.x = track.x * cellPx; lens.y = innerHeight - track.y * cellPx; }
+  fade = 0; fadeStart = performance.now();
+  copyToDisp();
+  refreshUI();
+}
+
+/* ---------- проходы симуляции ---------- */
+function simStep(){
+  const src = world.cur, dst = 1 - src;
+  gl.useProgram(P.sim.p);
+  bindTex(0, world.state[src]); gl.uniform1i(P.sim.u.uState, 0);
+  gl.uniform1i(P.sim.u.uTapCount, world.tapCount);
+  gl.uniform2f(P.sim.u.uInv, 1 / W, 1 / H);
+  gl.uniform1f(P.sim.u.uM, world.m); gl.uniform1f(P.sim.u.uS, world.s); gl.uniform1f(P.sim.u.uDt, world.dt);
+  draw(world.fb[dst], W, H);
+  world.cur = dst; world.gen++; world.time += world.dt;
+}
+function edit({brush = null, stamp = null}){
+  const src = world.cur, dst = 1 - src;
+  // сначала загружаем штамп (блок 1), и только потом привязываем мир к блоку 0
+  if (stamp){
+    const pat = stamp.sp.pattern;
+    const bytes = new Uint8Array(pat.w * pat.h);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.round(pat.data[i] * 255);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, stampTex);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, pat.w, pat.h, 0, gl.RED, gl.UNSIGNED_BYTE, bytes);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+  }
+  gl.useProgram(P.edit.p);
+  bindTex(0, world.state[src]); gl.uniform1i(P.edit.u.uState, 0);
+  bindTex(1, stampTex); gl.uniform1i(P.edit.u.uStamp, 1);
+  gl.uniform2f(P.edit.u.uSize, W, H);
+  gl.uniform4f(P.edit.u.uBrush, brush ? brush.x : 0, brush ? brush.y : 0, brush ? brush.r : 1, brush ? brush.mode : 0);
+  gl.uniform1f(P.edit.u.uSeed, Math.random() * 1000);
+  if (stamp){
+    const pat = stamp.sp.pattern;
+    gl.uniform4f(P.edit.u.uStampRect, stamp.x, stamp.y, pat.w, pat.h);
+    gl.uniform2f(P.edit.u.uStampRot, Math.cos(stamp.rot), Math.sin(stamp.rot));
+    gl.uniform1i(P.edit.u.uStampOn, 1);
+  } else gl.uniform1i(P.edit.u.uStampOn, 0);
+  draw(world.fb[dst], W, H);
+  world.cur = dst;
+}
+let mipDirty = true;
+function copyToDisp(){
+  gl.useProgram(P.copy.p);
+  bindTex(0, world.state[world.cur]); gl.uniform1i(P.copy.u.uState, 0);
+  draw(world.dispFb, W, H);
+  mipDirty = true;
+}
+
+/* ---------- экранные буферы ---------- */
+let RW = 0, RH = 0, renderScale = 1, qualityLevel = 0;
+const QUALITY = [1, .82, .66, .5];
+let scene = null, bloomA = null, bloomB = null, tmpA = null, tmpB = null;
+function makeTarget(w, h){ const t = tex(w, h, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.LINEAR, gl.CLAMP_TO_EDGE); return {t, f:fbo(t), w, h}; }
+function freeTarget(x){ if (!x) return; gl.deleteTexture(x.t); gl.deleteFramebuffer(x.f); }
+const SHOT = !!window.__SHOT__;
+function resize(){
+  const dpr = SHOT ? 1 : Math.min(devicePixelRatio || 1, 2);
+  renderScale = dpr * QUALITY[qualityLevel];
+  const w = Math.max(2, Math.round(innerWidth * renderScale)), h = Math.max(2, Math.round(innerHeight * renderScale));
+  if (w === RW && h === RH) return;
+  RW = w; RH = h;
+  canvas.width = w; canvas.height = h;
+  [scene, bloomA, bloomB, tmpA, tmpB].forEach(freeTarget);
+  scene = makeTarget(w, h);
+  const hw = Math.max(1, w >> 1), hh = Math.max(1, h >> 1), qw = Math.max(1, w >> 2), qh = Math.max(1, h >> 2);
+  bloomA = makeTarget(hw, hh); tmpA = makeTarget(hw, hh);
+  bloomB = makeTarget(qw, qh); tmpB = makeTarget(qw, qh);
+}
+addEventListener('resize', resize);
+
+/* ---------- кадр ---------- */
+let fade = 0, fadeStart = 0;
+function setShadeUniforms(prog, t){
+  bindTex(0, world.disp); gl.uniform1i(prog.u.uDisp, 0);
+  gl.uniform2f(prog.u.uWorld, W, H);
+  gl.uniform1f(prog.u.uM, world.m);
+  gl.uniform1f(prog.u.uTime, t);
+  gl.uniform1f(prog.u.uFade, fade);
+}
+function render(t){
+  const pxPerCell = cellPx * renderScale;
+  // сцена
+  gl.useProgram(P.scene.p);
+  setShadeUniforms(P.scene, t);
+  gl.uniform1f(P.scene.u.uPxPerCell, pxPerCell);
+  draw(scene.f, RW, RH);
+  // свечение: яркое → ½ → ¼
+  gl.useProgram(P.bright.p);
+  bindTex(0, scene.t); gl.uniform1i(P.bright.u.uSrc, 0);
+  gl.uniform2f(P.bright.u.uTexel, 1 / bloomA.w, 1 / bloomA.h);
+  draw(bloomA.f, bloomA.w, bloomA.h);
+  blur(bloomA, tmpA, 1.0);
+  gl.useProgram(P.bright.p);
+  bindTex(0, bloomA.t); gl.uniform1i(P.bright.u.uSrc, 0);
+  gl.uniform2f(P.bright.u.uTexel, 1 / bloomB.w, 1 / bloomB.h);
+  draw(bloomB.f, bloomB.w, bloomB.h);
+  blur(bloomB, tmpB, 1.6);
+  // итог
+  gl.useProgram(P.final.p);
+  setShadeUniforms(P.final, t);
+  bindTex(1, scene.t); gl.uniform1i(P.final.u.uScene, 1);
+  bindTex(2, bloomA.t); gl.uniform1i(P.final.u.uBloomA, 2);
+  bindTex(3, bloomB.t); gl.uniform1i(P.final.u.uBloomB, 3);
+  gl.uniform2f(P.final.u.uRes, RW, RH);
+  gl.uniform1f(P.final.u.uPxPerCell, pxPerCell);
+  gl.uniform4f(P.final.u.uLens, lens.x * renderScale, (innerHeight - lens.y) * renderScale, lens.r * renderScale, lens.zoom);
+  gl.uniform1f(P.final.u.uLensAlpha, lens.alpha);
+  draw(null, RW, RH);
+}
+function blur(target, tmp, spread){
+  gl.useProgram(P.blur.p);
+  gl.uniform2f(P.blur.u.uTexel, 1 / target.w, 1 / target.h);
+  bindTex(0, target.t); gl.uniform1i(P.blur.u.uSrc, 0);
+  gl.uniform2f(P.blur.u.uDir, spread / target.w, 0);
+  draw(tmp.f, tmp.w, tmp.h);
+  bindTex(0, tmp.t);
+  gl.uniform2f(P.blur.u.uDir, 0, spread / target.h);
+  draw(target.f, target.w, target.h);
+}
+
+/* ---------- чтение значений: клетка под лупой и масса ---------- */
+const px1 = new Float32Array(4);
+function readCell(cx, cy){
+  const x = ((Math.floor(cx) % W) + W) % W, y = ((Math.floor(cy) % H) + H) % H;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, world.fb[world.cur]);
+  gl.readPixels(x, y, 1, 1, gl.RGBA, gl.FLOAT, px1);
+  return {A:px1[0], U:px1[1], G:px1[2]};
+}
+// Слежение демо-лупы: центр масс A² в окне вокруг текущей точки
+const trackBuf = new Float32Array(40 * 40 * 4);
+function track(){
+  const n = 40;
+  track.x = ((track.x % W) + W) % W; track.y = ((track.y % H) + H) % H;
+  const x0 = Math.round(track.x) - n / 2, y0 = Math.round(track.y) - n / 2;
+  if (x0 < 0 || y0 < 0 || x0 + n > W || y0 + n > H) return;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, world.fb[world.cur]);
+  gl.readPixels(x0, y0, n, n, gl.RGBA, gl.FLOAT, trackBuf);
+  let sx = 0, sy = 0, sm = 0;
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++){ const a = trackBuf[(y * n + x) * 4], w = a * a; sx += w * x; sy += w * y; sm += w; }
+  if (sm > 2){ track.x = x0 + sx / sm + 0.5; track.y = y0 + sy / sm + 0.5; }
+  else if (creatures.length){ demoIdx = (demoIdx + 1) % creatures.length; track.x = creatures[demoIdx].x; track.y = creatures[demoIdx].y; }
+}
+const massHist = [];
+// Масса ΣA: GPU складывает блоки в сетку 32×32, CPU — оставшиеся 1024 числа
+const RED_N = 32, redTex = tex(RED_N, RED_N, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST, gl.CLAMP_TO_EDGE), redFb = fbo(redTex);
+const redBuf = new Float32Array(RED_N * RED_N * 4);
+function readMass(){
+  gl.useProgram(P.red.p);
+  bindTex(0, world.state[world.cur]); gl.uniform1i(P.red.u.uState, 0);
+  gl.uniform2i(P.red.u.uSize, W, H);
+  gl.uniform2i(P.red.u.uBlock, Math.ceil(W / RED_N), Math.ceil(H / RED_N));
+  draw(redFb, RED_N, RED_N);
+  gl.readPixels(0, 0, RED_N, RED_N, gl.RGBA, gl.FLOAT, redBuf);
+  let m = 0; for (let i = 0; i < RED_N * RED_N; i++) m += redBuf[i * 4];
+  return m;
+}
+
+/* =====================================================================
+   ИНТЕРФЕЙС
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 3) => v.toLocaleString('ru-RU', {minimumFractionDigits:d, maximumFractionDigits:d});
+const nf = v => Math.round(v).toLocaleString('ru-RU');
+
+// миниатюры видов
+function drawThumb(cv, sp, glow = true){
+  const ctx = cv.getContext('2d');
+  const pat = sp.pattern, S = cv.width;
+  ctx.clearRect(0, 0, S, S);
+  const scale = Math.min(S * 0.78 / pat.w, S * 0.78 / pat.h);
+  const img = ctx.createImageData(pat.w, pat.h);
+  for (let i = 0; i < pat.w * pat.h; i++){
+    const v = pat.data[i], c = rampRGB(v);
+    img.data[i * 4] = c[0]; img.data[i * 4 + 1] = c[1]; img.data[i * 4 + 2] = c[2];
+    img.data[i * 4 + 3] = Math.min(255, v * 900);
+  }
+  const off = document.createElement('canvas'); off.width = pat.w; off.height = pat.h;
+  off.getContext('2d').putImageData(img, 0, 0);
+  ctx.save();
+  ctx.translate(S / 2, S / 2);
+  ctx.rotate(-(sp.heading || 0) - Math.PI / 2);   // курсом вверх
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  if (glow){ ctx.shadowColor = 'rgba(80,240,200,.55)'; ctx.shadowBlur = S * 0.12; }
+  ctx.drawImage(off, -pat.w * scale / 2, -pat.h * scale / 2, pat.w * scale, pat.h * scale);
+  ctx.restore();
+}
+
+const spList = $('spList');
+SPECIES.forEach((sp, i) => {
+  const li = document.createElement('li');
+  const b = document.createElement('button');
+  b.className = 'sp';
+  b.setAttribute('aria-pressed', 'false');
+  b.innerHTML = `<canvas width="108" height="108"></canvas><span><span class="latin">${sp.name}</span><span class="ru">${sp.ru}</span><span class="num">${String(i + 1).padStart(2, '0')} · R ${sp.R} · μ ${fmt(sp.m, 3)}</span></span>`;
+  b.title = `${sp.name} — клавиша ${i + 1}`;
+  b.addEventListener('click', () => { newDish(sp); if (mobile) toggleSheet(null); });
+  li.appendChild(b); spList.appendChild(li);
+  sp.btn = b;
+  drawThumb(b.querySelector('canvas'), sp);
+});
+$('spCount').textContent = SPECIES.length + ' видов';
+
+// параметры
+const mu = $('mu'), sigma = $('sigma');
+function sliderFill(el){ const p = (el.value - el.min) / (el.max - el.min) * 100; el.style.setProperty('--p', p + '%'); }
+mu.addEventListener('input', () => { world.m = +mu.value; refreshParams(); });
+sigma.addEventListener('input', () => { world.s = +sigma.value; refreshParams(); });
+$('resetParams').addEventListener('click', () => { world.m = world.species.m; world.s = world.species.s; refreshParams(true); });
+
+function svgPath(points){ return points.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(''); }
+let growthMarker = null;
+function drawGrowth(){
+  const svg = $('figGrowth'), w = 240, h = 96, top = 8, bot = h - 16;
+  const uMax = Math.min(1, Math.max(0.2, world.m * 2.2));
+  const y = g => top + (1 - (g + 1) / 2) * (bot - top);
+  const pts = [];
+  for (let i = 0; i <= 240; i++){ const u = uMax * i / 240; pts.push([i / 240 * w, y(growthFn(u, world.m, world.s))]); }
+  const fillPos = svgPath(pts) + `L${w} ${y(0)}L0 ${y(0)}Z`;
+  const ticks = [0, world.m, uMax].map(u => `<text x="${(u / uMax * w).toFixed(1)}" y="${h - 2}" text-anchor="${u === 0 ? 'start' : u === uMax ? 'end' : 'middle'}" font-family="IBM Plex Mono, monospace" font-size="11" fill="#9dbcb1">${fmt(u, 2)}</text>`).join('');
+  svg.innerHTML = `
+    <defs><clipPath id="cpPos"><rect x="0" y="0" width="${w}" height="${y(0)}"/></clipPath></defs>
+    <line x1="0" x2="${w}" y1="${y(0)}" y2="${y(0)}" stroke="rgba(150,230,205,.3)" stroke-dasharray="2 3"/>
+    <line x1="${world.m / uMax * w}" x2="${world.m / uMax * w}" y1="${top}" y2="${bot}" stroke="rgba(214,255,92,.35)"/>
+    <path d="${fillPos}" fill="rgba(63,240,200,.16)" clip-path="url(#cpPos)"/>
+    <path d="${svgPath(pts)}" fill="none" stroke="#3ff0c8" stroke-width="1.6"/>
+    <text x="${w}" y="${top + 2}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="#9dbcb1">+1</text>
+    <text x="${w}" y="${bot - 2}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="#9dbcb1">−1</text>
+    ${ticks}
+    <circle id="gMark" r="3.6" fill="#d6ff5c" stroke="#030a0d" stroke-width="1.5" opacity="0"/>`;
+  growthMarker = {el:svg.querySelector('#gMark'), uMax, y, w};
+}
+function markGrowth(U){
+  if (!growthMarker) return;
+  const {el, uMax, y, w} = growthMarker;
+  if (U == null){ el.setAttribute('opacity', '0'); return; }
+  const u = Math.min(U, uMax);
+  el.setAttribute('cx', (u / uMax * w).toFixed(1));
+  el.setAttribute('cy', y(growthFn(U, world.m, world.s)).toFixed(1));
+  el.setAttribute('opacity', '1');
+}
+function drawKernel(){
+  const sp = world.species, svg = $('figKernel'), w = 170, h = 64, pad = 4;
+  let max = 0; const pts = [];
+  for (let i = 0; i <= 170; i++){ const v = kernelShell(i / 170, sp.rings); max = Math.max(max, v); pts.push([i / 170 * w, v]); }
+  const P2 = pts.map(([x, v]) => [x, h - 12 - v / max * (h - 12 - pad)]);
+  svg.innerHTML = `
+    <path d="${svgPath(P2)}L${w} ${h - 12}L0 ${h - 12}Z" fill="rgba(63,240,200,.14)"/>
+    <path d="${svgPath(P2)}" fill="none" stroke="#3ff0c8" stroke-width="1.5"/>
+    <line x1="0" x2="${w}" y1="${h - 12}" y2="${h - 12}" stroke="rgba(150,230,205,.3)"/>
+    <text x="0" y="${h}" font-family="IBM Plex Mono, monospace" font-size="11" fill="#9dbcb1">0</text>
+    <text x="${w}" y="${h}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="#9dbcb1">r = R</text>`;
+  const cv = $('kernel2d'), ctx = cv.getContext('2d'), S = cv.width, img = ctx.createImageData(S, S);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++){
+    const r = Math.hypot(x + .5 - S / 2, y + .5 - S / 2) / (S / 2 - 2);
+    const v = kernelShell(r, sp.rings) / max, c = rampRGB(0.12 + v * 0.8), k = (y * S + x) * 4;
+    img.data[k] = c[0]; img.data[k + 1] = c[1]; img.data[k + 2] = c[2]; img.data[k + 3] = r < 1 ? 255 : 0;
+  }
+  ctx.putImageData(img, 0, 0);
+  $('rV').textContent = sp.R;
+}
+function drawMass(){
+  const svg = $('figMass'), w = 240, h = 44;
+  if (massHist.length < 2){ svg.innerHTML = `<line x1="0" x2="${w}" y1="${h - 6}" y2="${h - 6}" stroke="rgba(150,230,205,.3)"/>`; return; }
+  const max = Math.max(...massHist) * 1.08, min = Math.min(...massHist) * 0.92;
+  const pts = massHist.map((m, i) => [i / (massHist.length - 1) * w, h - 6 - (m - min) / Math.max(1e-6, max - min) * (h - 14)]);
+  const last = massHist[massHist.length - 1];
+  svg.innerHTML = `
+    <path d="${svgPath(pts)}L${w} ${h - 6}L0 ${h - 6}Z" fill="rgba(214,255,92,.1)"/>
+    <path d="${svgPath(pts)}" fill="none" stroke="#d6ff5c" stroke-width="1.4"/>
+    <text x="${w}" y="10" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="#e4f2ec">${nf(last)}</text>`;
+}
+function refreshParams(syncSliders = false){
+  if (syncSliders || document.activeElement !== mu) mu.value = world.m;
+  if (syncSliders || document.activeElement !== sigma) sigma.value = world.s;
+  $('muV').textContent = fmt(world.m);
+  $('sigmaV').textContent = fmt(world.s, 4);
+  sliderFill(mu); sliderFill(sigma);
+  drawGrowth();
+}
+function refreshUI(){
+  const sp = world.species;
+  SPECIES.forEach(s => s.btn.setAttribute('aria-pressed', s === sp ? 'true' : 'false'));
+  $('pName').textContent = sp.name;
+  $('pRu').textContent = `${sp.ru}: ${sp.note}. T = ${sp.T}, кольца ядра: ${sp.b}.`;
+  refreshParams(true);
+  drawKernel();
+  drawMass();
+}
+
+// панели на мобильном
+const atlasEl = $('atlas'), paramsEl = $('params');
+function toggleSheet(which){
+  const openA = which === 'atlas' && atlasEl.classList.contains('sheet-closed');
+  const openP = which === 'params' && paramsEl.classList.contains('sheet-closed');
+  atlasEl.classList.toggle('sheet-closed', !openA);
+  paramsEl.classList.toggle('sheet-closed', !openP);
+  $('atlasBtn').setAttribute('aria-pressed', openA);
+  $('paramsBtn').setAttribute('aria-pressed', openP);
+}
+$('atlasBtn').addEventListener('click', () => toggleSheet('atlas'));
+$('paramsBtn').addEventListener('click', () => toggleSheet('params'));
+if (!mobile){ atlasEl.classList.remove('sheet-closed'); paramsEl.classList.remove('sheet-closed'); }
+$('collapseParams').addEventListener('click', e => {
+  const c = paramsEl.classList.toggle('collapsed');
+  e.currentTarget.setAttribute('aria-expanded', !c);
+  e.currentTarget.querySelector('path').setAttribute('d', c ? 'M3 10l5-5 5 5' : 'M3 6l5 5 5-5');
+});
+
+// транспорт
+let running = true, speed = 1, stepOnce = false;
+const SPEEDS = [1, 2, 4];
+function setRunning(v){
+  running = v;
+  $('playBtn').setAttribute('aria-label', v ? 'Пауза' : 'Пуск');
+  $('playIcon').innerHTML = v ? '<rect x="4" y="3" width="3.2" height="12" rx=".6"/><rect x="10.8" y="3" width="3.2" height="12" rx=".6"/>' : '<path d="M5 3.2v11.6L14.5 9z"/>';
+}
+$('playBtn').addEventListener('click', () => setRunning(!running));
+$('stepBtn').addEventListener('click', () => { setRunning(false); stepOnce = true; });
+$('speedBtn').addEventListener('click', () => { speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]; $('speedBtn').textContent = '×' + speed; });
+$('newBtn').addEventListener('click', () => { seed = (Math.random() * 1e9) >>> 0; newDish(world.species, {course:Math.random() * Math.PI * 2}); });
+
+let tool = 'plant';
+function setTool(t){
+  tool = t;
+  document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool === t ? 'true' : 'false'));
+  canvas.className = 'tool-' + t;
+  if (t !== 'lens' && !lens.demo) lens.target = 0;
+  $('readout').style.opacity = 0;
+  markGrowth(null);
+}
+document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+
+/* ---------- мышь и касания ---------- */
+const lens = {x:0, y:0, r:mobile ? 78 : 104, zoom:3.4, alpha:0, target:0, demo:true};
+const overlay = $('overlay');
+let pointer = null;
+function toCell(clientX, clientY){ return {x:clientX / cellPx, y:(innerHeight - clientY) / cellPx}; }
+function endDemo(){
+  if (!lens.demo) return;
+  lens.demo = false;
+  if (tool !== 'lens') lens.target = 0;
+  $('hint').classList.add('hidden');
+}
+canvas.addEventListener('pointerdown', e => {
+  endDemo();
+  canvas.setPointerCapture(e.pointerId);
+  pointer = {x0:e.clientX, y0:e.clientY, x:e.clientX, y:e.clientY, id:e.pointerId};
+  if (tool === 'soup' || tool === 'erase') paintAt(e.clientX, e.clientY);
+  if (tool === 'lens'){ lens.x = e.clientX; lens.y = e.clientY; lens.target = 1; }
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerType === 'mouse' && lens.demo && Math.hypot(e.movementX, e.movementY) > 2) endDemo();
+  if (tool === 'lens' && (e.pointerType === 'mouse' || pointer)){ lens.x = e.clientX; lens.y = e.clientY; lens.target = 1; }
+  if (!pointer) return;
+  pointer.x = e.clientX; pointer.y = e.clientY;
+  if (tool === 'soup' || tool === 'erase') paintAt(e.clientX, e.clientY);
+  if (tool === 'plant') drawAim();
+});
+function finishPointer(e){
+  if (!pointer) return;
+  if (tool === 'plant' && e.type === 'pointerup'){
+    const dx = pointer.x - pointer.x0, dy = pointer.y - pointer.y0;
+    const course = Math.hypot(dx, dy) > 10 ? Math.atan2(-dy, dx) : Math.random() * Math.PI * 2;
+    const c = toCell(pointer.x0, pointer.y0), sp = world.species;
+    edit({stamp:{sp, x:c.x, y:c.y, rot:course - (sp.heading || 0)}});
+    copyToDisp();
+    ripple(pointer.x0, pointer.y0);
+  }
+  if (tool === 'lens' && e.pointerType !== 'mouse') lens.target = 0;
+  pointer = null;
+  overlay.innerHTML = '';
+}
+canvas.addEventListener('pointerup', finishPointer);
+canvas.addEventListener('pointercancel', finishPointer);
+canvas.addEventListener('pointerleave', e => { if (tool === 'lens' && e.pointerType === 'mouse'){ lens.target = 0; $('readout').style.opacity = 0; markGrowth(null); } });
+
+let pendingPaint = null;
+function paintAt(x, y){ pendingPaint = {x, y}; }
+function drawAim(){
+  const {x0, y0, x, y} = pointer, len = Math.hypot(x - x0, y - y0);
+  if (len < 10){ overlay.innerHTML = `<circle cx="${x0}" cy="${y0}" r="16" fill="none" stroke="#3ff0c8" stroke-width="1.2" stroke-dasharray="3 4"/>`; return; }
+  const a = Math.atan2(y - y0, x - x0), hx = x - Math.cos(a) * 2, hy = y - Math.sin(a) * 2;
+  const l1 = [hx - Math.cos(a - .45) * 12, hy - Math.sin(a - .45) * 12], l2 = [hx - Math.cos(a + .45) * 12, hy - Math.sin(a + .45) * 12];
+  overlay.innerHTML = `
+    <circle cx="${x0}" cy="${y0}" r="16" fill="none" stroke="#3ff0c8" stroke-width="1.2"/>
+    <line x1="${x0 + Math.cos(a) * 18}" y1="${y0 + Math.sin(a) * 18}" x2="${hx}" y2="${hy}" stroke="#3ff0c8" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <path d="M${l1[0]} ${l1[1]}L${hx} ${hy}L${l2[0]} ${l2[1]}" fill="none" stroke="#3ff0c8" stroke-width="1.6"/>
+    <text x="${x0 + 22}" y="${y0 - 20}" font-family="Cormorant Garamond, Georgia, serif" font-style="italic" font-weight="600" font-size="17" fill="#e4f2ec">${world.species.name}</text>`;
+}
+function ripple(x, y){
+  const id = 'r' + Math.random().toString(36).slice(2);
+  overlay.insertAdjacentHTML('beforeend', `<circle id="${id}" cx="${x}" cy="${y}" r="10" fill="none" stroke="#d6ff5c" stroke-width="1.4"><animate attributeName="r" from="10" to="64" dur=".7s" fill="freeze"/><animate attributeName="opacity" from="1" to="0" dur=".7s" fill="freeze"/></circle>`);
+  setTimeout(() => document.getElementById(id)?.remove(), 800);
+}
+
+// клавиатура
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space'){ e.preventDefault(); setRunning(!running); }
+  else if (e.code === 'ArrowRight' || e.key === '.'){ setRunning(false); stepOnce = true; }
+  else if (/^Digit[1-9]$/.test(e.code)){ const sp = SPECIES[+e.code.slice(5) - 1]; if (sp) newDish(sp); }
+  else if (e.code === 'KeyN') $('newBtn').click();
+  else if (e.code === 'KeyP') setTool('plant');
+  else if (e.code === 'KeyB') setTool('soup');
+  else if (e.code === 'KeyE') setTool('erase');
+  else if (e.code === 'KeyL') setTool('lens');
+});
+
+/* =====================================================================
+   ГЛАВНЫЙ ЦИКЛ
+   ===================================================================== */
+const statusEl = $('status'), readoutEl = $('readout');
+let lastTrack = 0, last = performance.now(), frameAvg = 16, slowFrames = 0, fastFrames = 0, lastRead = 0, lastMass = 0, t0 = performance.now();
+function frame(now){
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.min(100, now - last); last = now;
+  frameAvg = frameAvg * 0.92 + dt * 0.08;
+  const t = (now - t0) / 1000;
+
+  // рисование кистью — не чаще раза в кадр
+  if (pendingPaint){
+    const c = toCell(pendingPaint.x, pendingPaint.y);
+    edit({brush:{x:c.x, y:c.y, r:(mobile ? 7 : 9) * (world.species.R / 13), mode:tool === 'soup' ? 1 : 2}});
+    pendingPaint = null;
+    if (!running) copyToDisp();
+  }
+  // шаги симуляции (при медленных кадрах — меньше шагов)
+  let steps = running ? speed : 0;
+  if (running && frameAvg > 30) steps = Math.max(1, Math.floor(steps / 2));
+  if (stepOnce){ steps = 1; stepOnce = false; }
+  for (let i = 0; i < steps; i++) simStep();
+  if (steps) copyToDisp();
+
+  fade = SHOT ? 1 : Math.min(1, (now - fadeStart) / 520);
+
+  // демо-лупа: следует за первым существом, пока пользователь не пошевелит мышью
+  if (lens.demo && creatures.length){
+    if (now - lastTrack > 150){ lastTrack = now; track(); }
+    const k = SHOT ? 1 : Math.min(1, dt / 160);
+    lens.x += (track.x * cellPx - lens.x) * k;
+    lens.y += ((innerHeight - track.y * cellPx) - lens.y) * k;
+    lens.target = 1;
+  }
+  lens.alpha += (lens.target - lens.alpha) * Math.min(1, dt / 120);
+
+  render(t);
+
+  // показания под лупой
+  if (lens.alpha > 0.5 && now - lastRead > 110){
+    lastRead = now;
+    const c = toCell(lens.x, lens.y), v = readCell(c.x, c.y);
+    const gCls = v.G >= 0 ? 'pos' : 'neg';
+    readoutEl.innerHTML = `<span class="k">A</span> ${fmt(v.A)} &nbsp;<span class="k">U</span> ${fmt(v.U)} &nbsp;<span class="k">G</span> <span class="${gCls}">${v.G >= 0 ? '+' : '−'}${fmt(Math.abs(v.G), 2)}</span>`;
+    const ox = lens.x + lens.r * 0.72 + 12, oy = lens.y + lens.r * 0.72 + 8;
+    readoutEl.style.transform = `translate(${Math.min(innerWidth - 210, ox)}px, ${Math.min(innerHeight - 40, oy)}px)`;
+    readoutEl.style.opacity = 1;
+    markGrowth(v.U);
+  } else if (lens.alpha < 0.3 && readoutEl.style.opacity !== '0'){ readoutEl.style.opacity = 0; markGrowth(null); }
+
+  // масса и строка состояния
+  if (now - lastMass > 400){
+    lastMass = now;
+    const m = readMass();
+    if (m != null && running){ massHist.push(m); if (massHist.length > 90) massHist.shift(); }
+    if (!mobile || true) drawMass();
+    statusEl.innerHTML = `t = <b>${fmt(world.time, 1)}</b> · шаг <b>${nf(world.gen)}</b> · масса <b>${m != null ? nf(m) : '—'}</b><br>${W} × ${H} клеток · ядро ${world.tapCount} отводов`;
+  }
+
+  // адаптивное качество (в режиме съёмки выключено)
+  if (SHOT) return;
+  if (frameAvg > 26){ if (++slowFrames > 45 && qualityLevel < QUALITY.length - 1){ qualityLevel++; slowFrames = 0; RW = 0; resize(); } }
+  else slowFrames = 0;
+  if (frameAvg < 13){ if (++fastFrames > 240 && qualityLevel > 0){ qualityLevel--; fastFrames = 0; RW = 0; resize(); } }
+  else fastFrames = 0;
+}
+
+resize();
+newDish(SPECIES[0], {count:14, course:0.35});
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) lens.demo = false;
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

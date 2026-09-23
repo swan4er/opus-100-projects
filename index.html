@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Сто проектов Opus 5.5</title>
+<meta name="description" content="Коллекция из 100 интерактивных проектов: шейдеры, физика, компиляторы, игры, музыка и объяснялки. Собрано Opus 5.5 за один автономный запуск.">
+<meta name="theme-color" content="#0f0f0d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f0d;
+  --bg2: #161613;
+  --bg3: #1f1e1a;
+  --ink: #ece6da;
+  --ink2: #aba597;
+  --ink3: #8a857a;
+  --line: rgba(236, 230, 218, .11);
+  --line2: rgba(236, 230, 218, .24);
+  --signal: #ff5b22;
+  --display: "Dela Gothic One", "Onest", system-ui, sans-serif;
+  --sans: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --gut: clamp(16px, 4vw, 48px);
+  --ease: cubic-bezier(.2, .7, .1, 1);
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); color: var(--ink); -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body { margin: 0; font: 400 16px/1.5 var(--sans); overflow-x: hidden; }
+body::after { /* плёночное зерно поверх всего */
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 100; opacity: .05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+a { color: inherit; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+::selection { background: var(--signal); color: #111; }
+
+/* ---------- Шапка с цифрой из проектов ---------- */
+.hero {
+  position: relative; isolation: isolate; min-height: min(100svh, 1000px);
+  display: grid; grid-template-rows: auto 1fr auto; padding: 22px var(--gut) 36px;
+}
+#hundred { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; touch-action: pan-y; }
+.top {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink2);
+}
+.top nav { display: flex; gap: 22px; }
+.top .kick, .top a { white-space: nowrap; }
+.top a { text-decoration: none; padding: 8px 0; border-bottom: 1px solid transparent; transition: border-color .25s, color .25s; }
+.top a:hover { color: var(--ink); border-color: var(--ink2); }
+.aikey { font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--ink); background: transparent; border: 1px solid var(--line2); border-radius: 999px; padding: 8px 12px 7px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; transition: border-color .2s, background .2s; }
+.aikey:hover { border-color: var(--ink2); background: var(--bg2); }
+.aikey i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink3); display: inline-block; }
+.aikey.on i { background: #9be15d; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--signal); margin-right: 10px; vertical-align: 1px; }
+.stage { pointer-events: none; }
+.intro { align-self: end; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px 56px; align-items: end; pointer-events: none; }
+.intro > * { pointer-events: auto; }
+h1 { font: 400 clamp(34px, 4.4vw, 68px)/1.04 var(--display); letter-spacing: -.005em; margin: 0; max-width: 15ch; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--signal); }
+.lead { color: var(--ink2); max-width: 54ch; margin: 0 0 6px; font-size: 17px; line-height: 1.55; }
+.stats { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: end; border-top: 1px solid var(--line); padding-top: 18px; gap: 18px 44px; }
+.stat b { display: block; font: 400 clamp(24px, 2.4vw, 34px)/1 var(--display); letter-spacing: .01em; }
+.stat span { display: block; margin-top: 8px; font: 500 11px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); }
+.stats .spacer { flex: 1; }
+.btn {
+  display: inline-flex; align-items: center; gap: 12px; height: 52px; padding: 0 22px 0 24px; border: 0; cursor: pointer;
+  background: var(--ink); color: #121210; font: 600 16px/1 var(--sans); border-radius: 999px;
+  transition: transform .35s var(--ease), background .25s; text-decoration: none;
+}
+.btn:hover { background: #fff; transform: translateY(-2px); }
+.btn:active { transform: translateY(0) scale(.98); }
+.btn svg { width: 22px; height: 22px; transition: transform .5s var(--ease); }
+.btn:hover svg { transform: rotate(180deg); }
+.btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line2); }
+.btn.ghost:hover { box-shadow: inset 0 0 0 1px var(--ink); background: transparent; }
+.tip {
+  position: absolute; z-index: 5; left: 0; top: 0; width: max-content; max-width: 320px; pointer-events: none;
+  padding: 12px 14px 13px; background: rgba(18, 18, 16, .94); border: 1px solid var(--line2);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  opacity: 0; transform: translateY(6px); transition: opacity .18s, transform .25s var(--ease);
+}
+.tip.on { opacity: 1; transform: none; }
+.tip.touch { pointer-events: auto; }
+.tip .n { font: 500 11px/1 var(--mono); color: var(--acc, var(--signal)); letter-spacing: .08em; }
+.tip .t { font: 600 16px/1.25 var(--sans); margin-top: 6px; }
+.tip .s { font-size: 13px; line-height: 1.4; color: var(--ink2); margin-top: 4px; }
+.tip a { display: none; margin-top: 10px; font: 600 14px/1 var(--sans); color: var(--acc, var(--signal)); text-decoration: none; padding: 6px 0; }
+.tip.touch a { display: inline-block; }
+
+/* ---------- Панель фильтров ---------- */
+.bar {
+  position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between;
+  padding: 12px var(--gut); background: rgba(15, 15, 13, .86); border-block: 1px solid var(--line);
+  backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 1 1 520px; margin: -4px 0; padding: 4px 0; }
+.chips::-webkit-scrollbar { display: none; }
+.chips.over { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent); }
+.chip {
+  flex: none; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line2); background: transparent; cursor: pointer;
+  font: 500 14px/1 var(--sans); color: var(--ink2); display: inline-flex; align-items: center; gap: 8px; transition: color .2s, background .2s, border-color .2s;
+}
+.chip i { font: 500 11px/1 var(--mono); font-style: normal; color: var(--ink3); }
+.chip:hover { color: var(--ink); border-color: var(--ink2); }
+.chip[aria-pressed="true"] { background: var(--ink); color: #121210; border-color: var(--ink); }
+.chip[aria-pressed="true"] i { color: #57544c; }
+.tools { display: flex; gap: 10px; align-items: center; flex: 0 1 auto; }
+.search { position: relative; display: flex; align-items: center; }
+.search svg { position: absolute; left: 12px; width: 17px; height: 17px; color: var(--ink3); pointer-events: none; }
+.search input {
+  width: 250px; height: 38px; padding: 0 34px 0 38px; border-radius: 999px; border: 1px solid var(--line2); background: var(--bg2);
+  font-size: 14px; transition: border-color .2s, width .35s var(--ease);
+}
+.search input::placeholder { color: var(--ink3); }
+.search input:focus { outline: none; border-color: var(--ink2); }
+.search kbd { position: absolute; right: 10px; font: 500 11px/1 var(--mono); color: var(--ink3); border: 1px solid var(--line2); border-radius: 5px; padding: 4px 7px; pointer-events: none; }
+.search input:focus + kbd, .search input:not(:placeholder-shown) + kbd { display: none; }
+@media (min-width: 901px) {
+  .search input { width: 38px; padding-right: 0; cursor: pointer; }
+  .search input::placeholder { color: transparent; }
+  .search kbd { display: none; }
+  .search input:focus, .search input:not(:placeholder-shown) { width: 250px; padding-right: 14px; cursor: text; }
+  .search input:focus::placeholder { color: var(--ink3); }
+}
+.views { display: flex; padding: 3px; border-radius: 999px; border: 1px solid var(--line2); background: var(--bg2); }
+.views button { height: 30px; min-width: 36px; justify-content: center; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; cursor: pointer; font: 500 13px/1 var(--sans); color: var(--ink2); display: inline-flex; align-items: center; gap: 7px; transition: background .2s, color .2s; }
+.views button svg { width: 15px; height: 15px; }
+.views button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.views button:hover { color: var(--ink); }
+.views button[aria-pressed="true"] { background: var(--ink); color: #121210; }
+
+/* ---------- Карточки ---------- */
+main { padding: 28px var(--gut) 80px; min-height: 60vh; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 26px 22px; }
+.card { display: block; text-decoration: none; position: relative; outline-offset: 6px; }
+.card .shot {
+  position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--cbg, var(--bg2));
+  border: 1px solid var(--line); transition: border-color .3s, box-shadow .45s var(--ease), transform .45s var(--ease);
+}
+.card img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .8s var(--ease), filter .4s; filter: saturate(.92); }
+.card .ph { position: absolute; inset: 0; display: grid; place-items: center; font: 400 64px/1 var(--display); color: var(--acc); opacity: .9;
+  background: radial-gradient(120% 90% at 30% 20%, color-mix(in oklab, var(--acc) 30%, transparent), transparent 60%), var(--cbg, var(--bg2)); }
+.card .num {
+  position: absolute; left: 10px; top: 10px; padding: 8px 10px 7px; font: 500 12px/1 var(--mono); letter-spacing: .06em;
+  background: rgba(10, 10, 9, .66); color: var(--ink); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.card .num::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); margin-right: 7px; vertical-align: 1px; }
+.card .net { position: absolute; right: 10px; top: 10px; width: 26px; height: 26px; display: grid; place-items: center; background: rgba(10, 10, 9, .66); color: var(--ink2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.card .net svg { width: 14px; height: 14px; }
+.card .film { position: absolute; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; background: rgba(10, 10, 9, .72); color: var(--ink); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.card .film svg { width: 13px; height: 13px; color: var(--acc); }
+.card:hover .shot, .card:focus-visible .shot { border-color: var(--acc); box-shadow: 0 18px 40px -18px rgba(0, 0, 0, .8); transform: translateY(-4px); }
+.card:hover img { transform: scale(1.045); filter: saturate(1.05); }
+.card .body { padding: 14px 2px 0; }
+.card h3 { margin: 0; font: 600 19px/1.25 var(--sans); letter-spacing: -.005em; text-wrap: balance; }
+.card p { margin: 6px 0 0; color: var(--ink2); font-size: 14.5px; line-height: 1.45; }
+.card .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 11px; font: 500 11px/1.3 var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--ink3); }
+.card .meta .c { color: var(--acc); }
+.card .go { position: absolute; right: 12px; bottom: 12px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: #111;
+  opacity: 0; transform: translateY(8px) scale(.9); transition: opacity .3s, transform .4s var(--ease); }
+.card .go svg { width: 16px; height: 16px; }
+.card:hover .go, .card:focus-visible .go { opacity: 1; transform: none; }
+.card.flash .shot { animation: flash 1.6s var(--ease); }
+@keyframes flash { 0%, 100% { outline: 0 solid transparent; outline-offset: 0; } 15% { outline: 3px solid var(--acc); outline-offset: 6px; } 70% { outline: 3px solid var(--acc); outline-offset: 10px; } }
+
+/* ---------- Стена ---------- */
+.wall { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+.tile { position: relative; aspect-ratio: 16 / 10; background: var(--cbg, var(--bg2)); display: block; text-decoration: none; transform-origin: var(--ox, 50%) var(--oy, 50%);
+  transition: transform .45s var(--ease), box-shadow .45s var(--ease), filter .3s; z-index: 1; }
+.tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tile .ph { position: absolute; inset: 0; display: grid; place-items: center; font: 400 22px/1 var(--display); color: var(--acc); }
+.tile .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 8px 6px; font: 600 7px/1.2 var(--sans); background: linear-gradient(transparent, rgba(0,0,0,.85)); opacity: 0; transition: opacity .3s; }
+.tile .cap b { font: 500 6px/1 var(--mono); color: var(--acc); display: block; margin-bottom: 2px; letter-spacing: .06em; }
+.wall:hover .tile { filter: brightness(.55) saturate(.7); }
+.wall .tile:hover, .wall .tile:focus-visible { transform: scale(2.3); z-index: 10; filter: none; box-shadow: 0 20px 60px rgba(0,0,0,.7), 0 0 0 1px var(--acc); }
+.wall .tile:hover .cap, .wall .tile:focus-visible .cap { opacity: 1; }
+.wall .tile.dim { opacity: .12; pointer-events: none; }
+
+/* ---------- Каталог ---------- */
+.catalog { border-top: 1px solid var(--line); }
+.row { display: grid; grid-template-columns: 64px minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.5fr); gap: 20px; padding: 16px 12px; border-bottom: 1px solid var(--line);
+  text-decoration: none; position: relative; transition: background .2s; align-items: baseline; }
+.row:hover { background: var(--bg2); }
+.row:hover .rt b { color: var(--acc); }
+.row .rn { font: 500 13px/1.4 var(--mono); color: var(--acc); }
+.row .rt b { font: 600 16px/1.3 var(--sans); display: block; transition: color .2s; }
+.row .rt span { font-size: 13.5px; color: var(--ink2); }
+.row .rc, .row .rx, .row .rs { font-size: 13.5px; color: var(--ink2); }
+.row .rx { font-family: var(--mono); font-size: 12px; }
+.rowhead { display: grid; grid-template-columns: 64px minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.5fr); gap: 20px; padding: 12px; font: 500 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); }
+
+.empty { text-align: center; color: var(--ink2); padding: 80px 0; font-size: 18px; }
+.empty b { display: block; font: 400 44px/1 var(--display); color: var(--ink); margin-bottom: 12px; }
+[hidden] { display: none !important; }
+
+/* ---------- Подвал ---------- */
+footer { padding: 56px var(--gut) 64px; border-top: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 32px 56px; color: var(--ink2); font-size: 14.5px; }
+footer h2 { font: 400 26px/1.1 var(--display); color: var(--ink); margin: 0 0 14px; }
+footer p { margin: 0 0 10px; max-width: 60ch; }
+footer ul { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 28px; }
+footer li { margin: 0 0 8px; break-inside: avoid; }
+footer li a { text-decoration: none; border-bottom: 1px solid var(--line2); transition: border-color .2s, color .2s; }
+footer li a:hover { color: var(--ink); border-color: var(--ink); }
+.sig { grid-column: 1 / -1; font: 500 11px/1.6 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink3); padding-top: 24px; border-top: 1px solid var(--line); }
+
+@media (max-width: 900px) {
+  .intro { grid-template-columns: 1fr; }
+  .stats .spacer { display: none; }
+  .search input, .search input:focus { width: 100%; }
+  .tools { flex: 1 1 100%; }
+  .search { flex: 1; }
+  .wall { grid-template-columns: repeat(5, 1fr); }
+  .row, .rowhead { grid-template-columns: 52px minmax(0, 1fr); }
+  .row .rc, .row .rx, .row .rs, .rowhead span:nth-child(n+3) { display: none; }
+  footer { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .hero { min-height: 100svh; padding-bottom: 28px; }
+  .top nav a:nth-child(2), .top nav a:nth-child(1) { display: none; }
+  .top nav { gap: 14px; align-items: center; }
+  .aikey { padding: 7px 10px 6px; }
+  .aikey .long { display: none; }
+  .lead { font-size: 15.5px; }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 12px; }
+  .stat b { font-size: 22px; }
+  .stats .cta { grid-column: 1 / -1; margin-top: 6px; }
+  .top .date { display: none; }
+  .stage { min-height: 46vw; } /* своё место под цифру «100» из точек */
+  .wall { grid-template-columns: repeat(4, 1fr); gap: 2px; }
+  .wall .tile:hover { transform: scale(1.8); }
+  footer ul { columns: 1; }
+  .cta { width: 100%; }
+  .cta .btn { flex: 1; justify-content: center; }
+}
+.cta { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<header class="hero" id="top">
+  <canvas id="hundred" aria-hidden="true"></canvas>
+  <div class="top">
+    <span class="kick"><span class="dot"></span>Коллекция<span class="date"> · 23 сентября 2026</span></span>
+    <nav><a href="IDEAS.md">100 идей</a><a href="BRIEF.md">Правила сборки</a><a href="#list">К проектам</a><button type="button" class="aikey" id="aikey" title="Игры с нейросетью работают на вашем ключе OpenRouter (BYOK)">Нейросеть</button></nav>
+  </div>
+  <div class="stage" aria-hidden="true"></div>
+  <div class="intro">
+    <h1>Сто проектов, в&nbsp;которых силён <em>Opus&nbsp;5.5</em></h1>
+    <div>
+      <p class="lead">Игры, где персонажей играет нейросеть, десять мультфильмов, 3D, музыка и&nbsp;объяснялки. Каждый проект собран автономно, проверен по&nbsp;скриншотам и&nbsp;открывается двойным кликом. Цифра выше сложена из&nbsp;самих проектов&nbsp;— наведите на&nbsp;точку.</p>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+  <div class="tip" id="tip" role="status" aria-live="polite"><div class="n"></div><div class="t"></div><div class="s"></div><a target="_blank" rel="noopener">Открыть →</a></div>
+</header>
+
+<div class="bar" id="list">
+  <div class="chips" id="chips" aria-label="Категории"></div>
+  <div class="tools">
+    <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><input id="q" type="search" placeholder="Название, техника, идея…" autocomplete="off" aria-label="Поиск по проектам"><kbd>/</kbd></label>
+    <div class="views" id="views" aria-label="Вид">
+      <button data-v="grid" aria-pressed="true" title="Карточки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7.5" height="7.5"/><rect x="13.5" y="3" width="7.5" height="7.5"/><rect x="3" y="13.5" width="7.5" height="7.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5"/></svg><span>Карточки</span></button>
+      <button data-v="wall" aria-pressed="false" title="Стена"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="5" height="4"/><rect x="9.5" y="4" width="5" height="4"/><rect x="16" y="4" width="5" height="4"/><rect x="3" y="10" width="5" height="4"/><rect x="9.5" y="10" width="5" height="4"/><rect x="16" y="10" width="5" height="4"/><rect x="3" y="16" width="5" height="4"/><rect x="9.5" y="16" width="5" height="4"/><rect x="16" y="16" width="5" height="4"/></svg><span>Стена</span></button>
+      <button data-v="catalog" aria-pressed="false" title="Каталог"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg><span>Каталог</span></button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section class="grid" id="grid" aria-label="Проекты — карточки"></section>
+  <section class="wall" id="wall" aria-label="Проекты — стена" hidden></section>
+  <section class="catalog" id="catalog" aria-label="Проекты — каталог" hidden></section>
+  <div class="empty" id="empty" hidden><b>Пусто</b>Ничего не нашлось. Попробуйте другое слово или&nbsp;категорию.</div>
+</main>
+
+<footer>
+  <div>
+    <h2>Как это собрано</h2>
+    <p>Сначала модель изучила, в&nbsp;чём силён Opus&nbsp;5.5, и&nbsp;написала 100 идей&nbsp;— по&nbsp;десять в&nbsp;каждой из&nbsp;десяти категорий. Потом двадцать её&nbsp;копий параллельно собирали по&nbsp;пять проектов, снимали их&nbsp;в&nbsp;headless-браузере, смотрели на&nbsp;скриншоты и&nbsp;исправляли, пока не&nbsp;стало хорошо. Когда упёрлись в&nbsp;лимит, ещё девять агентов доделали оставшееся.</p>
+    <p>Одиннадцатую категорию подсказал Станислав: Opus&nbsp;5.5 хвалят за&nbsp;анимацию, а&nbsp;мультфильмов в&nbsp;сотне не&nbsp;было. Десять агентов-аниматоров сняли по&nbsp;короткому фильму&nbsp;— у&nbsp;каждого своя техника: перекладка, пластилин, театр теней, палех, пиксель, воксели.</p>
+    <p>Двенадцатая&nbsp;— игры с&nbsp;живой нейросетью DeepSeek v4.1 через OpenRouter. В&nbsp;них модель не&nbsp;чат-бот сбоку, а&nbsp;актёр, судья и&nbsp;рассказчик: клиенты кофейни видят, что им&nbsp;налили, мафия врёт, подозреваемый путается в&nbsp;показаниях. Без ключа игры работают в&nbsp;демо-режиме.</p>
+    <p>Игры с&nbsp;нейросетью работают по&nbsp;принципу BYOK: подключите свой ключ OpenRouter кнопкой «Подключить нейросеть» наверху или войдите через OpenRouter. Ключ хранится только в&nbsp;вашем браузере и&nbsp;уходит напрямую в&nbsp;OpenRouter. Без ключа игры работают в&nbsp;демо-режиме.</p>
+    <p>Проекты открываются в&nbsp;новой вкладке. Значок <svg style="width:14px;height:14px;vertical-align:-2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg> означает, что проекту нужен интернет: живые данные или библиотека с&nbsp;CDN.</p>
+  </div>
+  <div>
+    <h2>Источники исследования</h2>
+    <ul>
+      <li><a href="https://www.anthropic.com/claude-opus-5-5">Anthropic — анонс Opus 5.5</a></li>
+      <li><a href="https://www.vellum.ai/blog/claude-opus-5-5-benchmarks-explained">Vellum — бенчмарки</a></li>
+      <li><a href="https://every.to/vibe-check/vibe-check-opus-5-5-is-pulling-our-codex-converts-back-to-claude">Every — практический тест</a></li>
+      <li><a href="https://kingy.ai/blog/claude-opus-5-5-specs-benchmarks-pricing-comparison/">Kingy AI — характеристики</a></li>
+      <li><a href="https://the-decoder.com/claude-opus-5-5-matches-fable-5-1-at-40-percent-lower-cost-as-anthropic-promises-to-fix-claudish-writing/">The Decoder — письмо</a></li>
+      <li><a href="https://techcrunch.com/2026/09/22/anthropic-releases-opus-5-5-with-lower-prices-and-fable-level-performance/">TechCrunch — релиз</a></li>
+      <li><a href="https://www.analyticsvidhya.com/blog/2026/09/claude-opus-5-5-tested/">Analytics Vidhya — слабые места</a></li>
+    </ul>
+  </div>
+  <div class="sig" id="sig"></div>
+</footer>
+
+<script src="_ai/ai.js"></script>
+<script>
+window.PROJECTS = [{"n":1,"slug":"001-split-flap","cat":9,"title":"Табло","tagline":"Перекидное табло вокзала: каждая буква пролистывает кириллический барабан со щелчком","tech":["Canvas 2D","Web Audio","Симуляция механики"],"strength":"Внимание к деталям механики и интерфейса","controls":"Режимы «Вокзал», «Часы», «Своё»; своё сообщение — в поле ввода","accent":"#FFC93C","bg":"#0B0D10","net":false,"thumb":"_gallery/thumbs/001.webp?v=1790166251107","loc":510,"kb":28,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:34:11.485Z"}},{"n":2,"slug":"002-chess-mind","cat":4,"title":"Шахматы: мысли машины","tagline":"Движок на альфа-бета показывает кандидатов, главную линию и куда уходит его внимание","tech":["Web Worker","Альфа-бета","Хеши Зобриста","SVG"],"strength":"Большая система с жёсткими инвариантами, проверенная perft-тестами","controls":"Клик или перетаскивание фигур, режимы игры, время на ход","accent":"#CAA45A","bg":"#0F0E0D","net":false,"thumb":"_gallery/thumbs/002.webp?v=1790165801031","loc":1318,"kb":67,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:44:23.787Z"}},{"n":3,"slug":"003-four-dimensions","cat":2,"title":"Четырёхмерие","tagline":"Шесть правильных 4D-многогранников: вращение в шести плоскостях, тени и срезы","tech":["WebGL2","GLSL","Кватернионы","Выпуклая оболочка"],"strength":"Геометрическое мышление: точные координаты, 4D-повороты и сечения","controls":"Фигуры 1–6 · ползунки шести вращений · P — проекция · S — срез · тянуть — камера","accent":"#FF6A3D","bg":"#07060B","net":false,"thumb":"_gallery/thumbs/003.webp?v=1790169797260","loc":873,"kb":50,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:22:09.459Z"}},{"n":4,"slug":"004-khrushchev-renovation","cat":11,"title":"Хрущёвка. Ремонт под ключ","tagline":"Шабашник в хрущёвке 1974 года, а бабушка на приёмке видит каждый косяк","tech":["three.js","WebGL2","Canvas 2D","Web Audio","DeepSeek"],"strength":"Нейросеть судит по фактам 3D-сцены: точный список косяков, отмазки и оплата через JSON-схему","controls":"WASD и мышь, ЛКМ — работать, E — взять и выпить, 1–6 — инструменты, отмазки — текстом","accent":"#F0B85A","bg":"#1E1813","net":true,"thumb":"_gallery/thumbs/004.webp?v=1790187746481","loc":4372,"kb":315,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:40:56.012Z"}},{"n":5,"slug":"005-glass-painting","cat":10,"title":"Сон зимнего леса","tagline":"Мультфильм маслом на стекле: зимнему лесу снится год, а кадры перетекают, как краска","tech":["WebGL2","GLSL","Canvas 2D","Web Audio"],"strength":"Сюжет, режиссура, живописный шейдер и музыка — одним кодом, кадр как функция времени","controls":"«Смотреть со звуком», пробел — пауза, ← → — 5 с, клик по сцене на шкале, F — полный экран","accent":"#E2643F","bg":"#15110E","net":false,"thumb":"_gallery/thumbs/005.webp?v=1790186858833","loc":4097,"kb":195,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:40:25.009Z"}},{"n":6,"slug":"006-bell-tower","cat":5,"title":"Колокольня","tagline":"Восемь колоколов из негармонических обертонов: благовест, перебор, перезвон и трезвон","tech":["Web Audio","Web Worker","ConvolverNode","Canvas 2D"],"strength":"Акустика колокола, устав церковного звона и синтез звука без сэмплов","controls":"Звоны на панели, клавиши 1–8 и пробел, щелчок по колоколу, темп","accent":"#F3C26B","bg":"#2B2036","net":false,"thumb":"_gallery/thumbs/006.webp?v=1790170363506","loc":1062,"kb":63,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:00:45.147Z"}},{"n":7,"slug":"007-ink-in-water","cat":1,"title":"Тушь в воде","tagline":"Жидкость Стэма с вихрями и точное марморирование: тушь, гребни и бумажный оттиск","tech":["WebGL2","GLSL","Stable Fluids","MacCormack","Mathematical Marbling","Web Audio"],"strength":"Численные методы на GPU и точная математика обратимых преобразований","controls":"Клик — капля, удержание — льётся, палочка мешает; в «Мраморе» — шило, гребень, вихрь, узоры, оттиск","accent":"#B5402B","bg":"#EEE5D3","net":false,"thumb":"_gallery/thumbs/007.webp?v=1790165293057","loc":1731,"kb":85,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:17:10.601Z"}},{"n":8,"slug":"008-clay-snail","cat":10,"title":"Улитка идёт на концерт","tagline":"Пластилиновый мультфильм: улитка спешит через сад к сверчкам и, конечно, опаздывает","tech":["WebGL2","Raymarching SDF","Глубина резкости","Web Audio"],"strength":"Сюжет, режиссура, игра персонажей и музыка — целиком из кода","controls":"«Смотреть со звуком»; пробел — пауза; ←/→ — ±5 с; F — во весь экран","accent":"#FFC53D","bg":"#0E130D","net":false,"thumb":"_gallery/thumbs/008.webp?v=1790188255720","loc":3644,"kb":178,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:43:10.416Z","note":"проверен агентом с --wait 300000: SDF-кадр на программном рендере сервера рисуется 3–4 мин"}},{"n":9,"slug":"009-near-light-speed","cat":1,"title":"Почти скорость света","tagline":"Вечерний проспект на 0,99c: мир сжимается вперёд, фонари перекрашиваются, стены светятся теплом","tech":["WebGL2","GLSL-трассировка","спектральный рендер","HDR и свечение"],"strength":"Междисциплинарная физика: СТО, спектры и фотометрия в одном шейдере","controls":"Ползунок или колесо — скорость; перетаскивание — взгляд; 1–3 — эффекты; B — назад","accent":"#FFB24A","bg":"#05070D","net":false,"thumb":"_gallery/thumbs/009.webp?v=1790165457401","loc":1210,"kb":65,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:33:18.069Z"}},{"n":10,"slug":"010-four-stroke","cat":6,"title":"Четыре такта","tagline":"Двигатель на листе чертежа: разрез, такты, P–V диаграмма и звук мотора","tech":["Canvas 2D","AudioWorklet","кинематика","модель Вибе"],"strength":"Инженерное объяснение: рисунок, диаграммы и текст из одной модели","controls":"Пробел — пауза; стрелки — поворот коленвала; ползунок — обороты","accent":"#C9401A","bg":"#EFE9DD","net":false,"thumb":"_gallery/thumbs/010.webp?v=1790166004304","loc":1269,"kb":63,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:33:01.534Z"}},{"n":11,"slug":"011-prototyper","cat":9,"title":"Прототипатор","tagline":"Соедините «Нажатие → Пружину → Слой» — и макет телефона оживает, как в Origami","tech":["Граф потоков данных","Пружинная физика","DOM","SVG"],"strength":"Сложный интерфейс-инструмент: редактор узлов и живой прототип","controls":"Тяните провода от выхода к входу, тяните числа, трогайте экран телефона","accent":"#FF9F43","bg":"#131418","net":false,"thumb":"_gallery/thumbs/011.webp?v=1790166364765","loc":1527,"kb":73,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:38:50.658Z"}},{"n":12,"slug":"012-lenia","cat":0,"title":"Ления","tagline":"Живые формулы Берта Чана: девять видов из атласа плавают, делятся и сталкиваются","tech":["WebGL2","GLSL","float-текстуры","uniform-буферы"],"strength":"Научная модель на GPU с численной проверкой каждого вида","controls":"Потяни — посадить существо; B — бульон; L — лупа; 1–9 — виды","accent":"#3FF0C8","bg":"#030A0D","net":false,"thumb":"_gallery/thumbs/012.webp?v=1790165049878","loc":1184,"kb":71,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:07:36.149Z"}},{"n":13,"slug":"013-physarum","cat":0,"title":"Слизевик-градостроитель","tagline":"Сотни тысяч агентов-слизевиков прокладывают дороги между городами Подмосковья","tech":["WebGL2","GLSL","GPU-агенты","Canvas 2D"],"strength":"Эмерджентная GPU-симуляция и настройка производительности","controls":"Клик — еда, клик по городу — убрать, Shift — соль, 1–5 — карты","accent":"#E9A23B","bg":"#070504","net":false,"thumb":"_gallery/thumbs/013.webp?v=1790165097399","loc":966,"kb":49,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:08:29.567Z"}},{"n":14,"slug":"014-language-drift","cat":7,"title":"Дрейф языков","tagline":"Праязык расселяется по карте, и за полторы тысячи лет распадается на говоры","tech":["Canvas 2D","агентная модель","фонологические правила","UPGMA"],"strength":"Историческая лингвистика: регулярные звуковые законы и волны изоглосс","controls":"Клик по селу — его история; строка таблицы — слово на карте; запись летописи — изоглосса","accent":"#A33222","bg":"#F1E6CC","net":false,"thumb":"_gallery/thumbs/014.webp?v=1790171706726","loc":928,"kb":64,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:33:17.537Z"}},{"n":15,"slug":"015-cloth-wind","cat":1,"title":"Занавеска у окна","tagline":"Шёлк на ветру: солнце светит сквозь ткань и красит пол цветной тенью","tech":["WebGL2","Верле","Трассировка лучей в шейдере","Web Audio"],"strength":"Физика ткани, оптика и рендер без библиотек в одном файле","controls":"Тянуть ткань, правая кнопка — резать, двойной клик — порыв","accent":"#E0A03C","bg":"#C8B59B","net":false,"thumb":"_gallery/thumbs/015.webp?v=1790190024366","loc":1675,"kb":78,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:33:49.881Z"}},{"n":16,"slug":"016-gps-explained","cat":6,"title":"Как работает GPS","tagline":"Время полёта, трилатерация, ошибка часов, DOP и поправка Эйнштейна — руками","tech":["Canvas 2D","Гаусс — Ньютон","Орбитальная механика"],"strength":"Ясное объяснение, подкреплённое честной математикой","controls":"Листать; тащить спутники; ползунки ошибки часов, шума и дней","accent":"#FF7A2F","bg":"#0A1626","net":false,"thumb":"_gallery/thumbs/016.webp?v=1790165983416","loc":809,"kb":49,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:14:17.154Z"}},{"n":17,"slug":"017-chladni","cat":5,"title":"Фигуры Хладни","tagline":"Песок на звучащей пластине собирается на узловых линиях — моды считаются методом Ланцоша","tech":["Canvas 2D","Метод Ланцоша","Разложение Холецкого","Web Worker","Web Audio"],"strength":"Численные методы и физика колебаний, проверенные по теории","controls":"Частота — ползунок, стрелки и кнопки «Резонанс»; клик по спектру; клик по пластине переносит смычок","accent":"#E0A84B","bg":"#08090B","net":false,"thumb":"_gallery/thumbs/017.webp?v=1790165963679","loc":911,"kb":48,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:10:15.795Z"}},{"n":18,"slug":"018-chaos-map","cat":2,"title":"Карта хаоса","tagline":"Миллион двойных маятников на видеокарте складываются во фрактал","tech":["WebGL2","float-текстуры","RK4 на GPU","Canvas 2D"],"strength":"Динамические системы и численные методы в научной иллюстрации","controls":"Щелчок — маятник из точки; колесо — зум; перетаскивание — сдвиг","accent":"#FCD55B","bg":"#0D0A0C","net":false,"thumb":"_gallery/thumbs/018.webp?v=1790165532983","loc":951,"kb":45,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:33:39.638Z"}},{"n":19,"slug":"019-noir-rain","cat":7,"title":"Дождь над Лиговкой","tagline":"Нуарный детектив в Ленинграде 1924 года: улики, красная нить и шесть часов до рассвета","tech":["WebGL2","Шейдер дождя","Web Audio","Интерактивная проза"],"strength":"Литературное письмо плюс логически связная детективная загадка","controls":"Щелчок по подчёркнутым словам — улика, 1–9 — выбор, B — доска, N — блокнот","accent":"#D2382D","bg":"#07080A","net":false,"thumb":"_gallery/thumbs/019.webp?v=1790166045829","loc":1072,"kb":76,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:21:56.674Z"}},{"n":20,"slug":"020-babel-library","cat":7,"title":"Вавилонская библиотека","tagline":"Бесконечные галереи Борхеса: любая фраза уже напечатана — поиск находит полку, том и страницу","tech":["three.js","InstancedMesh","BigInt","Модульная арифметика","Подъём Гензеля"],"strength":"Литература, превращённая в точную обратимую математику и 3D","controls":"Перетаскивание — взгляд; клик по книге — читать; поиск любой фразы; этажом выше и ниже","accent":"#D9A441","bg":"#0B0806","net":true,"thumb":"_gallery/thumbs/020.webp?v=1790166134277","loc":754,"kb":44,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:30:05.572Z"}},{"n":21,"slug":"021-prism-puzzle","cat":4,"title":"Призма","tagline":"Головоломка со светом: зеркала, призмы и фильтры, 24 уровня, проверенных решателем","tech":["Canvas 2D","Трассировка лучей на сетке","Решатель перебором","Web Audio"],"strength":"Дизайн уровней и доказуемая решаемость","controls":"Перетащить деталь на поле · щелчок — повернуть · утащить с поля — убрать · H — подсказка","accent":"#46F2FF","bg":"#06070C","net":false,"thumb":"_gallery/thumbs/021.webp?v=1790169465449","loc":2001,"kb":81,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:45:08.442Z"}},{"n":22,"slug":"022-sunset-ocean","cat":0,"title":"Океан на закате","tagline":"Волны по дисперсии ω = √gk, небо по Рэлею и Ми, от рассвета до лунной ночи и шторма","tech":["WebGL2","GLSL raymarching","Атмосферное рассеяние","Web Audio"],"strength":"Физика света и волн плюс оптимизация шейдера","controls":"Ползунки времени суток и ветра по Бофорту, перетаскивание — взгляд, H — чистый кадр","accent":"#F2B45C","bg":"#1B1A24","net":false,"thumb":"_gallery/thumbs/022.webp?v=1790165214402","loc":958,"kb":48,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:13:48.695Z"}},{"n":23,"slug":"023-neural-inside","cat":6,"title":"Нейросеть изнутри","tagline":"Перцептрон учится на глазах: скрытый слой гнёт плоскость, пока спирали не разделит прямая","tech":["Canvas 2D","обратное распространение","Adam","метод главных компонент"],"strength":"Машинное обучение с нуля и визуализация, которая делает его интуитивным","controls":"Пробел — пуск; S — шаг; R — новые веса; клик — добавить точку; ± нейроны и слои","accent":"#FF8B4F","bg":"#0B1322","net":false,"thumb":"_gallery/thumbs/023.webp?v=1790171092666","loc":1098,"kb":55,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:21:25.489Z"}},{"n":24,"slug":"024-ripple-tank","cat":1,"title":"Волновая ванна","tagline":"Школьная волновая ванна на видеокарте: щели, решётки, линзы, антенны и конус Маха","tech":["WebGL2","GLSL","Float-текстуры","Canvas 2D"],"strength":"Физика волн, численные методы и их ясное объяснение","controls":"Клик — капля; инструменты — источники, стены, отмели; 1–9 — опыты; M — вид","accent":"#F0B35E","bg":"#090C0F","net":false,"thumb":"_gallery/thumbs/024.webp?v=1790165408166","loc":1406,"kb":65,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:19:10.416Z"}},{"n":25,"slug":"025-order-book","cat":8,"title":"Биржевой стакан","tagline":"125 агентов, книга заявок и флеш-крэш по кнопке — с предохранителем и тяжёлыми хвостами","tech":["Canvas 2D","книга заявок","агентная модель","статистика доходностей"],"strength":"Финансовое моделирование: рабочий рынок, проверенный на устойчивость, и честная статистика","controls":"Кнопки событий или ↑ ↓ L C; предохранитель; ± агенты; пробел — пауза","accent":"#FFB000","bg":"#07090C","net":false,"thumb":"_gallery/thumbs/025.webp?v=1790166559107","loc":982,"kb":52,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:33:56.608Z"}},{"n":26,"slug":"026-oscilloscope-art","cat":5,"title":"Осциллограф ОЛ-86","tagline":"Звук рисует лучом: фигуры Лиссажу, текст, часы и 3D-каркасы, которые можно услышать","tech":["Canvas 2D","AudioWorklet","Web Audio","векторный шрифт"],"strength":"Звук и графика из одной и той же последовательности точек: DSP плюс рендер люминофора","controls":"Клавиши программ, ручки — перетаскиванием или колесом, рисунок пальцем на экране","accent":"#3DFF8F","bg":"#121412","net":false,"thumb":"_gallery/thumbs/026.webp?v=1790165915333","loc":599,"kb":46,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:04:23.843Z"}},{"n":27,"slug":"027-uchastkovy-rpg","cat":11,"title":"Участковый","tagline":"Ролевая игра с нейросетью: у Кощея украли смерть, а вы — новый участковый","tech":["three.js","DeepSeek через OpenRouter","d20","Web Audio"],"strength":"Нейросеть — мастер игры и все жители посёлка, а правила и честный кубик держит код","controls":"Пишите что угодно · клик по месту — идти, по жителю — говорить · «Дело» — улики и обвинение","accent":"#D9A13B","bg":"#141821","net":true,"thumb":"_gallery/thumbs/027.webp?v=1790184785832","loc":4210,"kb":281,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:41:05.957Z"}},{"n":28,"slug":"028-compiler-pipeline","cat":3,"title":"Конвейер компилятора","tagline":"Язык «Ёж» с русскими ключевыми словами: от текста до шага машины, всё видно насквозь","tech":["Лексер","Парсер Пратта","Кодогенерация","Стековая ВМ","Canvas 2D"],"strength":"Полный компилятор и виртуальная машина с нуля, где каждый этап связан с остальными","controls":"Правьте код — всё пересобирается на лету; наведение связывает этапы; пуск, шаг, скорость, примеры","accent":"#FF8A7A","bg":"#0C0E12","net":false,"thumb":"_gallery/thumbs/028.webp?v=1790165625533","loc":1734,"kb":89,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:34:17.275Z"}},{"n":29,"slug":"029-zen-garden","cat":9,"title":"Карэсансуй","tagline":"Сад камней: грабли оставляют борозды, камни отбрасывают тени, падают листья","tech":["WebGL2","GLSL","Карта высот","Canvas 2D","Web Audio"],"strength":"Медитативный интерфейс и внимание к деталям","controls":"Грабли, круги у камней, камни, мох, ладонь; сезон и солнце","accent":"#9E3B24","bg":"#D9CFBC","net":false,"thumb":"_gallery/thumbs/029.webp?v=1790166330463","loc":774,"kb":42,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:36:50.977Z"}},{"n":30,"slug":"030-wallpaper-groups","cat":2,"title":"17 узоров","tagline":"Нарисуйте мотив — он размножится по одной из 17 групп симметрии, хоть вышивкой крестом","tech":["Canvas 2D","теория групп","паттерн-плитка","маска стежков"],"strength":"Теория групп, выведенная из операций, а не нарисованная вручную","controls":"Рисовать по узору; таблица групп внизу; G — симметрии; 1–4 — техника; H — только узор","accent":"#A8261D","bg":"#EFE6D4","net":false,"thumb":"_gallery/thumbs/030.webp?v=1790171525925","loc":1487,"kb":67,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:32:49.658Z"}},{"n":31,"slug":"031-retro-os","cat":3,"title":"Рассвет-86","tagline":"Вымышленная ОС 1986 года: окна, файлы, терминал, холст, сапёр и пианола — всё работает","tech":["оконный менеджер","файловая система в localStorage","Canvas 2D","Web Audio"],"strength":"Большой многокомпонентный код: восемь программ поверх своего оконного менеджера и диска","controls":"Двойной щелчок — открыть; окна тащить за заголовок; в терминале — help","accent":"#E2572B","bg":"#2B1826","net":false,"thumb":"_gallery/thumbs/031.webp?v=1790165688664","loc":1753,"kb":139,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:36:10.701Z"}},{"n":32,"slug":"032-self-writing-game","cat":11,"title":"Игра, которая пишет себя","tagline":"Одна фраза — нейросеть пишет аркаду, запускает, сама чинит и меняет её по словам","tech":["DeepSeek V4 Pro","Canvas 2D","iframe sandbox + CSP","postMessage","Web Audio"],"strength":"Проектирует API под модель, песочницу, автотест и цикл самопочинки кода","controls":"Фраза → «Написать игру»; правка словами; в игре — стрелки, пробел, мышь или экранные кнопки","accent":"#FF6B3D","bg":"#13110E","net":true,"thumb":"_gallery/thumbs/032.webp?v=1790191193705","loc":2932,"kb":168,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:33:54.941Z"}},{"n":33,"slug":"033-hyperbolic-tiling","cat":2,"title":"Гиперболический кафель","tagline":"Замощения {p, q} плоскости Лобачевского — гравюра, по которой можно идти бесконечно","tech":["WebGL2","GLSL","Автоморфизмы диска"],"strength":"Неевклидова геометрия: вывод формул и устойчивый шейдер","controls":"Тянуть — идти, клик по плитке — в центр, колесо — поворот","accent":"#C98B35","bg":"#EFE6D0","net":false,"thumb":"_gallery/thumbs/033.webp?v=1790165509173","loc":700,"kb":36,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:22:34.207Z"}},{"n":34,"slug":"034-signal-languages","cat":7,"title":"Язык сигналов","tagline":"Одно сообщение — Морзе, семафор, флаги МСС, Брайль и лента ITA2 одновременно","tech":["SVG","Web Audio","Кодовые таблицы"],"strength":"Точность систем кодирования: таблицы сверены с эталонами","controls":"Впишите сообщение; пробел — пауза; скорость и звук морзянки; справочник","accent":"#F6C445","bg":"#06101E","net":false,"thumb":"_gallery/thumbs/034.webp?v=1790166107221","loc":1315,"kb":58,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:28:17.555Z"}},{"n":35,"slug":"035-machine-tarot","cat":7,"title":"Таро машин","tagline":"22 старших аркана для эпохи машин: генеративные карты в стиле модерн и толкования","tech":["SVG","Процедурная иллюстрация","CSS 3D","Canvas"],"strength":"Творческое письмо и визуальный вкус: 22 текста и 22 иллюстрации без единой картинки","controls":"Три карты, карта дня, колода; клик по карте — полное толкование","accent":"#D9B46A","bg":"#14163A","net":false,"thumb":"_gallery/thumbs/035.webp?v=1790166060842","loc":885,"kb":67,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:22:48.239Z"}},{"n":36,"slug":"036-gravity-turn","cat":1,"title":"На орбиту","tagline":"Трансляция старта с честной физикой: от «Ключ на старт!» до спутника на орбите","tech":["Canvas 2D","RK4","Стандартная атмосфера 1976","Наведение по линейному тангенсу","Web Audio"],"strength":"Инженерная физика, численные методы и наведение, доведённые до живой системы","controls":"Время ×1–×64, камера, параметры полёта; в ручном режиме ← → тангаж, ↑ ↓ тяга, X — выключение","accent":"#FF8A3D","bg":"#0B1026","net":false,"thumb":"_gallery/thumbs/036.webp?v=1790165482879","loc":2359,"kb":125,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:21:04.708Z"}},{"n":37,"slug":"037-night-museum","cat":4,"title":"Ночной музей","tagline":"Рейкастер с фонариком: найдите семь вырезанных из рам картин до рассвета","tech":["WebGL2","DDA-рейкастинг","процедурная живопись","Web Audio"],"strength":"Игровой движок с нуля и живопись, которую пишет код, мазок за мазком","controls":"WASD и мышь · E — взять или вернуть картину · F — ультрафиолет · M — план","accent":"#C9A45A","bg":"#0B0A09","net":false,"thumb":"_gallery/thumbs/037.webp?v=1790182940536","loc":5328,"kb":268,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:34:11.958Z"}},{"n":38,"slug":"038-rally-navigator","cat":11,"title":"Штурман","tagline":"Лесное ралли: стенограмму читает движок, а штурман на нейросети видит, как вы едете","tech":["three.js","WebGL","DeepSeek","speechSynthesis","Web Audio"],"strength":"Живой персонаж, которому модель отдаёт настоящую телеметрию заезда","controls":"WASD или стрелки — руль и газ, пробел — ручник, R — на дорогу","accent":"#E8532F","bg":"#1A1F17","net":true,"thumb":"_gallery/thumbs/038.webp?v=1790192303189","loc":3448,"kb":214,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:34:20.761Z"}},{"n":39,"slug":"039-scripts-atlas","cat":7,"title":"Письменности мира","tagline":"36 систем письма на родословном древе: от клинописи до хангыля — и ваше имя в 13 из них","tech":["SVG","Canvas-фактуры","Unicode","32 шрифта Noto"],"strength":"Многоязычие: точные данные о письменностях и транслитерация с правилами каждой системы","controls":"Щелчок по экспонату — предки и потомки, фильтры по типу письма, поле имени","accent":"#8E2F1F","bg":"#EFE7D6","net":true,"thumb":"_gallery/thumbs/039.webp?v=1790166104406","loc":681,"kb":65,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:25:48.815Z"}},{"n":40,"slug":"040-jpeg-anatomy","cat":6,"title":"Анатомия JPEG","tagline":"Кодек JPEG, написанный вручную: тянете качество — и видите, как рождаются артефакты","tech":["Canvas 2D","ДКП 8×8","Коды Хаффмана","IntersectionObserver"],"strength":"Честная реализация алгоритма и ясное объяснение каждого шага","controls":"Ползунок качества · наведение на блок и на волну · каналы Y, Cb, Cr · своя картинка перетаскиванием","accent":"#E8432A","bg":"#EFEEE8","net":false,"thumb":"_gallery/thumbs/040.webp?v=1790170205393","loc":4299,"kb":210,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:34:28.529Z"}},{"n":41,"slug":"041-path-tracer","cat":3,"title":"Трассировщик путей","tagline":"Физически корректный рендер на процессоре: картинка проявляется из шума, как фотография","tech":["Web Workers","BVH + SAH","MIS","GGX","À-trous"],"strength":"Длинный системный код: трассировщик, параллелизм и шумодав с нуля","controls":"Сцены слева; тяните шар — двигать, фон — вращать камеру, клик — фокус","accent":"#FF9F4D","bg":"#0F1012","net":false,"thumb":"_gallery/thumbs/041.webp?v=1790165748414","loc":2223,"kb":92,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:38:30.987Z"}},{"n":42,"slug":"042-gamelan","cat":5,"title":"Гамелан","tagline":"Яванский оркестр гонгов: колотомический цикл, переплетение партий, пелог и слендро","tech":["Web Audio","Аддитивный синтез","Canvas 2D"],"strength":"Знание мировой музыки и синтез звука без единого сэмпла","controls":"Кнопка-гонг в центре — звук; строй, темп, омбак, слои инструментов","accent":"#E2B35C","bg":"#120607","net":false,"thumb":"_gallery/thumbs/042.webp?v=1790165916210","loc":776,"kb":41,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:05:44.016Z"}},{"n":43,"slug":"043-rubiks-cube","cat":9,"title":"Кубик","tagline":"Кубик Рубика в студийном свете и решатель Коцембы: около 20 ходов с объяснением фаз","tech":["three.js","Web Worker","IDA*","Двухфазный алгоритм Коцембы"],"strength":"Алгоритмы поиска: таблицы на 4 млн позиций строятся в браузере, решение — за доли секунды","controls":"Тяни наклейку — слой, тяни фон — камера; U D L R F B (Shift — против часовой), пробел — собрать","accent":"#FFB547","bg":"#1B1714","net":true,"thumb":"_gallery/thumbs/043.webp?v=1790168810193","loc":855,"kb":52,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:34:54.356Z"}},{"n":44,"slug":"044-nixie-clock","cat":9,"title":"Ламповые часы","tagline":"Неоновые цифры в стекле, панель ИВ-18 и декатрон: часы, таймер и секундомер","tech":["SVG","SVG-фильтры","Canvas-текстура дерева","Web Audio"],"strength":"Фотореалистичный интерфейс-объект из чистого кода, внимание к физическим деталям","controls":"Часы, таймер, секундомер, «Прогрев»; клик по лампе перебирает цифры; тумблер звука","accent":"#FF7A1A","bg":"#0C0908","net":false,"thumb":"_gallery/thumbs/044.webp?v=1790166283952","loc":615,"kb":34,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:40:18.894Z","note":"перепроверен после правки .pool"}},{"n":45,"slug":"045-living-city","cat":11,"title":"Город, где у каждого своя жизнь","tagline":"3D-город на 10 000 жителей: нажми на прохожего — нейросеть расскажет его жизнь","tech":["three.js","WebGL2","GLSL","DeepSeek"],"strength":"Масштаб: 10 000 смоделированных жизней, трафик и свет города в одной странице","controls":"Клик по прохожему или машине, поиск по смыслу, газета, скорость ×1/×4/×15","accent":"#F2A541","bg":"#0E1218","net":true,"thumb":"_gallery/thumbs/045.webp?v=1790189649989","loc":6638,"kb":403,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:42:54.225Z"}},{"n":46,"slug":"046-shanshui-scroll","cat":0,"title":"Шань-шуй","tagline":"Бесконечный свиток тушью: горы, сосны и туман рождаются, пока вы его разворачиваете","tech":["Canvas 2D","процедурная генерация","детерминированный шум","кэш фрагментов"],"strength":"Вкус и генеративный код: живопись тушью без единой готовой картинки","controls":"Колесо или перетаскивание, ← →, сезон и час, печать с датой, экспорт PNG","accent":"#c8452f","bg":"#1b1512","net":false,"thumb":"_gallery/thumbs/046.webp?v=1790165092549","loc":2603,"kb":108,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:08:49.725Z"}},{"n":47,"slug":"047-silicon-heart","cat":3,"title":"Кремниевое сердце","tagline":"Свой 8-битный процессор, ассемблер и матрица 32×32 — шины светятся на каждом такте","tech":["Canvas 2D","Эмулятор","Ассемблер","Web Audio"],"strength":"Длинная агентная задача: система команд, ассемблер, эмулятор и программы для них","controls":"Вкладки — программы, частота от 1 Гц до 4 МГц, стрелки — порт 0","accent":"#FFB23F","bg":"#0C1210","net":false,"thumb":"_gallery/thumbs/047.webp?v=1790165598617","loc":2320,"kb":100,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:33:18.590Z"}},{"n":48,"slug":"048-say-it-3d","cat":11,"title":"Сказал — появилось","tagline":"Опишите сцену словами — нейросеть пишет её граф, и 3D-диорама собирается на глазах","tech":["three.js","WebGL2","DeepSeek","Web Audio","Web Speech"],"strength":"Перевод свободной речи в строгий граф сцены и точечные правки поверх него","controls":"Фраза или голос — новая сцена; «сделай ночь», «добавь кота» — правка; тянуть — облёт; Ctrl+Z — отмена","accent":"#B9462E","bg":"#E9DCCB","net":true,"thumb":"_gallery/thumbs/048.webp?v=1790191383908","loc":3851,"kb":243,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:42:35.244Z"}},{"n":49,"slug":"049-rhythm-machine","cat":5,"title":"Ритм-машина РМ-16","tagline":"Драм-машина в духе 1980-х: одиннадцать ударных синтезированы с нуля, без сэмплов","tech":["Web Audio","Синтез ударных","Планировщик с упреждением","Canvas"],"strength":"Знание цифровой обработки звука: каждый барабан собран из генераторов, шума и огибающих","controls":"Пробел — старт, клавиши шагов, ручки тянуть вверх-вниз, «Сочинить вариацию»","accent":"#EF8A22","bg":"#1B1A18","net":false,"thumb":"_gallery/thumbs/049.webp?v=1790165864508","loc":843,"kb":50,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:56:41.360Z"}},{"n":50,"slug":"050-earth-pulse","cat":8,"title":"Пульс Земли","tagline":"Живые землетрясения USGS на 3D-глобусе: магнитуда, глубина, границы плит","tech":["three.js","живой API USGS","topojson","GLSL"],"strength":"Живые данные и геофизика: статистика, переводы, запасной режим","controls":"Тяните — вращать; щелчок по вспышке — подробности; ▶ — хроника","accent":"#FFB454","bg":"#06080B","net":true,"thumb":"_gallery/thumbs/050.webp?v=1790166194201","loc":866,"kb":49,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:34:46.754Z"}},{"n":51,"slug":"051-twilight-platformer","cat":4,"title":"Сумерки","tagline":"Платформер без слов: фонарщик идёт сквозь закат, лес и ночь к маяку","tech":["Canvas 2D","своя физика AABB","Web Audio"],"strength":"«Ощущение» игры: запас прыжка, буфер нажатия, камера с упреждением","controls":"Стрелки или A/D — идти, пробел — прыжок, E — зажечь фонарь","accent":"#FFC46B","bg":"#120C1C","net":false,"thumb":"_gallery/thumbs/051.webp?v=1790165840269","loc":1247,"kb":66,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:49:28.702Z"}},{"n":52,"slug":"052-reiter-snowflakes","cat":0,"title":"Снежинки Рейтера","tagline":"Гексагональный автомат выращивает снежинку на бархате — лёд ловит свет за мышью","tech":["WebGL2","GLSL","Web Worker","клеточный автомат"],"strength":"Научная модель, превращённая в красоту: точная симметрия и физика роста","controls":"Образцы и «путь через облако», ползунки β γ α κ, мышь — свет, коллекция, PNG-карточка","accent":"#9FD3FF","bg":"#050A16","net":false,"thumb":"_gallery/thumbs/052.webp?v=1790165143084","loc":896,"kb":54,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:09:15.179Z"}},{"n":53,"slug":"053-airfoil-lift","cat":6,"title":"Подъёмная сила","tagline":"Профиль Жуковского в аэротрубе: дым, давление, циркуляция и конец мифа о «равном времени»","tech":["WebGL2","конформное отображение","частицы","условие Кутты"],"strength":"Точная прикладная математика плюс ясное объяснение того, что обычно объясняют неправильно","controls":"Пять глав, угол атаки, скорость, толщина и кривизна, дым и временные линии, условие Кутты","accent":"#FFC857","bg":"#0A0C0F","net":false,"thumb":"_gallery/thumbs/053.webp?v=1790166008396","loc":588,"kb":42,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:17:15.218Z"}},{"n":54,"slug":"054-interrogation","cat":11,"title":"Допрос","tagline":"Нуарная допросная в 3D: нейросеть прячет правду, а подозреваемый врёт вам в глаза","tech":["three.js","WebGL","DeepSeek через OpenRouter","Web Audio","Canvas 2D"],"strength":"Держит скрытую правду и последовательную ложь персонажа, а разоблачения судит по строгой схеме","controls":"Вопрос текстом и Enter · «Улики» — на стол · клик по реплике — зачитать · «Решение»","accent":"#E3A14B","bg":"#070A09","net":true,"thumb":"_gallery/thumbs/054.webp?v=1790191999067","loc":4004,"kb":255,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:35:34.835Z"}},{"n":55,"slug":"055-aperiodic-tiling","cat":2,"title":"Апериодическая мозаика","tagline":"Пенроуз с бесконечным зумом, мультисетка де Брёйна и «шляпа» 2023 года — в керамике","tech":["Canvas 2D","подстановки Робинсона","мультисетка де Брёйна","метатайлы H/T/P/F"],"strength":"Свежая математика (открытие 2023 года), реализованная точно и проверенная численно","controls":"Режимы, колесо или щипок — зум, перетаскивание, глазурь, симметрия 10/14/8/12, иерархия","accent":"#D8B766","bg":"#0B1530","net":false,"thumb":"_gallery/thumbs/055.webp?v=1790165533541","loc":731,"kb":44,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:24:09.531Z"}},{"n":56,"slug":"056-raft-consensus","cat":3,"title":"Консенсус Raft","tagline":"Пять серверов выбирают лидера и держат общий журнал, даже когда падают и теряют связь","tech":["Canvas 2D","дискретно-событийная симуляция","алгоритм Raft"],"strength":"Распределённые системы: честная реализация протокола, а не мультфильм","controls":"Клик по серверу — уронить; линия по схеме — разрезать сеть; кнопки — запросы и сценарии","accent":"#E1261C","bg":"#EEEBE3","net":false,"thumb":"_gallery/thumbs/056.webp?v=1790165722029","loc":792,"kb":46,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:35:07.537Z"}},{"n":57,"slug":"057-prime-observatory","cat":2,"title":"Обсерватория простых чисел","tagline":"Спирали Улама и Сакса, гауссовы простые и горизонт промежутков — до 33 миллионов","tech":["Canvas 2D","Web Worker","сегментированное решето"],"strength":"Теория чисел, превращённая в атлас: точные вычисления и типографика XIX века","controls":"Колесо — масштаб, перетаскивание — сдвиг, наведение — разложение числа","accent":"#A1241B","bg":"#F2E9D6","net":false,"thumb":"_gallery/thumbs/057.webp?v=1790166439390","loc":1127,"kb":60,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:28:53.598Z"}},{"n":58,"slug":"058-packet-journey","cat":6,"title":"Путь пакета","tagline":"От Enter до страницы: DNS, TCP, TLS 1.3, маршрут и потери на схеме в стиле метро","tech":["SVG","Canvas","Punycode RFC 3492","Асинхронные сценарии"],"strength":"Ясное объяснение сложной системы шаг за шагом","controls":"Главы-станции внизу или стрелки, ввод домена, «уронить пакет», ползунки RTT и потерь","accent":"#D8443A","bg":"#F5F2EA","net":false,"thumb":"_gallery/thumbs/058.webp?v=1790166036123","loc":652,"kb":46,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:21:02.833Z"}},{"n":59,"slug":"059-stained-glass","cat":0,"title":"Витраж","tagline":"Генератор готических роз: солнце ведёт цветной свет по каменному полу собора","tech":["WebGL2","GLSL","Canvas 2D","объёмный свет"],"strength":"Композиция и свет: геометрия трасери, оптика лучей и 3D-сцена в одном шейдере","controls":"Дуга солнца — время суток; клик по стеклу — перекрасить; колесо — подойти ближе","accent":"#E6BB6A","bg":"#0B0908","net":false,"thumb":"_gallery/thumbs/059.webp?v=1790165187220","loc":1743,"kb":79,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:12:49.760Z"}},{"n":60,"slug":"060-deeper-roguelike","cat":4,"title":"Глубже","tagline":"Рогалик на десять ярусов: цветной свет факела, монстры с характером и эпитафия по забегу","tech":["Canvas 2D","shadowcasting","BSP и клеточные пещеры","карта Дейкстры"],"strength":"Большая игровая система без багов плюс живой русский текст с правильными падежами","controls":"Стрелки / WASD / hjkl — шаг и атака, клик — путь, 1–9 — предметы, > — вниз","accent":"#FFB45A","bg":"#07070A","net":false,"thumb":"_gallery/thumbs/060.webp?v=1790165819449","loc":981,"kb":69,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:46:53.950Z"}},{"n":61,"slug":"061-mandelbrot-abyss","cat":2,"title":"Бездна Мандельброта","tagline":"Автопилот ныряет в множество Мандельброта до увеличения 10³¹","tech":["WebGL2","Теория возмущений","BigInt 256 бит","Web Worker"],"strength":"Численные методы: высокая точность там, где обычный double сдаётся на 10¹⁴","controls":"Клик — нырнуть сюда; колесо — масштаб; тяните — сдвиг; пробел — пауза","accent":"#FFB238","bg":"#03040A","net":false,"thumb":"_gallery/thumbs/061.webp?v=1790165574201","loc":957,"kb":46,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:30:16.651Z"}},{"n":62,"slug":"062-harmony-wheel","cat":5,"title":"Колесо гармонии","tagline":"Квинтовый круг как инструмент: функции Т, S, D и голосоведение на стане и клавишах","tech":["Web Audio","SVG","Оптимизация голосоведения"],"strength":"Теория музыки в коде: правильная энгармоника, лады, обращения, поиск голосоведения без параллелей","controls":"Щелчок по сектору — аккорд, Shift+щелчок — тональность, 1–7 — ступени, пробел — прогрессия","accent":"#DC2F1C","bg":"#EEEBE3","net":false,"thumb":"_gallery/thumbs/062.webp?v=1790165932481","loc":817,"kb":50,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:06:43.063Z"}},{"n":63,"slug":"063-rubberhose-coffee","cat":10,"title":"Кофейник Жорж","tagline":"Кофейник будит кухню, а самая маленькая чашка боится прыгнуть: мультфильм в стиле 1930-х","tech":["Canvas 2D","Web Audio"],"strength":"Режиссура и актёрская игра по принципам анимации, сведённые с регтаймом, — целиком кодом","controls":"«Смотреть со звуком» — с начала и с музыкой; пробел — пауза, ← → — 5 с, F — весь экран","accent":"#E2BD73","bg":"#0E0C0A","net":false,"thumb":"_gallery/thumbs/063.webp?v=1790188107681","loc":4119,"kb":212,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:35:21.689Z"}},{"n":64,"slug":"064-ai-mafia","cat":11,"title":"Мафия","tagline":"Семеро соседей-нейросетей врут, спорят и голосуют, а ночью мафия шепчется под абажуром","tech":["three.js","WebGL","DeepSeek через OpenRouter","Web Speech API","Web Audio"],"strength":"Семь характеров со скрытыми ролями лгут последовательно: роли держит код, ложь и память — нейросеть","controls":"Выбрать роль → говорить в поле ввода, клик по игроку — обратиться, клик по табличке — голос","accent":"#FFB35C","bg":"#0D0A09","net":true,"thumb":"_gallery/thumbs/064.webp?v=1790188314745","loc":4008,"kb":225,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:41:18.811Z"}},{"n":65,"slug":"065-poetry-meter","cat":7,"title":"Стопа","tagline":"Размер, пиррихии, рифмы и профиль ударности русской классики прямо на строке","tech":["Vanilla JS","Web Audio","Стиховедческий анализатор"],"strength":"Русский язык и стиховедение: точный разбор, а не общие слова","controls":"Выбор стихотворения, клик по гласной — ударение, «Прослушать ритм», свой текст","accent":"#B5412B","bg":"#F2ECE1","net":false,"thumb":"_gallery/thumbs/065.webp?v=1790166087442","loc":868,"kb":47,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:25:27.366Z"}},{"n":66,"slug":"066-cyrillic-constructor","cat":7,"title":"Кириллица-конструктор","tagline":"Параметрический шрифт: 33 буквы строятся пером по скелетам и перестраиваются разом","tech":["Canvas 2D","сумма Минковского","экспорт SVG"],"strength":"Типографика как геометрия: контраст рождается из угла пера, а не рисуется вручную","controls":"Ползунки пера, пресеты стилей, щелчок по букве, свой текст, «Скачать SVG»","accent":"#C3321C","bg":"#F2EEE4","net":false,"thumb":"_gallery/thumbs/066.webp?v=1790166085668","loc":475,"kb":37,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:25:03.625Z"}},{"n":67,"slug":"067-draft-cursor","cat":10,"title":"Черновик","tagline":"Три часа ночи, пустой документ: курсор и буквы-актёры ищут первую фразу","tech":["Canvas 2D","Web Audio","Кинетическая типографика"],"strength":"Сюжет, хореография сотен букв, камера и музыка — одна функция от времени","controls":"«Смотреть со звуком» · пробел — пауза · ← → — 5 с · шкала сцен · F — весь экран","accent":"#F2542D","bg":"#0B0C0F","net":false,"thumb":"_gallery/thumbs/067.webp?v=1790189025673","loc":2999,"kb":136,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:35:36.808Z"}},{"n":68,"slug":"068-molecular-landscape","cat":8,"title":"Молекулярный пейзаж","tagline":"Кишечная палочка в разрезе в духе Гудселла: рибосомы читают мРНК, белки рождаются на глазах","tech":["Canvas 2D","процедурная иллюстрация","сплайны","пространственный индекс"],"strength":"Точные знания по биологии клетки, превращённые в живую научную иллюстрацию","controls":"Колесо или щипок — зум, перетаскивание, наведение — подписи, легенда, экскурсия","accent":"#B04A8E","bg":"#F1E8D0","net":false,"thumb":"_gallery/thumbs/068.webp?v=1790166196910","loc":607,"kb":50,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:32:44.544Z"}},{"n":69,"slug":"069-two-keys","cat":6,"title":"Два ключа","tagline":"Криптография с открытым ключом на пальцах: краски, часы, RSA и эллиптические кривые","tech":["Canvas 2D","SVG","BigInt","Web Worker"],"strength":"Ясное объяснение сложной математики с живыми примерами, которые можно трогать","controls":"Листайте главы; выбирайте краски, числа, простые и точки на кривых","accent":"#E5533D","bg":"#FBF7F0","net":false,"thumb":"_gallery/thumbs/069.webp?v=1790166019925","loc":1021,"kb":69,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:19:26.066Z"}},{"n":70,"slug":"070-complex-atlas","cat":2,"title":"Атлас комплексных функций","tagline":"Формула f(z) компилируется в шейдер и превращается в фазовый портрет","tech":["WebGL2","GLSL","парсер Пратта","OKLab"],"strength":"Математика и компиляция выражений","controls":"Введите f(z) · тяните плоскость · колесо — масштаб · маркер a · сфера Римана","accent":"#f0c46a","bg":"#0c0d10","net":false,"thumb":"_gallery/thumbs/070.webp?v=1790165482635","loc":972,"kb":50,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:21:20.174Z"}},{"n":71,"slug":"071-long-road","cat":4,"title":"Дальняя дорога","tagline":"Псевдо-3D гонка через четыре сезона: маршрут выбирается на развилках","tech":["Canvas 2D","псевдо-3D","процедурные спрайты","Web Audio"],"strength":"Игровой движок и визуал с нуля","controls":"↑ газ · ↓ тормоз · ← → руль · держитесь левой или правой ветки развилки","accent":"#f2c14e","bg":"#1a1410","net":false,"thumb":"_gallery/thumbs/071.webp?v=1790165794397","loc":1156,"kb":64,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:39:35.518Z"}},{"n":72,"slug":"072-glass-cockpit","cat":9,"title":"Стеклянная кабина","tagline":"Полёт над горами: синтетический рельеф, карта с предупреждением о земле, автопилот","tech":["WebGL2","Canvas 2D","Модель полёта","Web Audio"],"strength":"Сложный интерфейс реального времени: авионика, 3D и физика","controls":"Стрелки или WASD, газ + −, P — автопилот, тянуть по стеклу","accent":"#35E0F0","bg":"#0C0D0F","net":false,"thumb":"_gallery/thumbs/072.webp?v=1790166280941","loc":970,"kb":58,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:35:35.483Z"}},{"n":73,"slug":"073-quark-to-quasar","cat":8,"title":"От кварка до квазара","tagline":"Зум через 45 порядков: от кварка в вашем протоне до края наблюдаемой Вселенной","tech":["Canvas 2D","Процедурные спрайты","world-atlas","Картографические проекции"],"strength":"Точные факты из разных наук в одном непрерывном ряду","controls":"Колесо или щипок — масштаб, шкала справа, кнопка «Путешествие»","accent":"#FFCF7A","bg":"#0C0A0D","net":false,"thumb":"_gallery/thumbs/073.webp?v=1790166159756","loc":837,"kb":66,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:31:40.225Z"}},{"n":74,"slug":"074-talking-machine","cat":5,"title":"Говорящая машина","tagline":"Формантный синтезатор речи в духе «Водера» 1939 года: треугольник гласных, тракт и спектр","tech":["Web Audio","Формантный синтез","SVG","Canvas"],"strength":"Фонетика русского языка и цифровая обработка звука в одной машине","controls":"Ведите по стеклу — гласные; клавиши — фонемы; слова и своя фраза с ударением","accent":"#FFB54A","bg":"#0E0C09","net":false,"thumb":"_gallery/thumbs/074.webp?v=1790165953323","loc":1426,"kb":59,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:09:34.141Z"}},{"n":75,"slug":"075-shadow-wind","cat":10,"title":"Девочка и ветер","tagline":"Силуэтный мультфильм: девочка поймала ветер в банку — и мир замер","tech":["Canvas 2D","Силуэты с прорезями","Кукла на шарнирах","Частицы без состояния","Web Audio"],"strength":"Режиссура, анимация и музыка — целый фильм, написанный кодом","controls":"«Смотреть со звуком», пробел — пауза, ← → — ±5 с, шкала со сценами и превью","accent":"#F08A4B","bg":"#0E0B0A","net":false,"thumb":"_gallery/thumbs/075.webp?v=1790187534661","loc":4478,"kb":199,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:39:39.548Z"}},{"n":76,"slug":"076-galaxy-collision","cat":1,"title":"Столкновение галактик","tagline":"Задача Тоомре вживую: 76 000 звёзд вытягиваются в приливные хвосты, кольца и мосты","tech":["WebGL2","HDR + блум","Обратимый интегратор","RK4"],"strength":"Научная симуляция, честная физика и кинематографичный рендер без библиотек","controls":"Тяни — вращать, колесо — зум, шкала времени — перемотка, 1–5 — сценарии","accent":"#F2B35A","bg":"#030409","net":false,"thumb":"_gallery/thumbs/076.webp?v=1790165345248","loc":1158,"kb":66,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:17:48.301Z"}},{"n":77,"slug":"077-planetarium","cat":8,"title":"Небосвод","tagline":"Небо над вами: 175 ярких звёзд, созвездия, планеты по элементам орбит JPL и Луна","tech":["Canvas 2D","стереографическая проекция","эфемериды"],"strength":"Астрономические алгоритмы и точные данные","controls":"Тяните небо · колесо — масштаб · клик — карточка светила · перемотка времени","accent":"#f3cf7a","bg":"#040817","net":false,"thumb":"_gallery/thumbs/077.webp?v=1790166128573","loc":958,"kb":57,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:30:36.636Z"}},{"n":78,"slug":"078-living-spreadsheet","cat":3,"title":"Живая таблица","tagline":"Табличный движок с нуля: меняешь ячейку — по листу бежит волна пересчёта","tech":["Парсер Пратта","Граф зависимостей","Топологическая сортировка","Canvas","SVG"],"strength":"Длинная агентная задача: лексер, парсер, 37 функций, пересчёт и визуализация графа в одном файле","controls":"Щелчок — ячейка, ввод числа или формулы, Enter; «Граф» — сеть зависимостей","accent":"#B3302A","bg":"#F3EEE3","net":false,"thumb":"_gallery/thumbs/078.webp?v=1790165716995","loc":1552,"kb":94,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:37:13.329Z"}},{"n":79,"slug":"079-layout-engine","cat":3,"title":"Движок вёрстки","tagline":"HTML и CSS → каскад → коробки → пиксели. Свой браузерный движок и 3D-разбор страницы на слои","tech":["Canvas 2D","Парсеры HTML и CSS","Каскад и специфичность","Блочная, строчная и flex-раскладка","Аффинная 3D-проекция"],"strength":"Длинная многокомпонентная система и знание устройства браузера","controls":"Правьте код слева; тяните сцену, чтобы вращать; клик по блоку — инспектор; ползунок ширины окна","accent":"#FFB03A","bg":"#0E1014","net":false,"thumb":"_gallery/thumbs/079.webp?v=1790165748950","loc":2073,"kb":99,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:38:53.076Z"}},{"n":80,"slug":"080-black-hole","cat":1,"title":"Горизонт событий","tagline":"Чёрная дыра, посчитанная по геодезическим: линза, фотонное кольцо, Доплер","tech":["WebGL2","GLSL","Трассировка геодезических","HDR + bloom"],"strength":"Физика ОТО, превращённая в кадр в реальном времени","controls":"Тянуть — облёт, колесо — расстояние, H — чистый кадр","accent":"#FF8A3D","bg":"#030304","net":false,"thumb":"_gallery/thumbs/080.webp?v=1790165248701","loc":977,"kb":51,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:35:55.123Z"}},{"n":81,"slug":"081-yard-sale","cat":8,"title":"Неравенство из ничего","tagline":"Тысяча человек честно торгуют — и богатство всё равно собирается у немногих","tech":["Агентная модель","Canvas 2D","Кривая Лоренца","Индекс Джини"],"strength":"Экономический анализ: модель, цифры и честные оговорки","controls":"Пауза, скорость, сценарии; ползунки ставки, налога и перекоса монеты","accent":"#E4322B","bg":"#F5F0E6","net":false,"thumb":"_gallery/thumbs/081.webp?v=1790165664393","loc":591,"kb":38,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:33:29.631Z"}},{"n":82,"slug":"082-abyss-descent","cat":8,"title":"В бездну","tagline":"Прокрутка от поверхности до дна Марианского жёлоба в честном масштабе","tech":["Canvas 2D","SVG","скроллителлинг"],"strength":"Точные знания о глубинах океана, поданные как путешествие","controls":"Прокрутка — погружение; глубиномер справа — лифт по зонам","accent":"#7DF9FF","bg":"#020C22","net":false,"thumb":"_gallery/thumbs/082.webp?v=1790166225847","loc":421,"kb":42,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:33:15.965Z"}},{"n":83,"slug":"083-lily-orchestra","cat":10,"title":"Оркестр на кувшинке","tagline":"Лягушонок сыграл свою ноту не вовремя — и оркестр превратил ошибку в музыку","tech":["Canvas 2D","Web Audio","Карплус — Стронг"],"strength":"Одна партитура управляет и звуком, и каждым движением — синхронность до доли такта","controls":"«Смотреть со звуком», пробел — пауза, ← / → — ±5 с, шкала сцен, F — весь экран","accent":"#E2764E","bg":"#F1E5CC","net":false,"thumb":"_gallery/thumbs/083.webp?v=1790189268679","loc":3646,"kb":201,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:35:51.846Z"}},{"n":84,"slug":"084-proof-theater","cat":2,"title":"Театр доказательств","tagline":"Двенадцать доказательств без слов в красках «Начал» Евклида Оливера Бирна","tech":["Canvas 2D","Анимация по фазам","Автокадрирование"],"strength":"Строгая математика и ясное объяснение","controls":"Оглавление · ← → явления · ↑ ↓ действия · пробел — пауза · темп ½×–2×","accent":"#C4362C","bg":"#F3EAD6","net":false,"thumb":"_gallery/thumbs/084.webp?v=1790169436202","loc":1455,"kb":65,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:22:50.913Z"}},{"n":85,"slug":"085-lamplighter-cat","cat":10,"title":"Кот-фонарщик","tagline":"Бумажная перекладка: кот зажигает фонари, а за огнём для последнего идёт к Луне","tech":["Canvas 2D","Web Audio","многоплановая камера","обратная кинематика"],"strength":"Сюжет, режиссура, игра кукол-перекладок и вальс — всё написано и нарисовано кодом","controls":"«Смотреть со звуком» · пробел — пауза · ← → — на 5 секунд · шкала сцен","accent":"#F2C45A","bg":"#121019","net":false,"thumb":"_gallery/thumbs/085.webp?v=1790186351834","loc":4342,"kb":237,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:36:08.568Z"}},{"n":86,"slug":"086-planet-forge","cat":0,"title":"Кузница планет","tagline":"Мир плавится, остывает, наполняется океанами — и получает паспорт экспедиции","tech":["WebGL2","GLSL","кубические карты","рассеяние Рэлея и Ми","Web Audio"],"strength":"Процедурная генерация, физика света и связный текст о том, что нарисовано","controls":"«Выковать» или N — новая планета; ползунки; перетаскивание — вращение; колесо — зум","accent":"#FF8A3D","bg":"#04050A","net":false,"thumb":"_gallery/thumbs/086.webp?v=1790165271910","loc":2124,"kb":95,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:15:06.176Z"}},{"n":87,"slug":"087-aurora-fjord","cat":0,"title":"Северное сияние над Териберкой","tagline":"Занавесы сияния над Кольским фьордом; цвет посчитан по линиям кислорода и азота","tech":["WebGL2","GLSL","TAA","Web Audio"],"strength":"3D-сцена и физически осмысленный цвет","controls":"Тяните небо · колесо — угол обзора · 0–9 или ползунок — индекс Kp · звук","accent":"#96ff5a","bg":"#03050a","net":false,"thumb":"_gallery/thumbs/087.webp?v=1790165035116","loc":835,"kb":42,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:06:18.506Z"}},{"n":88,"slug":"088-typewriter","cat":9,"title":"Машинка","tagline":"Удар литеры, каретка, звонок, неровная лента. Удаления нет — только шаг назад и корректор","tech":["Canvas 2D","Процедурная бумага","Оттиск с дефектами","Web Audio"],"strength":"Внимание к мелочам: механика, звук и типографика одного предмета","controls":"Печатайте; Enter — возврат каретки; Backspace — шаг назад; Shift+Backspace — корректор","accent":"#D6A24C","bg":"#150E09","net":false,"thumb":"_gallery/thumbs/088.webp?v=1790166384193","loc":640,"kb":38,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:39:54.904Z"}},{"n":89,"slug":"089-logic-minesweeper","cat":4,"title":"Сапёр без угадывания","tagline":"Каждое поле проверено решателем, а подсказка объясняет вывод человеческим языком","tech":["SVG","Web Worker","Решатель ограничений","Marching squares"],"strength":"Проверяемые рассуждения и их объяснение словами","controls":"ЛКМ — открыть, ПКМ — флажок, H — подсказка, три формы клеток","accent":"#C2412A","bg":"#23271C","net":false,"thumb":"_gallery/thumbs/089.webp?v=1790165863680","loc":829,"kb":49,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:53:51.203Z"}},{"n":90,"slug":"090-how-llm-reads","cat":6,"title":"Как модель читает текст","tagline":"BPE учится на русском тексте на глазах: буквы слипаются в токены, а токены — это номера","tech":["BPE с нуля","Байты UTF-8","Типографика на DOM","SVG"],"strength":"Модель объясняет саму себя: честная токенизация и то, почему ей трудно считать буквы","controls":"Пуск, шаги и шкала обучения · «Номера» — глазами модели · свой текст · счёт букв · наведение","accent":"#FF3D8F","bg":"#E5E3DD","net":false,"thumb":"_gallery/thumbs/090.webp?v=1790170537445","loc":1917,"kb":117,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:36:10.510Z"}},{"n":91,"slug":"091-git-internals","cat":3,"title":"Внутренности Git","tagline":"Настоящие команды git и живой граф блобов, деревьев и коммитов с честными SHA-1","tech":["SVG","SHA-1 на JS","Формат объектов Git","Vanilla JS"],"strength":"Инструменты разработчика и длинный многокомпонентный код","controls":"Пишите команды или жмите подсказки; клик по узлу — содержимое объекта","accent":"#FF7A59","bg":"#0A0C11","net":false,"thumb":"_gallery/thumbs/091.webp?v=1790165706721","loc":2094,"kb":108,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:36:37.703Z"}},{"n":92,"slug":"092-cipher-cabinet","cat":7,"title":"Шифровальный кабинет","tagline":"Пять депеш, пять шифров и красная кнопка, которая вскрывает их по шагам","tech":["JavaScript","Canvas 2D","Криптоанализ","Имитация отжига"],"strength":"Язык плюс алгоритмы: частоты русского, Касиски, χ², отжиг","controls":"Выбрать депешу и метод, крутить ключ или нажать «Вскрыть»","accent":"#B3261E","bg":"#4E573C","net":false,"thumb":"_gallery/thumbs/092.webp?v=1790166073072","loc":995,"kb":68,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:23:58.147Z"}},{"n":93,"slug":"093-deduction","cat":4,"title":"Дедукция","tagline":"Задачи «Эйнштейна» с единственным решением и подсказками, которые объясняют ход мысли","tech":["Генератор задач","Распространение ограничений","SVG","Шаблоны русской грамматики"],"strength":"Рассуждения и их объяснение обычными словами","controls":"Клик — вычеркнуть, двойной клик — выбрать; подсказка, отмена, проверка","accent":"#3E63DD","bg":"#FBF6EC","net":false,"thumb":"_gallery/thumbs/093.webp?v=1790165840738","loc":910,"kb":56,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:50:44.546Z"}},{"n":94,"slug":"094-tree-of-life","cat":8,"title":"Древо жизни","tagline":"143 вида от бактерий до человека на радиальном древе с логарифмической шкалой времени","tech":["SVG","SVG-фильтры","Радиальная раскладка"],"strength":"Большой объём знаний в точной и красивой структуре","controls":"Наведение и клик по видам, поиск, «Путь от LUCA», сравнение двух видов, масштаб колесом","accent":"#9B3D3D","bg":"#F3ECDC","net":false,"thumb":"_gallery/thumbs/094.webp?v=1790166249828","loc":771,"kb":50,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:33:42.675Z"}},{"n":95,"slug":"095-tiny-sql","cat":3,"title":"Реляционный разум","tagline":"СУБД с нуля: перфокарты, план-блок-схема, АЦПУ и B+-дерево, которое делится","tech":["JavaScript","Canvas 2D","SQL-парсер","B+-дерево"],"strength":"Длинная агентная задача: СУБД из десятка связанных частей","controls":"Примеры или свой SQL, Ctrl+Enter — выполнить, EXPLAIN — план","accent":"#1C3D8F","bg":"#EFE9DC","net":false,"thumb":"_gallery/thumbs/095.webp?v=1790165687384","loc":2126,"kb":115,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:35:45.479Z"}},{"n":96,"slug":"096-gravity-golf","cat":4,"title":"Гравитационный гольф","tagline":"Космос в пастели: гравитация планет несёт зонд в червоточину","tech":["Canvas 2D","интегратор Верле","marching squares","Web Audio"],"strength":"Физика в игровом дизайне, решаемость уровней доказана решателем","controls":"Тяните от зонда и отпустите; стрелки и пробел — с клавиатуры","accent":"#EF7D68","bg":"#F3EBDD","net":false,"thumb":"_gallery/thumbs/096.webp?v=1790165826050","loc":1334,"kb":64,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:36:22.779Z"}},{"n":97,"slug":"097-deep-time","cat":8,"title":"13,8 миллиарда лет","tagline":"Вся история от Большого взрыва до сегодня: спираль, линейка и календарь Сагана","tech":["Canvas 2D","Логарифмическая спираль","Шкала ICS и цвета CGMW"],"strength":"Точность фактов: 70 подразделений ICS и 56 выверенных событий в трёх масштабах","controls":"Колесо, перетаскивание, щипок — масштаб; клик — описание; три режима вверху","accent":"#F9F97F","bg":"#0D0C0A","net":false,"thumb":"_gallery/thumbs/097.webp?v=1790172336278","loc":2987,"kb":156,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:36:23.155Z"}},{"n":98,"slug":"098-word-constellations","cat":7,"title":"Созвездия слов","tagline":"Звёздная карта этимологии: 44 семьи слов, в центре каждой — праиндоевропейский корень","tech":["Canvas 2D","Раскладка подписей без наложений","Unicode"],"strength":"Многоязычие и точность: сравнительно-историческое языкознание без выдумок","controls":"Щелчок по созвездию, колесо и перетаскивание, поиск, звуковые законы, экскурсия","accent":"#F0C983","bg":"#050814","net":false,"thumb":"_gallery/thumbs/098.webp?v=1790170417394","loc":1099,"kb":87,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:23:22.411Z"}},{"n":99,"slug":"099-pipe-organ","cat":5,"title":"Орган","tagline":"Десять регистров, синтез каждой трубы и пятисекундное эхо собора","tech":["Web Audio","PeriodicWave","ConvolverNode","Canvas 2D"],"strength":"Знание устройства органа плюс синтез звука без сэмплов","controls":"Клавиши Z…M и Q…P, рукоятки регистров, табличка «Токката»","accent":"#C9A24E","bg":"#120C08","net":false,"thumb":"_gallery/thumbs/099.webp?v=1790165888824","loc":854,"kb":45,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:02:10.115Z"}},{"n":100,"slug":"100-knot-lab","cat":2,"title":"Лаборатория узлов","tagline":"Музей узлов: стекло с дисперсией, латунь и фарфор, настоящие инварианты и конструктор T(p, q)","tech":["three.js","MeshPhysicalMaterial","SVG","Алгебра многочленов"],"strength":"Топология и алгебра, превращённые в музейную экспозицию","controls":"Полка экспонатов, материалы, конструкторы T(p, q) и Лиссажу, вращение мышью","accent":"#CFA864","bg":"#111615","net":true,"thumb":"_gallery/thumbs/100.webp?v=1790165624437","loc":745,"kb":42,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:32:08.044Z"}},{"n":101,"slug":"101-chess-characters","cat":11,"title":"Шахматы с характером","tagline":"Полные шахматы, где фигура может отказаться от хода — и её придётся уговаривать","tech":["three.js","WebGL","DeepSeek","Web Worker","Web Audio"],"strength":"Тридцать два характера и честное решение «пойду или нет» на фактах о позиции","controls":"Клик по фигуре и полю; отказ — уговорить текстом, обещанием, лестью или угрозой","accent":"#F4B63F","bg":"#1A1310","net":true,"thumb":"_gallery/thumbs/101.webp?v=1790190894328","loc":3297,"kb":202,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:42:13.828Z"}},{"n":102,"slug":"102-scriabin-light","cat":5,"title":"Светомузыка","tagline":"Прелюдия по квинтовому кругу, которую написала модель, в цветах тональностей по Скрябину","tech":["Web Audio","аддитивный синтез","Canvas 2D"],"strength":"Композиция и синтез звука с нуля плюс визуальный вкус","controls":"«Слушать» или пробел; клик по цветной ленте — перемотка; голоса включаются кнопками","accent":"#8A3FFC","bg":"#070509","net":false,"thumb":"_gallery/thumbs/102.webp?v=1790165946633","loc":552,"kb":32,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:36:37.767Z"}},{"n":103,"slug":"103-barista-shift","cat":11,"title":"Смена","tagline":"Кофейный киоск в шесть утра, бариста с похмелья, и каждый клиент видит, что ему налили","tech":["three.js","DeepSeek через OpenRouter","Web Audio","Canvas-текстуры"],"strength":"Скрытая правда о каждом стакане превращается в живую реакцию персонажей","controls":"«Далее» — следующий шаг, пробел — держать; пиво, перекур и пакости — внизу","accent":"#D98A3D","bg":"#10162B","net":true,"thumb":"_gallery/thumbs/103.webp?v=1790187334063","loc":4658,"kb":330,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:40:47.335Z"}},{"n":104,"slug":"104-lens-optics","cat":6,"title":"Оптика объектива","tagline":"Три кольца объектива, живое боке формы лепестков и лучевая схема тонкой линзы","tech":["Canvas 2D","Тонкая линза","Послойное размытие","Боке со сохранением энергии"],"strength":"Оптика и ясное объяснение, связанные в одном интерфейсе","controls":"Крутите кольца фокуса, диафрагмы и фокусного; клик по огню — фокус на нём","accent":"#F07A3A","bg":"#0D0D0F","net":false,"thumb":"_gallery/thumbs/104.webp?v=1790166027122","loc":783,"kb":44,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:20:45.859Z"}},{"n":105,"slug":"105-modular-synth","cat":5,"title":"Модуляр","tagline":"Модульный синтезатор: 14 модулей, провисающие кабели и звук, который меняется прямо на лету","tech":["Web Audio","Верле-физика кабелей","SVG","Планировщик с упреждением"],"strength":"Сложный интерфейс-инструмент и знание синтеза звука без единого сэмпла","controls":"Тяните кабели между гнёздами, крутите ручки; «Питание» включает звук; пять готовых патчей","accent":"#E8433A","bg":"#111214","net":false,"thumb":"_gallery/thumbs/105.webp?v=1790165899235","loc":1336,"kb":74,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:58:22.184Z"}},{"n":106,"slug":"106-soap-bubbles","cat":1,"title":"Мыльные пузыри","tagline":"Цвета плёнки посчитаны по спектру: плёнка стекает, чернеет на макушке — и пузырь лопается","tech":["WebGL2","GLSL","Спектральная оптика","Web Audio"],"strength":"Физика тонких плёнок, доведённая до фотографичной картинки","controls":"Зажать и вести — выдуть пузырь; клик — лопнуть; M — макрорежим плёнки","accent":"#E2BF7C","bg":"#0A090D","net":false,"thumb":"_gallery/thumbs/106.webp?v=1790165453259","loc":1976,"kb":73,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:20:43.803Z"}},{"n":107,"slug":"107-bus-stops","cat":9,"title":"Остановки","tagline":"Генератор советских модернистских остановок: бетон, смальта, степь, море и плёночное зерно","tech":["three.js","процедурная архитектура","процедурная мозаика","плёночный шейдер"],"strength":"Процедурный дизайн с культурным контекстом и вкусом к деталям","controls":"«Следующая остановка» или →; 1–5 — пейзаж; перетаскивание — осмотреться; «Открытка» — PNG","accent":"#B8321F","bg":"#1E1C19","net":true,"thumb":"_gallery/thumbs/107.webp?v=1790170153639","loc":843,"kb":65,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:38:29.186Z"}},{"n":108,"slug":"108-moon-gardener","cat":10,"title":"Садовник на Луне","tagline":"Пиксельный мультфильм: маленький робот закрывает собой единственный цветок на Луне","tech":["Canvas 2D","свой рендерер с G-буфером","дизеринг в палитру","Web Audio"],"strength":"Режиссура и свет: история, пантомима, камера и чиптюн — одна программа от времени","controls":"Пробел — пауза, ← → — на 5 с, шкала с главами, «Смотреть со звуком»","accent":"#FF9CC0","bg":"#07060D","net":false,"thumb":"_gallery/thumbs/108.webp?v=1790184509670","loc":4038,"kb":216,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:39:42.823Z"}},{"n":109,"slug":"109-alchemy-automaton","cat":4,"title":"Алхимический автомат","tagline":"Программируйте латунные руки и собирайте молекулы из стихий: восемь проверенных задач","tech":["Canvas 2D","детерминированный симулятор","Node-проверка решений"],"strength":"Игровой дизайн с доказанной решаемостью каждой задачи","controls":"Детали — на доску; команды — на дорожки; пробел — пуск, S — шаг, Esc — сброс","accent":"#C9A063","bg":"#16110D","net":false,"thumb":"_gallery/thumbs/109.webp?v=1790171077166","loc":1719,"kb":82,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:55:36.728Z"}},{"n":110,"slug":"110-elements-sandbox","cat":1,"title":"Алхимия стихий","tagline":"Пиксельный мир из 22 веществ: вулкан, дождь, сады и 16 реакций, которые надо открыть","tech":["Canvas 2D","клеточный автомат","typed arrays","Web Audio"],"strength":"Большая система правил без багов: 25 типов клеток и десятки взаимодействий","controls":"ЛКМ — сыпать, ПКМ — стирать, колесо — кисть, F — кран, J — журнал","accent":"#FFB238","bg":"#0B0918","net":false,"thumb":"_gallery/thumbs/110.webp?v=1790165375070","loc":1098,"kb":67,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:18:28.528Z"}},{"n":111,"slug":"111-firebird-palekh","cat":10,"title":"Перо Жар-птицы","tagline":"Двухминутная палехская миниатюра: золото ведёт кисть, перо горит живым огнём","tech":["Canvas 2D","Web Audio","Карплус — Стронг"],"strength":"Весь фильм — функция времени: кадр, камера и партитура совпадают после любой перемотки","controls":"Пробел — пауза, ← → — ±5 с, шкала сцен, «Смотреть со звуком», F — во весь экран","accent":"#E3B659","bg":"#0B0807","net":false,"thumb":"_gallery/thumbs/111.webp?v=1790189651892","loc":5496,"kb":283,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:39:59.948Z"}},{"n":112,"slug":"112-snow-globe","cat":9,"title":"Снежный шар","tagline":"Стеклянный шар с деревней Снегирёво: встряхните — и снег закружится в воде","tech":["three.js","преломление","частицы","Web Audio"],"strength":"3D-сцена с физикой: инерция воды, вихри и оседание снега внутри стекла","controls":"Потянуть шар — встряхнуть; тянуть фон — повернуть; День/Ночь; Шкатулка","accent":"#FFCF8A","bg":"#0D1224","net":true,"thumb":"_gallery/thumbs/112.webp?v=1790166334366","loc":432,"kb":37,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:36:28.817Z"}},{"n":113,"slug":"113-voxel-fox","cat":10,"title":"Лисий дом","tagline":"Воксельный мультфильм: лисица строит дом до первого снега — и в окне загорается свет","tech":["three.js","WebGL2","GLSL","Web Audio"],"strength":"Режиссура целиком в коде: кукла на суставах, 28 планов камеры, синтез гитары","controls":"«Смотреть со звуком», пробел — пауза, ←/→ — 5 секунд, F — во весь экран","accent":"#E8772E","bg":"#16110E","net":true,"thumb":"_gallery/thumbs/113.webp?v=1790188865357","loc":3140,"kb":191,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:36:43.458Z"}},{"n":114,"slug":"114-fractal-flight","cat":0,"title":"Фрактальный полёт","tagline":"Кинематографичный полёт сквозь бесконечные соборы 3D-фракталов","tech":["WebGL2","GLSL raymarching","автопилот по полю расстояний"],"strength":"3D-сцены и математика фракталов, ракурсы проверены симуляцией","controls":"Щелчок — управление; WASD и мышь — полёт; 1–4 — миры; P — фото","accent":"#F2CC94","bg":"#3A2A1C","net":false,"thumb":"_gallery/thumbs/114.webp?v=1790165149238","loc":1374,"kb":62,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T20:37:20.660Z"}},{"n":115,"slug":"115-planet-wind","cat":8,"title":"Ветер планеты","tagline":"Живой ветер Земли по данным Open-Meteo: светящиеся нити на четырёх высотах","tech":["WebGL2","GLSL","живой API Open-Meteo","Natural Earth"],"strength":"Живые данные: сетка под лимит API, сплайны по сфере, частицы на видеокарте","controls":"Щелчок — ветер в точке · высота от 10 м до 10,4 км · карта, глобус, полюс · прогноз на 48 ч","accent":"#9EDBE9","bg":"#05080C","net":true,"thumb":"_gallery/thumbs/115.webp?v=1790173646736","loc":2976,"kb":186,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:40:18.895Z","note":"проверен агентом; массово не снимается из-за суточного лимита Open-Meteo"}},{"n":116,"slug":"116-avantgarde-posters","cat":0,"title":"Конструктивизм","tagline":"Генератор плакатов: клин Лисицкого, мегафон Родченко, лучи Клуциса","tech":["Canvas 2D","SVG-экспорт","Алгоритмическая вёрстка","Полутоновый растр"],"strength":"Вкус в дизайне и типографике, вёрстка на ограничениях","controls":"Клик или пробел — новый лист; свой лозунг; приём, краски, PNG и SVG","accent":"#D2291D","bg":"#EBE1C9","net":false,"thumb":"_gallery/thumbs/116.webp?v=1790165184662","loc":1673,"kb":84,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:13:13.962Z"}},{"n":117,"slug":"117-electron-clouds","cat":1,"title":"Облака электронов","tagline":"Орбитали водорода из точных ψ(n, l, m): 260 000 точек, фаза, узлы и спектр","tech":["WebGL2","HDR + bloom","Монте-Карло","SVG"],"strength":"Научная точность: полиномы Лагерра и Лежандра, правила отбора считаются численно","controls":"Тяни — вращать, колесо — масштаб, n/l/m — кнопки или клавиши 1–7, ↑↓, ←→, C — срез","accent":"#FF6F5E","bg":"#04070A","net":false,"thumb":"_gallery/thumbs/117.webp?v=1790165404896","loc":1201,"kb":62,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:19:37.062Z"}},{"n":118,"slug":"118-color-lab","cat":9,"title":"Цветовая лаборатория","tagline":"Палитры в OKLCH: тело охвата sRGB и P3 в 3D, контраст WCAG и APCA, экспорт в CSS","tech":["WebGL2","OKLab и OKLCH","Display P3","APCA","Canvas 2D"],"strength":"Дизайн-инструмент с настоящей цветовой наукой под интерфейсом","controls":"Точки на круге оттенков, ползунки, охват и зрение, вращение тела, вкладки смешения, контраста и CSS","accent":"#3D74D8","bg":"#F4F3EF","net":false,"thumb":"_gallery/thumbs/118.webp?v=1790170442382","loc":931,"kb":68,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:35:10.198Z"}},{"n":119,"slug":"119-watch-anatomy","cat":6,"title":"Анатомия часов","tagline":"Механические часы по деталям: пружина, колёса, спуск и балансир в честной кинематике","tech":["SVG","IntersectionObserver","Web Audio"],"strength":"Ясное объяснение сложного механизма","controls":"Прокрутка — главы · скорость времени · завод головкой · частота балансира","accent":"#9a7424","bg":"#f3eee3","net":false,"thumb":"_gallery/thumbs/119.webp?v=1790165979203","loc":797,"kb":54,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T18:10:58.560Z"}},{"n":120,"slug":"120-one-line-cartoon","cat":11,"title":"Мультфильм из одной фразы","tagline":"Пишешь сюжет строкой — нейросеть пишет сценарий, движок сразу снимает мультфильм","tech":["Canvas 2D","Web Audio","DeepSeek · OpenRouter","JSON-язык сцен"],"strength":"Придумать язык сцен и движок, который превращает ответ нейросети в режиссированный фильм","controls":"Фраза и «Снять» · «Правка» словами · пробел — пауза, ←/→ — ±5 с","accent":"#FF6A3D","bg":"#1B1512","net":true,"thumb":"_gallery/thumbs/120.webp?v=1790185641189","loc":4802,"kb":274,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T19:41:32.336Z"}},{"n":121,"slug":"121-regex-automata","cat":3,"title":"Автоматы регулярок","tagline":"Регулярка → НКА Томпсона → ДКА → минимум Хопкрофта, и всё это светится на синьке","tech":["Canvas 2D","Конструкция Томпсона","Алгоритм подмножеств","Минимизация Хопкрофта"],"strength":"Теория вычислений, реализованная с нуля и проверенная против настоящего RegExp","controls":"Пиши регулярку и строку, вкладки I–IV, пробел — пуск, ← → — шаг, колесо — зум","accent":"#A8392B","bg":"#1A4B7D","net":false,"thumb":"_gallery/thumbs/121.webp?v=1790165663374","loc":1152,"kb":66,"qa":{"errors":0,"code":0,"problems":[],"at":"2026-09-23T17:34:46.168Z"}}];
+window.STATS = {"count":121,"main":100,"films":10,"aiGames":11,"withMeta":121,"loc":211580,"kb":11822,"qaChecked":true,"qaErrors":0,"date":"23.09.2026","agents":49};
+</script>
+<script>
+(() => {
+  'use strict';
+  const P = window.PROJECTS, S = window.STATS;
+  const CATS = ['Шейдеры', 'Физика', 'Математика', 'Системы', 'Игры', 'Звук', 'Объяснялки', 'Слово', 'Данные', 'Объекты', 'Мультфильмы', 'Игры с нейросетью'];
+  // Порядок показа: сначала то, ради чего стоит открыть коллекцию, — живые игры, мультфильмы, 3D
+  const ORDER = [11, 10, 4, 0, 1, 9, 5, 7, 6, 8, 3, 2];
+  const rank = (p) => { const r = ORDER.indexOf(p.cat); return (r < 0 ? 99 : r) * 1000 + p.n; };
+  P.sort((a, b) => a.n - b.n); // номера перемешаны — показываем вразнобой, как в папке
+  const HERO = P.filter((p) => p.cat <= 9); // цифра «100» — из основной сотни
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = (n) => String(n).padStart(3, '0');
+  const norm = (s) => String(s ?? '').toLowerCase().replace(/ё/g, 'е');
+  const fmt = (n) => Math.round(n).toLocaleString('ru-RU').replace(/\s/g, ' ');
+  const ICON_NET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>';
+  const ICON_FILM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>';
+  const ICON_AI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.2"/></svg>';
+  const ICON_GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>';
+  const url = (p) => `${p.slug}/index.html`;
+  const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+  // ---------- Цифры в шапке ----------
+  const stats = [
+    [S.main ?? P.length, 'проектов'],
+    ...(S.films ? [[S.films, 'мультфильмов']] : []),
+    ...(S.aiGames ? [[S.aiGames, 'игр с нейросетью']] : []),
+    [10 + (S.films ? 1 : 0) + (S.aiGames ? 1 : 0), 'категорий'],
+    [S.loc ? fmt(S.loc) : '—', 'строк кода'],
+    [S.kb ? (S.kb / 1024).toFixed(1).replace('.', ',') : '—', 'МБ исходников'],
+    [S.agents || 20, 'агентов-сборщиков'],
+  ];
+  if (S.qaChecked) stats.push([S.qaErrors, S.qaErrors === 0 ? 'ошибок в консоли' : 'проектов с ошибками']);
+  $('#stats').innerHTML = stats.map(([b, s]) => `<div class="stat"><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join('') +
+    `<div class="spacer"></div><div class="cta"><button class="btn" id="surprise" type="button">Удиви меня <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button><a class="btn ghost" href="#list">Все проекты</a></div>`;
+  // ---------- BYOK: свой ключ OpenRouter для игр с нейросетью ----------
+  const aikey = $('#aikey');
+  const renderKey = () => { if (!aikey) return; const on = !!(window.AI && AI.hasKey()); aikey.classList.toggle('on', on); aikey.innerHTML = '<i></i>' + (on ? 'Нейросеть<span class="long"> подключена</span>' : '<span class="long">Подключить </span>нейросеть'); };
+  if (aikey && window.AI) { aikey.addEventListener('click', () => AI.openKeyDialog().then(renderKey)); AI.ready.then(renderKey); } else if (aikey) aikey.hidden = true;
+  renderKey();
+  $('#sig').textContent = `Собрано ${S.date || '23.09.2026'} · Opus 5.5 (1M контекст, усилие max) · ${S.agents || 20} агентов · без сборки и без скиллов`;
+
+  // ---------- Карточки, стена, каталог ----------
+  const byN = new Map(P.map((p) => [p.n, p]));
+  const style = (p) => `--acc:${esc(p.accent)};--cbg:${esc(p.bg)}`;
+  const shot = (p, big) => p.thumb ? `<img src="${esc(p.thumb)}" alt="" loading="lazy" decoding="async">` : `<div class="ph">${pad(p.n)}</div>`;
+  $('#grid').innerHTML = P.map((p) => `
+    <a class="card" data-n="${p.n}" href="${esc(url(p))}" target="_blank" rel="noopener" style="${style(p)}">
+      <div class="shot">${shot(p)}<span class="num">${pad(p.n)}</span>${p.net ? `<span class="net" title="Нужен интернет">${ICON_NET}</span>` : ''}${p.cat === 10 ? `<span class="film">${ICON_FILM} мультфильм</span>` : ''}${p.cat === 11 ? `<span class="film">${ICON_AI} нейросеть</span>` : ''}<span class="go">${ICON_GO}</span></div>
+      <div class="body"><h3>${esc(p.title)}</h3><p>${esc(p.tagline)}</p>
+        <div class="meta"><span class="c">${esc(CATS[p.cat])}</span>${p.tech.slice(0, 3).map((t) => `<span>${esc(t)}</span>`).join('')}</div></div>
+    </a>`).join('');
+  $('#wall').innerHTML = P.map((p, i) => {
+    const col = i % 10, row = Math.floor(i / 10);
+    return `<a class="tile" data-n="${p.n}" href="${esc(url(p))}" target="_blank" rel="noopener" style="${style(p)};--ox:${col === 0 ? '0%' : col === 9 ? '100%' : '50%'};--oy:${row === 0 ? '0%' : row === 9 ? '100%' : '50%'}" aria-label="${esc(pad(p.n) + ' · ' + p.title)}">${shot(p)}<span class="cap"><b>${pad(p.n)}</b>${esc(p.title)}</span></a>`;
+  }).join('');
+  $('#catalog').innerHTML = `<div class="rowhead"><span>№</span><span>Проект</span><span>Категория</span><span>Техника</span><span>Сила Opus 5.5</span></div>` + P.map((p) => `
+    <a class="row" data-n="${p.n}" href="${esc(url(p))}" target="_blank" rel="noopener" style="${style(p)}">
+      <span class="rn">${pad(p.n)}</span><span class="rt"><b>${esc(p.title)}</b><span>${esc(p.tagline)}</span></span>
+      <span class="rc">${esc(CATS[p.cat])}</span><span class="rx">${esc(p.tech.join(' · '))}</span><span class="rs">${esc(p.strength)}</span>
+    </a>`).join('');
+
+  // ---------- Фильтры ----------
+  const state = { cat: -1, q: '', view: store.get('gallery-view') || 'grid' };
+  const counts = CATS.map((_, i) => P.filter((p) => p.cat === i).length);
+  $('#chips').innerHTML = `<button class="chip" data-c="-1" aria-pressed="true">Все <i>${P.length}</i></button>` +
+    ORDER.map((i) => counts[i] ? `<button class="chip" data-c="${i}" aria-pressed="false">${esc(CATS[i])}</button>` : '').join('');
+  const chipsEl = $('#chips');
+  const edge = () => chipsEl.classList.toggle('over', chipsEl.scrollWidth - chipsEl.clientWidth - chipsEl.scrollLeft > 4);
+  chipsEl.addEventListener('scroll', edge, { passive: true }); addEventListener('resize', edge); requestAnimationFrame(edge);
+  const hay = new Map(P.map((p) => [p.n, norm([p.title, p.tagline, p.tech.join(' '), CATS[p.cat], p.strength, p.controls, p.slug].join(' '))]));
+  const visible = (p) => (state.cat < 0 || p.cat === state.cat) && (!state.q || state.q.split(/\s+/).every((w) => hay.get(p.n).includes(w)));
+  function apply() {
+    let shown = 0;
+    for (const el of document.querySelectorAll('[data-n]')) {
+      const v = visible(byN.get(+el.dataset.n));
+      if (el.classList.contains('tile')) el.classList.toggle('dim', !v); else el.hidden = !v;
+    }
+    for (const p of P) if (visible(p)) shown++;
+    $('#empty').hidden = shown > 0;
+    for (const b of document.querySelectorAll('.chip')) b.setAttribute('aria-pressed', String(+b.dataset.c === state.cat));
+    for (const b of document.querySelectorAll('#views button')) b.setAttribute('aria-pressed', String(b.dataset.v === state.view));
+    for (const v of ['grid', 'wall', 'catalog']) $('#' + v).hidden = v !== state.view || shown === 0;
+  }
+  $('#chips').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return; state.cat = +b.dataset.c; apply(); });
+  $('#views').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; state.view = b.dataset.v; store.set('gallery-view', state.view); apply(); });
+  $('#q').addEventListener('input', (e) => { state.q = norm(e.target.value.trim()); apply(); });
+  addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== $('#q')) { e.preventDefault(); $('#q').focus(); }
+    if (e.key === 'Escape' && document.activeElement === $('#q')) { $('#q').value = ''; state.q = ''; apply(); $('#q').blur(); }
+  });
+  apply();
+
+  // ---------- «Удиви меня» ----------
+  $('#surprise').addEventListener('click', () => {
+    const pool = P.filter(visible).length ? P.filter(visible) : P;
+    const p = pool[Math.floor(Math.random() * pool.length)];
+    window.open(url(p), '_blank', 'noopener');
+    hundred.pulse(p.n);
+    const card = document.querySelector(`.card[data-n="${p.n}"]`);
+    if (card) { card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash'); }
+  });
+
+  // ---------- Цифра «100» из ста проектов ----------
+  const hundred = (() => {
+    const cv = $('#hundred'), ctx = cv.getContext('2d'), tip = $('#tip');
+    const hero = $('.hero');
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let W = 0, H = 0, dpr = 1, R = 10, parts = [], hover = -1, pinned = -1, running = true, t0 = performance.now(), last = t0;
+    const mouse = { x: -1e4, y: -1e4 };
+    const imgs = new Map();
+    for (const p of HERO) if (p.thumb) { const im = new Image(); im.decoding = 'async'; im.src = p.thumb; imgs.set(p.n, im); }
+
+    function sample() {
+      const r = cv.getBoundingClientRect();
+      W = r.width; H = r.height; dpr = Math.min(devicePixelRatio || 1, 2);
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      const mobile = W < 700;
+      // область цифры — от верхней полосы до блока с заголовком, чтобы точки не наезжали на текст
+      const introTop = document.querySelector('.intro').getBoundingClientRect().top - cv.getBoundingClientRect().top;
+      const top = mobile ? 64 : H * 0.085;
+      const room = Math.max(60, introTop - top - (mobile ? 14 : 28));
+      const reg = mobile ? { x: 12, y: top, w: W - 24, h: Math.min(H * 0.34, room) } : { x: W * 0.05, y: top, w: W * 0.9, h: Math.min(H * 0.5, room) };
+      const mw = 520, mh = Math.max(40, Math.round(mw * reg.h / reg.w));
+      const m = document.createElement('canvas'); m.width = mw; m.height = mh;
+      const mc = m.getContext('2d', { willReadFrequently: true });
+      let fs = mh * 1.3; mc.font = `400 ${fs}px "Dela Gothic One", Impact, sans-serif`;
+      const tw = mc.measureText('100').width; if (tw > mw * 0.96) fs *= mw * 0.96 / tw;
+      mc.font = `400 ${fs}px "Dela Gothic One", Impact, sans-serif`; mc.textAlign = 'center'; mc.textBaseline = 'middle';
+      mc.fillStyle = '#fff'; mc.fillText('100', mw / 2, mh / 2 + fs * 0.02);
+      const a = mc.getImageData(0, 0, mw, mh).data, cand = [];
+      for (let y = 1; y < mh; y += 3) for (let x = 1; x < mw; x += 3) if (a[(y * mw + x) * 4 + 3] > 140) cand.push([x, y]);
+      const N = HERO.length || 100, pts = [];
+      if (!cand.length) return;
+      // выбор точек: самые удалённые друг от друга, затем несколько шагов релаксации Ллойда внутри маски
+      const dist = new Float32Array(cand.length).fill(1e9);
+      let idx = 0; for (let i = 1; i < cand.length; i++) if (cand[i][0] + cand[i][1] < cand[idx][0] + cand[idx][1]) idx = i;
+      for (let k = 0; k < N; k++) {
+        pts.push([cand[idx][0], cand[idx][1]]);
+        let best = 0, bi = 0;
+        for (let i = 0; i < cand.length; i++) {
+          const dx = cand[i][0] - cand[idx][0], dy = cand[i][1] - cand[idx][1], d = dx * dx + dy * dy;
+          if (d < dist[i]) dist[i] = d;
+          if (dist[i] > best) { best = dist[i]; bi = i; }
+        }
+        idx = bi;
+      }
+      for (let it = 0; it < 10; it++) {
+        const sx = new Float32Array(N), sy = new Float32Array(N), sc = new Float32Array(N);
+        for (const [x, y] of cand) {
+          let bj = 0, bd = 1e12;
+          for (let j = 0; j < N; j++) { const dx = x - pts[j][0], dy = y - pts[j][1], d = dx * dx + dy * dy; if (d < bd) { bd = d; bj = j; } }
+          sx[bj] += x; sy[bj] += y; sc[bj]++;
+        }
+        for (let j = 0; j < N; j++) if (sc[j]) { pts[j][0] = sx[j] / sc[j]; pts[j][1] = sy[j] / sc[j]; }
+      }
+      const sx = reg.w / mw, sy = reg.h / mh;
+      const scr = pts.map(([x, y]) => [reg.x + x * sx, reg.y + y * sy]).sort((p, q) => p[0] - q[0]);
+      const nn = scr.map((p, i) => { let d = 1e9; scr.forEach((q, j) => { if (i !== j) d = Math.min(d, Math.hypot(p[0] - q[0], p[1] - q[1])); }); return d; }).sort((a, b) => a - b);
+      R = Math.max(4, nn[Math.floor(nn.length / 2)] * 0.47);
+      const old = parts;
+      parts = scr.map(([x, y], i) => {
+        const p = HERO[i] || { n: i + 1, accent: '#888', title: '', tagline: '' };
+        const prev = old[i];
+        const ang = Math.random() * Math.PI * 2, rad = Math.max(W, H) * (0.55 + Math.random() * 0.4);
+        return {
+          p, hx: x, hy: y,
+          x: prev ? prev.x : reduce ? x : W / 2 + Math.cos(ang) * rad,
+          y: prev ? prev.y : reduce ? y : H * 0.4 + Math.sin(ang) * rad,
+          vx: 0, vy: 0, s: prev ? prev.s : 1, ph: Math.random() * 6.283, delay: prev ? 0 : reduce ? 0 : 0.15 + i * 0.011, pulse: 0,
+        };
+      });
+    }
+
+    function hit(x, y) {
+      let best = -1, bd = 1e9;
+      parts.forEach((q, i) => { const d = Math.hypot(q.x - x, q.y - y); if (d < R * q.s * 1.08 && d < bd) { bd = d; best = i; } });
+      return best;
+    }
+    function showTip(i, touch) {
+      if (i < 0) { tip.classList.remove('on', 'touch'); return; }
+      const q = parts[i], p = q.p;
+      tip.style.setProperty('--acc', p.accent);
+      tip.querySelector('.n').textContent = `${pad(p.n)} · ${CATS[p.cat] ?? ''}`;
+      tip.querySelector('.t').textContent = p.title;
+      tip.querySelector('.s').textContent = p.tagline;
+      tip.querySelector('a').href = url(p);
+      tip.classList.toggle('touch', !!touch);
+      const tw = tip.offsetWidth, th = tip.offsetHeight;
+      let x = q.hx + R * 2.4, y = q.hy - th / 2;
+      if (x + tw > W - 12) x = q.hx - R * 2.4 - tw;
+      x = Math.max(12, Math.min(W - tw - 12, x)); y = Math.max(12, Math.min(H - th - 12, y));
+      tip.style.left = x + 'px'; tip.style.top = y + 'px';
+      tip.classList.add('on');
+    }
+
+    cv.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch') return;
+      const r = cv.getBoundingClientRect(); mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top;
+      const h = hit(mouse.x, mouse.y);
+      if (h !== hover) { hover = h; cv.style.cursor = h >= 0 ? 'pointer' : ''; showTip(h); }
+    });
+    cv.addEventListener('pointerleave', () => { mouse.x = mouse.y = -1e4; if (pinned < 0) { hover = -1; showTip(-1); } });
+    cv.addEventListener('click', (e) => {
+      const r = cv.getBoundingClientRect(); const h = hit(e.clientX - r.left, e.clientY - r.top);
+      if (e.pointerType === 'touch' || matchMedia('(hover: none)').matches) { pinned = h; hover = h; showTip(h, true); return; }
+      if (h >= 0) window.open(url(parts[h].p), '_blank', 'noopener');
+    });
+
+    function frame(now) {
+      if (!running) return;
+      const t = (now - t0) / 1000;
+      const dt = Math.min(0.25, Math.max(0, (now - last) / 1000)); last = now;
+      const steps = Math.max(1, Math.ceil(dt / 0.008)), h = dt / steps;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      const order = [];
+      parts.forEach((q, i) => {
+        let tx = q.hx, ty = q.hy;
+        if (!reduce) { tx += Math.sin(t * 0.7 + q.ph) * 1.4; ty += Math.cos(t * 0.55 + q.ph * 1.7) * 1.4; }
+        const dx = q.x - mouse.x, dy = q.y - mouse.y, d = Math.hypot(dx, dy), rr = R * 6;
+        if (i !== hover && d < rr && d > 0.01) { const f = (1 - d / rr) ** 2 * R * 1.3; tx += dx / d * f; ty += dy / d * f; }
+        if (t > q.delay) {
+          for (let k = 0; k < steps; k++) { // пружина: ω ≈ 9,5 рад/с, демпфирование ≈ 0,68
+            q.vx += ((tx - q.x) * 90 - q.vx * 13) * h; q.vy += ((ty - q.y) * 90 - q.vy * 13) * h;
+            q.x += q.vx * h; q.y += q.vy * h;
+          }
+        }
+        const target = (i === hover ? 2.05 : 1) * (visible(q.p) ? 1 : 0.62) + q.pulse * 1.4;
+        q.s += (target - q.s) * (1 - Math.exp(-dt * 12));
+        q.pulse *= Math.exp(-dt * 2.2);
+        order.push(i);
+      });
+      if (hover >= 0) { order.splice(order.indexOf(hover), 1); order.push(hover); }
+      for (const i of order) {
+        const q = parts[i], p = q.p, r = R * q.s, on = visible(p);
+        const im = imgs.get(p.n);
+        ctx.globalAlpha = on ? 1 : 0.16;
+        ctx.save(); ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, Math.PI * 2);
+        if (im && im.complete && im.naturalWidth) {
+          ctx.clip(); ctx.drawImage(im, q.x - r * 1.6, q.y - r, r * 3.2, r * 2);
+          if (i !== hover) { ctx.fillStyle = 'rgba(15,15,13,.18)'; ctx.fill(); }
+        } else {
+          const g = ctx.createRadialGradient(q.x - r * 0.35, q.y - r * 0.35, r * 0.1, q.x, q.y, r);
+          g.addColorStop(0, p.accent); g.addColorStop(1, p.bg || '#1a1a17');
+          ctx.fillStyle = g; ctx.fill();
+        }
+        ctx.restore();
+        ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, Math.PI * 2);
+        ctx.lineWidth = i === hover ? 2.5 : 1.25; ctx.strokeStyle = p.accent; ctx.globalAlpha = on ? (i === hover ? 1 : 0.85) : 0.12; ctx.stroke();
+        if (q.pulse > 0.02) { ctx.beginPath(); ctx.arc(q.x, q.y, r + (1 - q.pulse) * R * 4, 0, Math.PI * 2); ctx.globalAlpha = q.pulse; ctx.lineWidth = 2; ctx.stroke(); }
+      }
+      ctx.globalAlpha = 1;
+      if (hover >= 0) showTipPos();
+      requestAnimationFrame(frame);
+    }
+    function showTipPos() { /* подсказка стоит у дома точки — не дёргаем её каждый кадр */ }
+
+    const io = new IntersectionObserver(([e]) => { const was = running; running = e.isIntersecting && !document.hidden; if (running && !was) { last = performance.now(); requestAnimationFrame(frame); } });
+    io.observe(hero);
+    document.addEventListener('visibilitychange', () => { const was = running; running = !document.hidden; if (running && !was) { last = performance.now(); requestAnimationFrame(frame); } });
+    let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(sample, 120); });
+    const start = () => { sample(); requestAnimationFrame(frame); };
+    const ready = document.fonts ? Promise.race([document.fonts.load('400 100px "Dela Gothic One"'), new Promise((r) => setTimeout(r, 1500))]) : Promise.resolve();
+    ready.then(start, start);
+    return { pulse(n) { const q = parts.find((q) => q.p.n === n); if (q) q.pulse = 1; } };
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1157 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Столкновение галактик</title>
+<meta name="description" content="Задача Тоомре в реальном времени: два галактических ядра и десятки тысяч звёзд-частиц рисуют приливные хвосты, кольца и мосты.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#030409;
+  --ink:#f1e8da;
+  --ink-2:rgba(241,232,218,.8);
+  --ink-3:rgba(241,232,218,.6);
+  --line:rgba(241,232,218,.14);
+  --line-2:rgba(241,232,218,.28);
+  --blue:#8fb5ff;
+  --gold:#f2b35a;
+  --rose:#ff8aa0;
+  --serif:'Cormorant Garamond','Iowan Old Style','Times New Roman',serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.22,.7,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;
+  -webkit-font-smoothing:antialiased;font-family:var(--mono);font-size:12px}
+canvas#gl{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none;cursor:grab}
+canvas#gl.drag{cursor:grabbing}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:1px solid var(--gold);outline-offset:3px}
+
+/* ---------- заголовок ---------- */
+.title{position:fixed;left:40px;top:34px;max-width:390px;pointer-events:none;z-index:3}
+.over{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);display:flex;gap:12px;align-items:center}
+.over i{display:block;width:28px;height:1px;background:var(--line-2)}
+h1{font-family:var(--serif);font-weight:600;font-size:54px;line-height:.92;letter-spacing:-.01em;margin:14px 0 18px;
+  text-shadow:0 2px 30px rgba(0,0,0,.6)}
+h1 em{font-style:italic;font-weight:500;color:var(--gold)}
+.pname{font-family:var(--serif);font-size:25px;font-style:italic;font-weight:500;line-height:1.1;transition:opacity .5s var(--ease)}
+.pcat{font-family:var(--mono);font-style:normal;font-size:12px;letter-spacing:.08em;color:var(--ink-3);display:block;margin-top:6px}
+.ptext{margin-top:12px;font-family:var(--serif);font-size:17px;line-height:1.38;color:var(--ink-2);max-width:360px;
+  text-shadow:0 1px 12px rgba(0,0,0,.8);transition:opacity .5s var(--ease)}
+.fade{opacity:0}
+
+/* ---------- показания ---------- */
+.readouts{position:fixed;right:40px;top:38px;z-index:3;text-shadow:0 1px 10px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.8);display:grid;grid-template-columns:auto auto;column-gap:18px;row-gap:9px;
+  pointer-events:none;text-align:right}
+.readouts span{color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase;font-size:12px;align-self:end}
+.readouts b{font-weight:500;font-size:15px;font-variant-numeric:tabular-nums;color:var(--ink);min-width:118px}
+.readouts b small{font-size:12px;color:var(--ink-3);font-weight:400;margin-left:3px}
+
+/* ---------- пресеты ---------- */
+.presets{text-shadow:0 1px 10px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.8);position:fixed;right:28px;top:50%;transform:translateY(-44%);z-index:3;display:flex;flex-direction:column;gap:2px}
+.preset{display:grid;grid-template-columns:26px 1fr;align-items:baseline;text-align:left;padding:9px 12px 9px 12px;border-radius:3px;
+  transition:background .3s;width:236px}
+.preset .n{color:var(--ink-3);font-size:12px;transition:color .3s}
+.preset .t{font-family:var(--serif);font-size:19px;font-weight:500;line-height:1.1}
+.preset .c{grid-column:2;color:var(--ink-3);font-size:12px;letter-spacing:.06em;margin-top:3px}
+.preset:hover{background:linear-gradient(90deg,rgba(241,232,218,.06),transparent)}
+.preset[aria-pressed="true"]{background:rgba(241,232,218,.07)}
+.preset[aria-pressed="true"] .t{color:var(--gold)}
+.preset[aria-pressed="true"] .n{color:var(--gold)}
+
+/* ---------- нижняя панель ---------- */
+.dock{position:fixed;left:40px;right:40px;bottom:30px;z-index:4;display:grid;grid-template-columns:auto auto 1fr auto;gap:22px;align-items:center}
+.play{width:46px;height:46px;border-radius:50%;border:1px solid var(--line-2);display:grid;place-items:center;
+  transition:border-color .25s,background .25s,transform .2s var(--ease);background:rgba(3,4,9,.35);backdrop-filter:blur(4px)}
+.play:hover{border-color:var(--gold);background:rgba(242,179,90,.1)}
+.play:active{transform:scale(.94)}
+.play svg{width:16px;height:16px;fill:var(--ink)}
+.seg{display:flex;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:rgba(3,4,9,.35);backdrop-filter:blur(4px)}
+.seg button{padding:8px 11px;color:var(--ink-3);font-size:12px;letter-spacing:.04em;transition:color .2s,background .2s;min-height:32px;white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{color:var(--bg);background:var(--ink)}
+.seg button.rev[aria-pressed="true"]{background:var(--rose)}
+
+.timeline{position:relative;height:46px;cursor:pointer;touch-action:none}
+.track{position:absolute;left:0;right:0;top:22px;height:1px;background:var(--line-2)}
+.fill{position:absolute;left:0;right:0;top:-0.5px;height:2px;background:linear-gradient(90deg,rgba(143,181,255,.5),var(--gold));transform-origin:0 50%;transform:scaleX(0)}
+.thumb{position:absolute;left:0;top:-6px;width:13px;height:13px;margin-left:-6.5px;border-radius:50%;background:var(--bg);border:1.5px solid var(--gold);
+  box-shadow:0 0 0 4px rgba(3,4,9,.7);transition:transform .2s var(--ease)}
+.timeline:hover .thumb{box-shadow:0 0 0 4px rgba(3,4,9,.7),0 0 0 5px rgba(242,179,90,.35)}
+.tick{position:absolute;top:-9px;width:1px;height:19px;background:var(--ink-3)}
+.tick span{position:absolute;bottom:17px;left:0;transform:translateX(-50%);white-space:nowrap;font-size:12px;letter-spacing:.04em;color:var(--ink-2)}
+.tick.merge{background:var(--rose)}
+.tick.merge span{color:var(--rose)}
+.tl-l,.tl-r{position:absolute;top:30px;font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.tl-l{left:0}.tl-r{right:0}
+.seekflag{position:absolute;right:0;top:0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);opacity:0;transition:opacity .2s}
+.seekflag.on{opacity:1}
+
+.tools{display:flex;gap:10px;align-items:center}
+.iconbtn{width:36px;height:36px;border:1px solid var(--line);border-radius:3px;display:grid;place-items:center;color:var(--ink-3);
+  background:rgba(3,4,9,.35);backdrop-filter:blur(4px);transition:color .2s,border-color .2s}
+.iconbtn:hover{color:var(--ink);border-color:var(--line-2)}
+.iconbtn[aria-pressed="true"]{color:var(--gold);border-color:rgba(242,179,90,.5)}
+.iconbtn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.3}
+
+/* ---------- свой сценарий ---------- */
+.custom{position:fixed;right:40px;bottom:100px;z-index:5;width:318px;padding:20px 20px 16px;background:rgba(6,7,14,.86);
+  border:1px solid var(--line-2);border-radius:4px;backdrop-filter:blur(14px);box-shadow:0 30px 80px rgba(0,0,0,.6);
+  transform-origin:100% 100%;transition:opacity .3s var(--ease),transform .3s var(--ease)}
+.custom[hidden]{display:block;opacity:0;transform:translateY(10px) scale(.98);pointer-events:none}
+.custom h2{font-family:var(--serif);font-size:24px;font-weight:500;font-style:italic;margin-bottom:4px}
+.custom p{font-family:var(--serif);font-size:14.5px;color:var(--ink-2);line-height:1.35;margin-bottom:14px}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;margin-bottom:11px}
+.row label{color:var(--ink-2);font-size:12px}
+.row output{color:var(--gold);font-size:12px;font-variant-numeric:tabular-nums}
+input[type=range]{grid-column:1/3;-webkit-appearance:none;appearance:none;width:100%;height:18px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:1px;background:var(--line-2)}
+input[type=range]::-moz-range-track{height:1px;background:var(--line-2)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--bg);border:1.5px solid var(--gold);margin-top:-6px}
+input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:var(--bg);border:1.5px solid var(--gold)}
+input[type=range]:focus-visible{outline:none}
+input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px rgba(242,179,90,.25)}
+.go{width:100%;margin-top:6px;padding:11px;border:1px solid var(--gold);color:var(--gold);letter-spacing:.14em;text-transform:uppercase;font-size:12px;
+  border-radius:3px;transition:background .2s,color .2s}
+.go:hover{background:var(--gold);color:var(--bg)}
+
+/* ---------- подписи ядер ---------- */
+#labels{position:fixed;inset:0;pointer-events:none;z-index:2}
+.lbl{text-shadow:0 1px 8px rgba(0,0,0,.95);position:absolute;left:0;top:0;font-size:12px;letter-spacing:.08em;color:var(--ink-2);white-space:nowrap;transition:opacity .4s;
+  padding-left:14px;border-left:1px solid var(--line-2);line-height:1.3}
+.lbl.flip{padding-left:0;padding-right:14px;border-left:0;border-right:1px solid var(--line-2);text-align:right}
+.lbl.sun{color:#ffe2a6;border-left-color:#ffe2a6}
+.lbl.sun::before{content:"";position:absolute;left:-5px;bottom:-5px;width:9px;height:9px;border-radius:50%;border:1px solid #ffe2a6}
+
+.hint{position:fixed;left:40px;bottom:96px;z-index:3;color:var(--ink-3);font-size:12px;letter-spacing:.04em;pointer-events:none;transition:opacity 1s}
+.note{position:fixed;right:40px;bottom:96px;z-index:3;color:var(--ink-3);font-size:12px;letter-spacing:.03em;text-align:right;max-width:420px;line-height:1.5;pointer-events:none}
+#fail{position:fixed;inset:0;display:grid;place-items:center;z-index:10;background:var(--bg);text-align:center;padding:30px}
+#fail[hidden]{display:none}
+#fail h2{font-family:var(--serif);font-size:34px;font-weight:500;margin-bottom:10px}
+#fail p{font-family:var(--serif);font-size:18px;color:var(--ink-2);max-width:460px}
+
+.more{display:none}
+
+/* ---------- мобильная раскладка ---------- */
+@media (max-width:760px){
+  .title{left:18px;top:18px;right:18px;max-width:none}
+  .over{font-size:12px}
+  h1{font-size:36px;margin:8px 0 10px}
+  h1 br{display:none}
+  .pname{font-size:19px}
+  .pcat{display:block;margin:4px 0 0;font-size:12px}
+  .ptext{display:none}
+  .readouts{left:18px;right:18px;top:auto;bottom:128px;grid-template-columns:repeat(3,auto);justify-content:space-between;text-align:left;row-gap:3px;column-gap:10px}
+  .readouts span{grid-row:1;font-size:12px;letter-spacing:.02em;text-transform:none}
+  .readouts b{grid-row:2;font-size:14px;min-width:0}
+  .readouts b small{font-size:12px}
+  .readouts span:nth-of-type(4),.readouts b:nth-of-type(4){display:none}
+  .presets{top:auto;bottom:186px;right:0;left:0;transform:none;flex-direction:row;overflow-x:auto;gap:0;padding:0 18px;scrollbar-width:none}
+  .presets::-webkit-scrollbar{display:none}
+  .preset{width:auto;flex:0 0 auto;border-radius:0;border-bottom:1px solid var(--line);padding:8px 12px;grid-template-columns:auto}
+  .preset .n,.preset .c{display:none}
+  .preset .t{font-size:17px}
+  .preset[aria-pressed="true"]{border-bottom-color:var(--gold);background:none}
+  .dock{left:18px;right:18px;bottom:max(18px,env(safe-area-inset-bottom));grid-template-columns:auto 1fr auto;gap:12px;row-gap:10px}
+  .dock .seg.speed{grid-column:1/4;grid-row:1;justify-self:stretch}
+  .dock .seg.speed button{flex:1;padding:8px 4px}
+  .play{grid-row:2;width:42px;height:42px}
+  .timeline{grid-row:2}
+  .tools{grid-row:2}
+  .tools .seg,.tools .hide-m{display:none}
+  .more{display:grid}
+  .hint,.note{display:none}
+  .tick span{font-size:12px}
+  .custom{left:12px;right:12px;width:auto;bottom:12px;max-height:80vh;overflow:auto}
+}
+@media (max-width:760px) and (max-height:700px){ .presets{bottom:180px} }
+@media (prefers-reduced-motion:reduce){ .thumb,.play,.custom{transition:none} }
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Трёхмерная симуляция столкновения двух галактик"></canvas>
+<div id="labels"></div>
+
+<header class="title">
+  <div class="over"><span>Задача Тоомре</span><i></i><span>1972</span></div>
+  <h1>Столкновение <br><em>галактик</em></h1>
+  <div class="pname" id="pName">Антенны<span class="pcat" id="pCat">NGC 4038/4039</span></div>
+  <p class="ptext" id="pText"></p>
+</header>
+
+<aside class="readouts" aria-live="off">
+  <span>время</span><b id="rT">—</b>
+  <span>между ядрами</span><b id="rD">—</b>
+  <span>скорость ядер</span><b id="rV">—</b>
+  <span id="rNl">звёзд</span><b id="rN">—</b>
+</aside>
+
+<nav class="presets" id="presets" aria-label="Сценарии столкновения"></nav>
+
+<div class="hint" id="hint">Тяни — вращать · колесо — приблизить · пробел — пауза · ← → — шаг · 1–5 — сценарии</div>
+<div class="note">Масштаб условный: единица длины — 10&nbsp;кпк, времени — 47&nbsp;млн лет. Ядра — точечные массы со сглаживанием, звёзды — пробные частицы, как в модели Тоомре.</div>
+
+<footer class="dock">
+  <button class="play" id="play" aria-label="Пауза" title="Пауза (пробел)">
+    <svg viewBox="0 0 16 16" id="playIcon"><rect x="3" y="2" width="3.4" height="12" rx=".6"/><rect x="9.6" y="2" width="3.4" height="12" rx=".6"/></svg>
+  </button>
+  <div class="seg speed" id="speed" role="group" aria-label="Скорость и направление времени"></div>
+  <div class="timeline" id="timeline" role="slider" tabindex="0" aria-label="Шкала времени" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="track"><div class="fill" id="fill"></div><div id="ticks"></div><div class="thumb" id="thumb"></div></div>
+    <div class="tl-l" id="tlL"></div><div class="tl-r" id="tlR"></div>
+    <div class="seekflag" id="seekflag">перемотка</div>
+  </div>
+  <div class="tools">
+    <div class="seg" id="colorMode" role="group" aria-label="Окраска звёзд"></div>
+    <button class="iconbtn hide-m" id="btnOrbits" aria-pressed="true" title="Орбиты ядер" aria-label="Орбиты ядер">
+      <svg viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="4.2" transform="rotate(-24 10 10)"/><circle cx="10" cy="10" r="1.6" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button class="iconbtn hide-m" id="btnRotate" aria-pressed="true" title="Медленный облёт" aria-label="Медленный облёт камеры">
+      <svg viewBox="0 0 20 20"><path d="M16.5 10a6.5 6.5 0 1 1-2.2-4.9"/><path d="M14.8 2.6v3.1h-3.1"/></svg>
+    </button>
+    <button class="iconbtn" id="btnCustom" aria-pressed="false" title="Свой сценарий" aria-label="Свой сценарий">
+      <svg viewBox="0 0 20 20"><path d="M4 5h12M4 10h12M4 15h12"/><circle cx="7" cy="5" r="1.7" fill="#030409"/><circle cx="13" cy="10" r="1.7" fill="#030409"/><circle cx="9" cy="15" r="1.7" fill="#030409"/></svg>
+    </button>
+  </div>
+</footer>
+
+<section class="custom" id="custom" hidden aria-label="Свой сценарий">
+  <h2>Свой сценарий</h2>
+  <p>Задай орбиту и наклоны дисков. Наклон 0° — диск вращается по ходу орбиты, 180° — против.</p>
+  <div id="sliders"></div>
+  <button class="go" id="go">Столкнуть</button>
+</section>
+
+<div id="fail" hidden><div><h2>Нужен WebGL2</h2><p>Этот браузер не умеет WebGL2 или он отключён. Откройте страницу в свежем Chrome, Safari или Firefox.</p></div></div>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================================
+   Единицы и сценарии
+   G = 1, длина — 10 кпк, масса — 1e11 M☉ ⇒ скорость — 207 км/с, время — 47,2 млн лет
+   ========================================================================= */
+const DT = 0.02;
+const U = { kpc: 10, myr: 47.2, kms: 207 };
+const MOBILE = matchMedia('(max-width:760px)').matches;
+const SHOT = !!window.__SHOT__;
+const N_TOTAL = MOBILE ? 42000 : 76000;
+
+const PRESETS = [
+  {
+    id: 'antennae', name: 'Антенны', cat: 'NGC 4038/4039 · созвездие Ворона',
+    text: 'Два спиральных диска разминулись несколько сотен миллионов лет назад. Приливные силы вытянули из них звёзды в два длинных изогнутых хвоста — «усы», за которые пару так и назвали. Эту систему братья Тоомре воспроизвели в статье 1972 года.',
+    labels: ['NGC 4038', 'NGC 4039'],
+    mA: 1, mB: 1, epsA: .1, epsB: .1, epsCC: .1,
+    orbit: { e: .5, q: 1.35, nu0: -179 },
+    disks: [{ i: 60, w: -30, R: 1, share: .5 }, { i: 60, w: -30, R: 1, share: .5 }],
+    span: 34, hero: 3.8, view: { yaw: -2.1, pitch: 1.08, dist: 11.2 }
+  },
+  {
+    id: 'mice', name: 'Мыши', cat: 'NGC 4676 · созвездие Волосы Вероники',
+    text: 'Пара на ранней стадии слияния, и у каждой галактики — один длинный прямой хвост. Тоомре показали: такой хвост вырастает, когда диск вращается в ту же сторону, куда идёт орбита.',
+    labels: ['NGC 4676A', 'NGC 4676B'],
+    mA: 1, mB: 1, epsA: .1, epsB: .1, epsCC: .1,
+    orbit: { e: 1, q: 1.25, nu0: -121 },
+    disks: [{ i: 25, w: -30, R: 1, share: .5 }, { i: 25, w: 60, R: 1, share: .5 }],
+    span: 26, hero: 4.6, view: { yaw: -1.2, pitch: .8, dist: 11.5 }
+  },
+  {
+    id: 'cartwheel', name: 'Колесо Телеги', cat: 'ESO 350-40 · созвездие Скульптор',
+    text: 'Компактная галактика-пришелец прошила большой диск почти по оси вращения. Звёзды сначала качнулись к центру, потом разошлись — по диску побежала кольцевая волна, как круги от брошенного камня.',
+    labels: ['Колесо', 'пришелец'],
+    mA: 1, mB: .8, epsA: .12, epsB: .32, epsCC: .32,
+    rel: { p: [.1, .05, 3.6], v: [0, 0, -1.05] },
+    disks: [{ n: [0, 0, 1], R: 1.25, share: .985, arms: .25 }, { n: [.35, -.25, .9], R: .12, share: .015 }],
+    span: 12, hero: 4.5, follow: 0, view: { yaw: -1.35, pitch: .95, dist: 8.6 }
+  },
+  {
+    id: 'prograde', name: 'Прямой и обратный', cat: 'опыт Тоомре · главный вывод',
+    text: 'Главный вывод работы 1972 года. Диск, вращающийся по ходу орбиты, резонирует с приливной силой и теряет звёзды в хвосты. Диск, вращающийся против орбиты, почти не страдает. Голубой — прямое вращение, золотой — обратное.',
+    labels: ['прямое вращение', 'обратное вращение'],
+    mA: 1, mB: 1, epsA: .1, epsB: .1, epsCC: .1,
+    orbit: { e: 1, q: 1.5, nu0: -122 },
+    disks: [{ i: 12, w: 0, R: 1, share: .5 }, { i: 168, w: 0, R: 1, share: .5 }],
+    span: 24, hero: 5, view: { yaw: -1.25, pitch: 1.0, dist: 14 }
+  },
+  {
+    id: 'milkomeda', name: 'Млечный Путь и Андромеда', cat: 'M31 и наша Галактика · будущее',
+    text: 'Андромеда приближается к нам со скоростью около 110 км/с. Классические модели предсказывали столкновение примерно через 4 млрд лет, расчёты 2025 года дают слиянию лишь около 50 % на ближайшие 10 млрд лет. Здесь показан вариант со слиянием: трение о тёмное гало добавлено упрощённо. Отмечено Солнце.',
+    labels: ['Млечный Путь', 'Андромеда'],
+    mA: 1, mB: 1.25, epsA: .1, epsB: .12, epsCC: .12,
+    orbit: { e: .9, q: .95, nu0: -150 }, friction: .16, rf: 1.4,
+    disks: [{ i: 110, w: 20, R: 1.05, share: .44 }, { i: 55, w: -70, R: 1.3, share: .56 }],
+    sun: true,
+    span: 46, hero: 6, view: { yaw: -.6, pitch: .9, dist: 12.5 }
+  }
+];
+
+const CUSTOM = { mB: .6, q: 1.2, e: 1, i1: 20, w1: 0, i2: 60, w2: 40, fr: 0 };
+
+/* =========================================================================
+   Векторы и матрицы
+   ========================================================================= */
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+function perspective(fovy, asp, n, f) {
+  const t = 1 / Math.tan(fovy / 2), nf = 1 / (n - f);
+  return new Float32Array([t / asp, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) * nf, -1, 0, 0, 2 * f * n * nf, 0]);
+}
+function lookAt(e, c, up) {
+  const z = norm([e[0] - c[0], e[1] - c[1], e[2] - c[2]]);
+  const x = norm(cross(up, z)), y = cross(z, x);
+  return new Float32Array([x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0,
+    -(x[0] * e[0] + x[1] * e[1] + x[2] * e[2]), -(y[0] * e[0] + y[1] * e[1] + y[2] * e[2]), -(z[0] * e[0] + z[1] * e[1] + z[2] * e[2]), 1]);
+}
+function mul(a, b) {
+  const o = new Float32Array(16);
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) {
+    let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; o[c * 4 + r] = s;
+  }
+  return o;
+}
+function invert(m) {
+  const a = m, o = new Float32Array(16);
+  const b00 = a[0] * a[5] - a[1] * a[4], b01 = a[0] * a[6] - a[2] * a[4], b02 = a[0] * a[7] - a[3] * a[4],
+    b03 = a[1] * a[6] - a[2] * a[5], b04 = a[1] * a[7] - a[3] * a[5], b05 = a[2] * a[7] - a[3] * a[6],
+    b06 = a[8] * a[13] - a[9] * a[12], b07 = a[8] * a[14] - a[10] * a[12], b08 = a[8] * a[15] - a[11] * a[12],
+    b09 = a[9] * a[14] - a[10] * a[13], b10 = a[9] * a[15] - a[11] * a[13], b11 = a[10] * a[15] - a[11] * a[14];
+  let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+  if (!det) return o; det = 1 / det;
+  o[0] = (a[5] * b11 - a[6] * b10 + a[7] * b09) * det; o[1] = (a[2] * b10 - a[1] * b11 - a[3] * b09) * det;
+  o[2] = (a[13] * b05 - a[14] * b04 + a[15] * b03) * det; o[3] = (a[10] * b04 - a[9] * b05 - a[11] * b03) * det;
+  o[4] = (a[6] * b08 - a[4] * b11 - a[7] * b07) * det; o[5] = (a[0] * b11 - a[2] * b08 + a[3] * b07) * det;
+  o[6] = (a[14] * b02 - a[12] * b05 - a[15] * b01) * det; o[7] = (a[8] * b05 - a[10] * b02 + a[11] * b01) * det;
+  o[8] = (a[4] * b10 - a[5] * b08 + a[7] * b06) * det; o[9] = (a[1] * b08 - a[0] * b10 - a[3] * b06) * det;
+  o[10] = (a[12] * b04 - a[13] * b02 + a[15] * b00) * det; o[11] = (a[9] * b02 - a[8] * b04 - a[11] * b00) * det;
+  o[12] = (a[5] * b07 - a[4] * b09 - a[6] * b06) * det; o[13] = (a[0] * b09 - a[1] * b07 + a[2] * b06) * det;
+  o[14] = (a[13] * b01 - a[12] * b03 - a[14] * b00) * det; o[15] = (a[8] * b03 - a[9] * b01 + a[10] * b00) * det;
+  return o;
+}
+
+/* детерминированный генератор, чтобы сценарии были одинаковыми при каждом запуске */
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+/* =========================================================================
+   Физика: таблица орбит ядер (RK4, с трением) + пробные звёзды (обратимый DKD)
+   ========================================================================= */
+const sim = { step: 0, maxStep: 0, N: 0, P: null, V: null, full: null, fullV: null, half: null, peri: [], mergeStep: -1, preset: null, sunIdx: -1 };
+
+function orbitInit(p) {
+  const mu = p.mA + p.mB;
+  let rel, vrel;
+  if (p.rel) { rel = p.rel.p.slice(); vrel = p.rel.v.slice(); }
+  else {
+    const { e, q } = p.orbit, pp = q * (1 + e), nu = p.orbit.nu0 * Math.PI / 180;
+    const r = pp / (1 + e * Math.cos(nu));
+    rel = [r * Math.cos(nu), r * Math.sin(nu), 0];
+    const k = Math.sqrt(mu / pp);
+    vrel = [-k * Math.sin(nu), k * (e + Math.cos(nu)), 0];
+  }
+  const fA = p.mB / mu, fB = p.mA / mu;
+  return { rA: rel.map(x => -fA * x), vA: vrel.map(x => -fA * x), rB: rel.map(x => fB * x), vB: vrel.map(x => fB * x) };
+}
+
+function integrateCores(p) {
+  const n = Math.round(p.span / DT);
+  const full = new Float64Array((n + 1) * 6), fullV = new Float64Array((n + 1) * 6), half = new Float64Array(n * 6);
+  const o = orbitInit(p);
+  let s = [...o.rA, ...o.vA, ...o.rB, ...o.vB];
+  const mA = p.mA, mB = p.mB, mu = mA + mB, e2 = p.epsCC * p.epsCC, kf = p.friction || 0, rf2 = (p.rf || 1.6) ** 2;
+  const d = s => {
+    const dx = s[6] - s[0], dy = s[7] - s[1], dz = s[8] - s[2];
+    const r2 = dx * dx + dy * dy + dz * dz, q = r2 + e2, inv = 1 / (q * Math.sqrt(q));
+    let aAx = mB * dx * inv, aAy = mB * dy * inv, aAz = mB * dz * inv;
+    let aBx = -mA * dx * inv, aBy = -mA * dy * inv, aBz = -mA * dz * inv;
+    if (kf > 0) {
+      const f = kf * Math.exp(-r2 / rf2), vx = s[9] - s[3], vy = s[10] - s[4], vz = s[11] - s[5];
+      aAx += mB / mu * f * vx; aAy += mB / mu * f * vy; aAz += mB / mu * f * vz;
+      aBx -= mA / mu * f * vx; aBy -= mA / mu * f * vy; aBz -= mA / mu * f * vz;
+    }
+    return [s[3], s[4], s[5], aAx, aAy, aAz, s[9], s[10], s[11], aBx, aBy, aBz];
+  };
+  const SUB = 16, h = DT / SUB;
+  const put = (arr, i, st) => { arr[i * 6] = st[0]; arr[i * 6 + 1] = st[1]; arr[i * 6 + 2] = st[2]; arr[i * 6 + 3] = st[6]; arr[i * 6 + 4] = st[7]; arr[i * 6 + 5] = st[8]; };
+  const putV = (i, st) => { fullV[i * 6] = st[3]; fullV[i * 6 + 1] = st[4]; fullV[i * 6 + 2] = st[5]; fullV[i * 6 + 3] = st[9]; fullV[i * 6 + 4] = st[10]; fullV[i * 6 + 5] = st[11]; };
+  put(full, 0, s); putV(0, s);
+  const tmp = new Array(12);
+  for (let i = 0; i < n; i++) {
+    for (let k = 0; k < SUB; k++) {
+      const k1 = d(s);
+      for (let j = 0; j < 12; j++) tmp[j] = s[j] + k1[j] * h / 2;
+      const k2 = d(tmp);
+      for (let j = 0; j < 12; j++) tmp[j] = s[j] + k2[j] * h / 2;
+      const k3 = d(tmp);
+      for (let j = 0; j < 12; j++) tmp[j] = s[j] + k3[j] * h;
+      const k4 = d(tmp);
+      for (let j = 0; j < 12; j++) s[j] += h / 6 * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]);
+      if (k === SUB / 2 - 1) put(half, i, s);
+    }
+    put(full, i + 1, s); putV(i + 1, s);
+  }
+  return { n, full, fullV, half };
+}
+
+function sepAt(full, i) {
+  const o = i * 6; return Math.hypot(full[o + 3] - full[o], full[o + 4] - full[o + 1], full[o + 5] - full[o + 2]);
+}
+
+function buildSim(p) {
+  const T = integrateCores(p);
+  sim.full = T.full; sim.fullV = T.fullV; sim.half = T.half; sim.maxStep = T.n; sim.step = 0; sim.preset = p;
+  // перицентры и слияние
+  sim.peri = []; sim.mergeStep = -1;
+  for (let i = 1; i < T.n; i++) {
+    const a = sepAt(T.full, i - 1), b = sepAt(T.full, i), c = sepAt(T.full, i + 1);
+    if (b < a && b <= c && b < 3.2) {
+      if (sim.peri.length && i - sim.peri[sim.peri.length - 1] < 60) continue;
+      sim.peri.push(i);
+    }
+  }
+  for (let i = 0; i <= T.n; i++) {
+    let ok = true;
+    for (let j = i; j <= T.n; j += 5) if (sepAt(T.full, j) > .18) { ok = false; break; }
+    if (ok) { sim.mergeStep = i; break; }
+  }
+  if (sim.mergeStep >= 0) sim.peri = sim.peri.filter(s => s < sim.mergeStep - 40);
+
+  // звёзды
+  const N = N_TOTAL; sim.N = N;
+  const P = new Float64Array(N * 3), V = new Float64Array(N * 3), A = new Float32Array(N * 4);
+  const rnd = rng(1972 + p.id.length * 31);
+  const gauss = () => { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const cores = [{ r: T.full.slice(0, 3), v: T.fullV.slice(0, 3), m: p.mA, eps: p.epsA }, { r: T.full.slice(3, 6), v: T.fullV.slice(3, 6), m: p.mB, eps: p.epsB }];
+  let idx = 0; sim.sunIdx = -1;
+  p.disks.forEach((dk, g) => {
+    const cnt = g === p.disks.length - 1 ? N - idx : Math.round(N * dk.share);
+    const nrm = dk.n ? norm(dk.n) : (() => {
+      const i = dk.i * Math.PI / 180, w = dk.w * Math.PI / 180;
+      return [Math.sin(i) * Math.sin(w), -Math.sin(i) * Math.cos(w), Math.cos(i)];
+    })();
+    const u = norm(cross(nrm, Math.abs(nrm[2]) < .9 ? [0, 0, 1] : [1, 0, 0])), w = cross(nrm, u);
+    const { r: c, v: cv, m, eps } = cores[g], R = dk.R, e2 = eps * eps;
+    const pitch = (g ? 17 : 14) * Math.PI / 180, arm0 = rnd() * Math.PI * 2;
+    for (let k = 0; k < cnt; k++, idx++) {
+      const t = rnd();
+      let kind, x, y, z, vx, vy, vz;
+      if (t < .1) { // балдж: сфероид на круговых орбитах в случайных плоскостях
+        kind = 0;
+        const r = R * (.03 + .19 * Math.pow(rnd(), 1.6));
+        const d = norm([gauss(), gauss(), gauss() * .7]);
+        let pl = norm(cross(d, [gauss(), gauss(), gauss()]));
+        const vc = Math.sqrt(m * r * r / Math.pow(r * r + e2, 1.5));
+        const dd = [u[0] * d[0] + w[0] * d[1] + nrm[0] * d[2], u[1] * d[0] + w[1] * d[1] + nrm[1] * d[2], u[2] * d[0] + w[2] * d[1] + nrm[2] * d[2]];
+        const dir = norm(cross(dd, pl));
+        x = dd[0] * r; y = dd[1] * r; z = dd[2] * r;
+        vx = dir[0] * vc; vy = dir[1] * vc; vz = dir[2] * vc;
+        // половина балджа вращается вместе с диском — так ядро выглядит плотнее
+        if (rnd() < .5) { const tv = norm(cross(nrm, dd)); vx = tv[0] * vc; vy = tv[1] * vc; vz = tv[2] * vc; }
+      } else {
+        let r; do { r = -R * .27 * (Math.log(rnd() + 1e-9) + Math.log(rnd() + 1e-9)); } while (r < R * .13 || r > R * 1.06);
+        let th;
+        const inArm = t < (dk.arms ?? .72);
+        if (inArm) {
+          const arm = rnd() < .5 ? 0 : Math.PI;
+          th = arm0 + arm + Math.log(r / (R * .2)) / Math.tan(pitch) + gauss() * (.18 + .1 * r / R);
+          kind = rnd() < .022 ? 3 : 2;
+        } else { th = rnd() * Math.PI * 2; kind = 1; }
+        const zt = gauss() * R * .012 * (1 + 1.5 * r / R);
+        const cx = Math.cos(th) * r, cy = Math.sin(th) * r;
+        x = u[0] * cx + w[0] * cy + nrm[0] * zt; y = u[1] * cx + w[1] * cy + nrm[1] * zt; z = u[2] * cx + w[2] * cy + nrm[2] * zt;
+        const vc = Math.sqrt(m * r * r / Math.pow(r * r + e2, 1.5)) * (1 + gauss() * .015);
+        const tv = norm(cross(nrm, [x, y, z]));
+        vx = tv[0] * vc + gauss() * .012; vy = tv[1] * vc + gauss() * .012; vz = tv[2] * vc + gauss() * .012;
+        if (p.sun && g === 0 && sim.sunIdx < 0 && kind === 1 && Math.abs(r - .82) < .02) { sim.sunIdx = idx; kind = 4; }
+      }
+      P[idx * 3] = c[0] + x; P[idx * 3 + 1] = c[1] + y; P[idx * 3 + 2] = c[2] + z;
+      V[idx * 3] = cv[0] + vx; V[idx * 3 + 1] = cv[1] + vy; V[idx * 3 + 2] = cv[2] + vz;
+      A[idx * 4] = g; A[idx * 4 + 1] = Math.min(1, Math.hypot(x, y, z) / R); A[idx * 4 + 2] = rnd(); A[idx * 4 + 3] = kind;
+    }
+  });
+  sim.P = P; sim.V = V; sim.attr = A;
+  sim.mA = p.mA; sim.mB = p.mB; sim.eA2 = p.epsA * p.epsA; sim.eB2 = p.epsB * p.epsB;
+}
+
+/* Один шаг «дрейф — толчок — дрейф». Схема симметрична во времени,
+   поэтому шаг назад (dir = −1) в точности отменяет шаг вперёд — это и есть перемотка. */
+function stepStars(dir) {
+  const n = dir > 0 ? sim.step : sim.step - 1;
+  if (n < 0 || n >= sim.maxStep) return false;
+  const H = sim.half, o = n * 6;
+  const ax = H[o], ay = H[o + 1], az = H[o + 2], bx = H[o + 3], by = H[o + 4], bz = H[o + 5];
+  const mA = sim.mA, mB = sim.mB, eA = sim.eA2, eB = sim.eB2;
+  const h = dir * DT, h2 = h * .5, P = sim.P, V = sim.V, N3 = sim.N * 3;
+  for (let i = 0; i < N3; i += 3) {
+    const x = P[i] + V[i] * h2, y = P[i + 1] + V[i + 1] * h2, z = P[i + 2] + V[i + 2] * h2;
+    let dx = ax - x, dy = ay - y, dz = az - z;
+    let r2 = dx * dx + dy * dy + dz * dz + eA, inv = mA / (r2 * Math.sqrt(r2));
+    let fx = dx * inv, fy = dy * inv, fz = dz * inv;
+    dx = bx - x; dy = by - y; dz = bz - z;
+    r2 = dx * dx + dy * dy + dz * dz + eB; inv = mB / (r2 * Math.sqrt(r2));
+    fx += dx * inv; fy += dy * inv; fz += dz * inv;
+    const vx = V[i] + fx * h, vy = V[i + 1] + fy * h, vz = V[i + 2] + fz * h;
+    V[i] = vx; V[i + 1] = vy; V[i + 2] = vz;
+    P[i] = x + vx * h2; P[i + 1] = y + vy * h2; P[i + 2] = z + vz * h2;
+  }
+  sim.step += dir;
+  return true;
+}
+
+/* =========================================================================
+   WebGL2
+   ========================================================================= */
+const canvas = document.getElementById('gl');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
+if (!gl) { document.getElementById('fail').hidden = false; return; }
+const HDR = !!gl.getExtension('EXT_color_buffer_float');
+const TEX_IF = HDR ? gl.RGBA16F : gl.RGBA8, TEX_T = HDR ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE;
+const PT_MAX = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)[1];
+
+function shader(type, src) {
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, shader(gl.VERTEX_SHADER, vs)); gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}; const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) { const a = gl.getActiveUniform(p, i); u[a.name] = gl.getUniformLocation(p, a.name); }
+  return { p, u };
+}
+const FSQ_VS = `#version 300 es
+out vec2 vUv;
+void main(){ vec2 p = vec2((gl_VertexID<<1)&2, gl_VertexID&2); vUv = p; gl_Position = vec4(p*2.-1.,0.,1.); }`;
+
+/* --- фон: звёзды, пыль, свечение ядер --- */
+const skyProg = program(FSQ_VS, `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform mat4 uInvVP; uniform vec3 uEye; uniform vec2 uRes;
+uniform vec3 uCoreA; uniform vec3 uCoreB; uniform vec2 uCoreSize; uniform vec3 uColA; uniform vec3 uColB;
+float h13(vec3 p){ p = fract(p*.1031); p += dot(p, p.zyx+31.32); return fract((p.x+p.y)*p.z); }
+vec3 h33(vec3 p){ p = fract(p*vec3(.1031,.1030,.0973)); p += dot(p, p.yxz+33.33); return fract((p.xxy+p.yxx)*p.zyx); }
+float vnoise(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(mix(h13(i),h13(i+vec3(1,0,0)),f.x),mix(h13(i+vec3(0,1,0)),h13(i+vec3(1,1,0)),f.x),f.y),
+             mix(mix(h13(i+vec3(0,0,1)),h13(i+vec3(1,0,1)),f.x),mix(h13(i+vec3(0,1,1)),h13(i+vec3(1,1,1)),f.x),f.y),f.z); }
+float fbm(vec3 p){ float s=0., a=.5; for(int i=0;i<5;i++){ s+=a*vnoise(p); p=p*2.03+17.1; a*=.5; } return s; }
+vec3 stars(vec3 d, float scale, float dens, float gain){
+  vec3 p = d*scale, c = floor(p), f = fract(p);
+  if (h13(c) > dens) return vec3(0);
+  vec3 sp = h33(c)*.7+.15;
+  float dist = length(f-sp);
+  float fw = max(fwidth(p.x)+fwidth(p.y), 1e-4);
+  float sz = max(.03, fw*.9);
+  float b = exp(-dist*dist/(sz*sz)) * (.03/sz)*(.03/sz);
+  float t = h13(c+3.7);
+  vec3 col = mix(vec3(1.,.74,.52), vec3(.72,.83,1.), smoothstep(.2,.8,t));
+  return col * b * gain * (.25 + 3.*pow(h13(c+9.1), 8.));
+}
+float glow(vec2 px, vec3 ndcDepth, float size){
+  if (ndcDepth.z > 1.) return 0.;
+  float d = length(px - ndcDepth.xy) / size;
+  return exp(-d*2.4)*.55 + exp(-d*d*28.)*2.2;
+}
+void main(){
+  vec2 ndc = vUv*2.-1.;
+  vec4 w = uInvVP * vec4(ndc, 1., 1.); vec3 d = normalize(w.xyz/w.w - uEye);
+  vec3 col = vec3(0.);
+  float n = fbm(d*2.2 + vec3(4.,1.,7.));
+  float n2 = fbm(d*4.7 + vec3(-3.,9.,1.));
+  float band = exp(-pow(d.z*2.6 + .35*sin(d.x*2.), 2.));
+  col += vec3(.105,.058,.052) * pow(n, 3.2) * 1.3 * (.35 + band);
+  col += vec3(.035,.07,.085) * pow(n2, 3.6) * 1.1;
+  col += vec3(.06,.052,.07) * band * .22 * n;
+  col += stars(d, 190., .17, .55) + stars(d, 420., .2, .35) + stars(d, 900., .25, .22) * (.5+band);
+  vec2 px = vUv*uRes;
+  col += uColA * glow(px, uCoreA, uCoreSize.x) + uColB * glow(px, uCoreB, uCoreSize.y);
+  o = vec4(col, 1.);
+}`);
+
+/* --- звёзды-частицы --- */
+const ptProg = program(`#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec4 aAttr;
+layout(location=2) in float aVr;
+uniform mat4 uVP; uniform vec3 uEye; uniform float uScale; uniform float uGain; uniform int uMode; uniform float uMaxPt;
+out vec3 vCol;
+vec3 ramp(float t){
+  t = clamp(t,0.,1.);
+  vec3 a = vec3(1.,.93,.78), b = vec3(1.,.55,.42), c = vec3(.58,.5,1.), d = vec3(.3,.86,.95);
+  return t<.33 ? mix(a,b,t/.33) : t<.66 ? mix(b,c,(t-.33)/.33) : mix(c,d,(t-.66)/.34);
+}
+void main(){
+  gl_Position = uVP * vec4(aPos, 1.);
+  float dist = max(length(aPos - uEye), .05);
+  float kind = aAttr.w, seed = aAttr.z;
+  float sz = (kind > 3.5 ? 5. : kind > 2.5 ? 1.9 : kind < .5 ? 1.2 : 1.4) * (.65 + seed*.7);
+  float px = uScale * sz / dist;
+  float cl = clamp(px, 1., uMaxPt);
+  gl_PointSize = cl;
+  float energy = min(max(px, .45)*max(px, .45)/(cl*cl), 1.);
+  vec3 c; float b;
+  bool A = aAttr.x < .5;
+  if (uMode == 0) {
+    if (kind < .5)       { c = A ? vec3(1.,.9,.78) : vec3(1.,.8,.55); b = .62; }
+    else if (kind < 1.5) { c = A ? vec3(.78,.84,1.) : vec3(1.,.84,.62); b = .5; }
+    else if (kind < 2.5) { c = A ? vec3(.55,.72,1.) : vec3(1.,.72,.38); b = 1.; }
+    else if (kind < 3.5) { c = vec3(1.,.5,.66); b = .9; }
+    else                 { c = vec3(1.,.95,.7); b = 6.; }
+  } else if (uMode == 1) {
+    c = ramp(aAttr.y); b = kind < .5 ? .7 : .85;
+  } else {
+    float v = clamp(aVr*1.6, -1., 1.);
+    c = v < 0. ? mix(vec3(.9,.9,.95), vec3(.35,.6,1.), -v) : mix(vec3(.9,.9,.95), vec3(1.,.38,.3), v);
+    b = .45 + abs(v)*.8;
+  }
+  vCol = c * b * energy * uGain * (.55 + seed*.9);
+}`, `#version 300 es
+precision mediump float;
+in vec3 vCol; out vec4 o;
+void main(){
+  vec2 d = gl_PointCoord*2.-1.; float r2 = dot(d,d);
+  if (r2 > 1.) discard;
+  o = vec4(vCol * exp(-r2*3.6), 1.);
+}`);
+
+/* --- орбиты ядер --- */
+const lineProg = program(`#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in float aIdx;
+uniform mat4 uVP; uniform float uStep; uniform float uMax;
+out float vA;
+void main(){
+  gl_Position = uVP * vec4(aPos,1.);
+  float past = step(aIdx, uStep);
+  float fut = 1. - smoothstep(0., 260., aIdx-uStep);
+  vA = past*.14 + (1.-past)*.07*fut;
+}`, `#version 300 es
+precision mediump float;
+in float vA; uniform vec3 uCol; out vec4 o;
+void main(){ o = vec4(uCol*vA, 1.); }`);
+
+/* --- блум и сведение --- */
+const downProg = program(FSQ_VS, `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o; uniform sampler2D uTex; uniform vec2 uTexel; uniform float uThresh;
+vec3 t(vec2 off){ return texture(uTex, vUv + off*uTexel).rgb; }
+void main(){
+  vec3 a=t(vec2(-2,2)), b=t(vec2(0,2)), c=t(vec2(2,2)), d=t(vec2(-2,0)), e=t(vec2(0)), f=t(vec2(2,0)),
+       g=t(vec2(-2,-2)), h=t(vec2(0,-2)), i=t(vec2(2,-2)), j=t(vec2(-1,1)), k=t(vec2(1,1)), l=t(vec2(-1,-1)), m=t(vec2(1,-1));
+  vec3 s = e*.125 + (a+c+g+i)*.03125 + (b+d+f+h)*.0625 + (j+k+l+m)*.125;
+  if (uThresh > 0.) { float br = max(s.r,max(s.g,s.b)); s *= max(br-uThresh,0.)/max(br,1e-4); }
+  o = vec4(s,1.);
+}`);
+const upProg = program(FSQ_VS, `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o; uniform sampler2D uTex; uniform vec2 uTexel;
+vec3 t(vec2 off){ return texture(uTex, vUv + off*uTexel).rgb; }
+void main(){
+  vec3 s = t(vec2(-1,1)) + 2.*t(vec2(0,1)) + t(vec2(1,1)) + 2.*t(vec2(-1,0)) + 4.*t(vec2(0)) + 2.*t(vec2(1,0))
+         + t(vec2(-1,-1)) + 2.*t(vec2(0,-1)) + t(vec2(1,-1));
+  o = vec4(s/16., 1.);
+}`);
+const compProg = program(FSQ_VS, `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform sampler2D uScene; uniform sampler2D uBloom; uniform float uBloomK; uniform float uExp; uniform float uTime; uniform vec2 uRes; uniform float uLdr;
+vec3 aces(vec3 x){ return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14), 0., 1.); }
+float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
+void main(){
+  vec3 c = texture(uScene, vUv).rgb + texture(uBloom, vUv).rgb * uBloomK;
+  c = uLdr > .5 ? c : aces(c*uExp);
+  c = pow(c, vec3(1./2.2));
+  vec2 q = vUv - .5; c *= 1. - dot(q,q)*.55;
+  c += (h(vUv*uRes + uTime) - .5) * (2.2/255.);
+  o = vec4(c, 1.);
+}`);
+
+/* буферы частиц */
+const vao = gl.createVertexArray();
+const bufPos = gl.createBuffer(), bufAttr = gl.createBuffer(), bufVr = gl.createBuffer();
+let posF32 = null, vrF32 = null;
+function uploadStatic() {
+  gl.bindVertexArray(vao);
+  posF32 = new Float32Array(sim.N * 3); vrF32 = new Float32Array(sim.N);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufPos); gl.bufferData(gl.ARRAY_BUFFER, posF32.byteLength, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufAttr); gl.bufferData(gl.ARRAY_BUFFER, sim.attr, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufVr); gl.bufferData(gl.ARRAY_BUFFER, vrF32.byteLength, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 1, gl.FLOAT, false, 0, 0);
+  gl.bindVertexArray(null);
+  // орбиты
+  const n = sim.maxStep + 1, a = new Float32Array(n * 4), b = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) {
+    a[i * 4] = sim.full[i * 6]; a[i * 4 + 1] = sim.full[i * 6 + 1]; a[i * 4 + 2] = sim.full[i * 6 + 2]; a[i * 4 + 3] = i;
+    b[i * 4] = sim.full[i * 6 + 3]; b[i * 4 + 1] = sim.full[i * 6 + 4]; b[i * 4 + 2] = sim.full[i * 6 + 5]; b[i * 4 + 3] = i;
+  }
+  orbitVAO.forEach((v, k) => {
+    gl.bindVertexArray(v); gl.bindBuffer(gl.ARRAY_BUFFER, orbitBuf[k]); gl.bufferData(gl.ARRAY_BUFFER, k ? b : a, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 16, 0);
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 16, 12);
+  });
+  gl.bindVertexArray(null);
+}
+const orbitVAO = [gl.createVertexArray(), gl.createVertexArray()], orbitBuf = [gl.createBuffer(), gl.createBuffer()];
+const emptyVAO = gl.createVertexArray();
+
+/* рендер-таргеты */
+let W = 0, H = 0, scale = 1, scene = null, mips = [];
+function tex(w, h) {
+  const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, TEX_IF, w, h, 0, gl.RGBA, TEX_T, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+  return { t, f, w, h };
+}
+function freeTarget(x) { if (x) { gl.deleteTexture(x.t); gl.deleteFramebuffer(x.f); } }
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, SHOT ? 1 : 2) * scale;
+  const w = Math.max(2, Math.floor(canvas.clientWidth * dpr)), h = Math.max(2, Math.floor(canvas.clientHeight * dpr));
+  if (w === W && h === H) return;
+  W = canvas.width = w; H = canvas.height = h;
+  freeTarget(scene); mips.forEach(freeTarget); mips = [];
+  scene = tex(W, H);
+  let mw = W >> 1, mh = H >> 1;
+  for (let i = 0; i < 6 && mw > 2 && mh > 2; i++) { mips.push(tex(mw, mh)); mw >>= 1; mh >>= 1; }
+}
+
+/* =========================================================================
+   Камера
+   ========================================================================= */
+const cam = { yaw: 0, pitch: .8, dist: 10, tyaw: 0, tpitch: .8, tdist: 10, auto: true, idle: 0, c: [0, 0, 0] };
+function camEye() {
+  const cp = Math.cos(cam.pitch);
+  // на узких (портретных) экранах отходим дальше, чтобы пара галактик влезала по ширине
+  const asp = canvas.clientWidth / Math.max(1, canvas.clientHeight), d = cam.dist * (asp < 1.2 ? Math.pow(1.2 / asp, .8) : 1);
+  return [cam.c[0] + d * cp * Math.cos(cam.yaw), cam.c[1] + d * cp * Math.sin(cam.yaw), cam.c[2] + d * Math.sin(cam.pitch)];
+}
+/* точка, за которой следит камера: центр масс или ядро главной галактики */
+function camTarget() {
+  const p = sim.preset, o = sim.step * 6, F = sim.full;
+  if (p.follow === 0) return [F[o], F[o + 1], F[o + 2]];
+  return [0, 0, 0];
+}
+
+/* =========================================================================
+   Интерфейс
+   ========================================================================= */
+const $ = id => document.getElementById(id);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const NB = ' ';
+const fmt = (x, d = 0) => x.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }).replace(/ /g, NB).replace('-', '−');
+
+let presetIdx = 0, playing = true, speed = 1, colorMode = 0, showOrbits = true, seekTarget = null, acc = 0;
+const SPEEDS = [
+  { v: -2, t: '−2×', rev: true }, { v: -1, t: '−1×', rev: true }, { v: .5, t: '½×' }, { v: 1, t: '1×' }, { v: 2, t: '2×' }, { v: 4, t: '4×' }
+];
+const STEPS_PER_SEC = 110;
+
+const presetsNav = $('presets');
+PRESETS.forEach((p, i) => {
+  const b = el('button', 'preset', `<span class="n">0${i + 1}</span><span class="t">${p.name}</span><span class="c">${p.cat.split(' · ')[0]}</span>`);
+  b.setAttribute('aria-pressed', i === 0); b.onclick = () => loadPreset(i, false);
+  presetsNav.appendChild(b);
+});
+const customBtn = el('button', 'preset', `<span class="n">06</span><span class="t">Свой сценарий</span><span class="c">параметры орбиты</span>`);
+customBtn.onclick = () => toggleCustom();
+presetsNav.appendChild(customBtn);
+
+const speedBox = $('speed');
+SPEEDS.forEach(s => {
+  const b = el('button', s.rev ? 'rev' : '', s.t);
+  b.title = s.v < 0 ? 'Время назад' : 'Скорость времени';
+  b.setAttribute('aria-pressed', s.v === speed);
+  b.onclick = () => { speed = s.v; playing = true; syncSpeed(); };
+  speedBox.appendChild(b);
+});
+function syncSpeed() {
+  [...speedBox.children].forEach((b, i) => b.setAttribute('aria-pressed', SPEEDS[i].v === speed));
+  $('playIcon').innerHTML = playing
+    ? '<rect x="3" y="2" width="3.4" height="12" rx=".6"/><rect x="9.6" y="2" width="3.4" height="12" rx=".6"/>'
+    : '<path d="M4 2.2v11.6c0 .5.5.8.9.5l9-5.8c.4-.2.4-.8 0-1L4.9 1.7c-.4-.3-.9 0-.9.5z"/>';
+  $('play').setAttribute('aria-label', playing ? 'Пауза' : 'Пуск');
+}
+
+const cm = $('colorMode');
+['Галактика', 'Радиус', 'Скорость'].forEach((t, i) => {
+  const b = el('button', '', t);
+  b.title = ['Цвет по родной галактике', 'Цвет по начальному радиусу в диске: видно, что хвосты — из окраин', 'Лучевая скорость: к нам — синий, от нас — красный'][i];
+  b.setAttribute('aria-pressed', i === 0);
+  b.onclick = () => { colorMode = i; [...cm.children].forEach((x, k) => x.setAttribute('aria-pressed', k === i)); };
+  cm.appendChild(b);
+});
+
+$('play').onclick = () => {
+  if (!playing && sim.step >= sim.maxStep && speed > 0) { seekTarget = 0; }
+  playing = !playing; syncSpeed();
+};
+const toggleBtn = (id, get, set) => { const b = $(id); b.onclick = () => { set(!get()); b.setAttribute('aria-pressed', get()); }; };
+toggleBtn('btnOrbits', () => showOrbits, v => showOrbits = v);
+toggleBtn('btnRotate', () => cam.auto, v => { cam.auto = v; cam.idle = 99; });
+
+/* свой сценарий */
+const SL = [
+  { k: 'mB', l: 'Масса второй галактики', min: .2, max: 1.5, st: .05, f: v => fmt(v, 2) },
+  { k: 'q', l: 'Перицентр', min: .5, max: 3, st: .05, f: v => fmt(v * U.kpc, 0) + NB + 'кпк' },
+  { k: 'e', l: 'Эксцентриситет орбиты', min: .3, max: 1.4, st: .05, f: v => fmt(v, 2) + (v < 1 ? ' · связанная' : v > 1 ? ' · пролёт' : ' · парабола') },
+  { k: 'i1', l: 'Наклон диска 1 (голубого)', min: 0, max: 180, st: 5, f: v => v + '°' },
+  { k: 'w1', l: 'Поворот диска 1', min: -180, max: 180, st: 5, f: v => v + '°' },
+  { k: 'i2', l: 'Наклон диска 2 (золотого)', min: 0, max: 180, st: 5, f: v => v + '°' },
+  { k: 'w2', l: 'Поворот диска 2', min: -180, max: 180, st: 5, f: v => v + '°' },
+  { k: 'fr', l: 'Трение о тёмное гало', min: 0, max: 1, st: .05, f: v => v ? fmt(v, 2) : 'нет' }
+];
+const slBox = $('sliders');
+SL.forEach(s => {
+  const row = el('div', 'row');
+  const id = 'sl-' + s.k;
+  row.innerHTML = `<label for="${id}">${s.l}</label><output id="o-${s.k}"></output><input type="range" id="${id}" min="${s.min}" max="${s.max}" step="${s.st}" value="${CUSTOM[s.k]}">`;
+  slBox.appendChild(row);
+  const inp = row.querySelector('input'), out = row.querySelector('output');
+  const upd = () => { CUSTOM[s.k] = +inp.value; out.textContent = s.f(+inp.value); };
+  inp.oninput = upd; upd();
+});
+function toggleCustom(force) {
+  const c = $('custom'); const open = force != null ? force : c.hidden;
+  c.hidden = !open; $('btnCustom').setAttribute('aria-pressed', open);
+}
+$('btnCustom').onclick = () => toggleCustom();
+$('go').onclick = () => { toggleCustom(false); loadPreset(-1, false); };
+
+/* шкала времени */
+const tl = $('timeline');
+function setThumb() {
+  const f = sim.step / sim.maxStep;
+  const tw = tl.clientWidth;
+  $('thumb').style.transform = `translateX(${(f * tw).toFixed(1)}px)`; $('fill').style.transform = `scaleX(${f.toFixed(4)})`;
+  tl.setAttribute('aria-valuenow', Math.round(f * 100));
+  $('seekflag').classList.toggle('on', seekTarget !== null && Math.abs(seekTarget - sim.step) > 30);
+}
+function periT(step) { const p0 = sim.peri.length ? sim.peri[0] : 0; return (step - p0) * DT * U.myr; }
+function buildTicks() {
+  const box = $('ticks'); box.innerHTML = '';
+  const tw = Math.max(200, tl.clientWidth);
+  let lastX = -1e9;
+  const add = (s, t, cls) => {
+    const x = s / sim.maxStep * tw, show = t && x - lastX > 96;
+    const d = el('div', 'tick' + (cls ? ' ' + cls : ''), show ? `<span>${t}</span>` : '');
+    d.style.left = (s / sim.maxStep * 100) + '%'; if (!show) d.style.height = '9px', d.style.top = '-4px';
+    if (show) lastX = x;
+    box.appendChild(d);
+  };
+  const marks = sim.peri.map((s, i) => [s, i === 0 ? 'сближение' : i === 1 ? 'второе' : '', '']);
+  if (sim.mergeStep >= 0) marks.push([sim.mergeStep, 'слияние', 'merge']);
+  // слияние важнее промежуточных сближений: ставим его подпись первой, если рядом тесно
+  marks.sort((a, b) => a[0] - b[0]);
+  if (sim.mergeStep >= 0) { const m = marks.pop(); marks.forEach(k => { if ((m[0] - k[0]) / sim.maxStep * tw < 96) k[1] = ''; }); marks.push(m); }
+  marks.forEach(m => add(...m));
+  $('tlL').textContent = fmtT(periT(0));
+  $('tlR').textContent = fmtT(periT(sim.maxStep));
+}
+function fmtT(myr) {
+  const a = Math.abs(myr);
+  const s = a >= 1000 ? fmt(a / 1000, 1) + NB + 'млрд лет' : fmt(a) + NB + 'млн лет';
+  return (myr < -0.5 ? '−' : myr > 0.5 ? '+' : '') + s;
+}
+let tlDrag = false;
+function tlSeek(e) {
+  const r = tl.getBoundingClientRect();
+  const f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+  seekTarget = Math.round(f * sim.maxStep);
+}
+tl.addEventListener('pointerdown', e => { tlDrag = true; tl.setPointerCapture(e.pointerId); tlSeek(e); });
+tl.addEventListener('pointermove', e => { if (tlDrag) tlSeek(e); });
+tl.addEventListener('pointerup', () => { tlDrag = false; });
+tl.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { seekTarget = Math.min(sim.maxStep, (seekTarget ?? sim.step) + 50); e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { seekTarget = Math.max(0, (seekTarget ?? sim.step) - 50); e.preventDefault(); }
+});
+
+/* подписи ядер */
+const labelBox = $('labels');
+const lblA = el('div', 'lbl'), lblB = el('div', 'lbl'), lblSun = el('div', 'lbl sun', 'Солнце');
+labelBox.append(lblA, lblB, lblSun);
+
+/* =========================================================================
+   Загрузка сценария
+   ========================================================================= */
+function customPreset() {
+  const c = CUSTOM;
+  const e = c.e, q = c.q;
+  // старт на расстоянии ≈6 или в апоцентре для связанной орбиты
+  let nu0;
+  if (e < 1) { const apo = q * (1 + e) / (1 - e); nu0 = apo > 6 ? -Math.acos((q * (1 + e) / 6 - 1) / e) * 180 / Math.PI : -179; }
+  else nu0 = -Math.acos(Math.max(-1, Math.min(1, (q * (1 + e) / 6 - 1) / e))) * 180 / Math.PI;
+  return {
+    id: 'custom', name: 'Свой сценарий', cat: 'параметры задаёшь ты',
+    text: `Масса второй галактики — ${fmt(c.mB, 2)} от первой, перицентр ${fmt(q * U.kpc)}${NB}кпк. Наклоны дисков ${c.i1}° и ${c.i2}°: чем ближе к 0°, тем мощнее приливные хвосты.`,
+    labels: ['диск 1', 'диск 2'],
+    mA: 1, mB: c.mB, epsA: .1, epsB: .1, epsCC: .1,
+    orbit: { e, q, nu0 }, friction: c.fr, rf: 1.7,
+    disks: [{ i: c.i1, w: c.w1, R: 1, share: 1 / (1 + c.mB * .8) }, { i: c.i2, w: c.w2, R: Math.max(.5, Math.sqrt(c.mB)), share: 1 }],
+    span: e < 1 ? 40 : 28, hero: 7, view: { yaw: -1.3, pitch: .9, dist: 11 }
+  };
+}
+
+function loadPreset(i, jumpToHero) {
+  presetIdx = i;
+  const p = i < 0 ? customPreset() : PRESETS[i];
+  [...presetsNav.children].forEach((b, k) => b.setAttribute('aria-pressed', i < 0 ? k === PRESETS.length : k === i));
+  try { history.replaceState(null, '', i >= 0 ? '#' + (i + 1) : location.pathname); } catch (e) { /* file:// в некоторых браузерах */ }
+  const nameEl = $('pName'), txt = $('pText');
+  nameEl.classList.add('fade'); txt.classList.add('fade');
+  setTimeout(() => {
+    nameEl.innerHTML = `${p.name}<span class="pcat">${p.cat}</span>`;
+    txt.textContent = p.text;
+    nameEl.classList.remove('fade'); txt.classList.remove('fade');
+  }, jumpToHero ? 0 : 260);
+
+  buildSim(p);
+  uploadStatic();
+  buildTicks();
+  lblA.textContent = p.labels[0]; lblB.textContent = p.labels[1];
+  lblSun.style.display = sim.sunIdx >= 0 ? '' : 'none';
+  $('rN').innerHTML = fmt(sim.N);
+
+  cam.tyaw = p.view.yaw; cam.tpitch = p.view.pitch; cam.tdist = p.view.dist;
+  if (jumpToHero) { cam.yaw = cam.tyaw; cam.pitch = cam.tpitch; cam.dist = cam.tdist; cam.snap = true; }
+  seekTarget = null; acc = 0;
+  if (jumpToHero) {
+    const target = Math.min(sim.maxStep, (sim.peri[0] || 0) + Math.round(p.hero / DT));
+    while (sim.step < target) stepStars(1);
+  }
+  playing = true; if (speed < 0) speed = 1; syncSpeed();
+}
+
+/* =========================================================================
+   Ввод: вращение, зум, клавиши
+   ========================================================================= */
+const ptrs = new Map(); let pinch0 = 0;
+canvas.addEventListener('pointerdown', e => { ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); canvas.setPointerCapture(e.pointerId); canvas.classList.add('drag'); cam.idle = 0; });
+canvas.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  const p = ptrs.get(e.pointerId);
+  if (ptrs.size === 1) {
+    cam.tyaw -= (e.clientX - p.x) * .005;
+    cam.tpitch = Math.max(-1.45, Math.min(1.45, cam.tpitch + (e.clientY - p.y) * .005));
+  } else if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinch0) cam.tdist = Math.max(2.5, Math.min(40, cam.tdist * pinch0 / d));
+    pinch0 = d;
+  }
+  p.x = e.clientX; p.y = e.clientY; cam.idle = 0;
+});
+const endPtr = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; if (!ptrs.size) canvas.classList.remove('drag'); };
+canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('wheel', e => { e.preventDefault(); cam.tdist = Math.max(2.5, Math.min(40, cam.tdist * Math.exp(e.deltaY * .0012))); cam.idle = 0; }, { passive: false });
+canvas.addEventListener('dblclick', () => { const p = presetIdx < 0 ? customPreset() : PRESETS[presetIdx]; cam.tyaw = p.view.yaw; cam.tpitch = p.view.pitch; cam.tdist = p.view.dist; });
+addEventListener('keydown', e => {
+  if (e.target.closest && e.target.closest('input')) return;
+  if (e.code === 'Space') { e.preventDefault(); $('play').click(); }
+  else if (e.key >= '1' && e.key <= '5') loadPreset(+e.key - 1, false);
+  else if (e.key === 'ArrowRight' && e.target === document.body) { playing = false; syncSpeed(); seekTarget = Math.min(sim.maxStep, sim.step + 5); }
+  else if (e.key === 'ArrowLeft' && e.target === document.body) { playing = false; syncSpeed(); seekTarget = Math.max(0, sim.step - 5); }
+  else if (e.key === 'Escape') toggleCustom(false);
+});
+
+/* =========================================================================
+   Кадр
+   ========================================================================= */
+let last = performance.now(), t0 = last, ftAvg = 16, hintHidden = false;
+function project(vp, p) {
+  const x = vp[0] * p[0] + vp[4] * p[1] + vp[8] * p[2] + vp[12], y = vp[1] * p[0] + vp[5] * p[1] + vp[9] * p[2] + vp[13];
+  const w = vp[3] * p[0] + vp[7] * p[1] + vp[11] * p[2] + vp[15];
+  return w <= 0 ? null : [(x / w * .5 + .5), (1 - (y / w * .5 + .5)), w];
+}
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  const dtr = Math.min(.05, (now - last) / 1000); last = now;
+
+  /* — физика — */
+  if (seekTarget !== null) {
+    const dir = Math.sign(seekTarget - sim.step), until = performance.now() + 9;
+    let k = 0;
+    while (sim.step !== seekTarget && (k < 3 || performance.now() < until)) { stepStars(dir); k++; }
+    if (sim.step === seekTarget) seekTarget = null;
+  } else if (playing) {
+    const sep = sepAt(sim.full, sim.step);
+    const boost = sim.step < (sim.peri[0] || 0) && sep > 3 ? 2.2 : 1;
+    acc += speed * STEPS_PER_SEC * dtr * boost;
+    while (acc >= 1) { if (!stepStars(1)) { acc = 0; playing = false; syncSpeed(); break; } acc -= 1; }
+    while (acc <= -1) { if (!stepStars(-1)) { acc = 0; playing = false; syncSpeed(); break; } acc += 1; }
+  }
+
+  /* — камера — */
+  cam.idle += dtr;
+  if (cam.auto && cam.idle > 4 && !matchMedia('(prefers-reduced-motion: reduce)').matches) cam.tyaw += dtr * .035;
+  const k = 1 - Math.exp(-dtr * 6);
+  cam.yaw += (cam.tyaw - cam.yaw) * k; cam.pitch += (cam.tpitch - cam.pitch) * k; cam.dist += (cam.tdist - cam.dist) * k;
+
+  resize();
+  const ct = camTarget(), kc = 1 - Math.exp(-dtr * 3);
+  if (cam.snap) { cam.c = ct; cam.snap = false; }
+  else for (let j = 0; j < 3; j++) cam.c[j] += (ct[j] - cam.c[j]) * kc;
+  const eye = camEye(), center = cam.c.slice();
+  const view = lookAt(eye, center, [0, 0, 1]);
+  const proj = perspective(.78, W / H, .05, 400);
+  const vp = mul(proj, view);
+
+  /* — выгрузка частиц — */
+  const N = sim.N, P = sim.P;
+  for (let i = 0, n = N * 3; i < n; i++) posF32[i] = P[i];
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufPos); gl.bufferSubData(gl.ARRAY_BUFFER, 0, posF32);
+  if (colorMode === 2) {
+    const fwd = norm([center[0] - eye[0], center[1] - eye[1], center[2] - eye[2]]), V = sim.V;
+    const fo = sim.step * 6, fv = sim.fullV, mt = sim.mA + sim.mB;
+    const cvx = (fv[fo] * sim.mA + fv[fo + 3] * sim.mB) / mt, cvy = (fv[fo + 1] * sim.mA + fv[fo + 4] * sim.mB) / mt, cvz = (fv[fo + 2] * sim.mA + fv[fo + 5] * sim.mB) / mt;
+    for (let i = 0; i < N; i++) vrF32[i] = (V[i * 3] - cvx) * fwd[0] + (V[i * 3 + 1] - cvy) * fwd[1] + (V[i * 3 + 2] - cvz) * fwd[2];
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufVr); gl.bufferSubData(gl.ARRAY_BUFFER, 0, vrF32);
+  }
+
+  /* — сцена в HDR — */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, scene.f); gl.viewport(0, 0, W, H);
+  gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+  const fo = sim.step * 6, F = sim.full;
+  const cA = [F[fo], F[fo + 1], F[fo + 2]], cB = [F[fo + 3], F[fo + 4], F[fo + 5]];
+  const pa = project(vp, cA), pb = project(vp, cB);
+  const dpr = W / canvas.clientWidth;
+  gl.useProgram(skyProg.p);
+  gl.uniformMatrix4fv(skyProg.u.uInvVP, false, invert(vp));
+  gl.uniform3fv(skyProg.u.uEye, eye); gl.uniform2f(skyProg.u.uRes, W, H);
+  const cs = H * .035;
+  gl.uniform3f(skyProg.u.uCoreA, pa ? pa[0] * W : -1e4, pa ? (1 - pa[1]) * H : -1e4, pa ? 0 : 2);
+  gl.uniform3f(skyProg.u.uCoreB, pb ? pb[0] * W : -1e4, pb ? (1 - pb[1]) * H : -1e4, pb ? 0 : 2);
+  gl.uniform2f(skyProg.u.uCoreSize, pa ? cs * 10 / pa[2] * Math.sqrt(sim.mA) : 1, pb ? cs * 10 / pb[2] * Math.sqrt(sim.mB) * (sim.preset.id === 'cartwheel' ? .6 : 1) : 1);
+  const gA = colorMode === 0 ? [1, .92, .82] : [1, .95, .9], gB = colorMode === 0 ? [1, .86, .66] : [1, .95, .9];
+  gl.uniform3fv(skyProg.u.uColA, gA); gl.uniform3fv(skyProg.u.uColB, gB);
+  gl.bindVertexArray(emptyVAO); gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+  if (showOrbits) {
+    gl.useProgram(lineProg.p);
+    gl.uniformMatrix4fv(lineProg.u.uVP, false, vp);
+    gl.uniform1f(lineProg.u.uStep, sim.step);
+    [[.56, .71, 1], [1, .75, .4]].forEach((c, k) => {
+      gl.uniform3fv(lineProg.u.uCol, c);
+      gl.bindVertexArray(orbitVAO[k]); gl.drawArrays(gl.LINE_STRIP, 0, sim.maxStep + 1);
+    });
+  }
+  gl.useProgram(ptProg.p);
+  gl.uniformMatrix4fv(ptProg.u.uVP, false, vp);
+  gl.uniform3fv(ptProg.u.uEye, eye);
+  gl.uniform1f(ptProg.u.uScale, H * .021);
+  gl.uniform1f(ptProg.u.uGain, (HDR ? .2 : .11) * Math.min(1.6, 76000 / N));
+  gl.uniform1i(ptProg.u.uMode, colorMode);
+  gl.uniform1f(ptProg.u.uMaxPt, Math.min(PT_MAX, 14 * dpr));
+  gl.bindVertexArray(vao); gl.drawArrays(gl.POINTS, 0, N);
+  gl.disable(gl.BLEND);
+
+  /* — блум — */
+  gl.useProgram(downProg.p);
+  let src = scene;
+  mips.forEach((m, i) => {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, m.f); gl.viewport(0, 0, m.w, m.h);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, src.t);
+    gl.uniform1i(downProg.u.uTex, 0); gl.uniform2f(downProg.u.uTexel, 1 / src.w, 1 / src.h);
+    gl.uniform1f(downProg.u.uThresh, i === 0 ? (HDR ? .35 : .3) : 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3); src = m;
+  });
+  gl.useProgram(upProg.p); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+  for (let i = mips.length - 1; i > 0; i--) {
+    const s = mips[i], d = mips[i - 1];
+    gl.bindFramebuffer(gl.FRAMEBUFFER, d.f); gl.viewport(0, 0, d.w, d.h);
+    gl.bindTexture(gl.TEXTURE_2D, s.t); gl.uniform1i(upProg.u.uTex, 0); gl.uniform2f(upProg.u.uTexel, 1 / s.w, 1 / s.h);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  gl.disable(gl.BLEND);
+
+  /* — сведение на экран — */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, W, H);
+  gl.useProgram(compProg.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, scene.t); gl.uniform1i(compProg.u.uScene, 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, mips[0].t); gl.uniform1i(compProg.u.uBloom, 1);
+  gl.uniform1f(compProg.u.uBloomK, HDR ? .55 : .4); gl.uniform1f(compProg.u.uExp, 1.15);
+  gl.uniform1f(compProg.u.uTime, (now - t0) % 1000); gl.uniform2f(compProg.u.uRes, W, H); gl.uniform1f(compProg.u.uLdr, HDR ? 0 : 1);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.activeTexture(gl.TEXTURE0);
+
+  /* — подписи и показания — */
+  const cw = canvas.clientWidth, ch = canvas.clientHeight;
+  const place = (lab, p, R, toLeft) => {
+    if (!p) { lab.style.opacity = 0; return; }
+    lab.style.opacity = 1;
+    const ppu = ch / (2 * Math.tan(.39) * p[2]), off = Math.min(140, Math.max(22, ppu * R * .78));
+    const lw = lab.offsetWidth, x = p[0] * cw;
+    let left = toLeft ? x - off - lw : x + off;
+    if (left + lw > cw - 12) left = x - off - lw;
+    if (left < 12) left = x + off;
+    lab.classList.toggle('flip', left < x);
+    lab.style.transform = `translate(${Math.round(left)}px, ${Math.round(Math.max(96, p[1] * ch - off - 8))}px)`;
+  };
+  const sep = sepAt(F, sim.step);
+  place(lblA, pa, sim.preset.disks[0].R, pa && pb && pa[0] < pb[0]);
+  place(lblB, pb, sim.preset.disks[1].R, pa && pb && pb[0] <= pa[0]);
+  const merged = sim.mergeStep >= 0 && sim.step >= sim.mergeStep;
+  if (merged || sep < .45) lblB.style.opacity = 0;
+  if (sim.sunIdx >= 0) {
+    const s = sim.sunIdx * 3, ps = project(vp, [P[s], P[s + 1], P[s + 2]]);
+    if (ps) { lblSun.style.opacity = 1; lblSun.style.transform = `translate(${Math.round(ps[0] * cw)}px, ${Math.round(ps[1] * ch - 22)}px)`; }
+    else lblSun.style.opacity = 0;
+  }
+  const rv = Math.hypot(sim.fullV[fo + 3] - sim.fullV[fo], sim.fullV[fo + 4] - sim.fullV[fo + 1], sim.fullV[fo + 5] - sim.fullV[fo + 2]);
+  $('rT').innerHTML = fmtT(periT(sim.step)).replace(/(млн|млрд) лет/, '<small>$1 лет</small>');
+  $('rD').innerHTML = merged ? 'слились' : fmt(sep * U.kpc) + '<small>кпк</small>';
+  $('rV').innerHTML = fmt(rv * U.kms) + '<small>км/с</small>';
+  if (sim.sunIdx >= 0) {
+    const s = sim.sunIdx * 3, dS = Math.hypot(P[s] - cA[0], P[s + 1] - cA[1], P[s + 2] - cA[2]);
+    $('rNl').textContent = 'Солнце от центра';
+    $('rN').innerHTML = fmt(dS * U.kpc, 1) + '<small>кпк</small>';
+  } else { $('rNl').textContent = 'звёзд'; $('rN').innerHTML = fmt(N); }
+  setThumb();
+
+  if (!hintHidden && now - t0 > 14000) { hintHidden = true; $('hint').style.opacity = 0; }
+
+  /* — адаптивное разрешение — */
+  const ft = performance.now() - now;
+  ftAvg = ftAvg * .92 + ft * .08;
+  if (!SHOT && now - t0 > 3000) {
+    if (ftAvg > 26 && scale > .55) { scale = Math.max(.55, scale - .1); ftAvg = 16; }
+    else if (ftAvg < 9 && scale < 1) { scale = Math.min(1, scale + .05); ftAvg = 16; }
+  }
+}
+
+/* ссылка вида index.html#3 открывает третий сценарий сразу на самом эффектном моменте */
+const hashIdx = () => { const n = parseInt(location.hash.slice(1), 10); return n >= 1 && n <= PRESETS.length ? n - 1 : -1; };
+addEventListener('hashchange', () => { const i = hashIdx(); if (i >= 0) loadPreset(i, true); });
+try {
+  const i0 = Math.max(0, hashIdx());
+  loadPreset(i0, true);
+  $('pName').innerHTML = `${PRESETS[i0].name}<span class="pcat">${PRESETS[i0].cat}</span>`;
+  $('pText').textContent = PRESETS[i0].text;
+  requestAnimationFrame(frame);
+} catch (err) {
+  document.getElementById('fail').hidden = false;
+  document.querySelector('#fail p').textContent = 'Не удалось запустить WebGL2: ' + err.message;
+}
+})();
+</script>
+</body>
+</html>

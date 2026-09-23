@@ -1,0 +1,1209 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Почти скорость света</title>
+<meta name="description" content="Вечерний проспект глазами наблюдателя, летящего со скоростью до 0,99c: аберрация, эффект Доплера, прожекторный эффект и тепло стен, ставшее видимым.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600&family=Martian+Mono:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#ECE7DA;
+  --dim:rgba(236,231,218,.62);
+  --faint:rgba(236,231,218,.24);
+  --hair:rgba(236,231,218,.14);
+  --na:#FFB24A;
+  --blue:#8FE0FF;
+  --red:#FF6A55;
+  --bg:#05070D;
+  --mono:'Martian Mono',ui-monospace,Menlo,monospace;
+  --sans:'Geologica',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased;touch-action:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab}
+canvas.drag{cursor:grabbing}
+#hud{position:fixed;inset:0;pointer-events:none;user-select:none;-webkit-user-select:none}
+#hud::before,#hud::after{content:"";position:absolute;left:0;right:0;pointer-events:none}
+#hud::before{top:0;height:210px;background:linear-gradient(rgba(4,5,10,.62),rgba(4,5,10,0))}
+#hud::after{bottom:0;height:250px;background:linear-gradient(rgba(4,5,10,0),rgba(4,5,10,.66))}
+#hud button,#hud input,#explain{pointer-events:auto}
+
+/* ——— заголовок ——— */
+.title{position:absolute;left:clamp(18px,3vw,40px);top:clamp(16px,3.4vh,34px);max-width:30em;text-shadow:0 1px 18px rgba(0,0,0,.55)}
+.kicker{font:400 12px/1 var(--mono);letter-spacing:.22em;color:var(--na);text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.kicker::before{content:"";width:26px;height:1px;background:var(--na);opacity:.8}
+.title h1{margin:12px 0 8px;font:300 clamp(26px,2.6vw,38px)/1.02 var(--sans);letter-spacing:-.01em}
+.title p{margin:0;font:300 14px/1.45 var(--sans);color:var(--dim);max-width:24em}
+.title p i{font-style:italic;color:var(--ink)}
+
+/* ——— показания ——— */
+.readout{position:absolute;right:clamp(18px,3vw,40px);top:clamp(14px,3vh,30px);text-align:right;text-shadow:0 1px 18px rgba(0,0,0,.6)}
+.beta{display:flex;align-items:baseline;justify-content:flex-end;gap:.18em;font:200 clamp(44px,5.4vw,78px)/1 var(--mono);letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.beta .sym{font:italic 300 .52em/1 var(--sans);color:var(--na);margin-right:.25em;letter-spacing:0}
+.beta .unit{font:300 .36em/1 var(--sans);color:var(--dim);letter-spacing:0}
+.sub{margin-top:10px;font:300 12.5px/1.6 var(--mono);color:var(--dim);letter-spacing:.02em}
+.sub b{font-weight:400;color:var(--ink)}
+.sub .sep{opacity:.4;margin:0 .6em}
+
+/* ——— нижняя панель ——— */
+.rail{position:absolute;left:clamp(18px,3vw,40px);right:clamp(18px,3vw,40px);bottom:clamp(30px,4.4vh,42px);display:grid;grid-template-columns:auto minmax(260px,1fr) auto;align-items:end;gap:clamp(18px,2.4vw,40px)}
+.group{display:flex;gap:8px;align-items:center}
+.lbl{font:400 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.btn{appearance:none;border:1px solid var(--hair);background:rgba(8,10,18,.46);color:var(--ink);font:400 12.5px/1 var(--sans);height:40px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;gap:9px;cursor:pointer;transition:border-color .25s,background .25s,color .25s,transform .15s;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.btn:hover{border-color:rgba(236,231,218,.4)}
+.btn:active{transform:scale(.97)}
+.btn:focus-visible{outline:1px solid var(--na);outline-offset:3px}
+.btn .dot{width:7px;height:7px;border-radius:50%;background:transparent;border:1px solid var(--faint);transition:all .25s}
+.btn.on .dot{background:var(--c,var(--na));border-color:var(--c,var(--na))}
+.btn.off{color:var(--dim)}
+.btn.round{width:40px;padding:0;justify-content:center;font:500 14px/1 var(--sans)}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.5}
+
+/* спектр + скорость */
+.center{display:flex;flex-direction:column;gap:14px;min-width:0}
+.spec{position:relative}
+.spec-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px;font:300 12px/1.3 var(--mono);color:var(--dim);letter-spacing:.02em}
+.spec-head b{font-weight:400;color:var(--ink)}
+.spec-head .hot{color:var(--na)}
+.bar{position:relative;height:30px;margin-bottom:34px}
+.bar .axis{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:2px;background:linear-gradient(90deg,rgba(120,90,255,.10) 0%,rgba(120,90,255,.10) var(--v0),#6a3cff var(--v0),#2e5bff calc(var(--v0) + (var(--v1) - var(--v0))*.18),#00c6ff calc(var(--v0) + (var(--v1) - var(--v0))*.32),#2dff7a calc(var(--v0) + (var(--v1) - var(--v0))*.46),#fff23a calc(var(--v0) + (var(--v1) - var(--v0))*.6),#ff9b1f calc(var(--v0) + (var(--v1) - var(--v0))*.74),#ff2d1f calc(var(--v0) + (var(--v1) - var(--v0))*.9),#6d0d0d var(--v1),rgba(255,60,40,.10) var(--v1),rgba(255,60,40,.10) 100%)}
+.bar .zone{position:absolute;top:-2px;font:400 12px/1 var(--mono);letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+.mk{position:absolute;top:6px;transform:translateX(-50%);transition:left .12s linear}
+.mk i{display:block;width:3px;height:18px;margin:0 auto;border-radius:1.5px;background:var(--mc);box-shadow:0 0 0 1px rgba(5,7,13,.7)}
+.mk span{position:absolute;top:22px;left:50%;transform:translateX(-50%);white-space:nowrap;font:300 12px/1.3 var(--mono);color:var(--dim);text-align:center}
+.mk span b{display:block;color:var(--ink);font-weight:400}
+.mk.out i{opacity:.35}
+#mkA{--mc:var(--blue)} #mkS{--mc:var(--na)} #mkB{--mc:var(--red)}
+
+.speed{position:relative;height:34px;margin-top:8px}
+.speed input{-webkit-appearance:none;appearance:none;width:100%;height:34px;background:transparent;margin:0;cursor:pointer}
+.speed input:focus{outline:none}
+.speed input::-webkit-slider-runnable-track{height:2px;background:linear-gradient(90deg,rgba(236,231,218,.55),rgba(255,178,74,.9) var(--p,50%),rgba(236,231,218,.16) var(--p,50%))}
+.speed input::-moz-range-track{height:2px;background:rgba(236,231,218,.16)}
+.speed input::-moz-range-progress{height:2px;background:var(--na)}
+.speed input::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:26px;margin-top:-12px;border-radius:7px;background:var(--ink);border:2px solid var(--na);box-shadow:0 2px 10px rgba(0,0,0,.55)}
+.speed input::-moz-range-thumb{width:14px;height:26px;border-radius:7px;background:var(--ink);border:2px solid var(--na);box-shadow:0 2px 10px rgba(0,0,0,.55)}
+.speed input:focus-visible::-webkit-slider-thumb{outline:2px solid var(--ink);outline-offset:3px}
+.ticks{position:absolute;left:7px;right:7px;top:34px;height:12px;pointer-events:none}
+.ticks span{position:absolute;transform:translateX(-50%);font:300 12px/1 var(--mono);color:var(--dim)}
+.ticks span::after{content:"";position:absolute;left:50%;top:-9px;width:1px;height:6px;background:var(--dim)}
+
+/* пояснение */
+#explain{position:absolute;left:clamp(18px,3vw,40px);bottom:118px;width:min(420px,calc(100vw - 36px));padding:22px 24px 20px;border-radius:16px;background:rgba(7,9,16,.82);border:1px solid var(--hair);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;max-height:calc(100vh - 260px);overflow:auto}
+#explain.open{opacity:1;transform:none;pointer-events:auto}
+#explain h2{margin:0 0 14px;font:400 11px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--na)}
+#explain dl{margin:0;display:grid;gap:12px}
+#explain dt{font:500 13.5px/1.2 var(--sans)}
+#explain dd{margin:4px 0 0;font:300 14px/1.5 var(--sans);color:var(--dim)}
+#explain .note{margin-top:14px;padding-top:12px;border-top:1px solid var(--hair);font:300 12px/1.5 var(--mono);color:var(--dim)}
+
+#hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:300 12px/1 var(--mono);letter-spacing:.06em;color:var(--dim);padding:10px 16px;border-radius:999px;background:rgba(5,7,13,.5);border:1px solid var(--hair);transition:opacity 1.2s;white-space:nowrap}
+#hint.gone{opacity:0}
+#fail{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:24px;font:300 15px/1.6 var(--sans);color:var(--dim)}
+#fail b{display:block;font:300 26px/1.2 var(--sans);color:var(--ink);margin-bottom:10px}
+
+@media (max-width:760px){
+  .title{max-width:62vw}
+  .title h1{font-size:23px;margin:9px 0 6px}
+  .title p{font-size:13px;max-width:22em}
+  .kicker{font-size:12px}
+  .readout{left:clamp(18px,3vw,40px);right:auto;top:auto;bottom:268px;text-align:left}
+  .beta{font-size:34px;justify-content:flex-start}
+  .sub{font-size:12px;margin-top:4px}
+  #hud::after{height:360px}
+  #hint{white-space:normal;text-align:center;max-width:80vw}
+  .sub .kms{display:block}
+  .sub .sep.k{display:none}
+  .rail{grid-template-columns:1fr;gap:12px;bottom:max(14px,env(safe-area-inset-bottom))}
+  .center{order:-1}
+  .rail>.group:first-child{justify-content:space-between}
+  .rail>.group:first-child .btn{flex:1;justify-content:center;padding:0 8px;font-size:12px}
+  .rail>.group:last-child{justify-content:space-between}
+  .rail>.group:last-child #auto{flex:1;justify-content:center}
+  .rail>.group:last-child #back{flex:1;justify-content:center}
+  .lbl{display:none}
+  .mk span{font-size:12px}
+  .mk span .w{display:none}
+  .bar{margin-bottom:18px}
+  .rail{bottom:max(28px,env(safe-area-inset-bottom))}
+  .spec-head{font-size:12px}
+  .spec-head>span:first-child{display:none}
+  #explain{bottom:auto;top:96px;max-height:calc(100vh - 330px)}
+}
+@media (prefers-reduced-motion:reduce){ .mk{transition:none} #hint{transition:none} }
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Трёхмерная сцена: вечерний проспект с релятивистскими эффектами"></canvas>
+
+<div id="hud">
+  <header class="title">
+    <div class="kicker">Опыт 009</div>
+    <h1>Почти скорость света</h1>
+    <p>Вечерний проспект глазами наблюдателя, летящего со&nbsp;скоростью <i>β</i>·<i>c</i></p>
+  </header>
+
+  <section class="readout" aria-live="off">
+    <div class="beta"><span class="sym">β</span><span id="betaVal">0,500</span><span class="unit">c</span></div>
+    <div class="sub">γ&nbsp;<b id="gammaVal">1,15</b><span class="sep k">·</span><span class="kms"><b id="kmsVal">149&#8239;896</b>&nbsp;км/с</span></div>
+  </section>
+
+  <aside id="explain" aria-label="Что происходит">
+    <h2>Что вы видите</h2>
+    <dl>
+      <div><dt>Аберрация</dt><dd>Свет, падающий сбоку, для быстрого наблюдателя приходит спереди — как дождь в&nbsp;лобовое стекло. Город сжимается к&nbsp;точке движения, а&nbsp;по&nbsp;краям кадра видно то, что осталось позади.</dd></div>
+      <div><dt>Эффект Доплера</dt><dd>Впереди волны сжаты: цвета уходят в&nbsp;синий, а&nbsp;невидимый инфракрасный свет становится видимым. Позади — наоборот. Фонарь, который висит строго сбоку, вы видите впереди и&nbsp;чуть синее: это поперечный эффект Доплера.</dd></div>
+      <div><dt>Прожектор</dt><dd>Свет спереди собирается в&nbsp;узкий конус, яркость растёт как&nbsp;D⁴. На&nbsp;0,99c впереди почти в&nbsp;40&nbsp;тысяч раз ярче, чем в&nbsp;покое.</dd></div>
+      <div><dt>Тепло города</dt><dd>Примерно с&nbsp;0,8c стены впереди начинают светиться сами: их&nbsp;тепловое излучение (около 290&nbsp;K) выглядит как излучение тела с&nbsp;температурой 290&nbsp;K&nbsp;×&nbsp;D. Холодное небо остаётся темнее — город виден по&nbsp;своему теплу.</dd></div>
+    </dl>
+    <div class="note">Время показа замедлено в&nbsp;10&nbsp;миллионов раз: секунда на&nbsp;экране — 0,1&nbsp;мкс полёта. Цвета считаются по&nbsp;спектрам: небо, натриевые лампы, неон, окна и&nbsp;тепловое излучение.</div>
+  </aside>
+
+  <div class="rail">
+    <div>
+      <div class="lbl">Эффекты</div>
+      <div class="group" id="toggles">
+        <button class="btn on" data-k="0" style="--c:var(--ink)" aria-pressed="true"><span class="dot"></span>Аберрация</button>
+        <button class="btn on" data-k="1" style="--c:var(--blue)" aria-pressed="true"><span class="dot"></span>Доплер</button>
+        <button class="btn on" data-k="2" style="--c:var(--na)" aria-pressed="true"><span class="dot"></span>Прожектор</button>
+      </div>
+    </div>
+
+    <div class="center">
+      <div class="spec">
+        <div class="spec-head"><span>Натриевый фонарь <b>589&nbsp;нм</b> — где его свет сейчас</span><span id="thermal">стены впереди: <b>290&nbsp;K</b></span></div>
+        <div class="bar" id="bar">
+          <div class="axis" id="axis"></div>
+          <div class="zone" id="zUV" style="left:0">УФ</div>
+          <div class="zone" id="zIR" style="right:0">ИК</div>
+          <div class="mk" id="mkA"><i></i><span><span class="w">впереди</span><b id="lA">—</b></span></div>
+          <div class="mk" id="mkS"><i></i><span><span class="w">строго сбоку</span><b id="lS">—</b></span></div>
+          <div class="mk" id="mkB"><i></i><span><span class="w">позади</span><b id="lB">—</b></span></div>
+        </div>
+      </div>
+      <div class="speed">
+        <div class="ticks" id="ticks"></div>
+        <input type="range" id="speed" min="0" max="1000" step="1" value="300" aria-label="Скорость, доля скорости света">
+      </div>
+    </div>
+
+    <div>
+      <div class="lbl" style="text-align:right">Полёт</div>
+      <div class="group">
+        <button class="btn on" id="auto" aria-pressed="true" style="--c:var(--na)"><span class="dot"></span>Автопилот</button>
+        <button class="btn" id="back" aria-pressed="false"><svg viewBox="0 0 16 16"><path d="M3 8a5 5 0 1 0 1.6-3.7"/><path d="M3 2.5v3h3"/></svg>Назад</button>
+        <button class="btn round" id="info" aria-expanded="false" aria-controls="explain" title="Что происходит">?</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hint">Потяните, чтобы осмотреться · колесо или ↑↓ — скорость</div>
+</div>
+<div id="fail"><div><b>Нужен WebGL 2</b>Этот браузер не умеет считать релятивистский свет. Откройте страницу в свежем Chrome, Safari или Firefox.</div></div>
+
+<script>
+'use strict';
+(function () {
+/* ============================================================
+   1. Спектральная таблица: как выглядит каждый источник света
+      при доплеровском множителе D. Спектр сдвигается (λ → λ/D),
+      интенсивность — как D⁵ на единицу длины волны.
+   ============================================================ */
+const LUTW = 1024;
+const LN_DMIN = Math.log(0.05), LN_DMAX = Math.log(20);
+const LN_TMIN = Math.log(150), LN_TMAX = Math.log(1.2e6);
+
+const planck = (l, T) => { // Вт/(м²·ср·нм)
+  const m = l * 1e-9, x = 1.4387769e-2 / (m * T);
+  if (x > 700) return 0;
+  return 1.191042972e-16 / Math.pow(m, 5) / Math.expm1(x) * 1e-9;
+};
+// аналитическая аппроксимация функций цветового соответствия CIE 1931 (Wyman, Sloan, Shirley, 2013)
+const LOBES = [[0,1.056,599.8,37.9,31.0],[0,0.362,442.0,16.0,26.7],[0,-0.065,501.1,20.4,26.2],
+               [1,0.821,568.8,46.9,40.5],[1,0.286,530.9,16.3,31.1],
+               [2,1.217,437.0,11.8,36.0],[2,0.681,459.0,26.0,13.8]];
+const cmf = l => { const o = [0,0,0]; for (const [c,w,m,s1,s2] of LOBES) { const t = (l-m)/(l<m?s1:s2); o[c] += w*Math.exp(-.5*t*t); } return o; };
+const CMF = []; for (let l = 360; l <= 830; l += 5) CMF.push(cmf(l));
+
+function spectrumXYZ(cont, lines, D) {
+  const o = [0,0,0], D5 = Math.pow(D,5);
+  if (cont) for (let i = 0; i < CMF.length; i++) {
+    const s = D5 * cont(D * (360 + 5*i)); if (!s) continue;
+    o[0] += s*CMF[i][0]; o[1] += s*CMF[i][1]; o[2] += s*CMF[i][2];
+  }
+  o[0] *= 5; o[1] *= 5; o[2] *= 5;
+  if (lines) for (const [c0, sg, A] of lines) { // узкие линии интегрируются точно
+    const a = c0/D, s = sg/D, amp = D5*A;
+    for (const [c,w,m,s1,s2] of LOBES) {
+      const cs = a < m ? s1 : s2, ss = s*s + cs*cs;
+      o[c] += amp*w*Math.sqrt(2*Math.PI)*s*cs/Math.sqrt(ss)*Math.exp(-((a-m)*(a-m))/(2*ss));
+    }
+  }
+  return [o[0]*683, o[1]*683, o[2]*683];
+}
+function xyzToRGB(X, Y, Z) {
+  let r =  3.2406*X - 1.5372*Y - 0.4986*Z;
+  let g = -0.9689*X + 1.8758*Y + 0.0415*Z;
+  let b =  0.0557*X - 0.2040*Y + 1.0570*Z;
+  const mn = Math.min(r,g,b);
+  if (mn < 0 && Y > 0) { const k = Y/(Y - mn); r = Y + (r-Y)*k; g = Y + (g-Y)*k; b = Y + (b-Y)*k; } // вне охвата sRGB — к серому
+  if (!(Y > 0)) return [0,0,0];
+  return [Math.max(r,0), Math.max(g,0), Math.max(b,0)];
+}
+const sig = x => 1/(1+Math.exp(-x));
+const fB = l => sig((490-l)/12), fR = l => sig((l-585)/12), fG = l => Math.max(0, 1 - fB(l) - fR(l));
+const ozone = l => sig((l-305)/6);
+const chappuis = l => Math.exp(-0.35*Math.exp(-0.5*Math.pow((l-600)/45,2)));
+const domeShape = l => Math.pow(550/l,4)*planck(l,5800)*ozone(l)*chappuis(l);
+const glowShape = l => planck(l,5800)*Math.exp(-2.4*Math.pow(550/l,4))*Math.exp(-0.35*550/l)*ozone(l);
+const warmShape = l => planck(l,2700);
+const NA_LINES = [[569,6,0.35],[589,16,1.0],[616,7,0.45],[498,4,0.10],[819,4,0.75],[1139,5,0.55],[2206,6,0.15]];
+const naCont = l => 0.012*Math.exp(-0.5*Math.pow((l-640)/120,2));
+const NEON_LINES = [[585.2,1.5,.35],[588.2,1.5,.2],[594.5,1.5,.35],[603,1.5,.25],[607.4,1.5,.35],[609.6,1.5,.3],[614.3,1.5,.45],[616.4,1.5,.25],[621.7,1.5,.2],[626.6,1.5,.35],[633.4,1.5,.45],[640.2,1.5,1],[650.6,1.5,.6],[659.9,1.5,.35],[667.8,1.5,.3],[671.7,1.5,.2],[692.9,1.5,.35],[703.2,1.5,.65],[717.4,1.5,.2],[724.5,1.5,.35],[743.9,1.5,.2],[753.6,1.5,.3],[837.8,1.5,.35],[849.5,1.5,.25],[865.4,1.5,.2]];
+const HG_LINES = [[365,2,.55],[404.7,1.5,.35],[435.8,1.5,1],[546.1,1.5,.75],[577,1.5,.18],[579.1,1.5,.18],[696.5,2,.15],[763.5,2,.35],[811.5,2,.45],[842.5,2,.25],[912.3,2,.3]];
+
+function buildLUT() {
+  const kDome = 1/spectrumXYZ(domeShape, null, 1)[1];            // 1 люкс сумеречного неба
+  const kNa = 1/spectrumXYZ(naCont, NA_LINES, 1)[1];             // 1 люкс натриевого света
+  const scaleLines = (L, k, f) => L.map(([c,s,a]) => [c, s, a*k*(f ? f(c) : 1)]);
+  const rows = [
+    [l => fR(l)*domeShape(l)*kDome/Math.PI, null],
+    [l => fG(l)*domeShape(l)*kDome/Math.PI, null],
+    [l => fB(l)*domeShape(l)*kDome/Math.PI, null],
+    [l => fR(l)*naCont(l)*kNa/Math.PI, scaleLines(NA_LINES, kNa/Math.PI, fR)],
+    [l => fG(l)*naCont(l)*kNa/Math.PI, scaleLines(NA_LINES, kNa/Math.PI, fG)],
+    [l => fB(l)*naCont(l)*kNa/Math.PI, scaleLines(NA_LINES, kNa/Math.PI, fB)],
+    [l => naCont(l)*kNa, scaleLines(NA_LINES, kNa)],
+    [warmShape, null], [domeShape, null], [glowShape, null],
+    [null, NEON_LINES], [null, HG_LINES]
+  ];
+  // эмиссионные строки нормируем на яркость 1 кд/м² в покое
+  for (const i of [7,8,9,10,11]) {
+    const [c, L] = rows[i], k = 1/spectrumXYZ(c, L, 1)[1];
+    rows[i] = [c ? (l => c(l)*k) : null, L ? scaleLines(L, k) : null];
+  }
+  const H = rows.length + 1, data = new Float32Array(LUTW*H*4);
+  for (let r = 0; r < rows.length; r++) {
+    const [c, L] = rows[r];
+    for (let i = 0; i < LUTW; i++) {
+      const D = Math.exp(LN_DMIN + (LN_DMAX-LN_DMIN)*i/(LUTW-1));
+      const [X,Y,Z] = spectrumXYZ(c, L, D), rgb = xyzToRGB(X,Y,Z), o = (r*LUTW + i)*4;
+      data[o] = rgb[0]; data[o+1] = rgb[1]; data[o+2] = rgb[2]; data[o+3] = Y;
+    }
+  }
+  const r = rows.length; // абсолютно чёрное тело по температуре
+  for (let i = 0; i < LUTW; i++) {
+    const T = Math.exp(LN_TMIN + (LN_TMAX-LN_TMIN)*i/(LUTW-1));
+    const [X,Y,Z] = spectrumXYZ(l => planck(l, T), null, 1), rgb = xyzToRGB(X,Y,Z), o = (r*LUTW + i)*4;
+    data[o] = rgb[0]; data[o+1] = rgb[1]; data[o+2] = rgb[2]; data[o+3] = Y;
+  }
+  return { data, H };
+}
+
+/* ============================================================
+   2. WebGL
+   ============================================================ */
+const canvas = document.getElementById('gl');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance' });
+if (!gl) { document.getElementById('fail').style.display = 'grid'; document.getElementById('hud').style.display = 'none'; return; }
+const hdrOK = !!gl.getExtension('EXT_color_buffer_float');
+
+const VS_FULL = `#version 300 es
+void main(){ vec2 p = vec2(float((gl_VertexID<<1)&2), float(gl_VertexID&2)); gl_Position = vec4(p*2.0-1.0, 0.0, 1.0); }`;
+
+const COMMON = `
+precision highp float; precision highp int; precision highp sampler2D;
+uniform sampler2D uLut;
+const int LUTW = ${LUTW};
+const float LN_DMIN = ${LN_DMIN.toFixed(6)}, LN_DMAX = ${LN_DMAX.toFixed(6)};
+const float LN_TMIN = ${LN_TMIN.toFixed(6)}, LN_TMAX = ${LN_TMAX.toFixed(6)};
+vec3 lutAt(int row, float u){
+  float fx = clamp(u, 0.0, 1.0)*float(LUTW-1); float i0 = floor(fx); int x0 = int(i0); int x1 = min(x0+1, LUTW-1);
+  return mix(texelFetch(uLut, ivec2(x0,row), 0).rgb, texelFetch(uLut, ivec2(x1,row), 0).rgb, fx-i0);
+}
+vec3 bb(float T){ if (T < 150.0) return vec3(0.0); return lutAt(12, (log(T)-LN_TMIN)/(LN_TMAX-LN_TMIN)); }
+`;
+
+const FS_SCENE = `#version 300 es
+${COMMON}
+uniform vec2 uRes; uniform vec3 uCamPos, uCamR, uCamU, uCamF;
+uniform float uTanHalf, uBeta, uGamma, uPreExp, uPixAng, uDirect, uExpo;
+uniform vec3 uFlags;
+out vec4 fragColor;
+
+const float W = 11.0, LOT = 24.0, BAND = 32.0, FARX = 58.0, ROAD = 7.4;
+const float LAMP = 28.0, LAMPX = 6.3, LAMPY = 7.7, POLEX = 7.95, LAMP_L = 30000.0;
+
+float h12(vec2 p){ vec3 p3 = fract(vec3(p.xyx)*0.1031); p3 += dot(p3, p3.yzx+33.33); return fract((p3.x+p3.y)*p3.z); }
+float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+  return mix(mix(h12(i), h12(i+vec2(1,0)), f.x), mix(h12(i+vec2(0,1)), h12(i+vec2(1,1)), f.x), f.y); }
+
+// Весовые «компоненты» спектра, собранные вдоль луча:
+// a = (небо·R, небо·G, небо·B, лампа), b = (натрий·R, натрий·G, натрий·B, окна 2700K), c = (купол, заря, неон, ртуть)
+struct Acc { vec4 a; vec4 b; vec4 c; };
+struct Bld { float ok; float z0; float z1; float h; float x0; vec3 alb; float s1; float s2; float s3; };
+
+Bld getBld(float i, float side){
+  Bld b;
+  float r1 = h12(vec2(i, side*17.0+3.0)), r2 = h12(vec2(i*1.31+7.0, side*5.0+11.0)), r3 = h12(vec2(i*0.77+19.0, side*13.0+2.0));
+  b.ok = step(0.09, r1);
+  b.z0 = i*LOT + (r2 > 0.8 ? 1.2 : 0.0);
+  b.z1 = (i+1.0)*LOT - (r3 > 0.85 ? 1.2 : 0.0);
+  b.h = 14.0 + 22.0*r2*r2 + (r3 > 0.92 ? 24.0 : 0.0);
+  b.x0 = W + (r3 < 0.22 ? 2.2 : 0.0);
+  float p = fract(r1*7.13)*7.0; vec3 alb;
+  if (p < 1.0) alb = vec3(0.62,0.48,0.26);       // петербургская охра
+  else if (p < 2.0) alb = vec3(0.52,0.32,0.28);  // терракота
+  else if (p < 3.0) alb = vec3(0.44,0.44,0.43);  // серая штукатурка
+  else if (p < 4.0) alb = vec3(0.36,0.20,0.14);  // кирпич
+  else if (p < 5.0) alb = vec3(0.60,0.56,0.49);  // светлый камень
+  else if (p < 6.0) alb = vec3(0.35,0.43,0.40);  // зеленоватая
+  else alb = vec3(0.56,0.38,0.37);               // розовая
+  b.alb = alb; b.s1 = r1; b.s2 = r2; b.s3 = r3;
+  return b;
+}
+
+float boxHit(vec3 ro, vec3 rd, vec3 bmin, vec3 bmax, out vec3 n){
+  vec3 inv = 1.0/rd, t0 = (bmin-ro)*inv, t1 = (bmax-ro)*inv;
+  vec3 tmin = min(t0,t1), tmax = max(t0,t1);
+  float tn = max(max(tmin.x,tmin.y),tmin.z), tf = min(min(tmax.x,tmax.y),tmax.z);
+  n = vec3(0.0);
+  if (tf < max(tn, 0.0) || tn <= 0.0) return -1.0;
+  if (tn == tmin.x) n = vec3(-sign(rd.x),0.0,0.0); else if (tn == tmin.y) n = vec3(0.0,-sign(rd.y),0.0); else n = vec3(0.0,0.0,-sign(rd.z));
+  return tn;
+}
+
+// обход кварталов вдоль одной стороны проспекта
+bool traceSide(vec3 ro, vec3 rd, float side, inout float tBest, inout vec3 nBest, inout Bld bBest){
+  if (rd.x*side <= 1e-6) return false;
+  float tIn = (side*W - ro.x)/rd.x;
+  if (tIn >= tBest || tIn > 3000.0) return false;
+  float tOut = min((side*(W+BAND+2.2) - ro.x)/rd.x, tBest);
+  float zA = ro.z + rd.z*tIn, zB = ro.z + rd.z*tOut;
+  float i = floor(zA/LOT), iEnd = floor(zB/LOT), dir = rd.z >= 0.0 ? 1.0 : -1.0;
+  for (int k = 0; k < 30; k++){
+    Bld b = getBld(i, side);
+    if (b.ok > 0.5){
+      vec3 bmin = side > 0.0 ? vec3(b.x0, 0.0, b.z0) : vec3(-(b.x0+BAND), 0.0, b.z0);
+      vec3 bmax = side > 0.0 ? vec3(b.x0+BAND, b.h, b.z1) : vec3(-b.x0, b.h, b.z1);
+      vec3 n; float t = boxHit(ro, rd, bmin, bmax, n);
+      if (t > 0.0 && t < tBest){ tBest = t; nBest = n; bBest = b; return true; }
+    }
+    if (i == iEnd) break;
+    i += dir;
+  }
+  return false;
+}
+
+float lampZ(float k, float sx){ return (k + (sx > 0.0 ? 0.5 : 0.0))*LAMP; }
+
+// освещённость от натриевых фонарей, люкс
+float lampE(vec3 p, vec3 n){
+  float E = 0.0;
+  for (int s = 0; s < 2; s++){
+    float sx = s == 0 ? -1.0 : 1.0;
+    float k0 = floor(p.z/LAMP - (sx > 0.0 ? 0.5 : 0.0) + 0.5);
+    for (int j = -1; j <= 1; j++){
+      vec3 lp = vec3(sx*LAMPX, LAMPY, lampZ(k0+float(j), sx));
+      vec3 Lv = lp - p; float r2 = max(dot(Lv,Lv), 0.3); vec3 Ld = Lv*inversesqrt(r2);
+      float nad = max(Ld.y, 0.0);
+      float I = 2600.0*(0.18 + 0.82*pow(nad, 1.3)) * (Ld.y < -0.05 ? 0.15 : 1.0);
+      E += I*max(dot(n, Ld), 0.0)/r2;
+    }
+  }
+  return E;
+}
+
+// светящиеся плафоны фонарей: поток сохраняется, даже когда плафон меньше пикселя
+float lampGlow(vec3 ro, vec3 rd, float tMax, float pixA, float aniso){
+  float sum = 0.0;
+  for (int s = 0; s < 2; s++){
+    float sx = s == 0 ? -1.0 : 1.0;
+    vec3 w0 = ro - vec3(sx*LAMPX, LAMPY, 0.0);
+    float b = rd.z, dd = dot(rd, w0), e = w0.z, den = 1.0 - b*b;
+    float sc = den < 1e-6 ? e : (e - b*dd)/den;
+    float k0 = floor(sc/LAMP - (sx > 0.0 ? 0.5 : 0.0) + 0.5);
+    for (int j = -2; j <= 2; j++){
+      vec3 c = vec3(sx*LAMPX, LAMPY, lampZ(k0+float(j), sx));
+      vec3 oc = c - ro; float tt = dot(oc, rd);
+      if (tt <= 0.0 || tt > tMax) continue;
+      vec3 q = oc - rd*tt; q.y *= aniso;
+      float dist = length(q), rad = 0.34, reff = max(rad, tt*pixA*0.85);
+      float cov = (rad*rad)/(reff*reff);
+      float fogL = exp(-tt/900.0);
+      sum += fogL*(cov*exp(-dist*dist/(reff*reff)*1.7) + 0.0035*exp(-dist/(reff*9.0)));
+    }
+  }
+  return sum;
+}
+
+void skyW(vec3 d, inout Acc A, out vec2 th){
+  float e = max(d.y, 0.0);
+  float dome = mix(3.4, 1.05, sqrt(e));
+  vec2 hz = normalize(d.xz + vec2(1e-6));
+  float az = 0.5 + 0.5*dot(hz, normalize(vec2(0.28, -1.0)));
+  float glow = 28.0*exp(-e/0.075)*pow(az, 5.0) + 3.5*exp(-e/0.22)*pow(az, 2.0);
+  A.c.x += dome; A.c.y += glow;
+  th = vec2(0.42 + 0.5*exp(-e/0.12), 262.0);
+}
+
+float sdSeg(vec2 p, vec2 a, vec2 b){ vec2 pa = p-a, ba = b-a; float h = clamp(dot(pa,ba)/dot(ba,ba), 0.0, 1.0); return length(pa - ba*h); }
+
+// фасад: окна, витрины, неоновые вывески
+void shadeBuilding(vec3 p, vec3 n, Bld b, vec3 rd, float t, float pixA, inout Acc S, inout vec2 th){
+  if (n.y > 0.5){ vec3 roof = vec3(0.11,0.11,0.12); S.a.xyz += roof*4.0; th = vec2(0.92, 284.0); return; }
+  float Ena = lampE(p + n*0.05, n);
+  if (abs(n.z) > 0.5){
+    vec3 alb = b.alb*(0.72 + 0.16*vnoise(p.yz*vec2(1.1,0.35) + b.s1*40.0));
+    S.a.xyz += alb*1.5; S.b.xyz += alb*Ena; th = vec2(0.9, 286.0 + 4.0*b.s2); return;
+  }
+  float u = p.z - b.z0, v = p.y, L = b.z1 - b.z0;
+  float fp = t*pixA/max(abs(rd.x), 0.12);
+  float detail = 1.0 - smoothstep(0.3, 1.25, fp);
+  float plaster = 0.86 + 0.26*vnoise(vec2(u*0.8, v*1.1) + b.s2*37.0);
+  vec3 wall = b.alb*mix(1.0, plaster, detail);
+  vec3 a = wall; float warm = 0.0, glass = 0.0, neon = 0.0, hg = 0.0;
+  const float GH = 4.4, FH = 3.35, CW = 3.1;
+  if (v < GH){
+    float cs = floor(u/6.2), fu = fract(u/6.2);
+    float inShop = step(0.1,fu)*step(fu,0.9)*step(0.65,v)*step(v,3.25)*step(0.6,u)*step(u,L-0.6);
+    float hs = h12(vec2(cs, b.s1*71.0+3.0));
+    float lit = step(hs, 0.62), lum = 6.0 + 16.0*fract(hs*7.3);
+    float mull = step(fract(u/1.55), 0.05) + step(abs(v - 2.45), 0.035); // импосты витрины
+    float grad = 0.75 + 0.35*smoothstep(0.65, 3.25, v);
+    warm = mix(0.62*0.47*14.0, inShop*lit*lum*grad*(1.0 - clamp(mull, 0.0, 1.0)), detail);
+    glass = mix(0.5*0.38, inShop*(1.0-lit), detail);
+    a = mix(wall*0.5, wall*(1.0-inShop)*(v < 0.6 ? 0.55 : 1.0), detail);
+    // вывеска: неоновые «буквы» из семи сегментов
+    if (b.s3 > 0.3 && v > 3.4 && v < 4.3){
+      float s0 = 1.0 + floor(b.s2*6.0), sl = 5.0 + floor(b.s1*9.0);
+      if (u > s0 && u < min(s0+sl, L-0.5)){
+        float gw = 0.56, gi = floor((u-s0)/gw);
+        vec2 q = vec2(fract((u-s0)/gw)*gw, v-3.45);
+        float code = h12(vec2(gi, b.s1*37.0+b.s3*11.0));
+        float bits = floor(code*128.0);
+        float dmin = 9.0;
+        if (code > 0.1){
+          vec2 A0 = vec2(0.1,0.74), A1 = vec2(0.45,0.74), M0 = vec2(0.1,0.41), M1 = vec2(0.45,0.41), B0 = vec2(0.1,0.08), B1 = vec2(0.45,0.08);
+          if (mod(bits,2.0) > 0.5) dmin = min(dmin, sdSeg(q,A0,A1));
+          if (mod(floor(bits/2.0),2.0) > 0.5) dmin = min(dmin, sdSeg(q,A1,M1));
+          if (mod(floor(bits/4.0),2.0) > 0.5) dmin = min(dmin, sdSeg(q,M1,B1));
+          if (mod(floor(bits/8.0),2.0) > 0.5) dmin = min(dmin, sdSeg(q,B0,B1));
+          if (mod(floor(bits/16.0),2.0) > 0.5) dmin = min(dmin, sdSeg(q,M0,B0));
+          if (mod(floor(bits/32.0),2.0) > 0.5) dmin = min(dmin, sdSeg(q,A0,M0));
+          if (mod(floor(bits/64.0),2.0) > 0.5) dmin = min(dmin, sdSeg(q,M0,M1));
+          dmin = min(dmin, sdSeg(q, A0, B0) + (code > 0.55 ? 0.0 : 9.0));
+        }
+        float tw = 0.032, twe = max(tw, fp*0.55);
+        float I = (tw/twe)*exp(-pow(dmin/twe, 2.0))*220.0 + 7.0*exp(-dmin/0.22);
+        if (b.s2 > 0.45) neon += I; else hg += I;
+      }
+    }
+  } else if (v < b.h - 1.1){
+    float fl = floor((v-GH)/FH), fv = fract((v-GH)/FH);
+    float cu = floor((u-0.4)/CW), fu = fract((u-0.4)/CW);
+    float inside = step(0.9,u)*step(u,L-0.9);
+    float inWin = step(0.24,fv)*step(fv,0.8)*step(0.3,fu)*step(fu,0.7)*inside;
+    float frame = step(0.2,fv)*step(fv,0.84)*step(0.26,fu)*step(fu,0.74)*inside - inWin;
+    float hw = h12(vec2(cu*1.7 + fl*31.0, b.s1*113.0 + b.s3*7.0));
+    float lit = step(hw, 0.36 - 0.1*step(fl, 0.5));
+    float lum = 3.0 + 15.0*fract(hw*13.1);
+    warm = mix(0.33*10.5*0.224, inWin*lit*lum, detail);
+    glass = mix(0.224*0.67, inWin*(1.0-lit), detail);
+    a = mix(wall*0.8, wall*(1.0-inWin)*(1.0 + 0.35*frame), detail);
+    float sill = step(0.18, fv)*step(fv, 0.24)*step(0.27,fu)*step(fu,0.73)*inside;
+    a *= 1.0 + 0.35*sill*detail;
+  } else {
+    a = wall*1.22;
+  }
+  S.a.xyz += a*2.0; S.b.xyz += a*Ena; S.b.w += warm; S.c.x += glass*0.22; S.c.z += neon; S.c.w += hg;
+  th = vec2(mix(0.9, 0.84, glass), 287.0 + 5.0*b.s2 + warm*0.06);
+}
+
+void shadeFar(vec3 p, float sx, float t, float pixA, vec3 rd, inout Acc S, inout vec2 th){
+  float seg = floor(p.z/40.0);
+  vec3 alb = vec3(0.30,0.28,0.27)*(0.8 + 0.4*h12(vec2(seg, sx+4.0)));
+  float fp = t*pixA/max(abs(rd.x), 0.12), detail = 1.0 - smoothstep(0.3, 1.2, fp);
+  float fv = fract(p.y/3.3), fu = fract(p.z/3.0);
+  float inWin = step(0.3,fv)*step(fv,0.8)*step(0.3,fu)*step(fu,0.7);
+  float hw = h12(vec2(floor(p.z/3.0), floor(p.y/3.3)+sx*9.0));
+  float warm = mix(0.3*15.0*0.2, inWin*step(hw,0.3)*(5.0+20.0*hw), detail);
+  S.a.xyz += alb*1.4*mix(0.8, 1.0-inWin, detail); S.b.w += warm; S.c.x += 0.03;
+  th = vec2(0.9, 288.0);
+}
+
+void shadeGround(vec3 p, vec3 rd, float t, float pixA, inout Acc S, inout vec2 th){
+  float ax = abs(p.x);
+  float fpx = t*pixA, fpz = t*pixA/max(-rd.y, 0.015);
+  float detail = 1.0 - smoothstep(0.15, 0.8, fpx);
+  vec3 alb; float wet = 0.0;
+  float Ena = lampE(p, vec3(0.0,1.0,0.0));
+  if (ax < ROAD){
+    float n1 = vnoise(p.xz*vec2(2.7,2.3)), n2 = vnoise(p.xz*vec2(0.13,0.07) + 7.0);
+    alb = vec3(0.072)*mix(1.0, 0.8 + 0.4*n1, detail);
+    wet = 0.22 + 0.62*smoothstep(0.5, 0.72, n2);
+    float lw = 0.075, lwe = max(lw, fpx*0.7);
+    float dash = mix(0.5, step(fract(p.z/9.0), 0.5), 1.0 - smoothstep(1.0, 4.0, fpz));
+    float cl = (lw/lwe)*exp(-pow(ax/lwe, 2.0))*dash;
+    float el = (lw/lwe)*exp(-pow((ax-(ROAD-0.45))/lwe, 2.0));
+    alb = mix(alb, vec3(0.55), clamp((cl+el)*(1.0-0.45*wet), 0.0, 1.0));
+    // трамвайные рельсы: блестящие линии
+    float rw = 0.05, rwe = max(rw, fpx*0.7);
+    float rail = 0.0;
+    rail += exp(-pow((ax-1.6)/rwe, 2.0)) + exp(-pow((ax-3.12)/rwe, 2.0));
+    rail *= rw/rwe;
+    wet = max(wet, clamp(rail*0.9, 0.0, 0.95));
+    alb = mix(alb, vec3(0.3), clamp(rail, 0.0, 1.0));
+    th = vec2(0.95, 301.0);
+  } else if (ax < ROAD + 0.28){
+    alb = vec3(0.27); th = vec2(0.93, 297.0);
+  } else {
+    vec2 tl = abs(fract(p.xz/vec2(0.5,0.5)) - 0.5);
+    float joint = step(0.46, max(tl.x, tl.y))*detail;
+    alb = vec3(0.21)*(0.9 + 0.2*vnoise(p.xz*1.7))*(1.0 - 0.35*joint);
+    wet = 0.06;
+    th = vec2(0.94, 296.0);
+  }
+  S.a.xyz += alb*2.3; S.b.xyz += alb*Ena;
+  if (wet > 0.0){
+    vec3 r = vec3(rd.x, -rd.y, rd.z);
+    float F = 0.02 + 0.98*pow(1.0 - abs(rd.y), 5.0);
+    float R = F*wet;
+    Acc sk; sk.a = vec4(0.0); sk.b = vec4(0.0); sk.c = vec4(0.0); vec2 tt;
+    skyW(r, sk, tt);
+    S.c += sk.c*R;
+    S.a.w += lampGlow(p + vec3(0.0,0.01,0.0), r, 600.0, pixA, 0.16)*LAMP_L*R*0.85;
+    // отражения окон и вывесок
+    float tb = 400.0; vec3 nb = vec3(0.0); Bld bb0 = getBld(0.0, 1.0);
+    bool hit = traceSide(p + vec3(0.0,0.01,0.0), r, 1.0, tb, nb, bb0);
+    if (!hit) hit = traceSide(p + vec3(0.0,0.01,0.0), r, -1.0, tb, nb, bb0);
+    if (hit){
+      Acc E; E.a = vec4(0.0); E.b = vec4(0.0); E.c = vec4(0.0); vec2 th2 = vec2(0.0);
+      shadeBuilding(p + r*tb, nb, bb0, r, t + tb, pixA*1.8, E, th2);
+      S.b.w += E.b.w*R; S.c.zw += E.c.zw*R; S.a.xyz += E.a.xyz*R*0.5; S.b.xyz += E.b.xyz*R*0.5;
+    }
+  }
+}
+
+void main(){
+  vec2 ndc = gl_FragCoord.xy/uRes*2.0 - 1.0;
+  float aspect = uRes.x/uRes.y;
+  vec3 dObs = normalize(uCamF + ndc.x*aspect*uTanHalf*uCamR + ndc.y*uTanHalf*uCamU);
+  const vec3 V = vec3(0.0, 0.0, -1.0);
+  vec3 d = dObs;
+  if (uFlags.x > 0.5){ // аберрация: направление в системе наблюдателя → направление в системе улицы
+    float cO = dot(dObs, V);
+    float c = (cO - uBeta)/(1.0 - uBeta*cO);
+    vec3 perp = dObs - cO*V; float pl = length(perp);
+    vec3 ph = pl > 1e-7 ? perp/pl : vec3(0.0, 1.0, 0.0);
+    d = c*V + sqrt(max(0.0, 1.0 - c*c))*ph;
+  }
+  float D = uGamma*(1.0 + uBeta*dot(d, V));  // доплеровский множитель
+  float pixA = uPixAng*(uFlags.x > 0.5 ? D : 1.0);
+  vec3 rd = d;
+  rd.x = abs(rd.x) < 1e-5 ? (rd.x < 0.0 ? -1e-5 : 1e-5) : rd.x;
+  rd.y = abs(rd.y) < 1e-5 ? (rd.y < 0.0 ? -1e-5 : 1e-5) : rd.y;
+  rd.z = abs(rd.z) < 1e-5 ? (rd.z < 0.0 ? -1e-5 : 1e-5) : rd.z;
+  vec3 ro = uCamPos;
+
+  float tBest = 1e5; vec3 nB = vec3(0.0); int kind = 0; Bld bB = getBld(0.0, 1.0); float farSide = 0.0;
+  if (traceSide(ro, rd, 1.0, tBest, nB, bB)) kind = 1;
+  if (traceSide(ro, rd, -1.0, tBest, nB, bB)) kind = 1;
+  if (kind == 0){
+    float sx = rd.x > 0.0 ? 1.0 : -1.0;
+    float tF = (sx*FARX - ro.x)/rd.x;
+    if (tF > 0.0 && tF < tBest){
+      vec3 pF = ro + rd*tF;
+      float hF = 16.0 + 34.0*h12(vec2(floor(pF.z/40.0), sx*3.3+9.1));
+      if (pF.y < hF){ tBest = tF; kind = 2; farSide = sx; }
+    }
+  }
+  if (rd.y < 0.0){ float tG = -ro.y/rd.y; if (tG < tBest){ tBest = tG; kind = 3; nB = vec3(0.0,1.0,0.0); } }
+  // столбы фонарей
+  for (int s = 0; s < 2; s++){
+    float sx = s == 0 ? -1.0 : 1.0;
+    if (rd.x*sx <= 0.0) continue;
+    float tP = (sx*POLEX - ro.x)/rd.x;
+    if (tP > min(tBest, 170.0)) continue;
+    float zP = ro.z + rd.z*tP;
+    float k0 = floor(zP/LAMP - (sx > 0.0 ? 0.5 : 0.0) + 0.5);
+    for (int j = -1; j <= 1; j++){
+      vec2 cc = vec2(sx*POLEX, lampZ(k0+float(j), sx));
+      vec2 o2 = ro.xz - cc, d2 = rd.xz;
+      float qa = dot(d2,d2), qb = dot(o2,d2), qc = dot(o2,o2) - 0.012;
+      float disc = qb*qb - qa*qc;
+      if (disc > 0.0){
+        float t = (-qb - sqrt(disc))/qa, y = ro.y + rd.y*t;
+        if (t > 0.0 && t < tBest && y > 0.0 && y < LAMPY + 0.45){ tBest = t; kind = 4; vec2 nn = normalize(o2 + d2*t); nB = vec3(nn.x, 0.0, nn.y); }
+      }
+    }
+  }
+
+  Acc A; A.a = vec4(0.0); A.b = vec4(0.0); A.c = vec4(0.0);
+  vec2 th1 = vec2(0.0, 0.0), th2 = vec2(0.0, 0.0);
+  if (kind == 0){
+    skyW(d, A, th2);
+  } else {
+    vec3 p = ro + rd*tBest;
+    Acc S; S.a = vec4(0.0); S.b = vec4(0.0); S.c = vec4(0.0); vec2 thS = vec2(0.93, 290.0);
+    if (kind == 1) shadeBuilding(p, nB, bB, rd, tBest, pixA, S, thS);
+    else if (kind == 2) shadeFar(p, farSide, tBest, pixA, rd, S, thS);
+    else if (kind == 3) shadeGround(p, rd, tBest, pixA, S, thS);
+    else { vec3 alb = vec3(0.05); S.a.xyz += alb*1.5; S.b.xyz += alb*lampE(p + nB*0.05, nB)*1.6; thS = vec2(0.3, 292.0); }
+    float fog = exp(-tBest/700.0);
+    A.a = S.a*fog; A.b = S.b*fog; A.c = S.c*fog; th1 = vec2(thS.x*fog, thS.y);
+    Acc F; F.a = vec4(0.0); F.b = vec4(0.0); F.c = vec4(0.0); vec2 thF;
+    skyW(normalize(vec3(rd.x, 0.03, rd.z)), F, thF);
+    A.c += F.c*(1.0-fog); th2 = vec2(thF.x*(1.0-fog), thF.y);
+  }
+  A.a.w += lampGlow(ro, rd, tBest, pixA, 1.0)*LAMP_L;
+
+  // спектральная свёртка: каждый компонент берётся из таблицы при своём D
+  float Dc = uFlags.y > 0.5 ? D : 1.0;
+  float u = (log(Dc) - LN_DMIN)/(LN_DMAX - LN_DMIN);
+  vec3 col = A.a.x*lutAt(0,u) + A.a.y*lutAt(1,u) + A.a.z*lutAt(2,u) + A.a.w*lutAt(6,u)
+           + A.b.x*lutAt(3,u) + A.b.y*lutAt(4,u) + A.b.z*lutAt(5,u) + A.b.w*lutAt(7,u)
+           + A.c.x*lutAt(8,u) + A.c.y*lutAt(9,u) + A.c.z*lutAt(10,u) + A.c.w*lutAt(11,u);
+  col += th1.x*bb(th1.y*Dc) + th2.x*bb(th2.y*Dc);
+  float D2 = D*D, D4 = D2*D2;
+  if (uFlags.y > 0.5 && uFlags.z < 0.5) col /= D4;   // без прожектора: убираем усиление D⁴
+  if (uFlags.y < 0.5 && uFlags.z > 0.5) col *= D4;   // только прожектор: цвет прежний, яркость растёт
+  col = max(col, vec3(0.0));
+  if (uDirect > 0.5){
+    vec3 x = col*uExpo;
+    x = clamp((x*(2.51*x + 0.03))/(x*(2.43*x + 0.59) + 0.14), 0.0, 1.0);
+    fragColor = vec4(pow(x, vec3(1.0/2.2)), 1.0);
+  } else {
+    col *= uPreExp;
+    if (!(col.r < 1e30) || !(col.g < 1e30) || !(col.b < 1e30)) col = vec3(6e4);
+    fragColor = vec4(min(col, vec3(6e4)), kind == 0 ? 0.0 : 1.0);
+  }
+}`;
+
+// звёзды: точки, которые сами переносятся аберрацией и меняют цвет
+const VS_STARS = `#version 300 es
+precision highp float; precision highp sampler2D;
+${COMMON.replace('precision highp float; precision highp int; precision highp sampler2D;', '')}
+in vec3 aDir; in vec2 aProp;
+uniform vec3 uCamR, uCamU, uCamF; uniform vec2 uRes; uniform float uTanHalf, uBeta, uGamma, uPreExp, uPixSolid, uPtSize; uniform vec3 uFlags;
+out vec3 vCol;
+void main(){
+  const vec3 V = vec3(0.0, 0.0, -1.0);
+  vec3 d = aDir; float c = dot(d, V);
+  vec3 dO = d;
+  if (uFlags.x > 0.5){
+    float cp = (c + uBeta)/(1.0 + uBeta*c);
+    vec3 perp = d - c*V; float pl = length(perp);
+    vec3 ph = pl > 1e-7 ? perp/pl : vec3(1.0, 0.0, 0.0);
+    dO = cp*V + sqrt(max(0.0, 1.0 - cp*cp))*ph;
+  }
+  float D = uGamma*(1.0 + uBeta*c);
+  vec3 cam = vec3(dot(dO,uCamR), dot(dO,uCamU), dot(dO,uCamF));
+  if (cam.z <= 0.02){ gl_Position = vec4(3.0, 3.0, 0.0, 1.0); gl_PointSize = 1.0; vCol = vec3(0.0); return; }
+  vec2 ndc = cam.xy/(cam.z*uTanHalf); ndc.x /= uRes.x/uRes.y;
+  gl_Position = vec4(ndc, 0.0, 1.0);
+  gl_PointSize = uPtSize;
+  float T = aProp.y, Tobs = uFlags.y > 0.5 ? T*D : T;
+  vec3 restC = bb(T); float restY = dot(restC, vec3(0.2126, 0.7152, 0.0722));
+  vec3 col = bb(Tobs)/max(restY, 1e-30)*aProp.x;
+  if (uFlags.x > 0.5) col /= D*D;
+  float D4 = D*D*D*D;
+  if (uFlags.y > 0.5 && uFlags.z < 0.5) col /= D4;
+  if (uFlags.y < 0.5 && uFlags.z > 0.5) col *= D4;
+  float area = uPixSolid*3.14159/3.2*(uPtSize*0.5)*(uPtSize*0.5);
+  vCol = min(col/area*uPreExp, vec3(6e4));
+}`;
+const FS_STARS = `#version 300 es
+precision highp float;
+in vec3 vCol; out vec4 o;
+void main(){ vec2 q = gl_PointCoord*2.0 - 1.0; float g = exp(-dot(q,q)*3.2); o = vec4(vCol*g, 0.0); }`;
+
+const FS_BRIGHT = `#version 300 es
+precision highp float; uniform sampler2D uTex; uniform vec2 uTexel; out vec4 o;
+void main(){
+  vec2 uv = gl_FragCoord.xy*uTexel;
+  vec2 h = uTexel*0.5;
+  vec3 c = (texture(uTex, uv + vec2(-h.x,-h.y)).rgb + texture(uTex, uv + vec2(h.x,-h.y)).rgb + texture(uTex, uv + vec2(-h.x,h.y)).rgb + texture(uTex, uv + vec2(h.x,h.y)).rgb)*0.25;
+  float l = dot(c, vec3(0.2126,0.7152,0.0722));
+  float k = max(l - 0.9, 0.0); k = k*k/(k + 0.6);
+  o = vec4(min(c*(k/max(l, 1e-5)), vec3(400.0)), 1.0);
+}`;
+const FS_BLUR = `#version 300 es
+precision highp float; uniform sampler2D uTex; uniform vec2 uDir; uniform vec2 uTexel; out vec4 o;
+void main(){
+  vec2 uv = gl_FragCoord.xy*uTexel;
+  vec3 c = texture(uTex, uv).rgb*0.2270270;
+  c += (texture(uTex, uv + uDir*1.3846154).rgb + texture(uTex, uv - uDir*1.3846154).rgb)*0.3162162;
+  c += (texture(uTex, uv + uDir*3.2307692).rgb + texture(uTex, uv - uDir*3.2307692).rgb)*0.0702703;
+  o = vec4(c, 1.0);
+}`;
+const FS_LUM = `#version 300 es
+precision highp float; uniform sampler2D uTex; out vec4 o;
+void main(){
+  vec2 uv = (gl_FragCoord.xy)/vec2(64.0, 32.0);
+  vec3 c = texture(uTex, uv).rgb;
+  float l = dot(c, vec3(0.2126,0.7152,0.0722));
+  float v = clamp((log2(max(l, 1e-7)) + 24.0)/48.0, 0.0, 1.0);
+  o = vec4(v, fract(v*255.0), 0.0, 1.0);
+}`;
+const FS_COMP = `#version 300 es
+precision highp float;
+uniform sampler2D uHdr, uB1, uB2; uniform vec2 uRes; uniform float uTime, uGain;
+out vec4 o;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
+void main(){
+  vec2 uv = gl_FragCoord.xy/uRes;
+  vec3 c = texture(uHdr, uv).rgb + texture(uB1, uv).rgb*0.32 + texture(uB2, uv).rgb*0.22;
+  c *= uGain;
+  vec2 q = uv - 0.5; c *= 1.0 - 0.34*dot(q, q)*1.6;
+  vec3 x = c;
+  x = clamp((x*(2.51*x + 0.03))/(x*(2.43*x + 0.59) + 0.14), 0.0, 1.0);
+  x = pow(x, vec3(1.0/2.2));
+  x += (hash(gl_FragCoord.xy + fract(uTime)*97.0) - 0.5)/160.0;
+  o = vec4(x, 1.0);
+}`;
+
+function compile(type, src) {
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vs)); gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) { const info = gl.getActiveUniform(p, i); u[info.name] = gl.getUniformLocation(p, info.name); }
+  return { p, u };
+}
+
+let P;
+try {
+  P = {
+    scene: program(VS_FULL, FS_SCENE),
+    stars: program(VS_STARS, FS_STARS),
+    bright: program(VS_FULL, FS_BRIGHT),
+    blur: program(VS_FULL, FS_BLUR),
+    lum: program(VS_FULL, FS_LUM),
+    comp: program(VS_FULL, FS_COMP)
+  };
+} catch (e) {
+  document.getElementById('fail').style.display = 'grid';
+  document.getElementById('fail').querySelector('div').innerHTML = '<b>Шейдер не собрался</b>Видеодрайвер отказался компилировать сцену. Попробуйте другой браузер.';
+  document.getElementById('hud').style.display = 'none';
+  return;
+}
+
+const lut = buildLUT();
+const lutTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, lutTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, LUTW, lut.H, 0, gl.RGBA, gl.FLOAT, lut.data);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+// CPU-копия таблицы — для оценки экспозиции без GPU
+function lutCPU(row, u) {
+  const fx = Math.min(Math.max(u, 0), 1)*(LUTW-1), i0 = Math.floor(fx), i1 = Math.min(i0+1, LUTW-1), f = fx - i0;
+  const a = (row*LUTW + i0)*4 + 3, b = (row*LUTW + i1)*4 + 3;
+  return lut.data[a]*(1-f) + lut.data[b]*f;
+}
+const uOfD = D => (Math.log(D) - LN_DMIN)/(LN_DMAX - LN_DMIN);
+const bbY = T => T < 150 ? 0 : lutCPU(12, (Math.log(T) - LN_TMIN)/(LN_TMAX - LN_TMIN));
+
+/* звёзды: случайный, но воспроизводимый каталог + Венера над закатом */
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0)/4294967296; }; }
+const NSTAR = 5200, starData = new Float32Array(NSTAR*5), rnd = mulberry32(18);
+const TEMPS = [[3300,.2],[4300,.25],[5600,.2],[7400,.15],[10000,.12],[18000,.08]];
+for (let i = 0; i < NSTAR; i++) {
+  let x, y, z, l;
+  do { x = rnd()*2-1; y = rnd()*2-1; z = rnd()*2-1; l = x*x + y*y + z*z; } while (l > 1 || l < 1e-4 || y/Math.sqrt(l) < -0.08);
+  l = Math.sqrt(l);
+  const mMin = -1.4, mMax = 6.6, a = Math.pow(10, .5*mMin), b = Math.pow(10, .5*mMax);
+  const m = 2*Math.log10(a + rnd()*(b - a));
+  let r = rnd(), T = 5600; for (const [t, p] of TEMPS) { if (r < p) { T = t; break; } r -= p; }
+  T *= 0.85 + 0.3*rnd();
+  const o = i*5; starData[o] = x/l; starData[o+1] = y/l; starData[o+2] = z/l;
+  starData[o+3] = Math.pow(10, -0.4*(m + 14.18)); starData[o+4] = T;
+}
+{ // Венера — вечерняя звезда над зарёй
+  const el = 11*Math.PI/180, az = Math.atan2(0.28, -1.0), o = 0;
+  starData[o] = Math.cos(el)*Math.sin(az); starData[o+1] = Math.sin(el); starData[o+2] = Math.cos(el)*Math.cos(az);
+  starData[o+3] = Math.pow(10, -0.4*(-4.3 + 14.18)); starData[o+4] = 5800;
+}
+const starVAO = gl.createVertexArray();
+gl.bindVertexArray(starVAO);
+const starBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, starBuf);
+gl.bufferData(gl.ARRAY_BUFFER, starData, gl.STATIC_DRAW);
+const locDir = gl.getAttribLocation(P.stars.p, 'aDir'), locProp = gl.getAttribLocation(P.stars.p, 'aProp');
+gl.enableVertexAttribArray(locDir); gl.vertexAttribPointer(locDir, 3, gl.FLOAT, false, 20, 0);
+gl.enableVertexAttribArray(locProp); gl.vertexAttribPointer(locProp, 2, gl.FLOAT, false, 20, 12);
+const emptyVAO = gl.createVertexArray();
+gl.bindVertexArray(null);
+
+/* цели рендера */
+function makeTarget(w, h, fmt) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  if (fmt === 'hdr') gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+  else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return { tex, fb, w, h, ok };
+}
+function freeTarget(t) { if (t) { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fb); } }
+
+const SHOT = !!window.__SHOT__; // режим съёмки обложки: полное разрешение, без адаптации
+let useHDR = hdrOK, T = {}, cw = 0, ch = 0, rw = 0, rh = 0, scale = SHOT ? 0.75 : 0.8;
+const lumT = makeTarget(64, 32, 'ldr');
+const lumPix = new Uint8Array(64*32*4);
+
+function resize() {
+  const dpr = SHOT ? 1 : Math.min(window.devicePixelRatio || 1, 1.75);
+  cw = Math.max(1, Math.round(innerWidth*dpr)); ch = Math.max(1, Math.round(innerHeight*dpr));
+  if (useHDR) { canvas.width = cw; canvas.height = ch; }
+  alloc();
+}
+function alloc() {
+  const nw = Math.max(64, Math.round(cw*scale)), nh = Math.max(36, Math.round(ch*scale));
+  if (!useHDR) { canvas.width = nw; canvas.height = nh; rw = nw; rh = nh; return; }
+  if (nw === rw && nh === rh && T.hdr) return;
+  rw = nw; rh = nh;
+  for (const k in T) freeTarget(T[k]);
+  T.hdr = makeTarget(rw, rh, 'hdr');
+  const qw = Math.max(8, rw >> 2), qh = Math.max(8, rh >> 2), ew = Math.max(4, rw >> 4), eh = Math.max(4, rh >> 4);
+  T.b1a = makeTarget(qw, qh, 'hdr'); T.b1b = makeTarget(qw, qh, 'hdr');
+  T.b2a = makeTarget(ew, eh, 'hdr'); T.b2b = makeTarget(ew, eh, 'hdr');
+  if (!T.hdr.ok || !T.b1a.ok) { useHDR = false; for (const k in T) freeTarget(T[k]); T = {}; rw = rh = 0; resize(); }
+}
+addEventListener('resize', resize);
+
+/* ============================================================
+   3. Состояние, управление, интерфейс
+   ============================================================ */
+const PHI_MAX = Math.atanh(0.99);
+const st = {
+  phi: Math.atanh(0.5), auto: true, apT: 4.93,
+  yaw: 0, pitch: 0.05, yawT: 0, pitchT: 0.05, back: false,
+  z: 0, flags: [1, 1, 1],
+  exposure: 0.1, logExp: Math.log2(0.1), meterN: 0, frame: 0
+};
+const $ = id => document.getElementById(id);
+const speed = $('speed');
+const fmt = (x, d) => x.toFixed(d).replace('.', ',');
+const fmtInt = x => Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+// риски на шкале: равномерно по быстроте φ = artanh β
+{
+  const tk = $('ticks');
+  for (const b of [0.5, 0.9, 0.99]) {
+    const s = document.createElement('span');
+    s.style.left = (Math.atanh(b)/PHI_MAX*100) + '%';
+    s.textContent = fmt(b, b === 0.99 ? 2 : 1) + 'c';
+    tk.appendChild(s);
+  }
+}
+function setPhi(phi, fromUser) {
+  st.phi = Math.min(Math.max(phi, 0), PHI_MAX);
+  if (fromUser && st.auto) setAuto(false);
+}
+function setAuto(on) {
+  st.auto = on; const b = $('auto'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+  if (on) { // продолжаем цикл с текущей скорости
+    const f = (st.phi - AP_MIN)/(AP_MAX - AP_MIN), x = Math.acos(Math.min(Math.max(1 - 2*f, -1), 1));
+    st.apT = x/(2*Math.PI)*AP_PERIOD;
+  }
+}
+const AP_MIN = Math.atanh(0.15), AP_MAX = Math.atanh(0.985), AP_PERIOD = 38;
+{ // состояние из адреса: #b=0.9&yaw=180&auto=1 — удобно делиться видом
+  const q = new URLSearchParams(location.hash.slice(1));
+  if (q.has('b')) { st.phi = Math.atanh(Math.min(Math.max(+q.get('b') || 0, 0), 0.99)); st.auto = q.get('auto') === '1'; if (!st.auto) { $('auto').classList.remove('on'); $('auto').setAttribute('aria-pressed', 'false'); } }
+  if (q.has('yaw')) { st.yaw = st.yawT = (+q.get('yaw') || 0)*Math.PI/180; }
+  if (q.has('fx')) q.get('fx').split('').forEach((c, k) => { if (k < 3 && c === '0') { st.flags[k] = 0; const bt = document.querySelectorAll('#toggles .btn')[k]; bt.classList.remove('on'); bt.classList.add('off'); bt.setAttribute('aria-pressed', 'false'); } });
+}
+speed.addEventListener('input', () => setPhi(speed.value/1000*PHI_MAX, true));
+$('auto').addEventListener('click', () => setAuto(!st.auto));
+$('back').addEventListener('click', () => {
+  st.back = !st.back; st.yawT += st.back ? Math.PI : -Math.PI;
+  $('back').classList.toggle('on', st.back); $('back').setAttribute('aria-pressed', st.back);
+});
+$('info').addEventListener('click', () => {
+  const e = $('explain'), open = !e.classList.contains('open');
+  e.classList.toggle('open', open); $('info').setAttribute('aria-expanded', open);
+});
+for (const b of document.querySelectorAll('#toggles .btn')) {
+  b.addEventListener('click', () => {
+    const k = +b.dataset.k; st.flags[k] = st.flags[k] ? 0 : 1;
+    b.classList.toggle('on', !!st.flags[k]); b.classList.toggle('off', !st.flags[k]); b.setAttribute('aria-pressed', !!st.flags[k]);
+  });
+}
+// взгляд мышью/пальцем
+let drag = null;
+canvas.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); canvas.classList.add('drag'); hideHint(); });
+canvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const k = 2.2/Math.max(innerHeight, 1);
+  st.yawT -= (e.clientX - drag.x)*k; st.pitchT = Math.min(Math.max(st.pitchT + (e.clientY - drag.y)*k, -1.2), 1.2);
+  drag.x = e.clientX; drag.y = e.clientY;
+});
+const endDrag = () => { drag = null; canvas.classList.remove('drag'); };
+canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
+addEventListener('wheel', e => { e.preventDefault(); setPhi(st.phi - e.deltaY*0.0012, true); hideHint(); }, { passive: false });
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
+  const k = e.key.toLowerCase();
+  if (k === 'arrowup' || k === 'w' || k === 'ц') { setPhi(st.phi + 0.06, true); e.preventDefault(); }
+  else if (k === 'arrowdown' || k === 's' || k === 'ы') { setPhi(st.phi - 0.06, true); e.preventDefault(); }
+  else if (k === 'arrowleft' || k === 'a' || k === 'ф') st.yawT += 0.12;
+  else if (k === 'arrowright' || k === 'd' || k === 'в') st.yawT -= 0.12;
+  else if (k === 'b' || k === 'и') $('back').click();
+  else if (k === 'p' || k === 'з') $('auto').click();
+  else if (k === '1' || k === '2' || k === '3') document.querySelectorAll('#toggles .btn')[+k - 1].click();
+  else return;
+  hideHint();
+});
+if (matchMedia('(pointer: coarse)').matches) $('hint').textContent = 'Проведите пальцем — осмотреться';
+let hintT = setTimeout(hideHint, 7000);
+function hideHint() { clearTimeout(hintT); $('hint').classList.add('gone'); }
+
+/* ============================================================
+   4. Кадр
+   ============================================================ */
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let last = performance.now(), ftEMA = 16, adaptCD = 40, hudCD = 0;
+const cam = { pos: [-1.2, 2.1, 0], R: [1,0,0], U: [0,1,0], F: [0,0,-1] };
+
+function camBasis() {
+  const cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.pitch), sp = Math.sin(st.pitch);
+  const F = [-sy*cp, sp, -cy*cp];
+  const R = [cy, 0, -sy];
+  const U = [R[1]*F[2] - R[2]*F[1], R[2]*F[0] - R[0]*F[2], R[0]*F[1] - R[1]*F[0]];
+  cam.F = F; cam.R = R; cam.U = U;
+}
+
+// грубая оценка средней яркости кадра по той же таблице — стартовая экспозиция и запасной путь
+function estimateLum(beta) {
+  const g = 1/Math.sqrt(1 - beta*beta);
+  let acc = 0, n = 0;
+  for (let i = 0; i < 24; i++) {
+    const ang = (i/23 - 0.5)*1.4; // лучи в кадре
+    const cO = Math.cos(ang)*Math.cos(st.yaw); // приблизительно: угол к направлению движения
+    const c = st.flags[0] ? (cO - beta)/(1 - beta*cO) : cO;
+    const D = g*(1 + beta*c), Dc = st.flags[1] ? D : 1, u = uOfD(Dc);
+    let L = 0.45*(0.4*2*(lutCPU(0,u)+lutCPU(1,u)+lutCPU(2,u))/3 + 4*lutCPU(7,u) + 0.9*bbY(290*Dc)) + 0.55*(2*lutCPU(8,u) + 3*lutCPU(9,u) + 0.6*bbY(262*Dc));
+    const D4 = D*D*D*D;
+    if (st.flags[1] && !st.flags[2]) L /= D4; if (!st.flags[1] && st.flags[2]) L *= D4;
+    acc += Math.log2(Math.max(L, 1e-12)); n++;
+  }
+  return Math.pow(2, acc/n);
+}
+
+function meter() {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, lumT.fb);
+  gl.viewport(0, 0, 64, 32);
+  gl.useProgram(P.lum.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, T.hdr.tex); gl.uniform1i(P.lum.u.uTex, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.readPixels(0, 0, 64, 32, gl.RGBA, gl.UNSIGNED_BYTE, lumPix);
+  let s = 0, ws = 0; const all = new Float32Array(64*32);
+  for (let y = 0; y < 32; y++) for (let x = 0; x < 64; x++) {
+    const i = (y*64 + x)*4, v = (lumPix[i] + lumPix[i+1]/255)/255, l = v*48 - 24;
+    const dx = (x - 31.5)/32, dy = (y - 15.5)/16, w = 1.0 - 0.55*Math.min(1, dx*dx + dy*dy);
+    s += l*w; ws += w; all[y*64 + x] = l;
+  }
+  all.sort();
+  const off = Math.log2(st.exposure);
+  return { avg: s/ws - off, hi: all[Math.floor(all.length*0.97)] - off }; // абсолютные log2
+}
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.max(0, Math.min(0.1, (now - last)/1000)); last = now;
+  ftEMA = ftEMA*0.9 + Math.min(dt*1000, 200)*0.1;
+  st.frame++;
+
+  // автопилот: плавный разгон и торможение
+  if (st.auto) {
+    st.apT += dt*(reduceMotion ? 0.5 : 1);
+    const x = st.apT/AP_PERIOD*2*Math.PI;
+    st.phi = AP_MIN + (AP_MAX - AP_MIN)*(0.5 - 0.5*Math.cos(x));
+  }
+  const beta = Math.tanh(st.phi), gamma = Math.cosh(st.phi);
+  if (document.activeElement !== speed) { speed.value = Math.round(st.phi/PHI_MAX*1000); }
+  speed.style.setProperty('--p', (st.phi/PHI_MAX*100) + '%');
+
+  st.yaw += (st.yawT - st.yaw)*Math.min(1, dt*(drag ? 18 : 4.2));
+  st.pitch += (st.pitchT - st.pitch)*Math.min(1, dt*(drag ? 18 : 4.2));
+  st.z -= beta*30*dt; // 1 с экрана = 0,1 мкс полёта
+  cam.pos[2] = st.z;
+  camBasis();
+
+  // адаптивное разрешение
+  if (!SHOT && --adaptCD <= 0) {
+    adaptCD = 20;
+    let ns = scale;
+    if (ftEMA > 24) ns = Math.max(0.42, scale*0.86); else if (ftEMA < 13 && scale < 1) ns = Math.min(1, scale*1.07);
+    ns = Math.round(ns*20)/20;
+    if (ns !== scale) { scale = ns; alloc(); }
+  }
+
+  const tanHalf = Math.tan(30*Math.PI/180);
+  const flags = st.flags;
+  const pixAng = 2*tanHalf/rh;
+
+  gl.bindVertexArray(emptyVAO);
+  gl.disable(gl.BLEND);
+  const S = P.scene; gl.useProgram(S.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, lutTex); gl.uniform1i(S.u.uLut, 0);
+  gl.uniform2f(S.u.uRes, rw, rh);
+  gl.uniform3fv(S.u.uCamPos, cam.pos); gl.uniform3fv(S.u.uCamR, cam.R); gl.uniform3fv(S.u.uCamU, cam.U); gl.uniform3fv(S.u.uCamF, cam.F);
+  gl.uniform1f(S.u.uTanHalf, tanHalf); gl.uniform1f(S.u.uBeta, beta); gl.uniform1f(S.u.uGamma, gamma);
+  gl.uniform1f(S.u.uPixAng, pixAng); gl.uniform3f(S.u.uFlags, flags[0], flags[1], flags[2]);
+
+  if (!useHDR) {
+    const target = 0.13/estimateLum(beta);
+    st.logExp += (Math.log2(target) - st.logExp)*Math.min(1, dt*2.5);
+    st.exposure = Math.pow(2, st.logExp);
+    gl.uniform1f(S.u.uDirect, 1); gl.uniform1f(S.u.uExpo, st.exposure); gl.uniform1f(S.u.uPreExp, 1);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, rw, rh);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    hud(beta, gamma, dt);
+    return;
+  }
+  if (st.frame === 1) { st.exposure = 0.13/estimateLum(beta); st.logExp = Math.log2(st.exposure); }
+
+  let pre = st.exposure;
+  const renderScene = () => {
+  gl.useProgram(S.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, lutTex); // замер мог перепривязать текстуру
+  gl.uniform1f(S.u.uDirect, 0); gl.uniform1f(S.u.uPreExp, pre); gl.uniform1f(S.u.uExpo, 1);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, T.hdr.fb); gl.viewport(0, 0, rw, rh);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  // звёзды — только там, где небо (альфа = 0)
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE_MINUS_DST_ALPHA, gl.ONE);
+  const Ss = P.stars; gl.useProgram(Ss.p);
+  gl.uniform1i(Ss.u.uLut, 0);
+  gl.uniform3fv(Ss.u.uCamR, cam.R); gl.uniform3fv(Ss.u.uCamU, cam.U); gl.uniform3fv(Ss.u.uCamF, cam.F);
+  gl.uniform2f(Ss.u.uRes, rw, rh); gl.uniform1f(Ss.u.uTanHalf, tanHalf);
+  gl.uniform1f(Ss.u.uBeta, beta); gl.uniform1f(Ss.u.uGamma, gamma); gl.uniform1f(Ss.u.uPreExp, pre);
+  gl.uniform1f(Ss.u.uPixSolid, pixAng*pixAng); gl.uniform1f(Ss.u.uPtSize, Math.max(2.2, 3.2*scale*Math.min(devicePixelRatio || 1, 1.75)));
+  gl.uniform3f(Ss.u.uFlags, flags[0], flags[1], flags[2]);
+  gl.bindVertexArray(starVAO); gl.drawArrays(gl.POINTS, 0, NSTAR); gl.bindVertexArray(emptyVAO);
+  gl.disable(gl.BLEND);
+  };
+  renderScene();
+  if (SHOT && st.meterN === 0) { // обложка: сразу правильная экспозиция, даже если кадр всего один
+    const m0 = meter(); st.meterN++;
+    st.logExp = Math.min(Math.log2(0.075) - m0.avg, Math.log2(3.5) - m0.hi); st.exposure = Math.pow(2, st.logExp);
+    pre = st.exposure; renderScene();
+  }
+
+  // замер яркости → экспозиция (как адаптация глаза)
+  const every = st.meterN < 6 ? 1 : 5;
+  if (st.frame % every === 0) {
+    const m = meter(); st.meterN++;
+    const key = 0.075;
+    // как глаз ночью: средняя яркость к «ключу», самые яркие 3 % не выше ~3,5 до тональной кривой
+    const target = Math.min(Math.log2(key) - m.avg, Math.log2(3.5) - m.hi);
+    const rate = st.meterN < 4 ? 1 : Math.min(1, dt*every*2.2);
+    st.logExp += (target - st.logExp)*rate;
+    st.logExp = Math.min(Math.max(st.logExp, -60), 20);
+    st.exposure = Math.pow(2, st.logExp);
+  }
+
+  // свечение ярких источников
+  const B = P.bright; gl.useProgram(B.p);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, T.b1a.fb); gl.viewport(0, 0, T.b1a.w, T.b1a.h);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, T.hdr.tex); gl.uniform1i(B.u.uTex, 0);
+  gl.uniform2f(B.u.uTexel, 1/T.b1a.w, 1/T.b1a.h);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  const Bl = P.blur; gl.useProgram(Bl.p); gl.uniform1i(Bl.u.uTex, 0);
+  const blur = (src, dst, dx, dy) => {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb); gl.viewport(0, 0, dst.w, dst.h);
+    gl.bindTexture(gl.TEXTURE_2D, src.tex);
+    gl.uniform2f(Bl.u.uDir, dx/src.w, dy/src.h); gl.uniform2f(Bl.u.uTexel, 1/dst.w, 1/dst.h);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+  blur(T.b1a, T.b1b, 1, 0); blur(T.b1b, T.b1a, 0, 1);
+  blur(T.b1a, T.b2a, 1, 0); blur(T.b2a, T.b2b, 0, 1); blur(T.b2b, T.b2a, 2, 0); blur(T.b2a, T.b2b, 0, 2);
+
+  const C = P.comp; gl.useProgram(C.p);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cw, ch);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, T.hdr.tex); gl.uniform1i(C.u.uHdr, 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, T.b1a.tex); gl.uniform1i(C.u.uB1, 1);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, T.b2b.tex); gl.uniform1i(C.u.uB2, 2);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.uniform2f(C.u.uRes, cw, ch); gl.uniform1f(C.u.uTime, now/1000);
+  gl.uniform1f(C.u.uGain, st.exposure/pre);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  hud(beta, gamma, dt);
+}
+
+/* показания и спектральная линейка */
+const L0 = 280, L1 = 1300, NA = 589;
+const posOf = l => (Math.log(l) - Math.log(L0))/(Math.log(L1) - Math.log(L0))*100;
+$('axis').style.setProperty('--v0', posOf(380) + '%');
+$('axis').style.setProperty('--v1', posOf(750) + '%');
+const lamText = lam => lam >= 10000 ? fmt(lam/1000, 0) + '\u00A0мкм' : lam >= 1000 ? fmt(lam/1000, 2) + '\u00A0мкм' : fmtInt(lam) + '\u00A0нм';
+function placeMarker(el, lab, lam) {
+  const inside = lam >= L0 && lam <= L1;
+  const p = Math.min(Math.max(posOf(lam), 0), 100);
+  el.style.left = p + '%';
+  el.classList.toggle('out', !inside || lam < 380 || lam > 750);
+  lab.textContent = lamText(lam) + (lam < L0 ? ' ←' : lam > L1 ? ' →' : '');
+  el.querySelector('span').style.visibility = 'visible';
+  el.querySelector('.w').style.display = '';
+  return p;
+}
+function mergeClose(list) { // подписи близких маркеров сливаются в одну
+  const w = $('bar').clientWidth || 600;
+  list.sort((a, b) => a.p - b.p);
+  for (let i = 1; i < list.length; i++) {
+    const a = list[i - 1], b = list[i];
+    if ((b.p - a.p)/100*w >= 118) continue;
+    const keep = b.p >= 99.9 ? b : a, drop = keep === a ? b : a;
+    keep.el.querySelector('b').textContent = [a, b].map(m => m.word + ' ' + lamText(m.lam)).join(' · ') + (keep.lam < L0 ? ' ←' : keep.lam > L1 ? ' →' : '');
+    keep.el.querySelector('.w').style.display = 'none';
+    drop.el.querySelector('span').style.visibility = 'hidden';
+  }
+}
+function hud(beta, gamma, dt) {
+  if ((hudCD -= dt) > 0) return; hudCD = 1/15;
+  $('betaVal').textContent = fmt(beta, 3);
+  $('gammaVal').textContent = fmt(gamma, gamma < 10 ? 2 : 1);
+  $('kmsVal').textContent = fmtInt(beta*299792.458);
+  const dopp = st.flags[1];
+  const DA = dopp ? Math.sqrt((1+beta)/(1-beta)) : 1, DS = dopp ? gamma : 1, DB = dopp ? Math.sqrt((1-beta)/(1+beta)) : 1;
+  const mk = [
+    { el: $('mkA'), lam: NA/DA, word: 'впереди' }, { el: $('mkS'), lam: NA/DS, word: 'сбоку' }, { el: $('mkB'), lam: NA/DB, word: 'позади' }
+  ];
+  for (const m of mk) m.p = placeMarker(m.el, m.el.querySelector('b'), m.lam);
+  mergeClose(mk);
+  const Tw = 290*DA;
+  $('thermal').innerHTML = 'стены впереди: <b class="' + (Tw > 780 ? 'hot' : '') + '">' + fmtInt(Tw) + ' K</b>' + (Tw > 780 ? ' — светятся' : '');
+}
+
+resize();
+hud(Math.tanh(st.phi), Math.cosh(st.phi), 1);
+requestAnimationFrame(frame);
+window.__f18 = st;
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,2125 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Реляционный разум — СУБД с нуля</title>
+<meta name="description" content="Мини-СУБД в браузере: разбор SQL, планировщик, соединения, группировка и B+-деревья индексов — в эстетике технического справочника 1970-х.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EFE9DC;
+    --paper-2:#E5DDCB;
+    --sheet:#F7F3EA;
+    --ink:#1C3D8F;
+    --ink-soft:#DCE3F1;
+    --graphite:#2B2925;
+    --muted:#5F594D;
+    --red:#B3361F;
+    --manila:#E7D7A9;
+    --manila-2:#D5C28C;
+    --green:#D9E8D1;
+    --line:rgba(43,41,37,.18);
+    --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--paper)}
+  body{min-height:100vh;color:var(--graphite);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(1200px 700px at 12% -10%, rgba(255,252,240,.7), transparent 60%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .3 0 0 0 0 .22 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E"),
+      var(--paper)}
+  .app{max-width:1440px;margin:0 auto;padding:0 32px 36px;display:grid;grid-template-columns:minmax(0,528px) minmax(0,1fr);gap:0 32px}
+
+  header{grid-column:1/-1;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:22px 0 14px;border-bottom:2px solid var(--graphite);margin-bottom:18px}
+  .brand{display:flex;align-items:flex-end;gap:18px}
+  .brand .mark{width:46px;height:46px;flex:none}
+  h1{font-family:var(--sans);font-weight:700;font-size:34px;line-height:1;letter-spacing:-.02em}
+  .brand p{font-size:14px;color:var(--muted);margin-top:6px}
+  .stats{font-family:var(--mono);font-size:12.5px;color:var(--muted);text-align:right;line-height:1.6}
+  .stats b{color:var(--graphite);font-weight:600}
+  .snd{margin-top:6px;font:500 12px/1 var(--mono);border:1px solid var(--line);background:transparent;border-radius:999px;padding:7px 12px;cursor:pointer;color:var(--muted);transition:background .2s,color .2s}
+  .snd[aria-pressed=true]{background:var(--graphite);color:var(--paper)}
+  .snd:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+  section{margin-bottom:18px}
+  .sec{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+  .sec .no{font:600 12px/1 var(--mono);color:var(--paper);background:var(--graphite);padding:4px 6px 3px;border-radius:2px}
+  .sec h2{font:700 12px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase}
+  .sec .aside{margin-left:auto;font:400 12px/1.2 var(--mono);color:var(--muted);text-align:right}
+
+  /* бланк программирования */
+  .sheet{background:var(--sheet);border:1px solid var(--line);border-radius:3px;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 10px 24px -18px rgba(40,30,10,.4)}
+  .ruler{font:500 11px/1 var(--mono);color:#8A8272;padding:8px 14px 6px;border-bottom:1px solid var(--line);white-space:pre;overflow:hidden;letter-spacing:0}
+  .editor{position:relative;height:178px}
+  .editor pre,.editor textarea{position:absolute;inset:0;margin:0;padding:8px 14px 10px;font:14px/22px var(--mono);white-space:pre-wrap;word-wrap:break-word;overflow:auto;tab-size:2;letter-spacing:0}
+  .editor pre{color:var(--graphite);pointer-events:none;
+    background:repeating-linear-gradient(to bottom,transparent 0 21px,rgba(28,61,143,.10) 21px 22px);background-position:0 8px;background-attachment:local}
+  .editor textarea{color:transparent;caret-color:var(--red);background:transparent;border:0;outline:none;resize:none;-webkit-text-fill-color:transparent}
+  .editor textarea::selection{background:rgba(28,61,143,.18)}
+  .hl-kw{color:var(--ink);font-weight:600}
+  .hl-str{color:#9A2E1B}
+  .hl-num{color:#2E6A3B}
+  .hl-com{color:#8A8272;font-style:italic}
+  .hl-fn{color:#5A2F8A}
+  .hl-err{text-decoration:underline wavy var(--red);text-underline-offset:4px;background:rgba(179,54,31,.08)}
+
+  .deck{display:block;width:100%;height:132px;margin-top:10px}
+
+  .keys{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+  .key{font:600 13px/1 var(--sans);color:var(--graphite);background:linear-gradient(#ECE6D6,#DDD5C1);border:1px solid #AFA58C;border-bottom-width:3px;border-radius:5px;
+    padding:11px 16px 9px;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.7);transition:transform .12s, border-bottom-width .12s, filter .2s;display:inline-flex;align-items:center;gap:8px}
+  .key:hover{filter:brightness(1.03)}
+  .key:active{transform:translateY(2px);border-bottom-width:1px}
+  .key:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .key.primary{background:linear-gradient(#2B4FA6,#1C3D8F);color:#F7F3EA;border-color:#122A66}
+  .key kbd{font:500 11.5px/1 var(--mono);opacity:.8}
+  .keys .spacer{flex:1}
+
+  .examples{display:flex;flex-wrap:wrap;gap:6px}
+  .ex{display:inline-flex;gap:7px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--sheet);border-radius:3px;padding:8px 10px;cursor:pointer;
+    font:500 13px/1.2 var(--sans);color:var(--graphite);transition:transform .18s, box-shadow .18s, background .2s}
+  .ex b{font:600 12px/1 var(--mono);color:var(--ink)}
+  .ex:hover{transform:translateY(-2px);box-shadow:0 8px 16px -12px rgba(40,30,10,.45)}
+  .ex[aria-current=true]{background:var(--ink-soft);border-color:rgba(28,61,143,.35)}
+  .ex:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .chip{font:500 12px/1 var(--mono);border:1px solid var(--line);background:transparent;border-radius:999px;padding:7px 11px;cursor:pointer;color:var(--muted);transition:background .2s,color .2s}
+  .chip[aria-pressed=true]{background:var(--graphite);color:var(--paper);border-color:var(--graphite)}
+  .chip:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+  .treebox{position:relative;background:var(--sheet);border:1px solid var(--line);border-radius:3px;height:292px;overflow:hidden}
+  .treescroll{position:absolute;left:0;right:0;top:0;bottom:30px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+  #tree{display:block;height:100%}
+  .treecap{position:absolute;left:12px;bottom:9px;font:400 12px/1.3 var(--mono);color:var(--muted);pointer-events:none}
+
+  .planbox{position:relative;background:var(--sheet);border:1px solid var(--line);border-radius:3px;height:392px;overflow-x:auto;overflow-y:hidden}
+  #plan{display:block;height:100%}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font:400 12px/1.2 var(--sans);color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend svg{width:18px;height:14px;stroke:var(--ink);fill:var(--ink-soft);stroke-width:1.3}
+
+  /* распечатка АЦПУ */
+  .printer{position:relative}
+  .paper{position:relative;height:392px;overflow:auto;border-radius:2px;background-color:#F6F5EC;
+    background-image:
+      radial-gradient(circle at 13px 12px, #D8D1BE 0 4.2px, #BDB49C 4.3px 5px, transparent 5.1px),
+      radial-gradient(circle at calc(100% - 13px) 12px, #D8D1BE 0 4.2px, #BDB49C 4.3px 5px, transparent 5.1px),
+      linear-gradient(to right, transparent 25px, rgba(43,41,37,.22) 25px 26px, transparent 26px calc(100% - 26px), rgba(43,41,37,.22) calc(100% - 26px) calc(100% - 25px), transparent calc(100% - 25px)),
+      repeating-linear-gradient(to bottom, transparent 0 16px, var(--green) 16px 76px, transparent 76px 136px);
+    background-size:100% 24px,100% 24px,100% 100%,100% 100%;
+    background-repeat:repeat-y,repeat-y,no-repeat,repeat;
+    background-attachment:local,local,local,local;
+    border:1px solid var(--line);box-shadow:0 14px 28px -22px rgba(40,30,10,.55)}
+  .print{padding:16px 40px 24px;font:500 13px/20px var(--mono);color:#26241F;white-space:pre;text-transform:uppercase;letter-spacing:.01em;text-shadow:0 0 .6px rgba(38,36,31,.55)}
+  .print .pl{min-height:20px;animation:feed .16s ease-out}
+  .print .dim{color:#5F594D}
+  .print .err{color:var(--red)}
+  @keyframes feed{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .stamp{position:absolute;right:52px;top:52px;font:700 16px/1 var(--sans);letter-spacing:.16em;color:var(--red);border:2.5px solid var(--red);border-radius:4px;padding:7px 10px 6px;
+    transform:rotate(-8deg) scale(1);opacity:0;pointer-events:none;background:rgba(246,245,236,.35)}
+  .stamp.on{animation:stamp .5s cubic-bezier(.2,1.4,.3,1) forwards}
+  @keyframes stamp{0%{opacity:0;transform:rotate(-8deg) scale(1.9)}60%{opacity:.92}100%{opacity:.86;transform:rotate(-8deg) scale(1)}}
+
+  .tip{position:fixed;z-index:10;max-width:290px;background:var(--graphite);color:#F4EFE3;font:400 13px/1.45 var(--sans);padding:10px 12px;border-radius:4px;pointer-events:none;box-shadow:0 10px 24px rgba(0,0,0,.28)}
+  .tip b{font-weight:600}
+  .tip .n{display:block;margin-top:6px;font:500 12px/1.3 var(--mono);color:#CFC8B6}
+  .tip[hidden]{display:none}
+  footer{grid-column:1/-1;border-top:1px solid var(--line);padding-top:12px;margin-top:4px;font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+  @media (max-width:980px){
+    .app{grid-template-columns:minmax(0,1fr);padding:0 14px 28px}
+    header{flex-direction:column;align-items:flex-start}
+    .stats{text-align:left}
+    h1{font-size:28px}
+    .planbox,.paper{height:360px}
+  }
+  @media (max-width:520px){
+    .key kbd{display:none}
+    .brand .mark{display:none}
+    .key{padding:11px 12px 9px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .print .pl{animation:none}
+    .stamp.on{animation:none;opacity:.86}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 46 46" aria-hidden="true">
+        <path d="M4 10 L10 4 H42 V42 H4 Z" fill="#E7D7A9" stroke="#2B2925" stroke-width="1.5"/>
+        <g fill="#2B2925"><rect x="11" y="12" width="3" height="6"/><rect x="17" y="20" width="3" height="6"/><rect x="23" y="12" width="3" height="6"/><rect x="23" y="28" width="3" height="6"/><rect x="29" y="20" width="3" height="6"/><rect x="35" y="12" width="3" height="6"/><rect x="11" y="32" width="3" height="6"/><rect x="35" y="30" width="3" height="6"/></g>
+      </svg>
+      <div>
+        <h1>Реляционный разум</h1>
+        <p>Мини-СУБД, собранная с&nbsp;нуля: разбор SQL, планировщик, соединения и&nbsp;B+-деревья индексов.</p>
+      </div>
+    </div>
+    <div class="stats"><div id="stats"></div><button class="snd" id="snd" aria-pressed="false">звук АЦПУ: выкл</button></div>
+  </header>
+
+  <div class="col-left">
+    <section>
+      <div class="sec"><span class="no">§ 1</span><h2>Запрос</h2><span class="aside">бланк · 80 колонок</span></div>
+      <div class="sheet">
+        <div class="ruler" id="ruler" aria-hidden="true"></div>
+        <div class="editor">
+          <pre id="hl" aria-hidden="true"></pre>
+          <textarea id="sql" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Текст SQL-запроса"></textarea>
+        </div>
+      </div>
+      <canvas class="deck" id="deck" aria-label="Запрос, набитый на перфокарты"></canvas>
+      <div class="keys">
+        <button class="key primary" id="run">Выполнить <kbd>Ctrl ↵</kbd></button>
+        <button class="key" id="explain">EXPLAIN</button>
+        <span class="spacer"></span>
+        <button class="key" id="resetdb" title="Вернуть исходные таблицы и индексы">Сбросить базу</button>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec"><span class="no">§ 2</span><h2>Примеры</h2><span class="aside">3 таблицы о&nbsp;космосе</span></div>
+      <div class="examples" id="examples"></div>
+    </section>
+
+    <section>
+      <div class="sec"><span class="no">§ 3</span><h2>Индекс · B+-дерево</h2><span class="aside" id="treeAside"></span></div>
+      <div class="chips" id="chips"></div>
+      <div class="treebox"><div class="treescroll" id="treescroll"><canvas id="tree" aria-label="B+-дерево выбранного индекса"></canvas></div><div class="treecap" id="treecap"></div></div>
+    </section>
+  </div>
+
+  <div class="col-right">
+    <section>
+      <div class="sec"><span class="no">§ 4</span><h2>План запроса</h2><span class="aside" id="planAside">строки текут снизу вверх</span></div>
+      <div class="planbox" id="planbox"><canvas id="plan" aria-label="Дерево плана запроса"></canvas></div>
+      <div class="legend" id="legend"></div>
+    </section>
+    <section class="printer">
+      <div class="sec"><span class="no">§ 5</span><h2>Распечатка АЦПУ</h2><span class="aside" id="printAside"></span></div>
+      <div class="paper" id="paper"><div class="print" id="print"></div></div>
+      <div class="stamp" id="stamp">ИСПОЛНЕНО</div>
+    </section>
+  </div>
+
+  <footer>
+    <span>Токенайзер, парсер, планировщик и&nbsp;исполнитель написаны с&nbsp;нуля, без библиотек. Данные — реальные миссии, годы запуска.</span>
+    <span>Ctrl&nbsp;+&nbsp;Enter — выполнить · Tab — отступ</span>
+  </footer>
+</div>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<script>
+'use strict';
+/* =====================================================================
+   Реляционный разум — маленькая реляционная СУБД:
+   лексер → парсер (рекурсивный спуск) → планировщик (выбор индекса,
+   проталкивание фильтров, выбор соединения) → исполнитель → визуализация.
+   ===================================================================== */
+
+// ---------------------------------------------------------------------
+// Данные: реальные космические миссии (год — год запуска)
+// ---------------------------------------------------------------------
+const AGENCIES = [
+  [1, 'НАСА', 'США', 1958], [2, 'СССР', 'СССР', null], [3, 'Роскосмос', 'Россия', 1992],
+  [4, 'ЕКА', 'Европа', 1975], [5, 'CNSA', 'Китай', 1993], [6, 'ISRO', 'Индия', 1969], [7, 'JAXA', 'Япония', 2003],
+];
+const BODIES = [
+  [1, 'Земля', 'планета', 1.0], [2, 'Луна', 'спутник', 1.0], [3, 'Меркурий', 'планета', 0.387],
+  [4, 'Венера', 'планета', 0.723], [5, 'Марс', 'планета', 1.524], [6, 'Юпитер', 'планета', 5.203],
+  [7, 'Сатурн', 'планета', 9.537], [8, 'Нептун', 'планета', 30.07], [9, 'Плутон', 'карликовая планета', 39.48],
+  [10, 'Солнце', 'звезда', 0], [11, 'Точка L2', 'точка Лагранжа', 1.01], [12, 'Комета Галлея', 'комета', 17.8],
+  [13, 'Чурюмова — Герасименко', 'комета', 3.46], [14, 'Рюгу', 'астероид', 1.19], [15, 'Бенну', 'астероид', 1.13],
+  [16, 'Диморф', 'астероид', 1.64], [17, 'Фобос', 'спутник', 1.524], [18, 'Уран', 'планета', 19.19],
+  [19, 'Церера', 'карликовая планета', 2.77], [20, 'Европа', 'спутник', 5.203], [21, 'Титан', 'спутник', 9.537],
+];
+const MISSIONS = [
+  [1, 'Спутник-1', 1957, 2, 1, 'спутник', 'успех'], [2, 'Луна-2', 1959, 2, 2, 'ударный', 'успех'],
+  [3, 'Луна-3', 1959, 2, 2, 'пролёт', 'успех'], [4, 'Восток-1', 1961, 2, 1, 'пилотируемый', 'успех'],
+  [5, 'Маринер-2', 1962, 1, 4, 'пролёт', 'успех'], [6, 'Восток-6', 1963, 2, 1, 'пилотируемый', 'успех'],
+  [7, 'Маринер-4', 1964, 1, 5, 'пролёт', 'успех'], [8, 'Восход-2', 1965, 2, 1, 'пилотируемый', 'успех'],
+  [9, 'Луна-9', 1966, 2, 2, 'посадка', 'успех'], [10, 'Аполлон-11', 1969, 1, 2, 'пилотируемый', 'успех'],
+  [11, 'Аполлон-13', 1970, 1, 2, 'пилотируемый', 'частично'], [12, 'Венера-7', 1970, 2, 4, 'посадка', 'успех'],
+  [13, 'Луна-16', 1970, 2, 2, 'возврат образцов', 'успех'], [14, 'Луна-17', 1970, 2, 2, 'ровер', 'успех'],
+  [15, 'Марс-3', 1971, 2, 5, 'посадка', 'частично'], [16, 'Пионер-10', 1972, 1, 6, 'пролёт', 'успех'],
+  [17, 'Викинг-1', 1975, 1, 5, 'посадка', 'успех'], [18, 'Вояджер-2', 1977, 1, 8, 'пролёт', 'успех'],
+  [19, 'Вояджер-1', 1977, 1, 7, 'пролёт', 'успех'], [20, 'Вега-1', 1984, 2, 4, 'посадка', 'успех'],
+  [21, 'Джотто', 1985, 4, 12, 'пролёт', 'успех'], [22, 'Мир', 1986, 2, 1, 'станция', 'успех'],
+  [23, 'Магеллан', 1989, 1, 4, 'орбитер', 'успех'], [24, 'Галилео', 1989, 1, 6, 'орбитер', 'успех'],
+  [25, 'Хаббл', 1990, 1, 1, 'телескоп', 'успех'], [26, 'Марс-96', 1996, 3, 5, 'орбитер', 'неудача'],
+  [27, 'Марс Пасфайндер', 1996, 1, 5, 'ровер', 'успех'], [28, 'Кассини', 1997, 1, 7, 'орбитер', 'успех'],
+  [29, 'Гюйгенс', 1997, 4, 21, 'посадка', 'успех'], [30, 'Марс Клаймат Орбитер', 1998, 1, 5, 'орбитер', 'неудача'],
+  [31, 'Бигль-2', 2003, 4, 5, 'посадка', 'неудача'], [32, 'Марс Экспресс', 2003, 4, 5, 'орбитер', 'успех'],
+  [33, 'Спирит', 2003, 1, 5, 'ровер', 'успех'], [34, 'Оппортьюнити', 2003, 1, 5, 'ровер', 'успех'],
+  [35, 'Смарт-1', 2003, 4, 2, 'орбитер', 'успех'], [36, 'Розетта', 2004, 4, 13, 'орбитер', 'успех'],
+  [37, 'Мессенджер', 2004, 1, 3, 'орбитер', 'успех'], [38, 'Новые горизонты', 2006, 1, 9, 'пролёт', 'успех'],
+  [39, 'Dawn', 2007, 1, 19, 'орбитер', 'успех'], [40, 'Акацуки', 2010, 7, 4, 'орбитер', 'успех'],
+  [41, 'Фобос-Грунт', 2011, 3, 17, 'возврат образцов', 'неудача'], [42, 'Кьюриосити', 2011, 1, 5, 'ровер', 'успех'],
+  [43, 'Джуно', 2011, 1, 6, 'орбитер', 'успех'], [44, 'Мангальян', 2013, 6, 5, 'орбитер', 'успех'],
+  [45, 'Хаябуса-2', 2014, 7, 14, 'возврат образцов', 'успех'], [46, 'Скиапарелли', 2016, 4, 5, 'посадка', 'неудача'],
+  [47, 'ОСИРИС-РЕКС', 2016, 1, 15, 'возврат образцов', 'успех'], [48, 'Инсайт', 2018, 1, 5, 'посадка', 'успех'],
+  [49, 'Паркер', 2018, 1, 10, 'орбитер', 'успех'], [50, 'Чанъэ-4', 2018, 5, 2, 'посадка', 'успех'],
+  [51, 'Персеверанс', 2020, 1, 5, 'ровер', 'успех'], [52, 'Тяньвэнь-1', 2020, 5, 5, 'ровер', 'успех'],
+  [53, 'Чанъэ-5', 2020, 5, 2, 'возврат образцов', 'успех'], [54, 'Джеймс Уэбб', 2021, 1, 11, 'телескоп', 'успех'],
+  [55, 'DART', 2021, 1, 16, 'ударный', 'успех'], [56, 'Луна-25', 2023, 3, 2, 'посадка', 'неудача'],
+  [57, 'Чандраян-3', 2023, 6, 2, 'посадка', 'успех'], [58, 'Чанъэ-6', 2024, 5, 2, 'возврат образцов', 'успех'],
+];
+
+const SHORT = ['Гонка XX века', 'Марс по годам', 'Десятилетия', 'Шестидесятые', 'Без своей миссии', 'Неудачи', 'Вставка в дерево', 'Новый индекс', 'Каталог', 'EXPLAIN', 'АВОСТ'];
+const EXAMPLES = [
+  ['Космическая гонка XX века', `SELECT a.name AS agency, COUNT(*) AS missions,
+       MIN(m.year) AS first, MAX(m.year) AS last
+FROM missions m
+JOIN agencies a ON a.id = m.agency_id
+WHERE m.year BETWEEN 1957 AND 1999
+GROUP BY a.name
+ORDER BY missions DESC;`],
+  ['Марс по годам', `SELECT m.year, m.name, m.kind, m.outcome
+FROM missions m
+JOIN bodies b ON b.id = m.body_id
+WHERE b.name = 'Марс'
+ORDER BY m.year;`],
+  ['Десятилетия и успехи', `SELECT year / 10 * 10 AS decade,
+       COUNT(*) AS total,
+       SUM(CASE WHEN outcome = 'успех' THEN 1 ELSE 0 END) AS ok
+FROM missions
+GROUP BY decade
+ORDER BY decade;`],
+  ['Шестидесятые через индекс', `-- диапазон читается прямо из листьев B+-дерева
+SELECT year, name, kind
+FROM missions
+WHERE year BETWEEN 1960 AND 1969
+ORDER BY year;`],
+  ['Без своей миссии', `-- Вояджер-2 видел Уран лишь по пути к Нептуну
+SELECT b.name, b.kind, COUNT(m.id) AS visits
+FROM bodies b
+LEFT JOIN missions m ON m.body_id = b.id
+GROUP BY b.name, b.kind
+HAVING COUNT(m.id) = 0;`],
+  ['Неудачи и их цели', `SELECT m.year, m.name, b.name AS target, a.name AS agency
+FROM missions m
+JOIN bodies b ON b.id = m.body_id
+JOIN agencies a ON a.id = m.agency_id
+WHERE m.outcome <> 'успех'
+ORDER BY m.year;`],
+  ['Вставка: дерево делится', `-- смотрите § 3: полный лист делится надвое
+INSERT INTO missions
+VALUES (59, 'Ваш зонд', 2031, 3, 20, 'орбитер', 'успех');`],
+  ['Новый индекс на глазах', `CREATE INDEX idx_missions_name ON missions(name);`],
+  ['Каталог базы', `SELECT * FROM catalog;`],
+  ['План без выполнения', `EXPLAIN
+SELECT b.name, COUNT(*) AS n
+FROM missions m JOIN bodies b ON b.id = m.body_id
+WHERE m.year >= 2000
+GROUP BY b.name ORDER BY n DESC LIMIT 5;`],
+  ['Ошибка: аварийный останов', `-- опечатка нарочно: после ORDER нужно BY
+SELECT name, year FROM missions
+ORDER year;`],
+];
+
+// ---------------------------------------------------------------------
+// Значения и сравнение
+// ---------------------------------------------------------------------
+class SqlError extends Error { constructor(msg, tok) { super(msg); this.tok = tok || null; } }
+const collator = new Intl.Collator('ru', { sensitivity: 'accent', numeric: true });
+function cmpVals(a, b) {
+  if (a === null && b === null) return 0;
+  if (a === null) return -1;
+  if (b === null) return 1;
+  const na = typeof a === 'number', nb = typeof b === 'number';
+  if (na && nb) return a - b;
+  if (na) return -1;
+  if (nb) return 1;
+  return collator.compare(a, b);
+}
+const truthy = (v) => v !== null && v !== 0 && v !== '';
+const toNum = (v) => (typeof v === 'number' ? v : (isFinite(+v) ? +v : 0));
+const keyOf = (v) => (typeof v === 'number' ? 'n' + v : 's' + String(v).toLowerCase());
+function likeRe(p) {
+  let re = '^';
+  for (const ch of p) re += ch === '%' ? '.*' : ch === '_' ? '.' : ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(re + '$', 'is');
+}
+
+// ---------------------------------------------------------------------
+// Лексер
+// ---------------------------------------------------------------------
+const KW = new Set(('SELECT FROM WHERE GROUP BY HAVING ORDER ASC DESC LIMIT OFFSET JOIN LEFT INNER OUTER CROSS ON AS AND OR NOT IN ' +
+  'BETWEEN LIKE IS NULL DISTINCT INSERT INTO VALUES CREATE TABLE INDEX DELETE UPDATE SET DROP EXPLAIN CASE WHEN THEN ELSE END TRUE FALSE').split(' '));
+const FUNCS = { COUNT: 1, SUM: 1, AVG: 1, MIN: 1, MAX: 1, UPPER: 0, LOWER: 0, LENGTH: 0, ROUND: 0, ABS: 0, SUBSTR: 0, COALESCE: 0, IFNULL: 0 };
+function lex(src) {
+  const out = [];
+  let i = 0;
+  const idStart = /[A-Za-z_Ѐ-ӿ]/, idChar = /[A-Za-z0-9_Ѐ-ӿ]/, digit = /[0-9]/;
+  while (i < src.length) {
+    const c = src[i];
+    if (c === ' ' || c === '\t' || c === '\n' || c === '\r') { i++; continue; }
+    if (c === '-' && src[i + 1] === '-') { const s = i; while (i < src.length && src[i] !== '\n') i++; out.push({ t: 'com', v: src.slice(s, i), pos: s, end: i }); continue; }
+    const s = i;
+    if (digit.test(c) || (c === '.' && digit.test(src[i + 1] || ''))) {
+      while (i < src.length && digit.test(src[i])) i++;
+      if (src[i] === '.' && digit.test(src[i + 1] || '')) { i++; while (i < src.length && digit.test(src[i])) i++; }
+      out.push({ t: 'num', v: Number(src.slice(s, i)), text: src.slice(s, i), pos: s, end: i });
+      continue;
+    }
+    if (c === "'") {
+      i++; let v = '';
+      for (;;) {
+        if (i >= src.length) throw new SqlError('незакрытая строка: не хватает кавычки', { pos: s, end: src.length });
+        if (src[i] === "'") { if (src[i + 1] === "'") { v += "'"; i += 2; continue; } i++; break; }
+        v += src[i++];
+      }
+      out.push({ t: 'str', v, pos: s, end: i });
+      continue;
+    }
+    if (c === '"') {
+      i++; let v = '';
+      while (i < src.length && src[i] !== '"') v += src[i++];
+      if (src[i] !== '"') throw new SqlError('незакрытые двойные кавычки у имени', { pos: s, end: src.length });
+      i++; out.push({ t: 'id', v: v.toLowerCase(), pos: s, end: i });
+      continue;
+    }
+    if (idStart.test(c)) {
+      while (i < src.length && idChar.test(src[i])) i++;
+      const w = src.slice(s, i), up = w.toUpperCase();
+      out.push(KW.has(up) ? { t: 'kw', v: up, pos: s, end: i } : { t: 'id', v: w.toLowerCase(), raw: w, pos: s, end: i });
+      continue;
+    }
+    const two = src.slice(i, i + 2);
+    if (['<=', '>=', '<>', '!=', '||'].includes(two)) { out.push({ t: 'op', v: two === '!=' ? '<>' : two, pos: i, end: i + 2 }); i += 2; continue; }
+    if ('=<>+-*/%(),.;'.includes(c)) { out.push({ t: 'op', v: c, pos: i, end: i + 1 }); i++; continue; }
+    throw new SqlError(`непонятный символ «${c}»`, { pos: i, end: i + 1 });
+  }
+  out.push({ t: 'eof', v: '', pos: src.length, end: src.length });
+  return out;
+}
+
+// ---------------------------------------------------------------------
+// Парсер: рекурсивный спуск, выражения по уровням приоритета
+// ---------------------------------------------------------------------
+function parse(src) {
+  const T = lex(src).filter((t) => t.t !== 'com');
+  let i = 0;
+  const peek = (k = 0) => T[Math.min(i + k, T.length - 1)];
+  const isKw = (v, k = 0) => peek(k).t === 'kw' && peek(k).v === v;
+  const isOp = (v, k = 0) => peek(k).t === 'op' && peek(k).v === v;
+  const acceptKw = (v) => (isKw(v) ? (i++, true) : false);
+  const acceptOp = (v) => (isOp(v) ? (i++, true) : false);
+  const show = (t) => (t.t === 'str' ? `'${t.v}'` : t.t === 'num' ? t.text : (t.raw || t.v));
+  const fail = (msg, t = peek()) => { throw new SqlError(msg + (t.t === 'eof' ? ', а запрос уже кончился' : `, а встретилось «${show(t)}»`), t); };
+  const expectKw = (v, why = '') => { if (!acceptKw(v)) fail(`ожидалось ${v}${why}`); };
+  const expectOp = (v, why = '') => { if (!acceptOp(v)) fail(`ожидалось «${v}»${why}`); };
+  const ident = (what) => { const t = peek(); if (t.t !== 'id') fail(`ожидалось имя ${what}`); i++; return t.v; };
+
+  function statement() {
+    let st;
+    if (acceptKw('EXPLAIN')) { if (!isKw('SELECT')) fail('EXPLAIN строит план только для SELECT'); st = { type: 'explain', select: select() }; }
+    else if (isKw('SELECT')) st = select();
+    else if (acceptKw('INSERT')) st = insert();
+    else if (acceptKw('CREATE')) st = create();
+    else if (acceptKw('DELETE')) st = del();
+    else if (acceptKw('UPDATE')) st = update();
+    else if (acceptKw('DROP')) st = drop();
+    else fail('запрос начинается с SELECT, INSERT, UPDATE, DELETE, CREATE, DROP или EXPLAIN');
+    acceptOp(';');
+    if (peek().t !== 'eof') fail('после конца запроса остался лишний текст');
+    return st;
+  }
+  function select() {
+    expectKw('SELECT');
+    const distinct = acceptKw('DISTINCT');
+    const items = [];
+    do {
+      if (isOp('*')) { i++; items.push({ star: true }); }
+      else if (peek().t === 'id' && isOp('.', 1) && isOp('*', 2)) { const tb = peek().v; i += 3; items.push({ star: true, table: tb }); }
+      else {
+        const st = peek();
+        const e = expr();
+        let alias = null;
+        if (acceptKw('AS')) alias = ident('псевдонима после AS');
+        else if (peek().t === 'id') alias = ident('псевдонима');
+        items.push({ expr: e, alias, text: src.slice(st.pos, T[i - 1].end) });
+      }
+    } while (acceptOp(','));
+    let from = null;
+    const joins = [];
+    if (acceptKw('FROM')) {
+      from = tableRef();
+      for (;;) {
+        let kind = null;
+        if (acceptKw('LEFT')) { acceptKw('OUTER'); expectKw('JOIN'); kind = 'left'; }
+        else if (acceptKw('INNER')) { expectKw('JOIN'); kind = 'inner'; }
+        else if (acceptKw('CROSS')) { expectKw('JOIN'); kind = 'cross'; }
+        else if (acceptKw('JOIN')) kind = 'inner';
+        else if (acceptOp(',')) kind = 'cross';
+        else break;
+        const t = tableRef();
+        let on = null;
+        if (kind !== 'cross') { expectKw('ON', ' с условием соединения'); on = expr(); }
+        joins.push({ kind, table: t, on });
+      }
+    }
+    const where = acceptKw('WHERE') ? expr() : null;
+    const groupBy = [];
+    if (acceptKw('GROUP')) { expectKw('BY'); do groupBy.push(expr()); while (acceptOp(',')); }
+    const having = acceptKw('HAVING') ? expr() : null;
+    const orderBy = [];
+    if (acceptKw('ORDER')) {
+      expectKw('BY');
+      do { const e = expr(); let desc = false; if (acceptKw('DESC')) desc = true; else acceptKw('ASC'); orderBy.push({ expr: e, desc }); } while (acceptOp(','));
+    }
+    let limit = null, offset = 0;
+    if (acceptKw('LIMIT')) {
+      const t = peek(); if (t.t !== 'num') fail('после LIMIT нужно число'); i++; limit = t.v;
+      if (acceptKw('OFFSET')) { const o = peek(); if (o.t !== 'num') fail('после OFFSET нужно число'); i++; offset = o.v; }
+    }
+    return { type: 'select', distinct, items, from, joins, where, groupBy, having, orderBy, limit, offset };
+  }
+  function tableRef() {
+    const name = ident('таблицы');
+    let alias = name;
+    if (acceptKw('AS')) alias = ident('псевдонима');
+    else if (peek().t === 'id') alias = ident('псевдонима');
+    return { name, alias };
+  }
+  function insert() {
+    expectKw('INTO');
+    const table = ident('таблицы');
+    let cols = null;
+    if (acceptOp('(')) { cols = []; do cols.push(ident('столбца')); while (acceptOp(',')); expectOp(')'); }
+    expectKw('VALUES');
+    const rows = [];
+    do { expectOp('('); const r = []; do r.push(expr()); while (acceptOp(',')); expectOp(')'); rows.push(r); } while (acceptOp(','));
+    return { type: 'insert', table, cols, rows };
+  }
+  function create() {
+    if (acceptKw('TABLE')) {
+      const name = ident('таблицы');
+      expectOp('(');
+      const cols = [];
+      do {
+        const c = ident('столбца');
+        let type = 'TEXT';
+        if (peek().t === 'id') { type = peek().v.toUpperCase(); i++; }
+        cols.push({ name: c, type });
+      } while (acceptOp(','));
+      expectOp(')');
+      return { type: 'createTable', name, cols };
+    }
+    if (acceptKw('INDEX')) {
+      const name = ident('индекса');
+      expectKw('ON');
+      const table = ident('таблицы');
+      expectOp('('); const col = ident('столбца'); expectOp(')');
+      return { type: 'createIndex', name, table, col };
+    }
+    fail('после CREATE ожидалось TABLE или INDEX');
+  }
+  function del() { expectKw('FROM'); const table = ident('таблицы'); const where = acceptKw('WHERE') ? expr() : null; return { type: 'delete', table, where }; }
+  function update() {
+    const table = ident('таблицы');
+    expectKw('SET');
+    const sets = [];
+    do { const c = ident('столбца'); expectOp('='); sets.push({ col: c, expr: expr() }); } while (acceptOp(','));
+    const where = acceptKw('WHERE') ? expr() : null;
+    return { type: 'update', table, sets, where };
+  }
+  function drop() {
+    if (acceptKw('TABLE')) return { type: 'dropTable', name: ident('таблицы') };
+    if (acceptKw('INDEX')) return { type: 'dropIndex', name: ident('индекса') };
+    fail('после DROP ожидалось TABLE или INDEX');
+  }
+  // --- выражения ---
+  function expr() { return orE(); }
+  function orE() { let a = andE(); while (acceptKw('OR')) a = { k: 'or', a, b: andE() }; return a; }
+  function andE() { let a = notE(); while (acceptKw('AND')) a = { k: 'and', a, b: notE() }; return a; }
+  function notE() { if (acceptKw('NOT')) return { k: 'not', a: notE() }; return cmpE(); }
+  function cmpE() {
+    let a = addE();
+    for (;;) {
+      const t = peek();
+      if (t.t === 'op' && ['=', '<>', '<', '<=', '>', '>='].includes(t.v)) { i++; a = { k: 'cmp', op: t.v, a, b: addE() }; continue; }
+      let not = false;
+      if (isKw('NOT') && (isKw('IN', 1) || isKw('BETWEEN', 1) || isKw('LIKE', 1))) { i++; not = true; }
+      if (acceptKw('IN')) { expectOp('('); const list = []; do list.push(expr()); while (acceptOp(',')); expectOp(')'); a = { k: 'in', a, list, not }; continue; }
+      if (acceptKw('BETWEEN')) { const lo = addE(); expectKw('AND', ' в BETWEEN … AND …'); const hi = addE(); a = { k: 'between', a, lo, hi, not }; continue; }
+      if (acceptKw('LIKE')) { a = { k: 'like', a, b: addE(), not }; continue; }
+      if (acceptKw('IS')) { const n = acceptKw('NOT'); expectKw('NULL'); a = { k: 'isnull', a, not: n }; continue; }
+      return a;
+    }
+  }
+  function addE() {
+    let a = mulE();
+    for (;;) {
+      if (acceptOp('+')) a = { k: 'bin', op: '+', a, b: mulE() };
+      else if (acceptOp('-')) a = { k: 'bin', op: '-', a, b: mulE() };
+      else if (acceptOp('||')) a = { k: 'bin', op: '||', a, b: mulE() };
+      else return a;
+    }
+  }
+  function mulE() {
+    let a = unE();
+    for (;;) {
+      if (acceptOp('*')) a = { k: 'bin', op: '*', a, b: unE() };
+      else if (acceptOp('/')) a = { k: 'bin', op: '/', a, b: unE() };
+      else if (acceptOp('%')) a = { k: 'bin', op: '%', a, b: unE() };
+      else return a;
+    }
+  }
+  function unE() { if (acceptOp('-')) return { k: 'neg', a: unE() }; if (acceptOp('+')) return unE(); return prim(); }
+  function prim() {
+    const t = peek();
+    if (t.t === 'num') { i++; return { k: 'lit', v: t.v }; }
+    if (t.t === 'str') { i++; return { k: 'lit', v: t.v }; }
+    if (acceptKw('NULL')) return { k: 'lit', v: null };
+    if (acceptKw('TRUE')) return { k: 'lit', v: 1 };
+    if (acceptKw('FALSE')) return { k: 'lit', v: 0 };
+    if (acceptKw('CASE')) {
+      const base = isKw('WHEN') ? null : expr();
+      const whens = [];
+      while (acceptKw('WHEN')) { const c = expr(); expectKw('THEN'); whens.push({ c, v: expr() }); }
+      if (!whens.length) fail('в CASE нужен хотя бы один WHEN');
+      const els = acceptKw('ELSE') ? expr() : null;
+      expectKw('END', ' в конце CASE');
+      return { k: 'case', base, whens, els };
+    }
+    if (acceptOp('(')) { const e = expr(); expectOp(')'); return e; }
+    if (t.t === 'id') {
+      i++;
+      if (acceptOp('(')) {
+        const fn = t.v.toUpperCase();
+        if (!(fn in FUNCS)) fail(`неизвестная функция ${fn}`, t);
+        if (acceptOp('*')) { if (fn !== 'COUNT') fail('звёздочка допустима только в COUNT(*)'); expectOp(')'); return { k: 'fn', fn, star: true, args: [] }; }
+        const distinct = acceptKw('DISTINCT');
+        const args = [];
+        if (!isOp(')')) do args.push(expr()); while (acceptOp(','));
+        expectOp(')');
+        return { k: 'fn', fn, args, distinct };
+      }
+      if (acceptOp('.')) { const c = ident('столбца после точки'); return { k: 'col', table: t.v, name: c, tok: t }; }
+      return { k: 'col', table: null, name: t.v, tok: t };
+    }
+    fail('ожидалось значение, столбец или функция');
+  }
+  return statement();
+}
+
+// ---------------------------------------------------------------------
+// B+-дерево: не более MAXK ключей в узле; ключ = (значение, rowid)
+// ---------------------------------------------------------------------
+let nodeSeq = 1;
+const MAXK = 4;
+class BPTree {
+  constructor() { this.root = this.mkLeaf(); }
+  mkLeaf() { return { id: nodeSeq++, leaf: true, keys: [], next: null, parent: null }; }
+  mkInner() { return { id: nodeSeq++, leaf: false, keys: [], kids: [], parent: null }; }
+  static cmp(v1, r1, v2, r2) { const c = cmpVals(v1, v2); return c !== 0 ? c : r1 - r2; }
+  findLeaf(v, r, path) {
+    let n = this.root;
+    while (!n.leaf) {
+      path && path.push(n.id);
+      let k = 0;
+      while (k < n.keys.length && BPTree.cmp(v, r, n.keys[k].v, n.keys[k].r) >= 0) k++;
+      n = n.kids[k];
+    }
+    path && path.push(n.id);
+    return n;
+  }
+  insert(v, r) {
+    const path = [];
+    const leaf = this.findLeaf(v, r, path);
+    let k = 0;
+    while (k < leaf.keys.length && BPTree.cmp(v, r, leaf.keys[k].v, leaf.keys[k].r) > 0) k++;
+    leaf.keys.splice(k, 0, { v, r });
+    const splits = [];
+    if (leaf.keys.length > MAXK) this.splitLeaf(leaf, splits);
+    return { path, leaf: leaf.id, splits };
+  }
+  splitLeaf(n, splits) {
+    const mid = Math.ceil(n.keys.length / 2);
+    const r = this.mkLeaf();
+    r.keys = n.keys.splice(mid);
+    r.next = n.next; n.next = r;
+    splits.push({ from: n.id, to: r.id });
+    this.insertParent(n, r.keys[0], r, splits);
+  }
+  insertParent(l, key, r, splits) {
+    if (!l.parent) {
+      const root = this.mkInner();
+      root.keys = [key]; root.kids = [l, r]; l.parent = r.parent = root; this.root = root;
+      splits.push({ root: root.id, from: l.id });
+      return;
+    }
+    const p = l.parent, at = p.kids.indexOf(l);
+    p.keys.splice(at, 0, key); p.kids.splice(at + 1, 0, r); r.parent = p;
+    if (p.keys.length > MAXK) {
+      const mid = Math.floor(p.keys.length / 2), up = p.keys[mid];
+      const q = this.mkInner();
+      q.keys = p.keys.splice(mid + 1); p.keys.splice(mid, 1);
+      q.kids = p.kids.splice(mid + 1); q.kids.forEach((c) => (c.parent = q));
+      splits.push({ from: p.id, to: q.id });
+      this.insertParent(p, up, q, splits);
+    }
+  }
+  // диапазонный поиск: lo/hi === undefined — открытая граница
+  range(lo, loInc, hi, hiInc) {
+    const path = [];
+    let leaf;
+    if (lo === undefined) {
+      let n = this.root;
+      while (!n.leaf) { path.push(n.id); n = n.kids[0]; }
+      path.push(n.id); leaf = n;
+    } else leaf = this.findLeaf(lo, loInc ? -Infinity : Infinity, path);
+    const rids = [], leaves = [];
+    let visited = 0;
+    for (let n = leaf; n; n = n.next) {
+      leaves.push(n.id);
+      let stop = false;
+      for (const k of n.keys) {
+        visited++;
+        if (lo !== undefined) { const c = cmpVals(k.v, lo); if (c < 0 || (c === 0 && !loInc)) continue; }
+        if (hi !== undefined) { const c = cmpVals(k.v, hi); if (c > 0 || (c === 0 && !hiInc)) { stop = true; break; } }
+        rids.push(k.r);
+      }
+      if (stop) break;
+    }
+    return { rids, path, leaves, visited };
+  }
+  // плотная загрузка отсортированных ключей: все листья полные, кроме первого
+  static bulk(entries) {
+    const t = new BPTree();
+    entries.sort((a, b) => BPTree.cmp(a.v, a.r, b.v, b.r));
+    if (!entries.length) return t;
+    const leaves = [];
+    const first = entries.length % MAXK || MAXK;
+    let pos = 0;
+    while (pos < entries.length) {
+      const take = leaves.length === 0 ? first : MAXK;
+      const L = t.mkLeaf(); L.keys = entries.slice(pos, pos + take); pos += take;
+      if (leaves.length) leaves[leaves.length - 1].next = L;
+      leaves.push(L);
+    }
+    let level = leaves;
+    while (level.length > 1) {
+      const up = [];
+      for (let k = 0; k < level.length; k += MAXK + 1) {
+        const group = level.slice(k, k + MAXK + 1);
+        if (group.length === 1 && up.length) { const prev = up[up.length - 1]; prev.keys.push(firstKey(group[0])); prev.kids.push(group[0]); group[0].parent = prev; continue; }
+        const n = t.mkInner();
+        n.kids = group; group.forEach((c) => (c.parent = n));
+        n.keys = group.slice(1).map(firstKey);
+        up.push(n);
+      }
+      // последний узел не должен переполниться после присоединения одиночки
+      for (const n of up) if (n.keys.length > MAXK) { /* редкий случай — оставляем как есть, визуально корректно */ }
+      level = up;
+    }
+    t.root = level[0];
+    return t;
+    function firstKey(n) { while (!n.leaf) n = n.kids[0]; return n.keys[0]; }
+  }
+  height() { let h = 1, n = this.root; while (!n.leaf) { h++; n = n.kids[0]; } return h; }
+  size() { let s = 0, n = this.root; while (!n.leaf) n = n.kids[0]; for (; n; n = n.next) s += n.keys.length; return s; }
+}
+
+// ---------------------------------------------------------------------
+// Каталог
+// ---------------------------------------------------------------------
+let db;
+function makeTable(name, cols, rows) {
+  const t = { name, cols: cols.map(([n, ty]) => ({ name: n, type: ty })), rows: [], byRid: new Map(), nextRid: 1, indexes: [] };
+  for (const r of rows) addRow(t, r);
+  return t;
+}
+function addRow(t, vals) { const row = { rid: t.nextRid++, vals }; t.rows.push(row); t.byRid.set(row.rid, row); return row; }
+function buildIndex(t, name, col, unique) {
+  const ci = t.cols.findIndex((c) => c.name === col);
+  const tree = BPTree.bulk(t.rows.map((r) => ({ v: r.vals[ci], r: r.rid })));
+  const ix = { name, table: t.name, col, ci, unique, tree };
+  t.indexes.push(ix);
+  return ix;
+}
+function resetDb() {
+  nodeSeq = 1;
+  db = { tables: new Map() };
+  const m = makeTable('missions', [['id', 'INT'], ['name', 'TEXT'], ['year', 'INT'], ['agency_id', 'INT'], ['body_id', 'INT'], ['kind', 'TEXT'], ['outcome', 'TEXT']], MISSIONS.map((r) => r.slice()));
+  const a = makeTable('agencies', [['id', 'INT'], ['name', 'TEXT'], ['country', 'TEXT'], ['founded', 'INT']], AGENCIES.map((r) => r.slice()));
+  const b = makeTable('bodies', [['id', 'INT'], ['name', 'TEXT'], ['kind', 'TEXT'], ['au', 'REAL']], BODIES.map((r) => r.slice()));
+  [m, a, b].forEach((t) => db.tables.set(t.name, t));
+  buildIndex(m, 'pk_missions', 'id', true);
+  buildIndex(m, 'idx_missions_year', 'year', false);
+  buildIndex(a, 'pk_agencies', 'id', true);
+  buildIndex(b, 'pk_bodies', 'id', true);
+}
+function allIndexes() { return [...db.tables.values()].flatMap((t) => t.indexes); }
+function findIndex(name) { return allIndexes().find((ix) => ix.name === name); }
+function getTable(name, tok) {
+  if (name === 'catalog') return catalogTable();
+  const t = db.tables.get(name);
+  if (!t) throw new SqlError(`нет такой таблицы: ${name}`, tok);
+  return t;
+}
+function catalogTable() {
+  const rows = [];
+  for (const t of db.tables.values()) {
+    rows.push([t.name, 'таблица', t.cols.map((c) => c.name).join(', '), t.rows.length]);
+    for (const ix of t.indexes) rows.push([ix.name, ix.unique ? 'индекс (уник.)' : 'индекс', `${t.name}(${ix.col}) · высота ${ix.tree.height()}`, ix.tree.size()]);
+  }
+  return makeTable('catalog', [['object', 'TEXT'], ['kind', 'TEXT'], ['details', 'TEXT'], ['rows', 'INT']], rows);
+}
+
+// ---------------------------------------------------------------------
+// Вычисление выражений
+// ---------------------------------------------------------------------
+const colCache = new WeakMap();
+function colIndex(schema, node) {
+  let m = colCache.get(schema);
+  if (!m) { m = new Map(); colCache.set(schema, m); }
+  if (m.has(node)) return m.get(node);
+  let idx = -1;
+  if (node.table) idx = schema.findIndex((s) => s.alias === node.table && s.name === node.name);
+  else {
+    const hits = [];
+    schema.forEach((s, k) => { if (s.name === node.name) hits.push(k); });
+    if (hits.length > 1) {
+      const aliases = [...new Set(hits.map((k) => schema[k].alias))];
+      if (aliases.length > 1) throw new SqlError(`неоднозначный столбец ${node.name}: есть в ${aliases.join(' и ')}`, node.tok);
+    }
+    idx = hits.length ? hits[0] : -1;
+  }
+  if (idx < 0) throw new SqlError(`нет столбца ${node.table ? node.table + '.' : ''}${node.name}`, node.tok);
+  m.set(node, idx);
+  return idx;
+}
+function evalE(e, ctx) {
+  switch (e.k) {
+    case 'lit': return e.v;
+    case 'col': return ctx.row ? ctx.row[colIndex(ctx.schema, e)] : (colIndex(ctx.schema, e), null);
+    case 'neg': { const v = evalE(e.a, ctx); return v === null ? null : -toNum(v); }
+    case 'bin': {
+      const a = evalE(e.a, ctx), b = evalE(e.b, ctx);
+      if (a === null || b === null) return null;
+      if (e.op === '||') return String(a) + String(b);
+      const x = toNum(a), y = toNum(b);
+      switch (e.op) {
+        case '+': return x + y;
+        case '-': return x - y;
+        case '*': return x * y;
+        case '/': return y === 0 ? null : (Number.isInteger(x) && Number.isInteger(y) ? Math.trunc(x / y) : x / y);
+        case '%': return y === 0 ? null : x % y;
+      }
+      return null;
+    }
+    case 'cmp': {
+      const a = evalE(e.a, ctx), b = evalE(e.b, ctx);
+      if (a === null || b === null) return null;
+      const c = cmpVals(a, b);
+      switch (e.op) {
+        case '=': return c === 0 ? 1 : 0;
+        case '<>': return c !== 0 ? 1 : 0;
+        case '<': return c < 0 ? 1 : 0;
+        case '<=': return c <= 0 ? 1 : 0;
+        case '>': return c > 0 ? 1 : 0;
+        case '>=': return c >= 0 ? 1 : 0;
+      }
+      return null;
+    }
+    case 'and': { const a = evalE(e.a, ctx); if (a !== null && !truthy(a)) return 0; const b = evalE(e.b, ctx); if (b !== null && !truthy(b)) return 0; return a === null || b === null ? null : 1; }
+    case 'or': { const a = evalE(e.a, ctx); if (a !== null && truthy(a)) return 1; const b = evalE(e.b, ctx); if (b !== null && truthy(b)) return 1; return a === null || b === null ? null : 0; }
+    case 'not': { const a = evalE(e.a, ctx); return a === null ? null : truthy(a) ? 0 : 1; }
+    case 'in': {
+      const a = evalE(e.a, ctx);
+      if (a === null) return null;
+      let hasNull = false;
+      for (const x of e.list) { const v = evalE(x, ctx); if (v === null) { hasNull = true; continue; } if (cmpVals(a, v) === 0) return e.not ? 0 : 1; }
+      return hasNull ? null : e.not ? 1 : 0;
+    }
+    case 'between': {
+      const a = evalE(e.a, ctx), lo = evalE(e.lo, ctx), hi = evalE(e.hi, ctx);
+      if (a === null || lo === null || hi === null) return null;
+      const r = cmpVals(a, lo) >= 0 && cmpVals(a, hi) <= 0;
+      return r !== e.not ? 1 : 0;
+    }
+    case 'like': {
+      const a = evalE(e.a, ctx), p = evalE(e.b, ctx);
+      if (a === null || p === null) return null;
+      return likeRe(String(p)).test(String(a)) !== e.not ? 1 : 0;
+    }
+    case 'isnull': { const a = evalE(e.a, ctx); return (a === null) !== e.not ? 1 : 0; }
+    case 'case': {
+      const base = e.base ? evalE(e.base, ctx) : undefined;
+      for (const w of e.whens) {
+        if (e.base) { const v = evalE(w.c, ctx); if (base !== null && v !== null && cmpVals(base, v) === 0) return evalE(w.v, ctx); }
+        else if (truthy(evalE(w.c, ctx))) return evalE(w.v, ctx);
+      }
+      return e.els ? evalE(e.els, ctx) : null;
+    }
+    case 'fn': return evalFn(e, ctx);
+  }
+  return null;
+}
+function evalFn(e, ctx) {
+  if (FUNCS[e.fn] === 1) {
+    if (!ctx.group) throw new SqlError(`агрегатная функция ${e.fn} здесь недопустима`);
+    if (e.star) return ctx.group.length;
+    let vals = ctx.group.map((r) => evalE(e.args[0], { schema: ctx.schema, row: r })).filter((v) => v !== null);
+    if (e.distinct) { const seen = new Set(); vals = vals.filter((v) => { const k = keyOf(v); if (seen.has(k)) return false; seen.add(k); return true; }); }
+    switch (e.fn) {
+      case 'COUNT': return vals.length;
+      case 'SUM': return vals.length ? vals.reduce((s, v) => s + toNum(v), 0) : null;
+      case 'AVG': return vals.length ? vals.reduce((s, v) => s + toNum(v), 0) / vals.length : null;
+      case 'MIN': return vals.length ? vals.reduce((m, v) => (cmpVals(v, m) < 0 ? v : m)) : null;
+      case 'MAX': return vals.length ? vals.reduce((m, v) => (cmpVals(v, m) > 0 ? v : m)) : null;
+    }
+  }
+  const a = e.args.map((x) => evalE(x, ctx));
+  const need = (n) => { if (a.length < n) throw new SqlError(`функции ${e.fn} нужно аргументов: ${n}`); };
+  switch (e.fn) {
+    case 'UPPER': need(1); return a[0] === null ? null : String(a[0]).toUpperCase();
+    case 'LOWER': need(1); return a[0] === null ? null : String(a[0]).toLowerCase();
+    case 'LENGTH': need(1); return a[0] === null ? null : [...String(a[0])].length;
+    case 'ROUND': need(1); { if (a[0] === null) return null; const d = a[1] ? toNum(a[1]) : 0; const f = 10 ** d; return Math.round(toNum(a[0]) * f) / f; }
+    case 'ABS': need(1); return a[0] === null ? null : Math.abs(toNum(a[0]));
+    case 'SUBSTR': need(2); { if (a[0] === null) return null; const s = [...String(a[0])]; const st = toNum(a[1]) - 1; return s.slice(st, a[2] != null ? st + toNum(a[2]) : undefined).join(''); }
+    case 'COALESCE': case 'IFNULL': return a.find((v) => v !== null) ?? null;
+  }
+  return null;
+}
+function hasAgg(e) {
+  if (!e) return false;
+  if (e.k === 'fn' && FUNCS[e.fn] === 1) return true;
+  for (const key of ['a', 'b', 'lo', 'hi', 'base', 'els']) if (e[key] && typeof e[key] === 'object' && hasAgg(e[key])) return true;
+  if (e.args && e.args.some(hasAgg)) return true;
+  if (e.list && e.list.some(hasAgg)) return true;
+  if (e.whens && e.whens.some((w) => hasAgg(w.c) || hasAgg(w.v))) return true;
+  return false;
+}
+function splitAnd(e) { if (!e) return []; if (e.k === 'and') return [...splitAnd(e.a), ...splitAnd(e.b)]; return [e]; }
+function andAll(list) { return list.length ? list.reduce((a, b) => ({ k: 'and', a, b })) : null; }
+function walkCols(e, fn) {
+  if (!e || typeof e !== 'object') return;
+  if (e.k === 'col') { fn(e); return; }
+  for (const key of ['a', 'b', 'lo', 'hi', 'base', 'els']) if (e[key]) walkCols(e[key], fn);
+  (e.args || []).forEach((x) => walkCols(x, fn));
+  (e.list || []).forEach((x) => walkCols(x, fn));
+  (e.whens || []).forEach((w) => { walkCols(w.c, fn); walkCols(w.v, fn); });
+}
+// текст выражения для подписей плана
+function exprText(e) {
+  if (!e) return '';
+  switch (e.k) {
+    case 'lit': return e.v === null ? 'NULL' : typeof e.v === 'string' ? `'${e.v}'` : String(e.v);
+    case 'col': return (e.table ? e.table + '.' : '') + e.name;
+    case 'neg': return '-' + exprText(e.a);
+    case 'bin': return `${exprText(e.a)} ${e.op} ${exprText(e.b)}`;
+    case 'cmp': return `${exprText(e.a)} ${e.op} ${exprText(e.b)}`;
+    case 'and': return `${exprText(e.a)} AND ${exprText(e.b)}`;
+    case 'or': return `(${exprText(e.a)} OR ${exprText(e.b)})`;
+    case 'not': return `NOT ${exprText(e.a)}`;
+    case 'in': return `${exprText(e.a)} ${e.not ? 'NOT ' : ''}IN (…)`;
+    case 'between': return `${exprText(e.a)} ${e.not ? 'NOT ' : ''}BETWEEN ${exprText(e.lo)} AND ${exprText(e.hi)}`;
+    case 'like': return `${exprText(e.a)} ${e.not ? 'NOT ' : ''}LIKE ${exprText(e.b)}`;
+    case 'isnull': return `${exprText(e.a)} IS ${e.not ? 'NOT ' : ''}NULL`;
+    case 'case': return 'CASE …';
+    case 'fn': return `${e.fn}(${e.star ? '*' : (e.distinct ? 'DISTINCT ' : '') + e.args.map(exprText).join(', ')})`;
+  }
+  return '?';
+}
+
+// ---------------------------------------------------------------------
+// Планировщик
+// ---------------------------------------------------------------------
+const OPS = {
+  SeqScan: { title: 'Полный просмотр', sym: 'card' },
+  IndexScan: { title: 'Поиск по индексу', sym: 'disk' },
+  IndexNLJoin: { title: 'Соединение по индексу', sym: 'merge' },
+  HashJoin: { title: 'Хеш-соединение', sym: 'merge' },
+  NestedLoop: { title: 'Вложенные циклы', sym: 'merge' },
+  Lookup: { title: 'Точечный поиск', sym: 'disk' },
+  Filter: { title: 'Фильтр', sym: 'decision' },
+  Aggregate: { title: 'Группировка', sym: 'predef' },
+  Sort: { title: 'Сортировка', sym: 'sort' },
+  Limit: { title: 'Ограничение', sym: 'manual' },
+  Distinct: { title: 'Уникальные', sym: 'prep' },
+  Project: { title: 'Вывод', sym: 'doc' },
+  Const: { title: 'Одна строка', sym: 'card' },
+  Values: { title: 'Значения', sym: 'card' },
+  Insert: { title: 'Вставка', sym: 'predef' },
+  Delete: { title: 'Удаление', sym: 'predef' },
+  Update: { title: 'Изменение', sym: 'predef' },
+  BuildIndex: { title: 'Построение индекса', sym: 'disk' },
+  DDL: { title: 'Каталог', sym: 'doc' },
+};
+const mk = (op, props) => ({ op, kids: [], act: 0, est: 0, ...props });
+const SEL = (p) => (p.k === 'cmp' && p.op === '=' ? 0.1 : p.k === 'like' ? 0.2 : p.k === 'cmp' || p.k === 'between' ? 0.33 : 0.5);
+const selOf = (e) => splitAnd(e).reduce((s, p) => s * SEL(p), 1);
+
+function sargable(p, s) {
+  const isColOf = (e) => e.k === 'col' && (e.table ? e.table === s.alias : s.tab.cols.some((c) => c.name === e.name));
+  const litVal = (e) => (e.k === 'lit' ? e.v : e.k === 'neg' && e.a.k === 'lit' && typeof e.a.v === 'number' ? -e.a.v : undefined);
+  const isLit = (e) => litVal(e) !== undefined && litVal(e) !== null;
+  const flip = { '<': '>', '>': '<', '<=': '>=', '>=': '<=', '=': '=' };
+  if (p.k === 'cmp' && p.op !== '<>') {
+    let col, v, op = p.op;
+    if (isColOf(p.a) && isLit(p.b)) { col = p.a; v = litVal(p.b); }
+    else if (isColOf(p.b) && isLit(p.a)) { col = p.b; v = litVal(p.a); op = flip[op]; }
+    else return null;
+    const fmt = (x) => (typeof x === 'string' ? `'${x}'` : x);
+    if (op === '=') return { col: col.name, lo: v, loInc: true, hi: v, hiInc: true, eq: true, text: `${col.name} = ${fmt(v)}` };
+    if (op === '<') return { col: col.name, hi: v, hiInc: false, text: `${col.name} < ${fmt(v)}` };
+    if (op === '<=') return { col: col.name, hi: v, hiInc: true, text: `${col.name} ≤ ${fmt(v)}` };
+    if (op === '>') return { col: col.name, lo: v, loInc: false, text: `${col.name} > ${fmt(v)}` };
+    if (op === '>=') return { col: col.name, lo: v, loInc: true, text: `${col.name} ≥ ${fmt(v)}` };
+  }
+  if (p.k === 'between' && !p.not && isColOf(p.a) && isLit(p.lo) && isLit(p.hi)) {
+    return { col: p.a.name, lo: litVal(p.lo), loInc: true, hi: litVal(p.hi), hiInc: true, text: `${litVal(p.lo)} ≤ ${p.a.name} ≤ ${litVal(p.hi)}` };
+  }
+  return null;
+}
+
+function planSelect(q) {
+  const srcs = [];
+  if (q.from) {
+    const seen = new Set();
+    for (const t of [q.from, ...q.joins.map((j) => j.table)]) {
+      const tab = getTable(t.name);
+      if (seen.has(t.alias)) throw new SqlError(`псевдоним ${t.alias} использован дважды`);
+      seen.add(t.alias);
+      srcs.push({ ...t, tab, schema: tab.cols.map((c) => ({ alias: t.alias, name: c.name })) });
+    }
+  }
+  const fullSchema = srcs.flatMap((s) => s.schema);
+  const aliasOf = (col) => fullSchema[colIndex(fullSchema, col)].alias;
+  const refs = (e) => { const r = new Set(); walkCols(e, (c) => r.add(aliasOf(c))); return r; };
+  // псевдонимы из SELECT доступны в GROUP BY, HAVING и ORDER BY
+  const itemAlias = new Map();
+  q.items.forEach((it) => { if (it.alias) itemAlias.set(it.alias, it.expr); });
+  const subst = (e) => {
+    if (!e || typeof e !== 'object') return e;
+    if (e.k === 'col' && !e.table && itemAlias.has(e.name) && !fullSchema.some((s) => s.name === e.name)) return itemAlias.get(e.name);
+    const c = { ...e };
+    for (const key of ['a', 'b', 'lo', 'hi', 'base', 'els']) if (c[key]) c[key] = subst(c[key]);
+    if (c.args) c.args = c.args.map(subst);
+    if (c.list) c.list = c.list.map(subst);
+    if (c.whens) c.whens = c.whens.map((w) => ({ c: subst(w.c), v: subst(w.v) }));
+    return c;
+  };
+  const byPosition = (e) => (e.k === 'lit' && typeof e.v === 'number' && Number.isInteger(e.v) && q.items[e.v - 1] && q.items[e.v - 1].expr ? q.items[e.v - 1].expr : e);
+
+  // проверка всех ссылок на столбцы заранее
+  const checkCols = (e) => walkCols(e, (c) => colIndex(fullSchema, c));
+  q.items.forEach((it) => { if (it.star && it.table && !srcs.some((s) => s.alias === it.table)) throw new SqlError(`нет таблицы ${it.table} для ${it.table}.*`); if (it.expr) checkCols(it.expr); });
+  checkCols(q.where);
+  q.joins.forEach((j) => checkCols(j.on));
+
+  // проталкивание условий WHERE к источникам
+  const leftRight = new Set(q.joins.filter((j) => j.kind === 'left').map((j) => j.table.alias));
+  const pushed = new Map(srcs.map((s) => [s.alias, []]));
+  const residual = [];
+  for (const c of splitAnd(q.where)) {
+    if (hasAgg(c)) throw new SqlError('агрегатные функции нельзя использовать в WHERE — для этого есть HAVING');
+    const r = refs(c);
+    if (r.size === 1) { const a = [...r][0]; if (!leftRight.has(a)) { pushed.get(a).push(c); continue; } }
+    if (r.size === 0 && srcs.length) { pushed.get(srcs[0].alias).push(c); continue; }
+    residual.push(c);
+  }
+  const scanFor = (s) => {
+    const preds = pushed.get(s.alias);
+    let best = null;
+    for (const p of preds) {
+      const sg = sargable(p, s);
+      if (!sg) continue;
+      const ix = s.tab.indexes.find((x) => x.col === sg.col);
+      if (!ix) continue;
+      const score = sg.eq ? 2 : 1;
+      if (!best || score > best.score) best = { p, sg, ix, score };
+    }
+    if (best) {
+      const rest = andAll(preds.filter((p) => p !== best.p));
+      const n = mk('IndexScan', { s, ix: best.ix, sg: best.sg, filter: rest, detail: `${best.ix.name} · ${best.sg.text}` });
+      n.est = Math.round(best.ix.tree.range(best.sg.lo, best.sg.loInc, best.sg.hi, best.sg.hiInc).rids.length * (rest ? selOf(rest) : 1));
+      return n;
+    }
+    const f = andAll(preds);
+    const n = mk('SeqScan', { s, filter: f, detail: `${s.name}${s.alias !== s.name ? ' ' + s.alias : ''}${f ? ' · ' + exprText(f) : ''}` });
+    n.est = Math.max(1, Math.round(s.tab.rows.length * (f ? selOf(f) : 1)));
+    return n;
+  };
+
+  let root;
+  if (!srcs.length) { root = mk('Const', { detail: 'без FROM' }); root.est = 1; }
+  else root = scanFor(srcs[0]);
+  q.joins.forEach((J, j) => {
+    const s = srcs[j + 1];
+    if (J.kind === 'cross') {
+      const r = scanFor(s);
+      root = mk('NestedLoop', { kids: [root, r], on: null, kind: 'inner', detail: 'декартово произведение' });
+      root.est = root.kids[0].est * r.est;
+      return;
+    }
+    const onC = splitAnd(J.on);
+    let eq = null;
+    for (const c of onC) {
+      if (c.k === 'cmp' && c.op === '=' && c.a.k === 'col' && c.b.k === 'col') {
+        const ra = aliasOf(c.a), rb = aliasOf(c.b);
+        if (ra === s.alias && rb !== s.alias) eq = { c, inner: c.a, outer: c.b };
+        else if (rb === s.alias && ra !== s.alias) eq = { c, inner: c.b, outer: c.a };
+        if (eq) break;
+      }
+    }
+    const restOn = andAll(onC.filter((c) => !eq || c !== eq.c));
+    const left = root;
+    if (eq) {
+      const ix = s.tab.indexes.find((x) => x.col === eq.inner.name);
+      if (ix) {
+        const innerFilter = andAll(pushed.get(s.alias));
+        const look = mk('Lookup', { detail: `${ix.name} · ${s.name}${innerFilter ? ' · ' + exprText(innerFilter) : ''}`, s, ix });
+        root = mk('IndexNLJoin', { kids: [left, look], s, ix, outerKey: eq.outer, innerFilter, on: restOn, kind: J.kind, detail: `${J.kind === 'left' ? 'LEFT · ' : ''}${exprText(eq.c)}` });
+        root.est = Math.max(1, Math.round(left.est * (ix.unique ? 1 : 2) * (innerFilter ? selOf(innerFilter) : 1)));
+        look.est = root.est;
+        return;
+      }
+      const r = scanFor(s);
+      root = mk('HashJoin', { kids: [left, r], outerKey: eq.outer, innerKey: eq.inner, on: restOn, kind: J.kind, detail: `${J.kind === 'left' ? 'LEFT · ' : ''}${exprText(eq.c)}` });
+      root.est = Math.max(1, Math.round(J.kind === 'left' ? Math.max(left.est, r.est) : Math.max(left.est, r.est) * 0.9));
+      return;
+    }
+    const r = scanFor(s);
+    root = mk('NestedLoop', { kids: [left, r], on: J.on, kind: J.kind, detail: `${J.kind === 'left' ? 'LEFT · ' : ''}${exprText(J.on)}` });
+    root.est = Math.max(1, Math.round(left.est * r.est * 0.1));
+  });
+  if (residual.length) { const c = andAll(residual); root = mk('Filter', { kids: [root], cond: c, detail: exprText(c) }); root.est = Math.max(1, Math.round(root.kids[0].est * selOf(c))); }
+
+  const groupKeys = q.groupBy.map((g) => subst(byPosition(g)));
+  const groupLabel = q.groupBy.map((g) => exprText(g)).join(', ');
+  groupKeys.forEach(checkCols);
+  const having = q.having ? subst(q.having) : null;
+  const orderKeys = q.orderBy.map((o) => ({ expr: subst(byPosition(o.expr)), desc: o.desc, label: exprText(o.expr) }));
+  const aggMode = groupKeys.length > 0 || q.items.some((it) => it.expr && hasAgg(it.expr)) || hasAgg(having) || orderKeys.some((o) => hasAgg(o.expr));
+  if (aggMode) {
+    root = mk('Aggregate', { kids: [root], keys: groupKeys, detail: groupKeys.length ? 'GROUP BY ' + groupLabel : 'по всей таблице' });
+    root.est = groupKeys.length ? Math.max(1, Math.min(root.kids[0].est, 12)) : 1;
+  }
+  if (having) { checkCols(having); root = mk('Filter', { kids: [root], cond: having, having: true, detail: 'HAVING ' + exprText(q.having) }); root.est = Math.max(1, Math.round(root.kids[0].est * 0.5)); }
+  if (orderKeys.length) {
+    orderKeys.forEach((o) => checkCols(o.expr));
+    root = mk('Sort', { kids: [root], keys: orderKeys, detail: orderKeys.map((o) => o.label + (o.desc ? ' ↓' : ' ↑')).join(', ') });
+    root.est = root.kids[0].est;
+  }
+  const items = [];
+  q.items.forEach((it) => {
+    if (it.star) {
+      for (const s of srcs) if (!it.table || it.table === s.alias) s.tab.cols.forEach((c) => items.push({ expr: { k: 'col', table: s.alias, name: c.name }, name: c.name }));
+    } else items.push({ expr: it.expr, name: it.alias || (it.expr.k === 'col' ? it.expr.name : it.text) });
+  });
+  if (!q.distinct && q.limit !== null) { root = mk('Limit', { kids: [root], limit: q.limit, offset: q.offset, detail: `LIMIT ${q.limit}${q.offset ? ' OFFSET ' + q.offset : ''}` }); root.est = Math.min(root.kids[0].est, q.limit); }
+  root = mk('Project', { kids: [root], items, detail: `${items.length} ${plural(items.length, 'столбец', 'столбца', 'столбцов')}` });
+  root.est = root.kids[0].est;
+  if (q.distinct) {
+    root = mk('Distinct', { kids: [root], detail: 'DISTINCT' }); root.est = root.kids[0].est;
+    if (q.limit !== null) { root = mk('Limit', { kids: [root], limit: q.limit, offset: q.offset, detail: `LIMIT ${q.limit}` }); root.est = Math.min(root.kids[0].est, q.limit); }
+  }
+  return root;
+}
+function plural(n, one, few, many) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  if (b === 1) return one;
+  return many;
+}
+
+// ---------------------------------------------------------------------
+// Исполнитель (материализующий; считает строки на каждом узле)
+// ---------------------------------------------------------------------
+const ctxOf = (out, r) => (out.agg ? { schema: out.schema, row: r.first, group: r.rows } : { schema: out.schema, row: r });
+function exec(n, st) {
+  let out;
+  switch (n.op) {
+    case 'Const': out = { schema: [], rows: [[]] }; break;
+    case 'SeqScan': {
+      const schema = n.s.schema;
+      let rows = n.s.tab.rows.map((r) => r.vals);
+      st.read += rows.length;
+      if (n.filter) rows = rows.filter((r) => truthy(evalE(n.filter, { schema, row: r })));
+      out = { schema, rows };
+      break;
+    }
+    case 'IndexScan': {
+      const schema = n.s.schema;
+      const res = n.ix.tree.range(n.sg.lo, n.sg.loInc, n.sg.hi, n.sg.hiInc);
+      st.traces.push({ ix: n.ix.name, path: res.path, leaves: res.leaves, rids: new Set(res.rids) });
+      st.read += res.visited;
+      let rows = res.rids.map((rid) => n.s.tab.byRid.get(rid).vals);
+      if (n.filter) rows = rows.filter((r) => truthy(evalE(n.filter, { schema, row: r })));
+      out = { schema, rows };
+      break;
+    }
+    case 'IndexNLJoin': {
+      const L = exec(n.kids[0], st);
+      const rs = n.s.schema, schema = [...L.schema, ...rs];
+      const rows = [];
+      const path = new Set(), leaves = new Set(), rids = new Set();
+      let found = 0;
+      for (const lr of L.rows) {
+        const key = evalE(n.outerKey, { schema: L.schema, row: lr });
+        let matched = false;
+        if (key !== null) {
+          const res = n.ix.tree.range(key, true, key, true);
+          st.read += res.visited;
+          res.path.forEach((x) => path.add(x)); res.leaves.forEach((x) => leaves.add(x)); res.rids.forEach((x) => rids.add(x));
+          for (const rid of res.rids) {
+            const rr = n.s.tab.byRid.get(rid).vals;
+            if (n.innerFilter && !truthy(evalE(n.innerFilter, { schema: rs, row: rr }))) continue;
+            const c = lr.concat(rr);
+            if (n.on && !truthy(evalE(n.on, { schema, row: c }))) continue;
+            rows.push(c); matched = true; found++;
+          }
+        }
+        if (!matched && n.kind === 'left') rows.push(lr.concat(rs.map(() => null)));
+      }
+      n.kids[1].act = found;
+      st.traces.push({ ix: n.ix.name, path: [...path], leaves: [...leaves], rids });
+      out = { schema, rows };
+      break;
+    }
+    case 'HashJoin': {
+      const L = exec(n.kids[0], st), R = exec(n.kids[1], st);
+      const schema = [...L.schema, ...R.schema];
+      const ht = new Map();
+      for (const rr of R.rows) { const k = evalE(n.innerKey, { schema: R.schema, row: rr }); if (k === null) continue; const kk = keyOf(k); if (!ht.has(kk)) ht.set(kk, []); ht.get(kk).push(rr); }
+      const rows = [];
+      for (const lr of L.rows) {
+        const k = evalE(n.outerKey, { schema: L.schema, row: lr });
+        const bucket = k === null ? null : ht.get(keyOf(k));
+        let matched = false;
+        if (bucket) for (const rr of bucket) { const c = lr.concat(rr); if (n.on && !truthy(evalE(n.on, { schema, row: c }))) continue; rows.push(c); matched = true; }
+        if (!matched && n.kind === 'left') rows.push(lr.concat(R.schema.map(() => null)));
+      }
+      out = { schema, rows };
+      break;
+    }
+    case 'NestedLoop': {
+      const L = exec(n.kids[0], st), R = exec(n.kids[1], st);
+      const schema = [...L.schema, ...R.schema];
+      const rows = [];
+      for (const lr of L.rows) {
+        let matched = false;
+        for (const rr of R.rows) { const c = lr.concat(rr); if (n.on && !truthy(evalE(n.on, { schema, row: c }))) continue; rows.push(c); matched = true; }
+        if (!matched && n.kind === 'left') rows.push(lr.concat(R.schema.map(() => null)));
+      }
+      out = { schema, rows };
+      break;
+    }
+    case 'Filter': {
+      const C = exec(n.kids[0], st);
+      out = { ...C, rows: C.rows.filter((r) => truthy(evalE(n.cond, ctxOf(C, r)))) };
+      break;
+    }
+    case 'Aggregate': {
+      const C = exec(n.kids[0], st);
+      const groups = new Map();
+      if (!n.keys.length) groups.set('*', { first: C.rows[0] || null, rows: C.rows });
+      else for (const r of C.rows) {
+        const k = n.keys.map((e) => keyOf(evalE(e, { schema: C.schema, row: r }))).join('\u0001');
+        if (!groups.has(k)) groups.set(k, { first: r, rows: [] });
+        groups.get(k).rows.push(r);
+      }
+      out = { schema: C.schema, rows: [...groups.values()], agg: true };
+      break;
+    }
+    case 'Sort': {
+      const C = exec(n.kids[0], st);
+      const keyed = C.rows.map((r, i) => ({ r, i, k: n.keys.map((o) => evalE(o.expr, ctxOf(C, r))) }));
+      keyed.sort((x, y) => {
+        for (let j = 0; j < n.keys.length; j++) { const c = cmpVals(x.k[j], y.k[j]); if (c) return n.keys[j].desc ? -c : c; }
+        return x.i - y.i;
+      });
+      out = { ...C, rows: keyed.map((x) => x.r) };
+      break;
+    }
+    case 'Limit': {
+      const C = exec(n.kids[0], st);
+      out = { ...C, rows: C.rows.slice(n.offset, n.offset + n.limit) };
+      break;
+    }
+    case 'Project': {
+      const C = exec(n.kids[0], st);
+      out = { names: n.items.map((it) => it.name), rows: C.rows.map((r) => n.items.map((it) => evalE(it.expr, ctxOf(C, r)))), final: true };
+      break;
+    }
+    case 'Distinct': {
+      const C = exec(n.kids[0], st);
+      const seen = new Set();
+      out = { ...C, rows: C.rows.filter((r) => { const k = r.map(keyOf).join('\u0001'); if (seen.has(k)) return false; seen.add(k); return true; }) };
+      break;
+    }
+  }
+  n.act = out.rows.length;
+  return out;
+}
+
+// ---------------------------------------------------------------------
+// Выполнение операторов
+// ---------------------------------------------------------------------
+function coerce(v, type) {
+  if (v === null) return null;
+  if (type === 'INT' || type === 'INTEGER') { const x = Number(v); return Number.isFinite(x) ? Math.trunc(x) : v; }
+  if (type === 'REAL') { const x = Number(v); return Number.isFinite(x) ? x : v; }
+  return typeof v === 'number' ? v : String(v);
+}
+function singleTableScan(tab, alias, where) {
+  const s = { name: tab.name, alias, tab, schema: tab.cols.map((c) => ({ alias, name: c.name })) };
+  const q = { type: 'select', distinct: false, items: [{ star: true }], from: { name: tab.name, alias }, joins: [], where, groupBy: [], having: null, orderBy: [], limit: null, offset: 0 };
+  const plan = planSelect(q);
+  return { scan: plan.kids[0], s };
+}
+
+function runStatement(src) {
+  const t0 = performance.now();
+  const ast = parse(src);
+  const st = { read: 0, traces: [], idxEvents: [] };
+  let result;
+  switch (ast.type) {
+    case 'select': {
+      const plan = planSelect(ast);
+      const out = exec(plan, st);
+      result = { kind: 'rows', plan, names: out.names, rows: out.rows };
+      break;
+    }
+    case 'explain': {
+      const plan = planSelect(ast.select);
+      result = { kind: 'explain', plan };
+      break;
+    }
+    case 'insert': {
+      const tab = getTable(ast.table);
+      if (tab.name === 'catalog') throw new SqlError('каталог только для чтения');
+      const cols = ast.cols || tab.cols.map((c) => c.name);
+      cols.forEach((c) => { if (!tab.cols.some((x) => x.name === c)) throw new SqlError(`в таблице ${tab.name} нет столбца ${c}`); });
+      const vals = ast.rows.map((r) => {
+        if (r.length !== cols.length) throw new SqlError(`значений ${r.length}, а столбцов ${cols.length}`);
+        const full = tab.cols.map(() => null);
+        r.forEach((e, k) => { const ci = tab.cols.findIndex((x) => x.name === cols[k]); full[ci] = coerce(evalE(e, { schema: [], row: [] }), tab.cols[ci].type); });
+        return full;
+      });
+      for (const v of vals) for (const ix of tab.indexes) if (ix.unique && v[ix.ci] !== null && ix.tree.range(v[ix.ci], true, v[ix.ci], true).rids.length)
+        throw new SqlError(`нарушена уникальность ${ix.name}: значение ${v[ix.ci]} уже есть`);
+      for (const v of vals) {
+        const row = addRow(tab, v);
+        for (const ix of tab.indexes) { const ev = ix.tree.insert(v[ix.ci], row.rid); st.idxEvents.push({ ix: ix.name, ...ev, rid: row.rid }); }
+      }
+      const plan = mk('Insert', { detail: `${tab.name} · ${tab.indexes.length} ${plural(tab.indexes.length, 'индекс', 'индекса', 'индексов')}`, kids: [mk('Values', { detail: `${vals.length} ${plural(vals.length, 'строка', 'строки', 'строк')}` })] });
+      plan.kids[0].act = plan.kids[0].est = vals.length; plan.act = plan.est = vals.length;
+      result = { kind: 'dml', plan, msg: `вставлено ${vals.length} ${plural(vals.length, 'строка', 'строки', 'строк')} в ${tab.name}`, table: tab.name };
+      break;
+    }
+    case 'createTable': {
+      if (db.tables.has(ast.name) || ast.name === 'catalog') throw new SqlError(`таблица ${ast.name} уже существует`);
+      db.tables.set(ast.name, makeTable(ast.name, ast.cols.map((c) => [c.name, c.type]), []));
+      result = { kind: 'ddl', plan: ddlPlan(`CREATE TABLE ${ast.name}`), msg: `создана таблица ${ast.name}: ${ast.cols.map((c) => c.name).join(', ')}` };
+      break;
+    }
+    case 'createIndex': {
+      const tab = getTable(ast.table);
+      if (tab.name === 'catalog') throw new SqlError('каталог только для чтения');
+      if (findIndex(ast.name)) throw new SqlError(`индекс ${ast.name} уже существует`);
+      const ci = tab.cols.findIndex((c) => c.name === ast.col);
+      if (ci < 0) throw new SqlError(`в таблице ${tab.name} нет столбца ${ast.col}`);
+      const build = tab.rows.map((r) => ({ v: r.vals[ci], r: r.rid }));
+      const tree = new BPTree();
+      for (const b of build) tree.insert(b.v, b.r);
+      const ix = { name: ast.name, table: tab.name, col: ast.col, ci, unique: false, tree };
+      tab.indexes.push(ix);
+      const scan = mk('SeqScan', { detail: tab.name }); scan.act = scan.est = build.length; st.read += build.length;
+      const plan = mk('BuildIndex', { kids: [scan], detail: `${ast.name} · ${tab.name}(${ast.col})` }); plan.act = plan.est = build.length;
+      result = { kind: 'ddl', plan, msg: `индекс ${ast.name} строится: ${build.length} ${plural(build.length, 'ключ', 'ключа', 'ключей')}`, build: { ix, keys: build } };
+      break;
+    }
+    case 'delete':
+    case 'update': {
+      const tab = getTable(ast.table);
+      if (tab.name === 'catalog') throw new SqlError('каталог только для чтения');
+      const { scan, s } = singleTableScan(tab, tab.name, ast.where);
+      const out = exec(scan, st);
+      const hit = new Set(out.rows);
+      const victims = tab.rows.filter((r) => hit.has(r.vals));
+      if (ast.type === 'delete') {
+        const dead = new Set(victims.map((r) => r.rid));
+        tab.rows = tab.rows.filter((r) => !dead.has(r.rid));
+        dead.forEach((rid) => tab.byRid.delete(rid));
+      } else {
+        for (const r of victims) {
+          const next = r.vals.slice();
+          for (const set of ast.sets) {
+            const ci = tab.cols.findIndex((c) => c.name === set.col);
+            if (ci < 0) throw new SqlError(`в таблице ${tab.name} нет столбца ${set.col}`);
+            next[ci] = coerce(evalE(set.expr, { schema: s.schema, row: r.vals }), tab.cols[ci].type);
+          }
+          r.vals = next;
+        }
+      }
+      tab.indexes.forEach((ix) => { ix.tree = BPTree.bulk(tab.rows.map((r) => ({ v: r.vals[ix.ci], r: r.rid }))); });
+      const verb = ast.type === 'delete' ? 'удалено' : 'изменено';
+      const plan = mk(ast.type === 'delete' ? 'Delete' : 'Update', { kids: [scan], detail: `${tab.name} · индексы перестроены` });
+      plan.act = plan.est = victims.length;
+      result = { kind: 'dml', plan, msg: `${verb} ${victims.length} ${plural(victims.length, 'строка', 'строки', 'строк')} в ${tab.name}`, table: tab.name };
+      break;
+    }
+    case 'dropTable': {
+      if (!db.tables.has(ast.name)) throw new SqlError(`нет такой таблицы: ${ast.name}`);
+      db.tables.delete(ast.name);
+      result = { kind: 'ddl', plan: ddlPlan(`DROP TABLE ${ast.name}`), msg: `таблица ${ast.name} удалена` };
+      break;
+    }
+    case 'dropIndex': {
+      const ix = findIndex(ast.name);
+      if (!ix) throw new SqlError(`нет такого индекса: ${ast.name}`);
+      const tab = db.tables.get(ix.table);
+      tab.indexes = tab.indexes.filter((x) => x !== ix);
+      result = { kind: 'ddl', plan: ddlPlan(`DROP INDEX ${ast.name}`), msg: `индекс ${ast.name} удалён` };
+      break;
+    }
+  }
+  result.ms = performance.now() - t0;
+  result.read = st.read;
+  result.traces = st.traces;
+  result.idxEvents = st.idxEvents;
+  return result;
+}
+function ddlPlan(text) { const n = mk('DDL', { detail: text }); n.act = n.est = 1; return n; }
+
+// =====================================================================
+// Интерфейс
+// =====================================================================
+const $ = (id) => document.getElementById(id);
+const ta = $('sql'), hl = $('hl');
+const DPR = () => Math.min(window.devicePixelRatio || 1, 2);
+const FONT_SANS = '"IBM Plex Sans", system-ui, sans-serif';
+const FONT_MONO = '"IBM Plex Mono", ui-monospace, monospace';
+const C = { ink: '#1C3D8F', inkSoft: '#DCE3F1', graphite: '#2B2925', muted: '#5F594D', red: '#B3361F', manila: '#E7D7A9', manila2: '#D5C28C', sheet: '#F7F3EA', green: '#D9E8D1' };
+
+// линейка колонок бланка
+$('ruler').textContent = (() => { let s = ''; for (let c = 1; c <= 80; c++) s += c % 10 === 0 ? String(c).padStart(2).slice(-2) : c % 5 === 0 ? '+' : '·'; return s.replace(/·(?=\d\d)/g, ''); })();
+
+// --- подсветка синтаксиса ---
+function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+let errRange = null;
+function highlight() {
+  const src = ta.value;
+  let html = '', last = 0;
+  let toks;
+  try { toks = lex(src); } catch (e) { toks = null; }
+  const mark = (s, a, b) => {
+    if (!errRange || errRange.end <= a || errRange.pos >= b) return esc(s);
+    const x = Math.max(0, errRange.pos - a), y = Math.min(s.length, Math.max(errRange.end - a, x + 1));
+    return esc(s.slice(0, x)) + '<span class="hl-err">' + esc(s.slice(x, y) || ' ') + '</span>' + esc(s.slice(y));
+  };
+  if (!toks) { hl.innerHTML = mark(src, 0, src.length) + '\n'; return; }
+  for (const t of toks) {
+    if (t.t === 'eof') break;
+    html += mark(src.slice(last, t.pos), last, t.pos);
+    const text = src.slice(t.pos, t.end);
+    const cls = t.t === 'kw' ? 'hl-kw' : t.t === 'str' ? 'hl-str' : t.t === 'num' ? 'hl-num' : t.t === 'com' ? 'hl-com' : t.t === 'id' && (t.v.toUpperCase() in FUNCS) && src[t.end] === '(' ? 'hl-fn' : '';
+    html += cls ? `<span class="${cls}">${mark(text, t.pos, t.end)}</span>` : mark(text, t.pos, t.end);
+    last = t.end;
+  }
+  html += mark(src.slice(last), last, src.length);
+  if (errRange && errRange.pos >= src.length) html += '<span class="hl-err"> </span>';
+  hl.innerHTML = html + '\n';
+}
+ta.addEventListener('input', () => { errRange = null; highlight(); drawDeck(); });
+ta.addEventListener('scroll', () => { hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; });
+ta.addEventListener('keyup', drawDeck);
+ta.addEventListener('click', drawDeck);
+ta.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); execute(false); }
+  else if (e.key === 'Tab') { e.preventDefault(); const s = ta.selectionStart; ta.setRangeText('  ', s, ta.selectionEnd, 'end'); ta.dispatchEvent(new Event('input')); }
+});
+
+// --- перфокарты: кодировка IBM 029 (для кириллицы — условная раскладка) ---
+const HOL = { '&': [12], '-': [11], '/': [0, 1], '.': [12, 3, 8], '<': [12, 4, 8], '(': [12, 5, 8], '+': [12, 6, 8], '|': [12, 7, 8], '!': [11, 2, 8], '$': [11, 3, 8], '*': [11, 4, 8], ')': [11, 5, 8], ';': [11, 6, 8], ',': [0, 3, 8], '%': [0, 4, 8], '_': [0, 5, 8], '>': [0, 6, 8], '?': [0, 7, 8], ':': [2, 8], '#': [3, 8], '@': [4, 8], "'": [5, 8], '=': [6, 8], '"': [7, 8] };
+const CYR = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+function punches(ch) {
+  const c = ch.toUpperCase();
+  if (c === ' ' || c === '\t') return [];
+  if (c >= '0' && c <= '9') return [+c];
+  const code = c.charCodeAt(0);
+  if (c >= 'A' && c <= 'I') return [12, code - 64];
+  if (c >= 'J' && c <= 'R') return [11, code - 73];
+  if (c >= 'S' && c <= 'Z') return [0, code - 81];
+  if (HOL[c]) return HOL[c];
+  const k = CYR.indexOf(c);
+  if (k >= 0) return [...[[12, 0], [11, 0], [12, 11], [12, 11, 0]][Math.floor(k / 9)], (k % 9) + 1];
+  return [12, 11, 0, 8];
+}
+const ROWIDX = (p) => (p === 12 ? 0 : p === 11 ? 1 : p + 2);
+const deck = $('deck');
+let readerT = -1;
+function drawDeck() {
+  const dpr = DPR(), w = deck.clientWidth, h = deck.clientHeight;
+  if (!w) return;
+  if (deck.width !== Math.round(w * dpr) || deck.height !== Math.round(h * dpr)) { deck.width = Math.round(w * dpr); deck.height = Math.round(h * dpr); }
+  const g = deck.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  const lines = [];
+  for (const raw of ta.value.split('\n')) { let s = raw; if (!s.length) continue; while (s.length > 80) { lines.push(s.slice(0, 80)); s = s.slice(80); } lines.push(s); }
+  if (!lines.length) lines.push('');
+  const caretLine = ta.value.slice(0, ta.selectionStart).split('\n').length - 1;
+  const rawLines = ta.value.split('\n');
+  let front = rawLines[Math.min(caretLine, rawLines.length - 1)] || lines[0];
+  if (!front.trim()) front = lines[0];
+  const behind = Math.min(lines.length - 1, 3);
+  const off = 7;
+  const cw = w - behind * off - 2, chh = h - behind * off - 2;
+  for (let k = behind; k >= 1; k--) drawCard(g, k * off, (behind - k) * off + 0, cw, chh, null, k);
+  drawCard(g, 0, behind * off, cw, chh, front.slice(0, 80), 0);
+}
+function drawCard(g, x, y, w, h, text, depth) {
+  g.save();
+  g.translate(x, y);
+  const cut = 14;
+  g.beginPath();
+  g.moveTo(cut, 0); g.lineTo(w, 0); g.lineTo(w, h); g.lineTo(0, h); g.lineTo(0, cut); g.closePath();
+  g.fillStyle = depth ? ['#E2D19F', '#DCCA95', '#D6C38C'][depth - 1] : C.manila;
+  g.shadowColor = 'rgba(40,30,10,.18)'; g.shadowBlur = 6; g.shadowOffsetY = 2;
+  g.fill();
+  g.shadowColor = 'transparent';
+  g.strokeStyle = 'rgba(80,65,30,.45)'; g.lineWidth = 1; g.stroke();
+  if (text === null) { g.restore(); return; }
+  const left = 10, right = 8, top = 17, bottom = 12;
+  const colW = (w - left - right) / 80;
+  const rowH = (h - top - bottom) / 12;
+  // печатные цифры строк 0–9
+  g.font = `500 ${Math.min(7.5, rowH * 0.8)}px ${FONT_MONO}`;
+  g.fillStyle = 'rgba(120,95,40,.55)';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let c = 0; c < 80; c += 1) {
+    const cx = left + (c + 0.5) * colW;
+    for (let d = 0; d <= 9; d++) g.fillText(String(d), cx, top + (d + 2 + 0.5) * rowH);
+  }
+  // интерпретация — текст вдоль верхнего края
+  g.font = `600 ${Math.min(10, colW * 1.35)}px ${FONT_MONO}`;
+  g.fillStyle = C.graphite;
+  for (let c = 0; c < Math.min(80, text.length); c++) g.fillText(text[c].toUpperCase(), left + (c + 0.5) * colW, 9);
+  // пробивки
+  const hw = Math.max(2, colW * 0.52), hh = Math.max(3, rowH * 0.66);
+  for (let c = 0; c < Math.min(80, text.length); c++) {
+    const cx = left + (c + 0.5) * colW;
+    for (const p of punches(text[c])) {
+      const cy = top + (ROWIDX(p) + 0.5) * rowH;
+      g.fillStyle = '#2E2A22';
+      g.fillRect(cx - hw / 2, cy - hh / 2, hw, hh);
+    }
+  }
+  // луч считывателя при выполнении
+  if (readerT >= 0) {
+    const rx = left + readerT * (w - left - right);
+    const grd = g.createLinearGradient(rx - 30, 0, rx + 6, 0);
+    grd.addColorStop(0, 'rgba(28,61,143,0)'); grd.addColorStop(1, 'rgba(28,61,143,.28)');
+    g.fillStyle = grd; g.fillRect(rx - 30, 1, 36, h - 2);
+    g.fillStyle = 'rgba(28,61,143,.8)'; g.fillRect(rx, 1, 1.5, h - 2);
+  }
+  g.font = `500 8px ${FONT_MONO}`;
+  g.fillStyle = 'rgba(120,95,40,.7)'; g.textAlign = 'right';
+  g.fillText('ПЕРФОКАРТА · 80 КОЛОНОК · 12 СТРОК', w - 10, h - 5);
+  g.restore();
+}
+
+// --- примеры ---
+let current = 0;
+EXAMPLES.forEach(([title], k) => {
+  const b = document.createElement('button');
+  b.className = 'ex';
+  b.innerHTML = `<b>${String(k + 1).padStart(2, '0')}</b><span>${SHORT[k].replace(/ (в|и|с|к|на|без|по|от|до|из) /g, ' $1 ')}</span>`;
+  b.title = title;
+  b.setAttribute('aria-label', title);
+  b.addEventListener('click', () => { loadExample(k); execute(false); });
+  $('examples').appendChild(b);
+});
+function loadExample(k) {
+  current = k;
+  [...$('examples').children].forEach((b, i) => b.setAttribute('aria-current', i === k));
+  ta.value = EXAMPLES[k][1];
+  ta.setSelectionRange(0, 0);
+  ta.scrollTop = 0;
+  errRange = null;
+  highlight(); drawDeck();
+}
+
+// --- статистика в шапке ---
+function updateStats() {
+  const tabs = [...db.tables.values()];
+  const rows = tabs.reduce((s, t) => s + t.rows.length, 0);
+  const idx = allIndexes().length;
+  $('stats').innerHTML = `СУБД «Перфокарта-1» · исполнение в&nbsp;браузере<br><b>${tabs.length}</b> ${plural(tabs.length, 'таблица', 'таблицы', 'таблиц')} · <b>${rows}</b> ${plural(rows, 'строка', 'строки', 'строк')} · <b>${idx}</b> ${plural(idx, 'индекс', 'индекса', 'индексов')}`;
+}
+
+// =====================================================================
+// План: блок-схема с текущими строками
+// =====================================================================
+const planCv = $('plan'), planBox = $('planbox');
+const plan = { nodes: [], edges: [], t0: 0, done: false, total: 0, w: 0, h: 0 };
+let NODE_W = 236;
+const NODE_H = 46;
+function layoutPlan(root) {
+  const nodes = [], edges = [];
+  let leafX = 0, maxDepth = 0;
+  (function place(n, depth) {
+    maxDepth = Math.max(maxDepth, depth);
+    const v = { n, depth, kids: [] };
+    nodes.push(v);
+    if (!n.kids.length) { v.slot = leafX++; }
+    else { n.kids.forEach((k) => v.kids.push(place(k, depth + 1))); v.slot = v.kids.reduce((s, k) => s + k.slot, 0) / v.kids.length; }
+    return v;
+  })(root, 0);
+  const boxW = planBox.clientWidth, boxH = planBox.clientHeight;
+  NODE_W = Math.max(180, Math.min(236, (boxW - 40) / Math.max(1, leafX) - 22));
+  const slotW = NODE_W + 22;
+  const width = Math.max(boxW, leafX * slotW + 40);
+  const gap = Math.min(78, (boxH - 44 - NODE_H) / Math.max(1, maxDepth));
+  const totalH = maxDepth * gap + NODE_H;
+  const y0 = Math.max(22, (boxH - totalH) / 2);
+  const x0 = (width - (leafX - 1) * slotW) / 2;
+  for (const v of nodes) { v.x = x0 + v.slot * slotW; v.y = y0 + v.depth * gap + NODE_H / 2; }
+  // расписание: узел работает после детей
+  (function sched(v) {
+    let st = 0;
+    v.kids.forEach((k) => { sched(k); st = Math.max(st, k.end); });
+    const inRows = v.kids.reduce((s, k) => s + k.n.act, 0) || v.n.act;
+    v.start = st;
+    v.end = st + 380 + 16 * Math.min(inRows, 60);
+  })(nodes[0]);
+  for (const v of nodes) for (const k of v.kids) edges.push({ from: k, to: v });
+  plan.nodes = nodes; plan.edges = edges; plan.w = width; plan.h = boxH;
+  plan.total = nodes[0].end + 300;
+}
+function edgePts(e) {
+  const a = { x: e.from.x, y: e.from.y - NODE_H / 2 }, b = { x: e.to.x, y: e.to.y + NODE_H / 2 };
+  const my = (a.y + b.y) / 2;
+  return [a, { x: a.x, y: my }, { x: b.x, y: my }, b];
+}
+function along(pts, t) {
+  const seg = [];
+  let L = 0;
+  for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); seg.push(d); L += d; }
+  let d = t * L;
+  for (let i = 1; i < pts.length; i++) {
+    if (d <= seg[i - 1] || i === pts.length - 1) { const f = seg[i - 1] ? Math.min(1, d / seg[i - 1]) : 0; return { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f }; }
+    d -= seg[i - 1];
+  }
+  return pts[pts.length - 1];
+}
+function symbol(g, kind, x, y, s) {
+  g.beginPath();
+  const w = s, h = s * 0.78, l = x - w / 2, t = y - h / 2;
+  switch (kind) {
+    case 'card': g.moveTo(l + 6, t); g.lineTo(l + w, t); g.lineTo(l + w, t + h); g.lineTo(l, t + h); g.lineTo(l, t + 6); g.closePath(); break;
+    case 'disk': { const ry = 3.4; g.ellipse(x, t + ry, w / 2, ry, 0, 0, Math.PI * 2); g.moveTo(l, t + ry); g.lineTo(l, t + h - ry); g.ellipse(x, t + h - ry, w / 2, ry, 0, Math.PI, 0, true); g.lineTo(l + w, t + ry); break; }
+    case 'merge': g.moveTo(l, t); g.lineTo(l + w, t); g.lineTo(x, t + h); g.closePath(); break;
+    case 'decision': g.moveTo(x, t - 1); g.lineTo(l + w + 1, y); g.lineTo(x, t + h + 1); g.lineTo(l - 1, y); g.closePath(); break;
+    case 'predef': g.rect(l, t, w, h); g.moveTo(l + 4, t); g.lineTo(l + 4, t + h); g.moveTo(l + w - 4, t); g.lineTo(l + w - 4, t + h); break;
+    case 'sort': g.moveTo(x, t - 1); g.lineTo(l + w + 1, y); g.lineTo(x, t + h + 1); g.lineTo(l - 1, y); g.closePath(); g.moveTo(l - 1, y); g.lineTo(l + w + 1, y); break;
+    case 'manual': g.moveTo(l, t); g.lineTo(l + w, t); g.lineTo(l + w - 5, t + h); g.lineTo(l + 5, t + h); g.closePath(); break;
+    case 'prep': g.moveTo(l + 5, t); g.lineTo(l + w - 5, t); g.lineTo(l + w, y); g.lineTo(l + w - 5, t + h); g.lineTo(l + 5, t + h); g.lineTo(l, y); g.closePath(); break;
+    case 'doc': g.moveTo(l, t); g.lineTo(l + w, t); g.lineTo(l + w, t + h - 3); g.bezierCurveTo(l + w * 0.7, t + h - 8, l + w * 0.3, t + h + 3, l, t + h - 2); g.closePath(); break;
+  }
+  g.fillStyle = C.inkSoft; g.fill();
+  g.strokeStyle = C.ink; g.lineWidth = 1.4; g.stroke();
+}
+function fit(g, s, maxW) { if (g.measureText(s).width <= maxW) return s; while (s.length > 1 && g.measureText(s + '…').width > maxW) s = s.slice(0, -1); return s + '…'; }
+function fmtInt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+function drawPlan(now) {
+  const dpr = DPR();
+  const w = plan.w || planBox.clientWidth, h = planBox.clientHeight;
+  planCv.style.width = w + 'px';
+  if (planCv.width !== Math.round(w * dpr) || planCv.height !== Math.round(h * dpr)) { planCv.width = Math.round(w * dpr); planCv.height = Math.round(h * dpr); }
+  const g = planCv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  // сетка миллиметровки
+  g.strokeStyle = 'rgba(28,61,143,.06)'; g.lineWidth = 1;
+  for (let x = 0.5; x < w; x += 16) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+  for (let y = 0.5; y < h; y += 16) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+  if (!plan.nodes.length) return;
+  const t = now - plan.t0;
+  // рёбра
+  for (const e of plan.edges) {
+    const p = edgePts(e);
+    g.beginPath(); g.moveTo(p[0].x, p[0].y); for (let i = 1; i < 4; i++) g.lineTo(p[i].x, p[i].y);
+    g.strokeStyle = 'rgba(28,61,143,.55)'; g.lineWidth = 1.3; g.stroke();
+    const b = p[3];
+    g.beginPath(); g.moveTo(b.x, b.y); g.lineTo(b.x - 4, b.y + 7); g.lineTo(b.x + 4, b.y + 7); g.closePath(); g.fillStyle = C.ink; g.fill();
+  }
+  // строки-частицы
+  g.fillStyle = C.ink;
+  for (const e of plan.edges) {
+    const pts = edgePts(e);
+    const rows = e.from.n.act;
+    if (!rows) continue;
+    const N = Math.min(rows, 26);
+    const s0 = e.from.start + 60, s1 = Math.max(s0 + 60, e.from.end);
+    const travel = 520;
+    for (let k = 0; k < N; k++) {
+      const emit = s0 + (s1 - s0) * (k / N);
+      const u = (t - emit) / travel;
+      if (u < 0 || u > 1) continue;
+      const q = along(pts, u);
+      g.globalAlpha = Math.min(1, (1 - u) * 4, u * 6);
+      g.fillRect(q.x - 3, q.y - 2, 6, 4);
+    }
+    // после завершения — медленный фоновый поток
+    if (t > plan.total) {
+      const rate = 900 + 2400 / Math.log2(rows + 2);
+      const n2 = 3;
+      for (let k = 0; k < n2; k++) {
+        const u = ((t / rate + k / n2 + e.from.slot * 0.137) % 1);
+        const q = along(pts, u);
+        g.globalAlpha = 0.55 * Math.min(1, (1 - u) * 5, u * 5);
+        g.fillRect(q.x - 2.5, q.y - 1.5, 5, 3);
+      }
+    }
+    g.globalAlpha = 1;
+  }
+  // узлы
+  for (const v of plan.nodes) {
+    const n = v.n, op = OPS[n.op];
+    const x = v.x - NODE_W / 2, y = v.y - NODE_H / 2;
+    const active = t >= v.start && t < v.end;
+    const prog = Math.max(0, Math.min(1, (t - v.start) / Math.max(1, v.end - v.start)));
+    g.fillStyle = 'rgba(247,243,234,.94)';
+    g.fillRect(x, y, NODE_W, NODE_H);
+    g.strokeStyle = active ? C.red : 'rgba(43,41,37,.28)';
+    g.lineWidth = active ? 1.6 : 1;
+    g.strokeRect(x + 0.5, y + 0.5, NODE_W - 1, NODE_H - 1);
+    symbol(g, op.sym, x + 20, v.y, 22);
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    g.fillStyle = C.graphite;
+    g.font = `600 13px ${FONT_SANS}`;
+    g.fillText(fit(g, op.title, NODE_W - 84), x + 40, y + 19);
+    g.font = `400 11.5px ${FONT_MONO}`;
+    g.fillStyle = C.muted;
+    g.fillText(fit(g, n.detail || '', NODE_W - (plan.explain ? 50 : 100)), x + 40, y + 36);
+    // счётчик строк
+    const shown = n.act === undefined ? 0 : Math.round(n.act * (plan.explain ? 1 : prog));
+    g.textAlign = 'right';
+    g.font = `600 16px ${FONT_MONO}`;
+    g.fillStyle = plan.explain ? C.muted : C.ink;
+    g.fillText(plan.explain ? '≈' + fmtInt(n.est) : fmtInt(shown), x + NODE_W - 10, y + 20);
+    if (!plan.explain && n.est !== undefined) {
+      g.font = `400 11px ${FONT_MONO}`; g.fillStyle = C.muted;
+      g.fillText('оц. ' + fmtInt(n.est), x + NODE_W - 10, y + 36);
+    }
+  }
+}
+
+// =====================================================================
+// Дерево индекса
+// =====================================================================
+const treeCv = $('tree');
+const tv = { ix: null, pos: new Map(), trace: null, flash: new Map(), anim: 0 };
+const shownTree = (ix) => (tv.animTree && tv.animIx === ix ? tv.animTree : ix.tree);
+function treeLayout(ix, boxW, H) {
+  const t = shownTree(ix), levels = [];
+  let lvl = [t.root];
+  while (lvl.length) { levels.push(lvl); lvl = lvl.flatMap((n) => (n.leaf ? [] : n.kids)); }
+  const leaves = levels[levels.length - 1];
+  const rowH = 14, pad = 6;
+  const cardW = ix.col === 'name' || ix.col === 'outcome' || ix.col === 'kind' ? 66 : 38;
+  const gapX = 7;
+  const need = leaves.length * (cardW + gapX);
+  const nodeH = (n) => pad * 2 + Math.max(1, n.keys.length) * rowH;
+  const levelH = pad * 2 + MAXK * rowH;
+  // масштаб 1, пока дерево помещается по высоте; по ширине — прокрутка панели
+  const scale = Math.min(1, (H - 16) / (levels.length * levelH + (levels.length - 1) * 20));
+  const gapY = Math.max(20, Math.min(34, (H - 16 - levels.length * levelH * scale) / Math.max(1, levels.length - 1) / scale));
+  const totalH = (levels.length * levelH + (levels.length - 1) * gapY) * scale;
+  const width = Math.max(boxW, need * scale + 28);
+  const W = width;
+  const oy = Math.max(8, (H - totalH) / 2);
+  const ox = (W - need * scale) / 2;
+  const out = new Map();
+  leaves.forEach((n, i) => out.set(n.id, { x: ox + (i * (cardW + gapX) + cardW / 2) * scale, y: oy + (levels.length - 1) * (levelH + gapY) * scale, h: nodeH(n) * scale }));
+  for (let L = levels.length - 2; L >= 0; L--) for (const n of levels[L]) {
+    const xs = n.kids.map((k) => out.get(k.id).x);
+    out.set(n.id, { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: oy + L * (levelH + gapY) * scale, h: nodeH(n) * scale });
+  }
+  return { levels, out, scale, cardW, rowH, width };
+}
+function showIndex(name, trace) {
+  const ix = findIndex(name);
+  if (!ix) return;
+  if (tv.ix !== ix) tv.pos.clear();
+  tv.ix = ix;
+  tv.trace = trace || null;
+  tv.scrollPending = true;
+  renderChips();
+  const t = shownTree(ix);
+  $('treeAside').textContent = `${ix.table}(${ix.col})`;
+  $('treecap').textContent = `не больше ${MAXK} ключей в узле · высота ${t.height()} · ${fmtInt(t.size())} ${plural(t.size(), 'ключ', 'ключа', 'ключей')}${ix.unique ? ' · уникальный' : ''}`;
+  tv.anim = performance.now();
+}
+function renderChips() {
+  const wrap = $('chips');
+  wrap.innerHTML = '';
+  for (const ix of allIndexes()) {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.textContent = ix.name;
+    b.setAttribute('aria-pressed', tv.ix === ix);
+    b.addEventListener('click', () => showIndex(ix.name, lastTraces.find((tr) => tr.ix === ix.name)));
+    wrap.appendChild(b);
+  }
+}
+const treeScroll = $('treescroll');
+function drawTree(now) {
+  const dpr = DPR(), boxW = treeScroll.clientWidth, H = treeScroll.clientHeight;
+  if (!boxW || !tv.ix) return;
+  const L = treeLayout(tv.ix, boxW, H);
+  const W = L.width;
+  if (treeCv.style.width !== W + 'px') treeCv.style.width = W + 'px';
+  if (treeCv.width !== Math.round(W * dpr) || treeCv.height !== Math.round(H * dpr)) { treeCv.width = Math.round(W * dpr); treeCv.height = Math.round(H * dpr); }
+  const g = treeCv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  // плавное движение узлов к новым местам (так видно деление)
+  const k = 0.16;
+  for (const [id, p] of L.out) {
+    let cur = tv.pos.get(id);
+    if (!cur) {
+      const parentFrom = tv.spawn && tv.spawn.get(id);
+      const src = parentFrom && tv.pos.get(parentFrom);
+      cur = src ? { x: src.x, y: src.y, h: p.h, a: 0 } : { x: p.x, y: p.y, h: p.h, a: 1 };
+      tv.pos.set(id, cur);
+    }
+    cur.x += (p.x - cur.x) * k; cur.y += (p.y - cur.y) * k; cur.h += (p.h - cur.h) * k; cur.a = Math.min(1, (cur.a ?? 1) + 0.08);
+  }
+  const s = L.scale, cw = L.cardW * s, rowH = L.rowH * s;
+  const tr = tv.trace;
+  if (tv.scrollPending && W > boxW) {
+    tv.scrollPending = false;
+    const hot = tr ? [...L.out].filter(([id]) => tr.path.includes(id) || tr.leaves.includes(id)).map(([, p]) => p.x) : [];
+    const xs = hot.length ? hot : [W / 2];
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+    treeScroll.scrollTo({ left: Math.max(0, cx - boxW / 2), behavior: window.__SHOT__ ? 'auto' : 'smooth' });
+  } else if (tv.scrollPending) tv.scrollPending = false;
+  const onPath = (id) => tr && tr.path.includes(id);
+  const scanned = (id) => tr && tr.leaves.includes(id);
+  // рёбра
+  for (const lvl of L.levels) for (const n of lvl) {
+    if (n.leaf) continue;
+    const p = tv.pos.get(n.id);
+    n.kids.forEach((kid, i) => {
+      const c = tv.pos.get(kid.id);
+      const sx = p.x - cw / 2 + (cw * (i + 0.5)) / (n.kids.length);
+      g.beginPath();
+      g.moveTo(sx, p.y + p.h);
+      g.bezierCurveTo(sx, p.y + p.h + 14 * s, c.x, c.y - 14 * s, c.x, c.y);
+      const hot = onPath(n.id) && onPath(kid.id);
+      g.strokeStyle = hot ? C.red : 'rgba(43,41,37,.38)';
+      g.lineWidth = hot ? 2 : 1;
+      g.stroke();
+    });
+  }
+  // связи листьев
+  const leaves = L.levels[L.levels.length - 1];
+  for (let i = 0; i + 1 < leaves.length; i++) {
+    const a = tv.pos.get(leaves[i].id), b = tv.pos.get(leaves[i + 1].id);
+    const y = a.y + Math.min(a.h, b.h) - 7 * s;
+    g.beginPath(); g.moveTo(a.x + cw / 2, y); g.lineTo(b.x - cw / 2 - 1, y);
+    g.strokeStyle = scanned(leaves[i].id) && scanned(leaves[i + 1].id) ? C.ink : 'rgba(43,41,37,.3)';
+    g.lineWidth = 1; g.stroke();
+  }
+  // узлы
+  const fsz = Math.max(11, 12 * s);
+  for (const lvl of L.levels) for (const n of lvl) {
+    const p = tv.pos.get(n.id);
+    const x = p.x - cw / 2, y = p.y;
+    g.globalAlpha = p.a;
+    g.fillStyle = n.leaf ? (scanned(n.id) ? C.green : '#FBF9F3') : C.manila;
+    g.fillRect(x, y, cw, p.h);
+    const hot = onPath(n.id);
+    g.strokeStyle = hot ? C.red : 'rgba(43,41,37,.45)';
+    g.lineWidth = hot ? 2 : 1;
+    g.strokeRect(x + 0.5, y + 0.5, cw - 1, p.h - 1);
+    const fl = tv.flash.get(n.id);
+    if (fl && now - fl < 1400) { g.fillStyle = `rgba(179,54,31,${0.35 * (1 - (now - fl) / 1400)})`; g.fillRect(x, y, cw, p.h); }
+    g.font = `500 ${fsz}px ${FONT_MONO}`;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    n.keys.forEach((key, i) => {
+      const hit = tr && n.leaf && tr.rids.has(key.r);
+      g.fillStyle = hit ? C.ink : n.leaf ? C.graphite : '#4A3F24';
+      g.font = `${hit ? 700 : 500} ${fsz}px ${FONT_MONO}`;
+      let label = key.v === null ? '∅' : String(key.v);
+      label = fit(g, label, cw - 4);
+      g.fillText(label, p.x, y + 6 * s + (i + 0.5) * rowH);
+    });
+    g.globalAlpha = 1;
+  }
+}
+
+// =====================================================================
+// Распечатка
+// =====================================================================
+let reportNo = 1;
+let printTimer = null;
+function pad(s, n, right) { s = String(s); if ([...s].length > n) s = [...s].slice(0, n - 1).join('') + '…'; const fill = ' '.repeat(Math.max(0, n - [...s].length)); return right ? fill + s : s + fill; }
+function fmtVal(v) {
+  if (v === null) return '—';
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(3).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
+  return String(v);
+}
+function reportLines(res, src) {
+  const L = [];
+  const date = new Date();
+  const d = `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+  const tm = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  L.push({ t: `ОТЧЁТ № ${String(reportNo++).padStart(4, '0')}   ${d} ${tm}   СУБД «ПЕРФОКАРТА-1»`, c: 'dim' });
+  const first = src.split('\n').find((l) => l.trim() && !l.trim().startsWith('--')) || '';
+  L.push({ t: 'ЗАПРОС: ' + first.trim().slice(0, 60) + (first.trim().length > 60 ? '…' : ''), c: 'dim' });
+  L.push({ t: '' });
+  if (res.kind === 'rows') {
+    const names = res.names;
+    const widths = names.map((n, k) => Math.min(26, Math.max([...n].length, ...res.rows.map((r) => [...fmtVal(r[k])].length), 3)));
+    const isNum = names.map((_, k) => res.rows.length && res.rows.every((r) => r[k] === null || typeof r[k] === 'number'));
+    L.push({ t: names.map((n, k) => pad(n, widths[k], isNum[k])).join('  ') });
+    L.push({ t: widths.map((w) => '═'.repeat(w)).join('  ') });
+    for (const r of res.rows) L.push({ t: r.map((v, k) => pad(fmtVal(v), widths[k], isNum[k])).join('  ') });
+    if (!res.rows.length) L.push({ t: '(НИ ОДНОЙ СТРОКИ)', c: 'dim' });
+    L.push({ t: '' });
+    L.push({ t: `СТРОК: ${res.rows.length} · ПРОЧИТАНО: ${res.read} · ВРЕМЯ: ${res.ms.toFixed(2).replace('.', ',')} МС`, c: 'dim' });
+  } else if (res.kind === 'explain') {
+    L.push({ t: 'ПЛАН ЗАПРОСА (БЕЗ ВЫПОЛНЕНИЯ)' });
+    L.push({ t: '═'.repeat(30) });
+    (function walk(n, depth) {
+      L.push({ t: `${'   '.repeat(depth)}${depth ? '└─ ' : ''}${OPS[n.op].title.toUpperCase()}  ≈${n.est}` });
+      if (n.detail) L.push({ t: `${'   '.repeat(depth)}${depth ? '   ' : ''}   ${n.detail}`, c: 'dim' });
+      n.kids.forEach((k) => walk(k, depth + 1));
+    })(res.plan, 0);
+    L.push({ t: '' });
+    L.push({ t: 'ОЦЕНКИ ПО СТАТИСТИКЕ ТАБЛИЦ И ИНДЕКСОВ', c: 'dim' });
+  } else {
+    L.push({ t: res.msg.toUpperCase() });
+    L.push({ t: '' });
+    L.push({ t: `ВРЕМЯ: ${res.ms.toFixed(2).replace('.', ',')} МС`, c: 'dim' });
+  }
+  return L;
+}
+function printLines(lines, onDone) {
+  clearInterval(printTimer);
+  const box = $('print');
+  box.innerHTML = '';
+  const paper = $('paper');
+  paper.scrollTop = 0;
+  let k = 0;
+  const step = () => {
+    const chunk = lines.length > 40 ? 3 : 1;
+    for (let c = 0; c < chunk && k < lines.length; c++, k++) {
+      if (c === 0) { burst(1700, 0.045, 0.45); burst(380, 0.06, 0.3); }
+      const div = document.createElement('div');
+      div.className = 'pl' + (lines[k].c ? ' ' + lines[k].c : '');
+      div.textContent = lines[k].t;
+      box.appendChild(div);
+    }
+    if (k >= lines.length) { clearInterval(printTimer); onDone && onDone(); }
+  };
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || window.__SHOT__) { while (k < lines.length) step(); return; }
+  printTimer = setInterval(step, 38);
+}
+function stamp(text, ok) {
+  const s = $('stamp');
+  s.textContent = text;
+  s.style.color = s.style.borderColor = ok ? 'var(--red)' : 'var(--red)';
+  s.classList.remove('on'); void s.offsetWidth; s.classList.add('on');
+}
+
+// =====================================================================
+// Запуск
+// =====================================================================
+let lastTraces = [];
+let buildAnim = null;
+function execute(explainOnly) {
+  const src = explainOnly && !/^\s*(--[^\n]*\n\s*)*EXPLAIN/i.test(ta.value) ? 'EXPLAIN ' + ta.value.replace(/^\s*(--[^\n]*\n)*/, '') : ta.value;
+  readerT = 0;
+  if (sndOn && snd) for (let k = 0; k < 14; k++) burst(3200, 0.014, 0.35, snd.ctx.currentTime + k * 0.036);
+  const t0 = performance.now();
+  const sweep = () => { readerT = Math.min(1, (performance.now() - t0) / 520); drawDeck(); if (readerT < 1) requestAnimationFrame(sweep); else { readerT = -1; drawDeck(); } };
+  requestAnimationFrame(sweep);
+  let res;
+  try {
+    res = runStatement(src);
+  } catch (e) {
+    if (!(e instanceof SqlError)) { console.error(e); e = new SqlError('внутренняя ошибка: ' + e.message); }
+    const off = src.length - ta.value.length;
+    errRange = e.tok ? { pos: Math.max(0, e.tok.pos - off), end: Math.max(1, e.tok.end - off) } : null;
+    highlight();
+    const lines = [{ t: 'АВОСТ — АВАРИЙНЫЙ ОСТАНОВ', c: 'err' }, { t: '' }];
+    const msg = 'ОШИБКА: ' + e.message.toUpperCase();
+    for (let i = 0; i < msg.length; i += 58) lines.push({ t: msg.slice(i, i + 58), c: 'err' });
+    if (errRange) {
+      const before = ta.value.slice(0, errRange.pos);
+      const lineNo = before.split('\n').length;
+      const lineText = ta.value.split('\n')[lineNo - 1] || '';
+      const col = before.length - before.lastIndexOf('\n') - 1;
+      lines.push({ t: '' });
+      lines.push({ t: `СТРОКА ${lineNo}, ПОЗИЦИЯ ${col + 1}:`, c: 'dim' });
+      lines.push({ t: lineText.slice(0, 64) });
+      lines.push({ t: ' '.repeat(Math.min(col, 63)) + '^', c: 'err' });
+    }
+    printLines(lines);
+    stamp('АВОСТ', false);
+    $('printAside').textContent = 'ошибка разбора';
+    return;
+  }
+  errRange = null; highlight();
+  lastTraces = res.traces;
+  plan.explain = res.kind === 'explain';
+  layoutPlan(res.plan);
+  plan.t0 = performance.now();
+  $('planAside').textContent = plan.explain ? 'оценки без выполнения' : `${fmtInt(res.read)} ${plural(res.read, 'строка прочитана', 'строки прочитано', 'строк прочитано')} · ${res.ms.toFixed(2).replace('.', ',')} мс`;
+  // индекс: показать использованный
+  if (res.traces.length) showIndex(res.traces[0].ix, res.traces[0]);
+  else if (res.idxEvents.length) {
+    const ev = res.idxEvents.find((e) => e.ix === (tv.ix && tv.ix.name)) || res.idxEvents.find((e) => e.ix === 'idx_missions_year') || res.idxEvents[0];
+    tv.spawn = new Map();
+    res.idxEvents.filter((e) => e.ix === ev.ix).forEach((e) => e.splits.forEach((sp) => { if (sp.to) tv.spawn.set(sp.to, sp.from); if (sp.root) tv.spawn.set(sp.root, sp.from); }));
+    showIndex(ev.ix, { path: ev.path, leaves: [ev.leaf], rids: new Set([ev.rid]) });
+    const now = performance.now();
+    ev.splits.forEach((sp) => { tv.flash.set(sp.from, now); if (sp.to) tv.flash.set(sp.to, now); });
+  } else if (!res.build) showIndex(tv.ix ? tv.ix.name : 'idx_missions_year', null);
+  if (res.build) startBuild(res.build);
+  updateStats();
+  renderChips();
+  const lines = reportLines(res, src);
+  const delay = plan.explain ? 150 : Math.min(plan.total, 2600);
+  clearTimeout(execute.t);
+  const go = () => { printLines(lines); stamp(res.kind === 'explain' ? 'ПЛАН' : 'ИСПОЛНЕНО', true); };
+  if (window.__SHOT__) go(); else execute.t = setTimeout(go, delay * 0.55);
+  $('printAside').textContent = res.kind === 'rows' ? `${res.rows.length} ${plural(res.rows.length, 'строка', 'строки', 'строк')}` : res.kind === 'explain' ? 'план' : 'изменение базы';
+}
+// анимированное построение индекса: по ключу за такт
+function startBuild(b) {
+  cancelAnimationFrame(buildAnim);
+  tv.spawn = new Map();
+  tv.animTree = new BPTree(); tv.animIx = b.ix;
+  showIndex(b.ix.name, null);
+  let k = 0;
+  const per = Math.max(1, Math.ceil(b.keys.length / 60));
+  let last = 0;
+  const tick = (now) => {
+    if (now - last > 55) {
+      last = now;
+      for (let j = 0; j < per && k < b.keys.length; j++, k++) {
+        const ev = tv.animTree.insert(b.keys[k].v, b.keys[k].r);
+        ev.splits.forEach((sp) => { if (sp.to) { tv.spawn.set(sp.to, sp.from); tv.flash.set(sp.to, now); } if (sp.root) tv.spawn.set(sp.root, sp.from); tv.flash.set(sp.from, now); });
+        tv.trace = { path: ev.path, leaves: [ev.leaf], rids: new Set([b.keys[k].r]) };
+      }
+      showIndex(b.ix.name, tv.trace);
+    }
+    if (k < b.keys.length) buildAnim = requestAnimationFrame(tick);
+    else { tv.animTree = null; tv.animIx = null; tv.pos.clear(); tv.trace = null; showIndex(b.ix.name, null); updateStats(); }
+  };
+  buildAnim = requestAnimationFrame(tick);
+}
+
+// --- подсказки к узлам плана ---
+const EXPLAIN = {
+  SeqScan: 'Читает все строки таблицы подряд и проверяет условие для каждой.',
+  IndexScan: 'Спускается по B+-дереву к началу диапазона и идёт по связанным листьям, не трогая лишних строк.',
+  IndexNLJoin: 'Для каждой строки слева ищет пару в индексе правой таблицы — как поиск слова в словаре.',
+  HashJoin: 'Строит хеш-таблицу по правой стороне и одним проходом находит пары для строк слева.',
+  NestedLoop: 'Сравнивает каждую строку слева с каждой строкой справа. Просто, но дорого.',
+  Lookup: 'Точечный поиск: от корня B+-дерева к нужному листу, по одному узлу на уровень.',
+  Filter: 'Пропускает только строки, где условие истинно. NULL — не истина, такие строки отсеиваются.',
+  Aggregate: 'Раскладывает строки по корзинам ключа группировки и считает агрегаты для каждой корзины.',
+  Sort: 'Упорядочивает строки; при равных ключах сохраняет исходный порядок.',
+  Limit: 'Отдаёт первые N строк и дальше не читает.',
+  Distinct: 'Убирает повторяющиеся строки.',
+  Project: 'Вычисляет выражения из SELECT и отдаёт столбцы на печать.',
+  Const: 'Одна пустая строка — для запросов без таблиц вроде SELECT 1 + 1.',
+  Values: 'Строки, записанные прямо в запросе.',
+  Insert: 'Добавляет строки в таблицу и в каждый её индекс — с делением переполненных узлов.',
+  Delete: 'Находит строки по условию, удаляет их и перестраивает индексы.',
+  Update: 'Находит строки по условию, меняет значения и перестраивает индексы.',
+  BuildIndex: 'Вставляет ключи всех строк в новое B+-дерево.',
+  DDL: 'Меняет каталог: создаёт или удаляет таблицу или индекс.',
+};
+const tip = $('tip');
+function planHit(e) {
+  const r = planCv.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  return plan.nodes.find((v) => Math.abs(x - v.x) < NODE_W / 2 && Math.abs(y - v.y) < NODE_H / 2);
+}
+function showTip(e) {
+  const v = planHit(e);
+  if (!v) { tip.hidden = true; planCv.style.cursor = ''; return; }
+  planCv.style.cursor = 'help';
+  const n = v.n;
+  tip.innerHTML = `<b>${OPS[n.op].title}.</b> ${EXPLAIN[n.op] || ''}<span class="n">${plan.explain ? 'оценка ≈ ' + fmtInt(n.est) : 'оценка ≈ ' + fmtInt(n.est) + ' · факт ' + fmtInt(n.act)}</span>`;
+  tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(innerWidth - w - 10, e.clientX + 14) + 'px';
+  tip.style.top = Math.min(innerHeight - h - 10, e.clientY + 16) + 'px';
+}
+planCv.addEventListener('mousemove', showTip);
+planCv.addEventListener('pointerdown', showTip);
+planCv.addEventListener('mouseleave', () => { tip.hidden = true; });
+
+// --- легенда условных обозначений ---
+(function legend() {
+  const items = [['card', 'просмотр таблицы'], ['disk', 'индекс'], ['merge', 'соединение'], ['decision', 'фильтр'], ['predef', 'группировка'], ['sort', 'сортировка'], ['doc', 'вывод']];
+  const svg = { card: '<path d="M4 1H17V13H1V4Z"/>', disk: '<ellipse cx="9" cy="3" rx="7.5" ry="2.2"/><path d="M1.5 3V11A7.5 2.2 0 0 0 16.5 11V3"/>', merge: '<path d="M1 1H17L9 13Z"/>', decision: '<path d="M9 0.5L17.5 7L9 13.5L0.5 7Z"/>', predef: '<rect x="1" y="1" width="16" height="12"/><path d="M4 1V13M14 1V13"/>', sort: '<path d="M9 0.5L17.5 7L9 13.5L0.5 7Z M0.5 7H17.5"/>', doc: '<path d="M1 1H17V11C12 8 6 15 1 12Z"/>' };
+  $('legend').innerHTML = items.map(([k, t]) => `<span><svg viewBox="0 0 18 14">${svg[k]}</svg>${t}</span>`).join('');
+})();
+
+// --- звук: щелчки считывателя и удары строк АЦПУ (по желанию) ---
+let snd = null, sndOn = false;
+function sndInit() {
+  if (snd) { if (snd.ctx.state === 'suspended') snd.ctx.resume(); return; }
+  const Ctor = window.AudioContext || window.webkitAudioContext; if (!Ctor) return;
+  const ctx = new Ctor(), out = ctx.createGain(); out.gain.value = 0.22; out.connect(ctx.destination);
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.6), ctx.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  snd = { ctx, out, buf };
+}
+function burst(freq, dur, vol, when) {
+  if (!sndOn || !snd) return;
+  const { ctx, out, buf } = snd, t = when ?? ctx.currentTime;
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.3;
+  const e = ctx.createGain(); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(vol, t + 0.004); e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(f).connect(e).connect(out); src.start(t, Math.random() * 0.4); src.stop(t + dur + 0.02);
+}
+$('snd').addEventListener('click', () => { sndOn = !sndOn; if (sndOn) sndInit(); $('snd').setAttribute('aria-pressed', sndOn); $('snd').textContent = 'звук АЦПУ: ' + (sndOn ? 'вкл' : 'выкл'); });
+
+// --- кнопки ---
+$('run').addEventListener('click', () => execute(false));
+$('explain').addEventListener('click', () => execute(true));
+$('resetdb').addEventListener('click', () => { resetDb(); tv.pos.clear(); updateStats(); showIndex('idx_missions_year', null); loadExample(0); execute(false); });
+
+// --- главный цикл отрисовки ---
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (document.hidden) return;
+  drawPlan(now);
+  drawTree(now);
+}
+let resizeT;
+addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (plan.nodes.length) { const root = plan.nodes[0].n; const t0 = plan.t0; layoutPlan(root); plan.t0 = t0; } drawDeck(); }, 120); });
+
+// --- старт ---
+resetDb();
+updateStats();
+loadExample(0);
+showIndex('idx_missions_year', null);
+const boot = () => { drawDeck(); execute(false); requestAnimationFrame(loop); };
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot); else boot();
+</script>
+</body>
+</html>

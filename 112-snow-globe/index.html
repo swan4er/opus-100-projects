@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Снежный шар</title>
+<meta name="description" content="Стеклянный шар с зимней деревней внутри: встряхните — и снег закружится в воде.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500;1,600&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--night:#0d1224;--cream:#f7efe1;--ink:#231a14;--ink2:#6d6053;--warm:#ffcf8a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--night);color:var(--cream);font-family:'Manrope',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body.day{background:#e7e9ee}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#cv.shaking{cursor:grabbing}
+.title{position:fixed;left:40px;top:32px;pointer-events:none;transition:color .8s}
+.title h1{text-shadow:0 2px 14px rgba(8,10,20,.7);margin:0;font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:54px;line-height:.95;letter-spacing:-.01em}
+.title p{margin:12px 0 0;font-size:14px;line-height:1.5;color:rgba(247,239,225,.82);max-width:300px;text-shadow:0 1px 8px rgba(8,10,20,.9)}
+body.day .title{color:var(--ink)}
+body.day .title p{color:var(--ink2)}
+.bar{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);display:flex;gap:10px;align-items:center}
+.pill{height:46px;padding:0 20px;border-radius:999px;border:0;background:var(--cream);color:var(--ink);font:600 14px 'Manrope',sans-serif;display:inline-flex;align-items:center;gap:9px;cursor:pointer;
+  box-shadow:0 10px 24px rgba(0,0,0,.28),0 1px 0 rgba(255,255,255,.6) inset;transition:transform .15s cubic-bezier(.3,1.6,.5,1),background .2s}
+.pill:hover{transform:translateY(-2px)}
+.pill:active{transform:translateY(1px)}
+.pill svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pill.on{background:#ffd79a}
+.pill:focus-visible{outline:2px solid var(--warm);outline-offset:3px}
+body.day .pill{box-shadow:0 8px 20px rgba(40,30,20,.16),0 1px 0 rgba(255,255,255,.7) inset}
+.hint{position:fixed;right:36px;bottom:40px;font-size:13px;color:rgba(247,239,225,.7);text-align:right;line-height:1.6;pointer-events:none;transition:opacity .6s}
+body.day .hint{color:var(--ink2)}
+.hint b{color:var(--warm);font-weight:600}
+body.day .hint b{color:#9a5a17}
+#load{position:fixed;inset:0;display:grid;place-items:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:26px;color:rgba(247,239,225,.8);transition:opacity .8s;pointer-events:none}
+#load.gone{opacity:0}
+@media (max-width:760px){
+  .title{left:20px;top:20px}
+  .title h1{font-size:38px}
+  .title p{font-size:13px;max-width:240px}
+  .bar{bottom:18px;gap:8px;width:calc(100% - 24px);justify-content:center}
+  .pill{height:44px;padding:0 14px;font-size:13px}
+  .pill span{display:none}
+  .hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){.pill{transition:none}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head>
+<body>
+<canvas id="cv" aria-label="Снежный шар: потяните, чтобы встряхнуть"></canvas>
+<div class="title">
+  <h1>Снежный шар</h1>
+  <p>Деревня Снегирёво, зимняя ночь. Потяните шар — и снег закружится в воде, а потом медленно осядет.</p>
+</div>
+<div class="bar">
+  <button class="pill" id="bShake" aria-label="Встряхнуть"><svg viewBox="0 0 24 24"><path d="M4 12c2-4 5-4 8 0s6 4 8 0"/><path d="M4 7c2-3 5-3 8 0M12 17c3 3 6 3 8 0"/></svg><span>Встряхнуть</span></button>
+  <button class="pill" id="bDay" aria-label="День или ночь"><svg viewBox="0 0 24 24" id="dayIco"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span id="dayLbl">Ночь</span></button>
+  <button class="pill" id="bMusic" aria-label="Музыкальная шкатулка" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg><span>Шкатулка</span></button>
+</div>
+<div class="hint" id="hint">Потяните шар — <b>встряхнуть</b><br>Тяните фон — <b>повернуть</b></div>
+<div id="load">Шар наполняется водой…</div>
+<script>
+  // если three.js не загрузился (нет сети) — честно говорим об этом
+  setTimeout(() => { if (!window.__globeReady) { const l = document.getElementById('load'); l.textContent = 'Для снежного шара нужен интернет: трёхмерный движок грузится с CDN.'; } }, 9000);
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const $ = id => document.getElementById(id);
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const canvas = $('cv');
+
+/* ============ рендерер, сцена, камера ============ */
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+// своё окружение: комната с камином, окном и гирляндой — отражения в стекле круглые и тёплые
+function roomEnv(day) {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512; const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 512);
+  if (day) { g.addColorStop(0, '#c9d6e6'); g.addColorStop(0.5, '#e9e2d6'); g.addColorStop(1, '#6b4a33'); } else { g.addColorStop(0, '#07090f'); g.addColorStop(0.5, '#141222'); g.addColorStop(1, '#1c110a'); }
+  x.fillStyle = g; x.fillRect(0, 0, 1024, 512);
+  const blob = (cx, cy, r, col, a) => { const rg = x.createRadialGradient(cx, cy, 0, cx, cy, r); rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)'); x.globalAlpha = a; x.fillStyle = rg; x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill(); x.globalAlpha = 1; };
+  if (day) { blob(640, 170, 190, '#ffffff', 0.95); blob(640, 170, 90, '#fffaf0', 1); blob(160, 300, 160, '#ffd9a8', 0.35); }
+  else {
+    blob(150, 330, 190, '#ff7a2e', 0.85); blob(150, 330, 70, '#ffb35c', 0.9);
+    blob(655, 185, 110, '#9fb8ff', 0.45); blob(655, 185, 45, '#c9d8ff', 0.5);
+    for (let i = 0; i < 70; i++) { const px = i / 70 * 1024, py = 150 + Math.sin(i / 70 * Math.PI * 4) * 30; blob(px, py, 7, i % 3 ? '#ffcf85' : '#ff9a55', 0.95); }
+    blob(880, 280, 26, '#ffe2a8', 1);
+  }
+  const t = new THREE.CanvasTexture(c); t.mapping = THREE.EquirectangularReflectionMapping; t.colorSpace = THREE.SRGBColorSpace;
+  const pm = pmrem.fromEquirectangular(t).texture; t.dispose(); return pm;
+}
+const envNight = roomEnv(false), envDay = roomEnv(true);
+scene.environment = envNight;
+scene.environmentIntensity = 0.5;
+scene.fog = new THREE.Fog('#0b0f1c', 6.5, 13);
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 60);
+camera.position.set(0.6, 1.75, 5.1);
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 0.98, 0); controls.enableDamping = true; controls.dampingFactor = 0.06; controls.enablePan = false;
+controls.minDistance = 3.4; controls.maxDistance = 7; controls.minPolarAngle = 0.95; controls.maxPolarAngle = 1.62;
+controls.autoRotate = !reduceMotion; controls.autoRotateSpeed = 0.35; controls.rotateSpeed = 0.6;
+controls.update();
+
+/* ============ процедурные текстуры ============ */
+function canvasTex(w, h, draw, srgb = true) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
+function bokeh(night) {
+  return canvasTex(1024, 576, (x, w, h) => {
+    const g = x.createLinearGradient(0, 0, 0, h);
+    if (night) { g.addColorStop(0, '#0b1022'); g.addColorStop(0.6, '#161428'); g.addColorStop(1, '#241520'); } else { g.addColorStop(0, '#d9e3ee'); g.addColorStop(0.7, '#efe7dc'); g.addColorStop(1, '#e9ddcc'); }
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+    let seed = night ? 7 : 11; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const warm = night ? ['#ffb35c', '#ff8a4c', '#ffd79a', '#ffc46b'] : ['#ffffff', '#ffe9cf', '#dfe9ff'], cool = night ? ['#7fb2ff', '#a9c8ff'] : ['#cfe0ff', '#fff4e6'];
+    for (let i = 0; i < 90; i++) {
+      const garland = i < 60, px = garland ? (i / 60) * w + (rnd() - 0.5) * 30 : rnd() * w;
+      const py = garland ? h * 0.28 + Math.sin(i / 60 * Math.PI * 2.2) * h * 0.1 + (rnd() - 0.5) * 20 : h * (0.4 + rnd() * 0.55);
+      const r = garland ? 10 + rnd() * 22 : 20 + rnd() * 70, col = (garland ? warm : cool)[Math.floor(rnd() * (garland ? warm.length : cool.length))];
+      const a = night ? (garland ? 0.55 + rnd() * 0.4 : 0.12 + rnd() * 0.2) : (garland ? 0.35 + rnd() * 0.3 : 0.2 + rnd() * 0.2);
+      const rg = x.createRadialGradient(px, py, 0, px, py, r); rg.addColorStop(0, col); rg.addColorStop(0.72, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
+      x.globalAlpha = a; x.fillStyle = rg; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+    }
+    x.globalAlpha = 1;
+  });
+}
+function woodTex(base, dark, rings) {
+  const t = canvasTex(512, 512, (x, w, h) => {
+    x.fillStyle = base; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 180; i++) { const y = Math.random() * h; x.strokeStyle = dark; x.globalAlpha = 0.08 + Math.random() * 0.16; x.lineWidth = 0.6 + Math.random() * 2.4; x.beginPath(); x.moveTo(0, y); for (let xx = 0; xx <= w; xx += 16) x.lineTo(xx, y + Math.sin(xx * 0.01 * rings + i) * 3 + Math.sin(xx * 0.043) * 1.5); x.stroke(); }
+    x.globalAlpha = 1;
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+const contactTex = canvasTex(256, 256, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, 'rgba(0,0,0,0.7)'); g.addColorStop(0.55, 'rgba(0,0,0,0.35)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+const plaqueTex = canvasTex(512, 128, (x, w, h) => {
+  const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#8d6a2c'); g.addColorStop(0.45, '#e6c47a'); g.addColorStop(0.55, '#f3dca0'); g.addColorStop(1, '#9b7532');
+  x.fillStyle = g; x.fillRect(0, 0, w, h); x.strokeStyle = 'rgba(60,40,10,.6)'; x.lineWidth = 4; x.strokeRect(8, 8, w - 16, h - 16);
+  x.font = 'italic 600 58px "Cormorant Garamond", serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillStyle = 'rgba(255,240,200,.55)'; x.fillText('Снегирёво · 1986', w / 2 + 1.5, h / 2 + 3.5); x.fillStyle = '#4a3310'; x.fillText('Снегирёво · 1986', w / 2, h / 2 + 2);
+});
+
+/* ============ стол и фон ============ */
+const bokehNight = bokeh(true), bokehDay = bokeh(false);
+const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(22, 12.4), new THREE.MeshBasicMaterial({ map: bokehNight, toneMapped: false, fog: false }));
+backdrop.position.set(0, 2.2, -6.5); scene.add(backdrop);
+const tableTex = woodTex('#3b2416', '#1a0e07', 1.2); tableTex.repeat.set(3, 3);
+const table = new THREE.Mesh(new THREE.CircleGeometry(9, 64), new THREE.MeshStandardMaterial({ map: tableTex, roughness: 0.55, metalness: 0 }));
+table.rotation.x = -Math.PI / 2; table.receiveShadow = true; scene.add(table);
+const contact = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), new THREE.MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false }));
+contact.rotation.x = -Math.PI / 2; contact.position.y = 0.004; scene.add(contact);
+
+/* ============ шар ============ */
+const globe = new THREE.Group(); scene.add(globe);
+const GC = 1.3; globe.position.y = GC;
+// основание — точёное дерево с латунным кольцом
+const baseProfile = [[0, -1.3], [1.08, -1.3], [1.12, -1.27], [1.1, -1.2], [1.02, -1.16], [0.99, -1.06], [0.95, -0.92], [0.9, -0.8], [0.86, -0.75], [0.8, -0.72], [0, -0.72]].map(([r, y]) => new THREE.Vector2(r, y));
+const baseTex = woodTex('#5a2f18', '#241008', 3); baseTex.repeat.set(4, 1);
+const base = new THREE.Mesh(new THREE.LatheGeometry(baseProfile, 96), new THREE.MeshPhysicalMaterial({ map: baseTex, roughness: 0.32, clearcoat: 0.8, clearcoatRoughness: 0.25 }));
+base.castShadow = true; base.receiveShadow = true; globe.add(base);
+const brass = new THREE.MeshStandardMaterial({ color: '#c9a15a', metalness: 1, roughness: 0.28 });
+const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.032, 16, 96), brass); ring.rotation.x = Math.PI / 2; ring.position.y = -0.72; globe.add(ring);
+const ring2 = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.018, 12, 96), brass); ring2.rotation.x = Math.PI / 2; ring2.position.y = -1.22; globe.add(ring2);
+// табличка — изогнутый сегмент по форме основания
+const plaque = new THREE.Mesh(new THREE.CylinderGeometry(0.962, 1.008, 0.15, 48, 1, true, -0.34, 0.68), new THREE.MeshStandardMaterial({ map: plaqueTex, metalness: 0.85, roughness: 0.32 }));
+plaque.position.y = -1.0; globe.add(plaque);
+
+// внутренний мир
+const inner = new THREE.Group(); globe.add(inner);
+const GROUND_Y = -0.6;
+function drift(x, z) { return 0.028 * Math.sin(x * 7.1 + 1.3) * Math.cos(z * 6.3) + 0.018 * Math.sin(x * 13 + z * 11) + 0.03 * Math.exp(-((x + 0.38) ** 2 + (z - 0.22) ** 2) * 18); }
+const groundGeo = new THREE.CircleGeometry(0.775, 96, 0, Math.PI * 2); groundGeo.rotateX(-Math.PI / 2);
+{ const p = groundGeo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), r = Math.hypot(x, z); p.setY(i, drift(x, z) * (r < 0.74 ? 1 : 0)); } groundGeo.computeVertexNormals(); }
+const snowMat = new THREE.MeshStandardMaterial({ color: '#f4f8ff', roughness: 0.85, metalness: 0 });
+const ground = new THREE.Mesh(groundGeo, snowMat); ground.position.y = GROUND_Y; ground.receiveShadow = true; inner.add(ground);
+
+const logMat = new THREE.MeshStandardMaterial({ color: '#6b3f24', roughness: 0.8 }), roofMat = new THREE.MeshStandardMaterial({ color: '#4a2a22', roughness: 0.7 });
+const winMat = new THREE.MeshStandardMaterial({ color: '#2a1a0c', emissive: '#ffb257', emissiveIntensity: 1.5 });
+const firMat = new THREE.MeshStandardMaterial({ color: '#1d4a37', roughness: 0.9 }), goldMat = new THREE.MeshStandardMaterial({ color: '#e0b04c', metalness: 1, roughness: 0.22 });
+const wallMat = new THREE.MeshStandardMaterial({ color: '#efe6d6', roughness: 0.75 });
+function prismGeo(w, h, d) { const s = new THREE.Shape(); s.moveTo(-w / 2, 0); s.lineTo(w / 2, 0); s.lineTo(0, h); s.closePath(); const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false }); g.translate(0, 0, -d / 2); return g; }
+const windowLights = [];
+function house(x, z, rot, w = 0.17, hgt = 0.12, d = 0.13, chimney = true) {
+  const g = new THREE.Group(); g.position.set(x, GROUND_Y + drift(x, z) - 0.01, z); g.rotation.y = rot;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, hgt, d), logMat); body.position.y = hgt / 2; body.castShadow = true; body.receiveShadow = true; g.add(body);
+  const roof = new THREE.Mesh(prismGeo(w * 1.18, hgt * 0.75, d * 1.12), roofMat); roof.position.y = hgt; roof.castShadow = true; g.add(roof);
+  const snowRoof = new THREE.Mesh(prismGeo(w * 1.24, hgt * 0.62, d * 1.18), snowMat); snowRoof.position.y = hgt + hgt * 0.16; g.add(snowRoof);
+  for (const sx of [-w * 0.24, w * 0.24]) { const win = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.2, hgt * 0.32), winMat); win.position.set(sx, hgt * 0.5, d / 2 + 0.001); g.add(win); }
+  const side = new THREE.Mesh(new THREE.PlaneGeometry(d * 0.3, hgt * 0.32), winMat); side.position.set(w / 2 + 0.001, hgt * 0.5, 0); side.rotation.y = Math.PI / 2; g.add(side);
+  if (chimney) { const ch = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.08, 0.03), wallMat); ch.position.set(w * 0.25, hgt * 1.45, -d * 0.1); ch.castShadow = true; g.add(ch); g.userData.chimney = new THREE.Vector3(w * 0.25, hgt * 1.5 + 0.04, -d * 0.1); }
+  const lt = new THREE.PointLight('#ffae55', 0.35, 0.55, 2); lt.position.set(0, hgt * 0.5, d / 2 + 0.06); g.add(lt); windowLights.push(lt);
+  inner.add(g); return g;
+}
+function fir(x, z, s = 1) {
+  const g = new THREE.Group(); g.position.set(x, GROUND_Y + drift(x, z) - 0.005, z); g.scale.setScalar(s);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.015, 0.05, 8), logMat); trunk.position.y = 0.025; g.add(trunk);
+  [[0.075, 0.1, 0.06], [0.06, 0.09, 0.12], [0.042, 0.08, 0.175]].forEach(([r, hh, y]) => {
+    const c = new THREE.Mesh(new THREE.ConeGeometry(r, hh, 12), firMat); c.position.y = y; c.castShadow = true; g.add(c);
+    const sc = new THREE.Mesh(new THREE.ConeGeometry(r * 0.72, hh * 0.45, 12), snowMat); sc.position.y = y + hh * 0.2; g.add(sc);
+  });
+  inner.add(g); return g;
+}
+function church(x, z) {
+  const g = new THREE.Group(); g.position.set(x, GROUND_Y + drift(x, z) - 0.01, z);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), wallMat); body.position.y = 0.1; body.castShadow = true; body.receiveShadow = true; g.add(body);
+  const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.15, 0.08, 4), roofMat); roof.rotation.y = Math.PI / 4; roof.position.y = 0.24; g.add(roof);
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.1, 16), wallMat); drum.position.y = 0.31; drum.castShadow = true; g.add(drum);
+  const onionPts = [[0, 0], [0.055, 0.004], [0.074, 0.03], [0.07, 0.058], [0.05, 0.085], [0.024, 0.11], [0.008, 0.132], [0, 0.15]].map(([r, y]) => new THREE.Vector2(r, y));
+  const onion = new THREE.Mesh(new THREE.LatheGeometry(onionPts, 32), goldMat); onion.position.y = 0.36; onion.castShadow = true; g.add(onion);
+  const cv = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.07, 0.008), goldMat); cv.position.y = 0.535; g.add(cv);
+  const ch = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.008, 0.008), goldMat); ch.position.y = 0.55; g.add(ch);
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.08), winMat); door.position.set(0, 0.04, 0.101); g.add(door);
+  for (const sx of [-0.06, 0.06]) { const w = new THREE.Mesh(new THREE.PlaneGeometry(0.025, 0.05), winMat); w.position.set(sx, 0.13, 0.101); g.add(w); }
+  const lt = new THREE.PointLight('#ffbd6e', 0.45, 0.6, 2); lt.position.set(0, 0.08, 0.16); g.add(lt); windowLights.push(lt);
+  inner.add(g); return g;
+}
+const houses = [house(0.3, 0.14, -0.5), house(-0.2, 0.32, 0.35, 0.15, 0.11, 0.12), house(0.18, -0.34, 0.2, 0.19, 0.13, 0.14)];
+church(-0.2, -0.22);
+[[0.52, -0.1, 1.1], [-0.52, 0.02, 1.2], [0.42, 0.42, 0.9], [-0.44, -0.44, 1], [0.02, 0.55, 0.8], [0.5, -0.45, 0.85], [-0.02, 0.1, 0.7], [-0.6, 0.35, 0.8]].forEach(([x, z, s]) => fir(x, z, s));
+// фонарь
+const lampPost = new THREE.Group(); lampPost.position.set(0.02, GROUND_Y + drift(0.02, -0.02), -0.02);
+const post = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.008, 0.2, 8), new THREE.MeshStandardMaterial({ color: '#1c1c1c', metalness: 0.6, roughness: 0.4 })); post.position.y = 0.1; lampPost.add(post);
+const bulbMat = new THREE.MeshStandardMaterial({ color: '#fff3d6', emissive: '#ffcf85', emissiveIntensity: 3 });
+const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.018, 16, 12), bulbMat); bulb.position.y = 0.205; lampPost.add(bulb);
+const lampLight = new THREE.PointLight('#ffcf85', 0.35, 0.8, 2); lampLight.position.y = 0.21; lampPost.add(lampLight); inner.add(lampPost);
+
+// стекло
+const glassMat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', metalness: 0, roughness: 0.035, transmission: 1, thickness: 0.55, ior: 1.22, envMapIntensity: 1.0,
+  clearcoat: 1, clearcoatRoughness: 0.03, attenuationColor: new THREE.Color('#eef6ff'), attenuationDistance: 6, specularIntensity: 0.9, depthWrite: false });
+const glass = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 96), glassMat); glass.renderOrder = 1; globe.add(glass);
+
+/* ============ снег ============ */
+const N = 1600, R_IN = 0.93;
+const pos = new Float32Array(N * 3), vel = new Float32Array(N * 3), alpha = new Float32Array(N), size = new Float32Array(N), state = new Uint8Array(N), rest = new Float32Array(N);
+function spawn(i, anywhere) {
+  let x, y, z; do { x = (Math.random() * 2 - 1) * R_IN; y = anywhere ? GROUND_Y + 0.05 + Math.random() * (R_IN - GROUND_Y - 0.05) : GROUND_Y + 0.02; z = (Math.random() * 2 - 1) * R_IN; } while (x * x + y * y + z * z > R_IN * R_IN);
+  pos[3 * i] = x; pos[3 * i + 1] = y; pos[3 * i + 2] = z; vel[3 * i] = vel[3 * i + 1] = vel[3 * i + 2] = 0; alpha[i] = 1; state[i] = 0;
+}
+for (let i = 0; i < N; i++) { spawn(i, true); size[i] = 0.9 + Math.random() * 1.8; }
+const snowGeo = new THREE.BufferGeometry();
+snowGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); snowGeo.setAttribute('aAlpha', new THREE.BufferAttribute(alpha, 1)); snowGeo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+const snowUniforms = { uPx: { value: 1 }, uColor: { value: new THREE.Color('#ffffff') } };
+const snowPts = new THREE.Points(snowGeo, new THREE.ShaderMaterial({
+  uniforms: snowUniforms, transparent: true, depthWrite: false,
+  vertexShader: `attribute float aAlpha; attribute float aSize; varying float vA; uniform float uPx;
+    void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv; gl_PointSize = aSize * uPx / -mv.z; vA = aAlpha; }`,
+  fragmentShader: `varying float vA; uniform vec3 uColor;
+    void main(){ vec2 c = gl_PointCoord - 0.5; float d = length(c); float a = smoothstep(0.5, 0.12, d) * vA; if (a < 0.02) discard; gl_FragColor = vec4(uColor, a * 0.95); }`,
+}));
+snowPts.renderOrder = 2; snowPts.frustumCulled = false; inner.add(snowPts);
+// дым из труб
+const SMOKE = 60, sPos = new Float32Array(SMOKE * 3), sA = new Float32Array(SMOKE), sS = new Float32Array(SMOKE), sLife = new Float32Array(SMOKE);
+for (let i = 0; i < SMOKE; i++) { sLife[i] = Math.random(); sS[i] = 3 + Math.random() * 3; }
+const smokeGeo = new THREE.BufferGeometry(); smokeGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3)); smokeGeo.setAttribute('aAlpha', new THREE.BufferAttribute(sA, 1)); smokeGeo.setAttribute('aSize', new THREE.BufferAttribute(sS, 1));
+const smokeUniforms = { uPx: { value: 1 }, uColor: { value: new THREE.Color('#cfd6e4') } };
+const smoke = new THREE.Points(smokeGeo, new THREE.ShaderMaterial({ uniforms: smokeUniforms, transparent: true, depthWrite: false, vertexShader: snowPts.material.vertexShader,
+  fragmentShader: `varying float vA; uniform vec3 uColor; void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d) * vA * 0.35; if (a < 0.01) discard; gl_FragColor = vec4(uColor, a); }` }));
+smoke.renderOrder = 2; smoke.frustumCulled = false; inner.add(smoke);
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const chimneys = houses.filter(hh => hh.userData.chimney).map(hh => hh.userData.chimney.clone().applyAxisAngle(Y_AXIS, hh.rotation.y).add(hh.position));
+
+/* ============ свет ============ */
+const hemi = new THREE.HemisphereLight('#9fb4ff', '#2a1810', 0.35); scene.add(hemi);
+const key = new THREE.DirectionalLight('#b9c9ff', 0.9); key.position.set(3, 6, 2.5); key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024); Object.assign(key.shadow.camera, { left: -1.4, right: 1.4, top: 1.4, bottom: -1.4, near: 1, far: 14 }); key.shadow.bias = -0.0008; key.shadow.normalBias = 0.02; scene.add(key);
+const hearth = new THREE.PointLight('#ff9a4d', 7, 12, 2); hearth.position.set(-2.4, 1.0, 2.7); scene.add(hearth);
+const rim = new THREE.PointLight('#9ab8ff', 5, 12, 2); rim.position.set(3.2, 2.6, -2.4); scene.add(rim);
+
+/* ============ пост-обработка ============ */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.38, 0.5, 0.9); composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+/* ============ день и ночь ============ */
+const lightBase = windowLights.map(() => 0.22); let lampBase = 0.35;
+let night = true, dayMix = 0, dayTarget = 0;
+function applyDay(m) {
+  scene.environmentIntensity = 0.5 + m * 0.5; scene.environment = m > 0.5 ? envDay : envNight; scene.fog.color.set(m > 0.5 ? '#d9dde4' : '#0b0f1c'); hemi.intensity = 0.35 + m * 0.9; hemi.color.set(m > 0.5 ? '#dfe9ff' : '#9fb4ff');
+  key.intensity = 0.9 + m * 2.4; key.color.lerpColors(new THREE.Color('#b9c9ff'), new THREE.Color('#fff0dc'), m);
+  hearth.intensity = 7 * (1 - m) + 1.5; rim.intensity = 4 * (1 - m) + 1;
+  windowLights.forEach((l, i) => { lightBase[i] = 0.22 * (1 - m * 0.85); }); lampBase = 0.35 * (1 - m * 0.85);
+  winMat.emissiveIntensity = 1.5 * (1 - m * 0.7); bulbMat.emissiveIntensity = 3 * (1 - m * 0.8);
+  backdrop.material.map = m > 0.5 ? bokehDay : bokehNight; backdrop.material.color.setScalar(m > 0.5 ? 0.6 + 0.4 * (m - 0.5) * 2 : 1 - m * 0.8); backdrop.material.needsUpdate = true;
+  renderer.toneMappingExposure = 0.92 + m * 0.12; bloom.strength = 0.38 * (1 - m * 0.7);
+  document.body.classList.toggle('day', m > 0.5);
+}
+$('bDay').addEventListener('click', () => {
+  night = !night; dayTarget = night ? 0 : 1;
+  $('dayLbl').textContent = night ? 'Ночь' : 'День';
+  $('dayIco').innerHTML = night ? '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>' : '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+  document.querySelector('.title p').textContent = night ? 'Деревня Снегирёво, зимняя ночь. Потяните шар — и снег закружится в воде, а потом медленно осядет.' : 'Деревня Снегирёво, зимний день. Потяните шар — и снег закружится в воде, а потом медленно осядет.';
+});
+
+/* ============ встряхивание ============ */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const offset = new THREE.Vector3(), velo = new THREE.Vector3(), target = new THREE.Vector3(), acc = new THREE.Vector3(), tilt = new THREE.Vector2();
+let shaking = null, energy = 1.1, autoShake = 0;
+function hitGlobe(e) { const r = canvas.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); return ray.intersectObjects([glass, base], false).length > 0; }
+canvas.addEventListener('pointerdown', e => {
+  if (!hitGlobe(e)) return; e.stopImmediatePropagation(); controls.enabled = false; canvas.setPointerCapture(e.pointerId); canvas.classList.add('shaking');
+  shaking = { id: e.pointerId, x: e.clientX, y: e.clientY }; controls.autoRotate = false; startAudio(); $('hint').style.opacity = 0;
+}, { capture: true });
+canvas.addEventListener('pointermove', e => {
+  if (!shaking || e.pointerId !== shaking.id) return;
+  const s = 2.4 / canvas.clientHeight, right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0), up = new THREE.Vector3(0, 1, 0);
+  target.copy(right.multiplyScalar((e.clientX - shaking.x) * s)).addScaledVector(up, -(e.clientY - shaking.y) * s); target.clampLength(0, 0.42);
+});
+const release = e => { if (!shaking || (e && e.pointerId !== shaking.id)) return; shaking = null; target.set(0, 0, 0); controls.enabled = true; canvas.classList.remove('shaking'); };
+canvas.addEventListener('pointerup', release); canvas.addEventListener('pointercancel', release);
+$('bShake').addEventListener('click', () => { autoShake = 0.9; startAudio(); controls.autoRotate = false; });
+addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); autoShake = 0.9; } });
+
+/* ============ музыкальная шкатулка (свой вальс) ============ */
+let AC = null, master = null, musicOn = false, musicTimer = null, nextT = 0, step = 0;
+function startAudio() { if (AC) { if (AC.state === 'suspended') AC.resume(); return; } try { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = 0.22; const conv = AC.createConvolver(), len = AC.sampleRate * 2.2, ir = AC.createBuffer(2, len, AC.sampleRate); for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); } conv.buffer = ir; const wet = AC.createGain(); wet.gain.value = 0.35; master.connect(AC.destination); master.connect(conv).connect(wet).connect(AC.destination); } catch (e) { AC = null; } }
+const midi = n => 440 * Math.pow(2, (n - 69) / 12);
+function tine(n, t, vel) {
+  const f = midi(n); [[1, 1, 1.6], [2.02, 0.22, 0.6], [5.1, 0.08, 0.25], [8.9, 0.03, 0.12]].forEach(([k, a, d]) => {
+    const o = AC.createOscillator(), g = AC.createGain(); o.type = 'sine'; o.frequency.value = f * k; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(a * vel, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g).connect(master); o.start(t); o.stop(t + d + 0.05);
+  });
+}
+// «Снегирёвский вальс»: 16 тактов, 3/4
+const MEL = [[76, 79, 84], [83, 0, 79], [81, 84, 88], [86, 0, 83], [84, 81, 77], [76, 0, 72], [74, 77, 83], [84, 0, 0], [88, 86, 84], [83, 81, 79], [77, 81, 86], [84, 0, 81], [79, 84, 88], [89, 88, 86], [84, 79, 83], [84, 0, 0]];
+const BASS = [[60, 64, 67], [55, 59, 62], [57, 60, 64], [55, 59, 62], [53, 57, 60], [60, 64, 67], [55, 59, 65], [60, 64, 67], [57, 60, 64], [52, 55, 59], [53, 57, 62], [57, 60, 64], [60, 64, 67], [53, 57, 60], [55, 59, 62], [60, 64, 67]];
+function schedule() {
+  const beat = 60 / 132;
+  while (nextT < AC.currentTime + 0.3) {
+    const bar = Math.floor(step / 3) % 16, b = step % 3, m = MEL[bar][b], ch = BASS[bar];
+    if (m) tine(m, nextT, 0.7); tine(b === 0 ? ch[0] : ch[b], nextT, b === 0 ? 0.45 : 0.22);
+    step++; nextT += beat;
+  }
+}
+$('bMusic').addEventListener('click', () => {
+  startAudio(); if (!AC) return; musicOn = !musicOn; $('bMusic').classList.toggle('on', musicOn); $('bMusic').setAttribute('aria-pressed', musicOn ? 'true' : 'false');
+  if (musicOn) { nextT = AC.currentTime + 0.1; step = 0; musicTimer = setInterval(schedule, 100); } else clearInterval(musicTimer);
+});
+let sloshT = 0;
+function slosh(power) {
+  if (!AC || AC.currentTime - sloshT < 0.18) return; sloshT = AC.currentTime; const t = AC.currentTime, len = AC.sampleRate * 0.5, b = AC.createBuffer(1, len, AC.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / len);
+  const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = b; f.type = 'lowpass'; f.frequency.value = 500 + power * 900; g.gain.value = Math.min(0.25, power * 0.3);
+  s.connect(f).connect(g).connect(master); s.start(t);
+}
+
+/* ============ физика снега ============ */
+const tmp = new THREE.Vector3();
+function stepSnow(dt, time) {
+  // пружина шара: рука тянет, вода плескается
+  if (autoShake > 0) { autoShake -= dt; const k = autoShake / 0.9; target.set(Math.sin(time * 26) * 0.32 * k, Math.cos(time * 19) * 0.18 * k, 0); if (autoShake <= 0) target.set(0, 0, 0); }
+  acc.copy(target).sub(offset).multiplyScalar(90).addScaledVector(velo, -11);
+  velo.addScaledVector(acc, dt); offset.addScaledVector(velo, dt);
+  globe.position.set(offset.x, GC + offset.y, offset.z); tilt.set(velo.y * 0.05, -velo.x * 0.05); globe.rotation.set(tilt.x, 0, tilt.y);
+  contact.material.opacity = Math.max(0.35, 1 - Math.max(0, offset.y) * 2.2); contact.position.x = offset.x;
+  const a = acc.length(); energy = Math.min(1.6, energy + a * dt * 0.06); energy *= Math.exp(-dt / 2.8);
+  if (a > 8) slosh(Math.min(1, a / 60));
+  // инерционная сила в системе шара + вихрь + оседание
+  const ix = -acc.x * 0.012, iy = -acc.y * 0.012, iz = -acc.z * 0.012, E = energy, damp = Math.exp(-dt * 1.8);
+  for (let i = 0; i < N; i++) {
+    const j = 3 * i;
+    if (state[i] === 1) {
+      rest[i] += dt; alpha[i] = Math.max(0, 1 - rest[i] / 5);
+      if (E > 0.25 && Math.random() < E * dt * 1.2) { state[i] = 0; alpha[i] = 1; vel[j] = (Math.random() - 0.5) * E * 0.5; vel[j + 1] = Math.random() * E * 0.6; vel[j + 2] = (Math.random() - 0.5) * E * 0.5; }
+      continue;
+    }
+    const x = pos[j], y = pos[j + 1], z = pos[j + 2];
+    const tx = Math.sin(y * 4.1 + time * 0.9) + 0.6 * Math.sin(z * 5.3 - time * 0.7), ty = Math.sin(z * 3.7 + time * 1.1) + 0.5 * Math.sin(x * 4.9 + time * 0.6), tz = Math.sin(x * 4.3 - time * 0.8) + 0.6 * Math.sin(y * 5.1 + time);
+    vel[j] = (vel[j] + (ix + E * (0.22 * tx - 0.55 * z)) * dt) * damp;
+    vel[j + 1] = (vel[j + 1] + (iy + E * 0.2 * ty - 0.075) * dt) * damp;
+    vel[j + 2] = (vel[j + 2] + (iz + E * (0.22 * tz + 0.55 * x)) * dt) * damp;
+    let nx = x + vel[j] * dt, ny = y + vel[j + 1] * dt, nz = z + vel[j + 2] * dt;
+    const r2 = nx * nx + ny * ny + nz * nz;
+    if (r2 > R_IN * R_IN) { const r = Math.sqrt(r2), k = R_IN / r; nx *= k; ny *= k; nz *= k; const dot = (vel[j] * nx + vel[j + 1] * ny + vel[j + 2] * nz) / R_IN; if (dot > 0) { vel[j] -= 1.6 * dot * nx / R_IN; vel[j + 1] -= 1.6 * dot * ny / R_IN; vel[j + 2] -= 1.6 * dot * nz / R_IN; } }
+    const gy = GROUND_Y + drift(nx, nz) + 0.006;
+    if (ny < gy) { ny = gy; if (E < 0.35 || vel[j + 1] < -0.05) { state[i] = 1; rest[i] = 0; vel[j] = vel[j + 1] = vel[j + 2] = 0; } else vel[j + 1] = Math.abs(vel[j + 1]) * 0.3; }
+    pos[j] = nx; pos[j + 1] = ny; pos[j + 2] = nz;
+    // полностью растаявшие снежинки возвращаются в запас на дне
+  }
+  snowGeo.attributes.position.needsUpdate = true; snowGeo.attributes.aAlpha.needsUpdate = true;
+  // дым
+  for (let i = 0; i < SMOKE; i++) {
+    sLife[i] += dt * 0.18; if (sLife[i] > 1) sLife[i] -= 1; const c = chimneys[i % chimneys.length], L = sLife[i];
+    sPos[3 * i] = c.x + Math.sin(L * 9 + i) * 0.02 + L * 0.06; sPos[3 * i + 1] = c.y + L * 0.32; sPos[3 * i + 2] = c.z + Math.cos(L * 7 + i) * 0.02;
+    const r2 = sPos[3 * i] ** 2 + sPos[3 * i + 1] ** 2 + sPos[3 * i + 2] ** 2; sA[i] = r2 > 0.85 ? 0 : Math.sin(Math.PI * L) * (1 - dayMix * 0.5); sS[i] = 3 + L * 9;
+  }
+  smokeGeo.attributes.position.needsUpdate = true; smokeGeo.attributes.aAlpha.needsUpdate = true; smokeGeo.attributes.aSize.needsUpdate = true;
+}
+
+/* ============ размер и цикл ============ */
+function resize() {
+  const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); composer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = w < 700 ? 44 : 32; camera.updateProjectionMatrix();
+  const px = h * renderer.getPixelRatio() * 0.015; snowUniforms.uPx.value = px; smokeUniforms.uPx.value = px;
+  const dir = camera.position.clone().sub(controls.target).setLength(w < 700 ? 6.8 : 5.6); camera.position.copy(controls.target).add(dir);
+}
+addEventListener('resize', resize); resize();
+applyDay(0);
+// стартовый снегопад: шар только что встряхнули
+for (let k = 0; k < 40; k++) stepSnow(1 / 30, k / 30);
+let last = performance.now(), time = 40 / 30;
+// режим съёмки (headless без видеокарты): рендерим первые секунды и замираем, касание будит на 3 с
+const SHOT = !!window.__SHOT__; let awakeUntil = performance.now() + 3500, looping = true;
+function wake() { awakeUntil = performance.now() + 3000; if (!looping) { looping = true; last = performance.now(); requestAnimationFrame(frame); } }
+if (SHOT) { canvas.addEventListener('pointerdown', wake, { capture: true }); addEventListener('keydown', wake); document.querySelectorAll('.pill').forEach(b => b.addEventListener('click', wake)); }
+function frame(now) {
+  if (SHOT && now > awakeUntil) { looping = false; return; }
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.min(1 / 20, (now - last) / 1000); last = now; time += dt;
+  if (Math.abs(dayMix - dayTarget) > 0.001) { dayMix += (dayTarget - dayMix) * Math.min(1, dt * 3); applyDay(dayMix); }
+  windowLights.forEach((l, i) => { l.intensity = lightBase[i] * (0.9 + 0.1 * Math.sin(time * (5 + i * 1.7) + i * 3) * Math.sin(time * 2.3 + i)); }); lampLight.intensity = lampBase;
+  stepSnow(reduceMotion ? dt * 0.5 : dt, time);
+  controls.update(); composer.render(dt);
+}
+window.__globeReady = true;
+$('load').classList.add('gone');
+requestAnimationFrame(frame);
+
+</script>
+</body>
+</html>

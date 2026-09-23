@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Четырёхмерие</title>
+<meta name="description" content="Шесть правильных четырёхмерных многогранников: вращение в шести плоскостях, стереографическая проекция и сечение трёхмерной гиперплоскостью.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Onest:wght@400;500;600&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07060b;
+  --ink:#f4f1e6;
+  --muted:#aaa59b;
+  --faint:#8a857c;
+  --line:rgba(244,241,230,.12);
+  --line-strong:rgba(244,241,230,.26);
+  --cold:#2fd9ff;
+  --warm:#ff6a3d;
+  --panel:rgba(10,9,15,.84);
+  --display:Unbounded,"Arial Black",sans-serif;
+  --sans:Onest,"Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+canvas#gl:active{cursor:grabbing}
+button{font:inherit;color:inherit}
+:focus-visible{outline:1.5px solid var(--ink);outline-offset:2px}
+
+.title{position:fixed;left:32px;top:26px;pointer-events:none;max-width:460px}
+.kicker{margin:0;font:500 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+h1{margin:12px 0 10px;font:800 50px/.95 var(--display);letter-spacing:-.025em}
+.sub{margin:0;font:400 15px/1.45 var(--sans);color:var(--muted);max-width:380px}
+
+/* выбор многогранника */
+.picker{position:fixed;left:24px;top:212px;width:300px;list-style:none;margin:0;padding:0}
+.pk{display:grid;grid-template-columns:86px 1fr;align-items:center;gap:10px;width:100%;padding:9px 12px;margin:0 0 2px;border:0;background:none;text-align:left;cursor:pointer;border-radius:4px;transition:background .25s var(--ease)}
+.pk:hover{background:rgba(244,241,230,.05)}
+.pk .sch{font:500 17px/1 var(--mono);color:var(--faint);letter-spacing:-.02em;transition:color .25s}
+.pk .nm{display:block;font:500 15px/1.2 var(--sans);color:var(--ink)}
+.pk .ct{display:block;font:400 12px/1.3 var(--mono);color:var(--faint);margin-top:3px}
+.pk[aria-pressed="true"]{background:rgba(244,241,230,.07)}
+.pk[aria-pressed="true"] .sch{color:var(--cold)}
+
+/* карточка сведений */
+.info{position:fixed;left:32px;bottom:30px;width:330px;pointer-events:none}
+.info .desc{margin:0 0 12px;font:400 14px/1.5 var(--sans);color:var(--ink);opacity:.92}
+.nums{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.nums div{padding:9px 0 8px}
+.nums b{display:block;font:700 22px/1 var(--mono);letter-spacing:-.03em}
+.nums span{display:block;font:400 12px/1.2 var(--sans);color:var(--muted);margin-top:4px}
+.euler{margin:8px 0 0;font:400 12px/1.4 var(--mono);color:var(--muted)}
+
+/* вращения */
+.rot{position:fixed;right:24px;top:24px;width:268px;padding:16px 18px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;transition:opacity .35s var(--ease),transform .35s var(--ease)}
+.rot h2{margin:0;font:500 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.grp{margin:14px 0 2px;font:500 13px/1.3 var(--sans);color:var(--ink)}
+.grp small{display:block;font:400 12px/1.35 var(--sans);color:var(--faint);margin-top:2px}
+.sl{display:grid;grid-template-columns:30px 1fr 42px;align-items:center;gap:8px;margin:2px 0}
+.sl label{font:700 13px/1 var(--mono)}
+.sl output{font:400 12px/1 var(--mono);color:var(--muted);text-align:right}
+.sl.w label{color:var(--warm)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:2px;border-radius:1px;background:linear-gradient(90deg,rgba(244,241,230,.18) 49.6%,rgba(244,241,230,.55) 49.6%,rgba(244,241,230,.55) 50.4%,rgba(244,241,230,.18) 50.4%)}
+input[type=range]::-moz-range-track{height:2px;background:rgba(244,241,230,.18)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-6px;border-radius:50%;background:var(--ink);border:3px solid var(--bg);box-shadow:0 0 0 1px rgba(244,241,230,.5);transition:transform .2s var(--ease)}
+input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:var(--ink);border:3px solid var(--bg)}
+.sl.w input[type=range]::-webkit-slider-thumb{background:var(--warm)}
+input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.2)}
+.btns{display:flex;gap:6px;margin-top:12px}
+.btn{flex:1;height:38px;border:1px solid var(--line-strong);background:none;border-radius:4px;font:500 13px/1 var(--sans);color:var(--ink);cursor:pointer;transition:background .2s,border-color .2s}
+.btn:hover{background:rgba(244,241,230,.07);border-color:rgba(244,241,230,.45)}
+
+/* нижняя панель */
+.bar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.seg{display:flex;background:rgba(244,241,230,.05);border-radius:7px;padding:3px}
+.seg button{height:36px;padding:0 14px;border:0;background:none;border-radius:5px;font:500 13px/1 var(--sans);color:var(--muted);cursor:pointer;transition:background .25s var(--ease),color .2s}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#0b0a0f}
+.tog{display:flex;align-items:center;gap:8px;height:42px;padding:0 14px 0 12px;border:0;background:none;border-radius:7px;font:500 13px/1 var(--sans);color:var(--muted);cursor:pointer;transition:background .2s,color .2s}
+.tog:hover{color:var(--ink);background:rgba(244,241,230,.05)}
+.tog svg{width:18px;height:18px}
+.tog[aria-pressed="true"]{color:var(--ink);background:rgba(47,217,255,.12)}
+.slice{display:flex;align-items:center;gap:8px;overflow:hidden;max-width:0;opacity:0;transition:opacity .35s var(--ease)}
+.slice.on{max-width:330px;opacity:1}
+.slice input{width:150px}
+.slice output{font:400 13px/1 var(--mono);color:var(--ink);min-width:78px}
+.iconbtn{display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:7px;background:none;color:var(--ink);cursor:pointer}
+.iconbtn:hover{background:rgba(244,241,230,.07)}
+.iconbtn svg{width:16px;height:16px}
+
+.legend{position:fixed;right:28px;bottom:30px;width:210px;pointer-events:none}
+.legend .grad{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--cold),#f4f1e6 50%,var(--warm))}
+.legend .ends{display:flex;justify-content:space-between;margin-top:6px;font:400 12px/1 var(--mono);color:var(--muted)}
+.legend p{margin:8px 0 0;font:400 12px/1.4 var(--sans);color:var(--muted)}
+.legend .keys{font:400 12px/1.7 var(--mono);color:var(--faint)}
+.legend .keys span{display:block;white-space:nowrap}
+.legend kbd{display:inline-block;min-width:18px;padding:0 4px;border:1px solid var(--line-strong);border-radius:3px;font:500 11px/16px var(--mono);color:var(--ink);text-align:center}
+.section-info{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);font:400 13px/1 var(--mono);color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:9px 14px;border-radius:6px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.section-info.on{opacity:1}
+.mobile-only{display:none}
+.scrim{position:fixed;left:0;top:0;bottom:0;width:560px;pointer-events:none;background:linear-gradient(90deg,rgba(7,6,11,.9) 0%,rgba(7,6,11,.72) 38%,rgba(7,6,11,0) 100%)}
+.scrim-b{position:fixed;right:0;bottom:0;width:420px;height:200px;pointer-events:none;background:radial-gradient(120% 100% at 100% 100%,rgba(7,6,11,.85) 0%,rgba(7,6,11,.55) 45%,rgba(7,6,11,0) 75%)}
+.fallback{position:fixed;inset:0;display:grid;place-items:center;text-align:center;padding:24px;background:var(--bg)}
+.fallback h2{font:700 28px/1.1 var(--display);margin:0 0 10px}
+.fallback p{max-width:420px;margin:0 auto;font:400 15px/1.5 var(--sans);color:var(--muted)}
+
+@media (max-width:760px){
+  .title{left:18px;top:16px;right:18px}
+  h1{font-size:30px;margin:8px 0 0}
+  .sub{display:none}
+  .picker{left:0;right:0;top:92px;width:auto;display:flex;overflow-x:auto;gap:6px;padding:0 14px 6px;scrollbar-width:none}
+  .picker::-webkit-scrollbar{display:none}
+  .picker li{flex:none}
+  .pk{grid-template-columns:auto;gap:4px;padding:8px 12px;width:auto;border:1px solid var(--line)}
+  .pk .nm{font-size:13px}
+  .pk .ct{display:none}
+  .pk .sch{font-size:14px}
+  .info{left:18px;right:18px;bottom:88px;width:auto}
+  .info .desc{display:none}
+  .nums b{font-size:18px}
+  .euler{display:none}
+  .legend{display:none}
+  .scrim{width:auto;right:0;bottom:auto;height:200px;background:linear-gradient(180deg,rgba(7,6,11,.92) 0%,rgba(7,6,11,.6) 60%,rgba(7,6,11,0) 100%)}
+  .scrim-b{left:0;width:auto;height:230px;background:linear-gradient(0deg,rgba(7,6,11,.92) 0%,rgba(7,6,11,.6) 55%,rgba(7,6,11,0) 100%)}
+  .rot{left:10px;right:10px;top:auto;bottom:84px;width:auto;border-radius:12px}
+  .rot.closed{opacity:0;transform:translateY(12px);pointer-events:none}
+  .bar{left:10px;right:10px;bottom:max(12px,env(safe-area-inset-bottom));transform:none;justify-content:space-between;gap:4px;flex-wrap:wrap}
+  .seg button{padding:0 10px}
+  .tog .lbl{display:none}
+  .mobile-only{display:grid}
+  .slice.on{order:5;flex-basis:100%;max-width:none;padding:0 6px 4px}
+  .slice.on input{flex:1}
+  .section-info{bottom:auto;top:150px}
+  body.slice-on .info{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Проекция четырёхмерного многогранника"></canvas>
+<div class="scrim" aria-hidden="true"></div>
+<div class="scrim-b" aria-hidden="true"></div>
+
+<header class="title">
+  <p class="kicker">Лаборатория измерений · 4D</p>
+  <h1>Четырёхмерие</h1>
+  <p class="sub">Шесть правильных многогранников, которым тесно в&nbsp;нашем мире. Мы видим только их тени — и&nbsp;срезы.</p>
+</header>
+
+<ol class="picker" id="picker" aria-label="Многогранник"></ol>
+
+<section class="info" id="info" aria-live="polite">
+  <p class="desc" id="desc"></p>
+  <div class="nums">
+    <div><b id="nV"></b><span>вершин</span></div>
+    <div><b id="nE"></b><span>рёбер</span></div>
+    <div><b id="nF"></b><span>граней</span></div>
+    <div><b id="nC"></b><span>ячеек</span></div>
+  </div>
+  <p class="euler" id="euler"></p>
+</section>
+
+<aside class="rot closed" id="rot" aria-label="Скорости вращения">
+  <h2>Вращение, рад/с</h2>
+  <p class="grp">Привычные плоскости<small>так вращаются и трёхмерные тела</small></p>
+  <div id="rot3"></div>
+  <p class="grp">Плоскости с осью W<small>поворот, которого в 3D не бывает: тело выворачивается</small></p>
+  <div id="rot4"></div>
+  <div class="btns">
+    <button class="btn" id="stopRot">Стоп</button>
+    <button class="btn" id="randRot">Случайно</button>
+    <button class="btn" id="resetRot">Сброс</button>
+  </div>
+</aside>
+
+<nav class="bar" aria-label="Проекция и срез">
+  <div class="seg" role="group" aria-label="Проекция">
+    <button id="mPersp" aria-pressed="false" title="Перспектива из четвёртого измерения — P">Перспектива</button>
+    <button id="mStereo" aria-pressed="true" title="Стереографическая проекция с 3-сферы — P">Стереография</button>
+  </div>
+  <button class="tog" id="sliceBtn" aria-pressed="false" title="Срез гиперплоскостью — S">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2l6.5 3.8v6.4L9 16l-6.5-3.8V5.8z"/><path d="M2.5 9.6L15.5 7" stroke-dasharray="2 2"/></svg><span class="lbl">Срез</span>
+  </button>
+  <div class="slice" id="slice">
+    <input type="range" id="hSl" min="-1" max="1" step="0.001" value="0" aria-label="Положение гиперплоскости">
+    <output id="hOut">w = 0,00</output>
+    <button class="iconbtn" id="sweepBtn" aria-label="Прогнать срез" title="Прогнать гиперплоскость сквозь тело">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11L13 8z"/></svg>
+    </button>
+  </div>
+  <button class="iconbtn mobile-only" id="rotBtn" aria-label="Скорости вращения" aria-pressed="false">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 9a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/></svg>
+  </button>
+</nav>
+
+<div class="section-info" id="secInfo"></div>
+
+<div class="legend" aria-hidden="true">
+  <div class="grad"></div>
+  <div class="ends"><span>w = −1</span><span>w = 0</span><span>w = +1</span></div>
+  <p>Цвет — координата по&nbsp;четвёртой оси. Тяни — вращать камеру, колесо — масштаб.</p>
+  <p class="keys"><span><kbd>1</kbd>–<kbd>6</kbd> фигуры · <kbd>P</kbd> проекция</span><span><kbd>S</kbd> срез · <kbd>пробел</kbd> пауза</span></p>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   ГЕОМЕТРИЯ: вершины на единичной 3-сфере, рёбра — пары на минимальном расстоянии
+   ===================================================================== */
+const PHI = (1 + Math.sqrt(5)) / 2;
+const normalize4 = v => { const l = Math.hypot(v[0], v[1], v[2], v[3]); return v.map(x => x / l); };
+function allPerms(a){
+  if (a.length <= 1) return [a.slice()];
+  const out = [];
+  a.forEach((x, i) => allPerms(a.slice(0, i).concat(a.slice(i + 1))).forEach(p => out.push([x].concat(p))));
+  return out;
+}
+function parity(p){ let s = 0; for (let i = 0; i < p.length; i++) for (let j = i + 1; j < p.length; j++) if (p[i] > p[j]) s++; return s % 2; }
+function signCombos(v){
+  let out = [v.slice()];
+  for (let i = 0; i < v.length; i++){ if (v[i] === 0) continue; out = out.flatMap(u => { const n = u.slice(); n[i] = -n[i]; return [u, n]; }); }
+  return out;
+}
+function uniq(list){
+  const seen = new Set(), out = [];
+  for (const v of list){ const k = v.map(x => x.toFixed(6)).join(','); if (!seen.has(k)){ seen.add(k); out.push(v); } }
+  return out;
+}
+const permsOf = (v, evenOnly) => allPerms([0, 1, 2, 3]).filter(p => !evenOnly || parity(p) === 0).map(p => p.map(i => v[i]));
+function edgesByMinDist(V){
+  const d2 = (a, b) => (a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2 + (a[3]-b[3])**2;
+  let min = Infinity;
+  for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++){ const d = d2(V[i], V[j]); if (d > 1e-12 && d < min) min = d; }
+  const E = [];
+  for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++) if (d2(V[i], V[j]) < min * 1.002) E.push([i, j]);
+  return E;
+}
+const cell5 = () => { const s = -1 / Math.sqrt(5); return [[1,1,1,s],[1,-1,-1,s],[-1,1,-1,s],[-1,-1,1,s],[0,0,0,4 / Math.sqrt(5)]].map(normalize4); };
+const cell8 = () => { const V = []; for (let i = 0; i < 16; i++) V.push([0,1,2,3].map(b => (i >> b) & 1 ? 1 : -1)); return V.map(normalize4); };
+const cell16 = () => { const V = []; for (let a = 0; a < 4; a++) for (const s of [1, -1]){ const v = [0,0,0,0]; v[a] = s; V.push(v); } return V; };
+const cell24 = () => uniq(permsOf([1,1,0,0], false).flatMap(signCombos)).map(normalize4);
+function cell600(){
+  const V = [...cell16()];
+  for (let i = 0; i < 16; i++) V.push([0,1,2,3].map(b => (i >> b) & 1 ? .5 : -.5));
+  V.push(...uniq(permsOf([PHI / 2, .5, 1 / (2 * PHI), 0], true).flatMap(signCombos)));
+  return uniq(V).map(normalize4);
+}
+function cell120(){
+  // двойственный к 600-ячейнику: вершины — центры его 600 тетраэдров
+  const V6 = cell600(), E6 = edgesByMinDist(V6), adj = V6.map(() => new Set());
+  E6.forEach(([a, b]) => { adj[a].add(b); adj[b].add(a); });
+  const tets = [];
+  for (let a = 0; a < V6.length; a++) for (const b of adj[a]) if (b > a)
+    for (const c of adj[a]) if (c > b && adj[b].has(c))
+      for (const d of adj[a]) if (d > c && adj[b].has(d) && adj[c].has(d)) tets.push([a, b, c, d]);
+  return tets.map(t => normalize4([0,1,2,3].map(k => t.reduce((s, i) => s + V6[i][k], 0))));
+}
+
+const POLY = [
+  {make:cell5,   sch:'{3,3,3}', name:'Пятиячейник', V:5, E:10, F:10, C:5, alpha:1.0, dot:1.0,
+   desc:'Четырёхмерный симплекс: пять вершин, и каждая соединена со всеми остальными. Пять тетраэдров-ячеек. Двойственен сам себе.'},
+  {make:cell8,   sch:'{4,3,3}', name:'Тессеракт', V:16, E:32, F:24, C:8, alpha:1.0, dot:1.0,
+   desc:'Гиперкуб: восемь кубических ячеек, в каждой вершине сходятся четыре ребра под прямыми углами. Двойственен шестнадцатиячейнику.'},
+  {make:cell16,  sch:'{3,3,4}', name:'Шестнадцатиячейник', V:8, E:24, F:32, C:16, alpha:1.0, dot:1.0,
+   desc:'Четырёхмерный аналог октаэдра: восемь вершин на осях, шестнадцать тетраэдров. Двойственен тессеракту.'},
+  {make:cell24,  sch:'{3,4,3}', name:'Двадцатичетырёхячейник', V:24, E:96, F:96, C:24, alpha:.82, dot:.85,
+   desc:'Единственный правильный многогранник без аналога в других измерениях. Двадцать четыре октаэдра, двойственен сам себе.'},
+  {make:cell120, sch:'{5,3,3}', name:'Стодвадцатиячейник', V:600, E:1200, F:720, C:120, alpha:.5, dot:.22,
+   desc:'Сто двадцать додекаэдров, по три у каждого ребра. Самый сложный из шести и двойственный шестисотячейнику.'},
+  {make:cell600, sch:'{3,3,5}', name:'Шестисотячейник', V:120, E:720, F:1200, C:600, alpha:.55, dot:.45,
+   desc:'Шестьсот тетраэдров, по пять у каждого ребра. Его 120 вершин образуют группу бинарного икосаэдра среди кватернионов.'},
+];
+
+/* ---------- выпуклая оболочка в 3D (инкрементный алгоритм) для сечений ---------- */
+function hull3(P){
+  const n = P.length;
+  if (n < 4) return null;
+  const sub = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+  const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+  const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+  const len = a => Math.hypot(a[0], a[1], a[2]);
+  let ext = 1e-9; for (const p of P) ext = Math.max(ext, Math.abs(p[0]), Math.abs(p[1]), Math.abs(p[2]));
+  const eps = 1e-7 * ext;
+  // стартовый тетраэдр
+  let i0 = 0; for (let i = 1; i < n; i++) if (P[i][0] < P[i0][0]) i0 = i;
+  let i1 = -1, best = 0; for (let i = 0; i < n; i++){ const d = len(sub(P[i], P[i0])); if (d > best){ best = d; i1 = i; } }
+  if (i1 < 0 || best < eps) return null;
+  const dir = sub(P[i1], P[i0]);
+  let i2 = -1; best = 0; for (let i = 0; i < n; i++){ const d = len(cross(dir, sub(P[i], P[i0]))); if (d > best){ best = d; i2 = i; } }
+  if (i2 < 0 || best < eps * ext) return null;
+  const nrm = cross(dir, sub(P[i2], P[i0]));
+  let i3 = -1; best = 0; for (let i = 0; i < n; i++){ const d = Math.abs(dot(nrm, sub(P[i], P[i0]))); if (d > best){ best = d; i3 = i; } }
+  if (i3 < 0 || best < eps * ext * ext) return null;
+  const inner = [0, 1, 2].map(k => (P[i0][k] + P[i1][k] + P[i2][k] + P[i3][k]) / 4);
+  const faces = [];
+  function addFace(a, b, c){
+    let nn = cross(sub(P[b], P[a]), sub(P[c], P[a]));
+    const l = len(nn) || 1; nn = nn.map(x => x / l);
+    let d = dot(nn, P[a]);
+    if (dot(nn, inner) - d > 0){ const t = b; b = c; c = t; nn = nn.map(x => -x); d = -d; }
+    faces.push({v:[a, b, c], n:nn, d, dead:false});
+  }
+  addFace(i0, i1, i2); addFace(i0, i1, i3); addFace(i0, i2, i3); addFace(i1, i2, i3);
+  const used = new Set([i0, i1, i2, i3]);
+  for (let p = 0; p < n; p++){
+    if (used.has(p)) continue;
+    const vis = faces.filter(f => !f.dead && dot(f.n, P[p]) - f.d > eps);
+    if (!vis.length) continue;
+    const edges = new Map();
+    for (const f of vis){
+      f.dead = true;
+      const [a, b, c] = f.v;
+      for (const [x, y] of [[a, b], [b, c], [c, a]]){
+        const rk = y + ',' + x;
+        if (edges.has(rk)) edges.delete(rk); else edges.set(x + ',' + y, [x, y]);
+      }
+    }
+    for (const [x, y] of edges.values()) addFace(x, y, p);
+  }
+  return faces.filter(f => !f.dead);
+}
+
+/* =====================================================================
+   WebGL2
+   ===================================================================== */
+const canvas = document.getElementById('gl');
+const gl = canvas.getContext('webgl2', {antialias:false, alpha:false, premultipliedAlpha:false});
+const hasHDR = !!(gl && gl.getExtension('EXT_color_buffer_float'));
+if (!gl){
+  document.body.insertAdjacentHTML('beforeend', '<div class="fallback"><div><h2>Нужен WebGL2</h2><p>Этот браузер не умеет WebGL2. Открой страницу в свежем Chrome, Safari или Firefox.</p></div></div>');
+  throw new Error('no webgl2');
+}
+const SHOT = !!window.__SHOT__;
+
+const LINE_VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec2 aCorner;
+layout(location=1) in vec4 aA;
+layout(location=2) in vec4 aB;
+layout(location=3) in vec2 aT;
+uniform mat4 uRot4, uView, uPersp;
+uniform float uProj, uD, uWidth, uCamDist, uFar;
+uniform vec2 uRes;
+out float vSide; out float vW; out float vFade;
+vec4 arc(float t){
+  vec4 l = mix(aA, aB, t);
+  float c = clamp(dot(aA, aB), -1.0, 1.0), th = acos(c), s = sin(th);
+  vec4 g = s < 1e-4 ? l : (sin((1.0 - t) * th) * aA + sin(t * th) * aB) / s;
+  return mix(l, g, uProj);
+}
+vec3 project(vec4 p, out float w){
+  vec4 r = uRot4 * p; w = r.w;
+  vec3 persp = r.xyz * (uD / (uD - r.w));
+  vec3 stereo = r.xyz / max(0.004, 1.0 - r.w);
+  return mix(persp, stereo, uProj);
+}
+void main(){
+  float w0, w1;
+  vec3 p0 = project(arc(aT.x), w0), p1 = project(arc(aT.y), w1);
+  vec4 c0 = uPersp * uView * vec4(p0, 1.0), c1 = uPersp * uView * vec4(p1, 1.0);
+  bool end = aCorner.x > 0.5;
+  vec4 c = end ? c1 : c0;
+  if (c0.w < 0.05 || c1.w < 0.05){ gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  vec2 s0 = c0.xy / c0.w * uRes, s1 = c1.xy / c1.w * uRes;
+  vec2 dir = s1 - s0; float L = length(dir);
+  dir = L > 1e-5 ? dir / L : vec2(1.0, 0.0);
+  vec2 nrm = vec2(-dir.y, dir.x);
+  float width = uWidth * clamp(uCamDist / c.w, 0.55, 1.7);
+  c.xy += nrm * aCorner.y * width / uRes * c.w;
+  gl_Position = c;
+  vSide = aCorner.y;
+  vW = end ? w1 : w0;
+  float r3 = length(end ? p1 : p0);
+  vFade = 1.0 - smoothstep(uFar * 0.55, uFar, r3);
+}`;
+
+const LINE_FS = `#version 300 es
+precision highp float;
+in float vSide; in float vW; in float vFade;
+uniform float uAlpha; uniform float uConstW; uniform float uUseConst;
+out vec4 o;
+vec3 wColor(float w){
+  w = clamp(w, -1.0, 1.0);
+  vec3 cold = vec3(0.184, 0.851, 1.0), mid = vec3(0.957, 0.945, 0.902), warm = vec3(1.0, 0.416, 0.239);
+  return w < 0.0 ? mix(mid, cold, smoothstep(0.0, 1.0, -w * 1.15)) : mix(mid, warm, smoothstep(0.0, 1.0, w * 1.15));
+}
+void main(){
+  float d = abs(vSide);
+  float k = (exp(-d * d * 14.0) + 0.28 * exp(-d * d * 2.6)) * uAlpha * vFade;
+  vec3 col = wColor(mix(vW, uConstW, uUseConst));
+  o = vec4(col * k, 1.0);
+}`;
+
+const DOT_VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec2 aCorner;
+layout(location=1) in vec4 aP;
+uniform mat4 uRot4, uView, uPersp;
+uniform float uProj, uD, uSize, uCamDist, uFar;
+uniform vec2 uRes;
+out vec2 vUv; out float vW; out float vFade;
+void main(){
+  vec4 r = uRot4 * aP;
+  vec3 p = mix(r.xyz * (uD / (uD - r.w)), r.xyz / max(0.004, 1.0 - r.w), uProj);
+  vec4 c = uPersp * uView * vec4(p, 1.0);
+  if (c.w < 0.05){ gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  float size = uSize * clamp(uCamDist / c.w, 0.5, 1.8);
+  c.xy += aCorner * size / uRes * c.w;
+  gl_Position = c; vUv = aCorner; vW = r.w;
+  vFade = 1.0 - smoothstep(uFar * 0.5, uFar, length(p));
+}`;
+const DOT_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; in float vW; in float vFade; uniform float uAlpha; out vec4 o;
+void main(){
+  float d = dot(vUv, vUv);
+  float k = (exp(-d * 10.0) * 1.3 + exp(-d * 2.5) * 0.25) * uAlpha * vFade;
+  float w = clamp(vW, -1.0, 1.0);
+  vec3 col = w < 0.0 ? mix(vec3(1.0, 0.98, 0.93), vec3(0.3, 0.88, 1.0), -w) : mix(vec3(1.0, 0.98, 0.93), vec3(1.0, 0.5, 0.3), w);
+  o = vec4(col * k, 1.0);
+}`;
+
+const HULL_VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPos; layout(location=1) in vec3 aN;
+uniform mat4 uView, uPersp; uniform float uScale;
+out vec3 vN; out vec3 vPos;
+void main(){ vec3 p = aPos * uScale; vN = aN; vPos = p; gl_Position = uPersp * uView * vec4(p, 1.0); }`;
+const HULL_FS = `#version 300 es
+precision highp float;
+in vec3 vN; in vec3 vPos; uniform vec3 uEye; uniform vec3 uTint; out vec4 o;
+void main(){
+  vec3 v = normalize(uEye - vPos), n = normalize(vN);
+  float f = pow(1.0 - abs(dot(n, v)), 2.2);
+  float l = 0.35 + 0.65 * max(dot(n, normalize(vec3(0.4, 0.8, 0.5))), 0.0);
+  o = vec4(uTint * (0.10 + 0.22 * l) + vec3(0.9, 0.95, 1.0) * f * 0.35, 0.34 + f * 0.3);
+}`;
+
+const FS_QUAD_VS = `#version 300 es
+layout(location=0) in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`;
+const DOWN_FS = `#version 300 es
+precision highp float; uniform sampler2D uSrc; uniform vec2 uTexel; out vec4 o;
+void main(){
+  vec2 uv = gl_FragCoord.xy * uTexel;
+  vec3 c = texture(uSrc, uv + uTexel * vec2(-0.5, -0.5)).rgb + texture(uSrc, uv + uTexel * vec2(0.5, -0.5)).rgb
+         + texture(uSrc, uv + uTexel * vec2(-0.5, 0.5)).rgb + texture(uSrc, uv + uTexel * vec2(0.5, 0.5)).rgb;
+  o = vec4(c * 0.25, 1.0);
+}`;
+const BLUR_FS = `#version 300 es
+precision highp float; uniform sampler2D uSrc; uniform vec2 uDir; uniform vec2 uTexel; out vec4 o;
+void main(){
+  vec2 uv = gl_FragCoord.xy * uTexel;
+  vec3 c = texture(uSrc, uv).rgb * 0.227027;
+  c += (texture(uSrc, uv + uDir * 1.384615).rgb + texture(uSrc, uv - uDir * 1.384615).rgb) * 0.316216;
+  c += (texture(uSrc, uv + uDir * 3.230769).rgb + texture(uSrc, uv - uDir * 3.230769).rgb) * 0.070270;
+  o = vec4(c, 1.0);
+}`;
+const FINAL_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uHdr, uBloom; uniform vec2 uRes; uniform float uTime; out vec4 o;
+float hash(vec2 p){ vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+void main(){
+  vec2 uv = gl_FragCoord.xy / uRes;
+  vec2 q = (uv - vec2(0.56, 0.52)) * vec2(uRes.x / uRes.y, 1.0);
+  vec3 bg = mix(vec3(0.052, 0.046, 0.068), vec3(0.020, 0.018, 0.030), smoothstep(0.0, 1.05, length(q)));
+  vec3 h = texture(uHdr, uv).rgb + texture(uBloom, uv).rgb * 0.75;
+  vec3 col = bg + (vec3(1.0) - exp(-h * 1.15));
+  col += (hash(gl_FragCoord.xy + fract(uTime) * 61.0) - 0.5) * 0.014;
+  o = vec4(col, 1.0);
+}`;
+
+function compile(type, src){
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(vs, fs){
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vs)); gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++){ const info = gl.getActiveUniform(p, i); u[info.name] = gl.getUniformLocation(p, info.name); }
+  return {p, u};
+}
+const PR = {
+  line:program(LINE_VS, LINE_FS), dot:program(DOT_VS, DOT_FS), hull:program(HULL_VS, HULL_FS),
+  down:program(FS_QUAD_VS, DOWN_FS), blur:program(FS_QUAD_VS, BLUR_FS), final:program(FS_QUAD_VS, FINAL_FS)
+};
+
+// буферы
+function buffer(data, usage = gl.STATIC_DRAW){ const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, usage); return b; }
+const lineCorners = buffer(new Float32Array([0,-1, 0,1, 1,-1, 1,1]));
+const dotCorners = buffer(new Float32Array([-1,-1, 1,-1, -1,1, 1,1]));
+const fsTri = buffer(new Float32Array([-1,-1, 3,-1, -1,3]));
+function lineVAO(instBuf){
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, lineCorners); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 40, 0); gl.vertexAttribDivisor(1, 1);
+  gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 4, gl.FLOAT, false, 40, 16); gl.vertexAttribDivisor(2, 1);
+  gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 2, gl.FLOAT, false, 40, 32); gl.vertexAttribDivisor(3, 1);
+  gl.bindVertexArray(null); return vao;
+}
+const lineInst = gl.createBuffer(), dotInst = gl.createBuffer(), secInst = gl.createBuffer(), hullBuf = gl.createBuffer();
+const LVAO = lineVAO(lineInst), SVAO = lineVAO(secInst);
+const DVAO = gl.createVertexArray(); gl.bindVertexArray(DVAO);
+gl.bindBuffer(gl.ARRAY_BUFFER, dotCorners); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+gl.bindBuffer(gl.ARRAY_BUFFER, dotInst); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0); gl.vertexAttribDivisor(1, 1);
+const HVAO = gl.createVertexArray(); gl.bindVertexArray(HVAO);
+gl.bindBuffer(gl.ARRAY_BUFFER, hullBuf);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
+gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
+const QVAO = gl.createVertexArray(); gl.bindVertexArray(QVAO);
+gl.bindBuffer(gl.ARRAY_BUFFER, fsTri); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+gl.bindVertexArray(null);
+
+// рендер-цели
+const TEXF = hasHDR ? [gl.RGBA16F, gl.HALF_FLOAT] : [gl.RGBA8, gl.UNSIGNED_BYTE];
+function target(w, h){
+  const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, TEXF[0], w, h, 0, gl.RGBA, TEXF[1], null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+  return {t, f, w, h};
+}
+function free(x){ if (x){ gl.deleteTexture(x.t); gl.deleteFramebuffer(x.f); } }
+let RW = 0, RH = 0, DPR = 1, hdr, bA, bB;
+function resize(){
+  DPR = SHOT ? 1 : Math.min(devicePixelRatio || 1, 2);
+  const w = Math.round(innerWidth * DPR), h = Math.round(innerHeight * DPR);
+  if (w === RW && h === RH) return;
+  RW = w; RH = h; canvas.width = w; canvas.height = h;
+  [hdr, bA, bB].forEach(free);
+  hdr = target(w, h);
+  bA = target(Math.max(1, w >> 2), Math.max(1, h >> 2)); bB = target(bA.w, bA.h);
+}
+addEventListener('resize', resize);
+
+/* =====================================================================
+   СОСТОЯНИЕ
+   ===================================================================== */
+const state = {
+  poly:4, V:[], E:[], segCount:0,
+  R:[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],
+  speed:{xy:0, xz:0, yz:.06, xw:.18, yw:0, zw:.11},
+  proj:1, projTarget:1,
+  slice:false, h:0, sweep:false, sweepT:0,
+  yaw:.6, pitch:.32, dist:7.2, distTarget:7.2, lastInput:-1e9,
+  paused:false
+};
+const PLANES = {xy:[0,1], xz:[0,2], yz:[1,2], xw:[0,3], yw:[1,3], zw:[2,3]};
+
+function loadPoly(i){
+  state.poly = i;
+  const P = POLY[i];
+  if (!P.cache){
+    const V = P.make(), E = edgesByMinDist(V);
+    // дуги: число отрезков зависит от угла ребра на 3-сфере
+    const segs = [];
+    for (const [a, b] of E){
+      const A = V[a], B = V[b];
+      const th = Math.acos(Math.max(-1, Math.min(1, A[0]*B[0] + A[1]*B[1] + A[2]*B[2] + A[3]*B[3])));
+      const S = Math.max(8, Math.min(48, Math.ceil(th / (2.5 * Math.PI / 180))));
+      for (let k = 0; k < S; k++) segs.push(A[0], A[1], A[2], A[3], B[0], B[1], B[2], B[3], k / S, (k + 1) / S);
+    }
+    P.cache = {V, E, segs:new Float32Array(segs), verts:new Float32Array(V.flat())};
+  }
+  const c = P.cache;
+  state.V = c.V; state.E = c.E; state.segCount = c.segs.length / 10;
+  gl.bindBuffer(gl.ARRAY_BUFFER, lineInst); gl.bufferData(gl.ARRAY_BUFFER, c.segs, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, dotInst); gl.bufferData(gl.ARRAY_BUFFER, c.verts, gl.STATIC_DRAW);
+  refreshInfo();
+}
+
+/* ---------- 4D-вращение ---------- */
+function rotatePlane(R, i, j, a){
+  const c = Math.cos(a), s = Math.sin(a);
+  for (let k = 0; k < 4; k++){
+    const ri = R[i][k], rj = R[j][k];
+    R[i][k] = c * ri - s * rj; R[j][k] = s * ri + c * rj;
+  }
+}
+function orthonormalize(R){
+  for (let i = 0; i < 4; i++){
+    for (let j = 0; j < i; j++){ const d = R[i].reduce((s, x, k) => s + x * R[j][k], 0); for (let k = 0; k < 4; k++) R[i][k] -= d * R[j][k]; }
+    const l = Math.hypot(...R[i]); for (let k = 0; k < 4; k++) R[i][k] /= l;
+  }
+}
+const rot4Array = R => { const m = new Float32Array(16); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) m[c * 4 + r] = R[r][c]; return m; };
+const applyR = (R, v) => [0,1,2,3].map(r => R[r][0] * v[0] + R[r][1] * v[1] + R[r][2] * v[2] + R[r][3] * v[3]);
+
+/* ---------- 3D-камера ---------- */
+function perspective(fovy, aspect, near, far){
+  const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+  return new Float32Array([f / aspect,0,0,0, 0,f,0,0, 0,0,(far + near) * nf,-1, 0,0,2 * far * near * nf,0]);
+}
+function lookAt(eye){
+  const z = normalize3(eye), x = normalize3(cross3([0,1,0], z)), y = cross3(z, x);
+  return new Float32Array([x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0, -dot3(x,eye),-dot3(y,eye),-dot3(z,eye),1]);
+}
+const cross3 = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+const dot3 = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+const normalize3 = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0]/l, a[1]/l, a[2]/l]; };
+
+/* ---------- сечение гиперплоскостью w = h (в повёрнутой системе) ---------- */
+const PLATONIC = {'4/4':'тетраэдр', '8/6':'куб', '6/8':'октаэдр', '12/14':'кубооктаэдр', '20/12':'додекаэдр', '12/20':'икосаэдр', '4/3':'треугольник'};
+let section = null;
+function computeSection(){
+  const R = state.R, h = state.h, V = state.V.map(v => applyR(R, v));
+  const pts = [], key = new Set();
+  const push = p => { const k = p.map(x => Math.round(x * 1e5)).join(','); if (!key.has(k)){ key.add(k); pts.push(p); } };
+  for (const [a, b] of state.E){
+    const wa = V[a][3] - h, wb = V[b][3] - h;
+    if (Math.abs(wa) < 1e-9) push(V[a].slice(0, 3));
+    if (Math.abs(wb) < 1e-9) push(V[b].slice(0, 3));
+    if (wa * wb < 0){ const t = wa / (wa - wb); push([0,1,2].map(k => V[a][k] + (V[b][k] - V[a][k]) * t)); }
+  }
+  const faces = hull3(pts);
+  if (!faces){ section = {tri:new Float32Array(0), edges:new Float32Array(0), nv:pts.length, nf:0}; return; }
+  const tri = [];
+  for (const f of faces) for (const i of f.v) tri.push(pts[i][0], pts[i][1], pts[i][2], f.n[0], f.n[1], f.n[2]);
+  // рёбра: только между не-копланарными гранями
+  const em = new Map();
+  faces.forEach((f, fi) => { const [a, b, c] = f.v; for (const [x, y] of [[a, b], [b, c], [c, a]]){ const k = x < y ? x + ',' + y : y + ',' + x; (em.get(k) || em.set(k, []).get(k)).push(fi); } });
+  const edges = [], planes = new Set(), vUsed = new Set();
+  for (const [k, fl] of em){
+    if (fl.length === 2 && dot3(faces[fl[0]].n, faces[fl[1]].n) > 0.9995) continue;
+    const [x, y] = k.split(',').map(Number);
+    vUsed.add(x); vUsed.add(y);
+    edges.push(pts[x][0], pts[x][1], pts[x][2], h, pts[y][0], pts[y][1], pts[y][2], h, 0, 1);
+  }
+  for (const f of faces) planes.add(f.n.map(x => Math.round(x * 500)).join(',') + ',' + Math.round(f.d * 500));
+  section = {tri:new Float32Array(tri), edges:new Float32Array(edges), nv:vUsed.size, nf:planes.size};
+}
+
+/* =====================================================================
+   ИНТЕРФЕЙС
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const nf = v => v.toLocaleString('ru-RU');
+// русские числительные: 1 вершина, 2 вершины, 5 вершин
+function plural(n, one, few, many){
+  const a = n % 10, b = n % 100;
+  const w = a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
+  return nf(n) + '\u00a0' + w;
+}
+const picker = $('picker');
+POLY.forEach((p, i) => {
+  const li = document.createElement('li');
+  li.innerHTML = `<button class="pk" aria-pressed="false" title="${p.name} — клавиша ${i + 1}"><span class="sch">${p.sch}</span><span><span class="nm">${p.name}</span><span class="ct">${nf(p.V)} верш. · ${nf(p.E)} рёбер</span></span></button>`;
+  li.firstChild.addEventListener('click', () => { loadPoly(i); if (state.slice) computeSection(); });
+  picker.appendChild(li); p.btn = li.firstChild;
+});
+let pickerReady = false;
+function refreshInfo(){
+  const p = POLY[state.poly];
+  POLY.forEach(q => q.btn.setAttribute('aria-pressed', q === p ? 'true' : 'false'));
+  // на телефоне список — горизонтальная лента: выбранную фигуру держим посередине
+  if (picker.scrollWidth > picker.clientWidth + 1){
+    const li = p.btn.parentElement;
+    picker.scrollTo({left: li.offsetLeft - (picker.clientWidth - li.offsetWidth) / 2, behavior: pickerReady ? 'smooth' : 'auto'});
+  }
+  pickerReady = true;
+  $('desc').textContent = p.desc;
+  $('nV').textContent = nf(p.V); $('nE').textContent = nf(p.E); $('nF').textContent = nf(p.F); $('nC').textContent = nf(p.C);
+  $('euler').textContent = `V − E + F − C = ${nf(p.V)} − ${nf(p.E)} + ${nf(p.F)} − ${nf(p.C)} = 0`;
+}
+
+// ползунки скоростей
+const fmtS = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2).replace('.', ',');
+function makeSlider(plane, host){
+  const w = plane.includes('w');
+  const div = document.createElement('div');
+  div.className = 'sl' + (w ? ' w' : '');
+  div.innerHTML = `<label for="s_${plane}">${plane.toUpperCase()}</label><input type="range" id="s_${plane}" min="-0.6" max="0.6" step="0.01"><output></output>`;
+  const inp = div.querySelector('input'), out = div.querySelector('output');
+  inp.value = state.speed[plane]; out.textContent = fmtS(+inp.value);
+  inp.addEventListener('input', () => { state.speed[plane] = +inp.value; out.textContent = fmtS(+inp.value); });
+  inp.addEventListener('dblclick', () => { inp.value = 0; inp.dispatchEvent(new Event('input')); });
+  host.appendChild(div);
+  return () => { inp.value = state.speed[plane]; out.textContent = fmtS(state.speed[plane]); };
+}
+const syncers = [...['xy', 'xz', 'yz'].map(p => makeSlider(p, $('rot3'))), ...['xw', 'yw', 'zw'].map(p => makeSlider(p, $('rot4')))];
+const syncSpeeds = () => syncers.forEach(f => f());
+$('stopRot').addEventListener('click', () => { for (const k in state.speed) state.speed[k] = 0; syncSpeeds(); });
+$('randRot').addEventListener('click', () => { for (const k in state.speed) state.speed[k] = +((Math.random() - .5) * (k.includes('w') ? .6 : .3)).toFixed(2); syncSpeeds(); });
+$('resetRot').addEventListener('click', () => { state.R = [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]; if (state.slice) computeSection(); });
+
+// проекции
+function setProj(p){
+  if (state.slice && p === 1) return;
+  state.projTarget = p;
+  $('mPersp').setAttribute('aria-pressed', p === 0); $('mStereo').setAttribute('aria-pressed', p === 1);
+  state.distTarget = p ? 7.2 : 5.4;
+}
+$('mPersp').addEventListener('click', () => setProj(0));
+$('mStereo').addEventListener('click', () => setProj(1));
+
+// срез
+function setSlice(on){
+  state.slice = on;
+  $('sliceBtn').setAttribute('aria-pressed', on);
+  $('slice').classList.toggle('on', on);
+  $('secInfo').classList.toggle('on', on);
+  document.body.classList.toggle('slice-on', on);
+  $('mStereo').disabled = on;
+  $('mStereo').style.opacity = on ? .45 : 1;
+  if (on){ state.savedProj = state.projTarget; setProj(0); computeSection(); }
+  else { state.sweep = false; setSweepIcon(); if (state.savedProj === 1) setProj(1); }
+}
+$('sliceBtn').addEventListener('click', () => setSlice(!state.slice));
+const hSl = $('hSl');
+function setH(v){ state.h = v; hSl.value = v; $('hOut').textContent = 'w = ' + (v < 0 ? '−' : '') + Math.abs(v).toFixed(2).replace('.', ','); }
+hSl.addEventListener('input', () => { state.sweep = false; setSweepIcon(); setH(+hSl.value); computeSection(); });
+function setSweepIcon(){ $('sweepBtn').innerHTML = state.sweep ? '<svg viewBox="0 0 16 16" fill="currentColor"><rect x="3.5" y="3" width="3" height="10" rx=".5"/><rect x="9.5" y="3" width="3" height="10" rx=".5"/></svg>' : '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11L13 8z"/></svg>'; }
+$('sweepBtn').addEventListener('click', () => { state.sweep = !state.sweep; state.sweepT = Math.asin(Math.max(-1, Math.min(1, state.h / 0.97))); setSweepIcon(); });
+
+// мобильная шторка вращений
+if (!matchMedia('(max-width: 760px)').matches) $('rot').classList.remove('closed');
+$('rotBtn').addEventListener('click', () => { const c = $('rot').classList.toggle('closed'); $('rotBtn').setAttribute('aria-pressed', !c); });
+
+// камера: перетаскивание и колесо
+let drag = null;
+const pointers = new Map();
+canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); drag = {x:e.clientX, y:e.clientY}; state.lastInput = performance.now(); });
+canvas.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  const prev = pointers.get(e.pointerId);
+  pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pointers.size === 2){
+    const [a, b] = [...pointers.values()], [pa] = [prev];
+    const other = [...pointers.entries()].find(([id]) => id !== e.pointerId)[1];
+    const d0 = Math.hypot(pa[0] - other[0], pa[1] - other[1]), d1 = Math.hypot(e.clientX - other[0], e.clientY - other[1]);
+    if (d0 > 0) state.distTarget = Math.max(2.5, Math.min(16, state.distTarget * d0 / d1));
+  } else {
+    state.yaw -= (e.clientX - prev[0]) * 0.006;
+    state.pitch = Math.max(-1.35, Math.min(1.35, state.pitch + (e.clientY - prev[1]) * 0.006));
+  }
+  state.lastInput = performance.now();
+});
+const endPtr = e => { pointers.delete(e.pointerId); };
+canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('wheel', e => { e.preventDefault(); state.distTarget = Math.max(2.5, Math.min(16, state.distTarget * Math.exp(e.deltaY * 0.0012))); state.lastInput = performance.now(); }, {passive:false});
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (/^Digit[1-6]$/.test(e.code)){ loadPoly(+e.code.slice(5) - 1); if (state.slice) computeSection(); }
+  else if (e.code === 'KeyP') setProj(state.projTarget ? 0 : 1);
+  else if (e.code === 'KeyS') setSlice(!state.slice);
+  else if (e.code === 'Space'){ e.preventDefault(); state.paused = !state.paused; }
+});
+
+/* =====================================================================
+   КАДР
+   ===================================================================== */
+function drawLines(vao, count, uni){
+  const L = PR.line;
+  gl.useProgram(L.p);
+  gl.uniformMatrix4fv(L.u.uRot4, false, uni.rot4);
+  gl.uniformMatrix4fv(L.u.uView, false, uni.view);
+  gl.uniformMatrix4fv(L.u.uPersp, false, uni.persp);
+  gl.uniform1f(L.u.uProj, uni.proj); gl.uniform1f(L.u.uD, 2.2);
+  gl.uniform1f(L.u.uWidth, uni.width); gl.uniform1f(L.u.uCamDist, state.dist); gl.uniform1f(L.u.uFar, uni.far);
+  gl.uniform2f(L.u.uRes, RW, RH);
+  gl.uniform1f(L.u.uAlpha, uni.alpha); gl.uniform1f(L.u.uConstW, uni.constW || 0); gl.uniform1f(L.u.uUseConst, uni.useConst || 0);
+  gl.bindVertexArray(vao);
+  gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, count);
+}
+function fullscreen(prog, target){ gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.f : null); gl.viewport(0, 0, target ? target.w : RW, target ? target.h : RH); gl.bindVertexArray(QVAO); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+
+let last = performance.now(), t0 = last, frameN = 0;
+const IDENT = rot4Array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]);
+function frame(now){
+  requestAnimationFrame(frame);
+  if (document.hidden){ last = now; return; }
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const t = (now - t0) / 1000;
+
+  // 4D-вращение
+  if (!state.paused){
+    for (const k in state.speed) if (state.speed[k]) rotatePlane(state.R, PLANES[k][0], PLANES[k][1], state.speed[k] * dt);
+    if (++frameN % 120 === 0) orthonormalize(state.R);
+  }
+  // проекция и камера плавно
+  state.proj += (state.projTarget - state.proj) * Math.min(1, dt * 3.2);
+  if (Math.abs(state.proj - state.projTarget) < 1e-3) state.proj = state.projTarget;
+  state.dist += (state.distTarget - state.dist) * Math.min(1, dt * 4);
+  if (now - state.lastInput > 4000 && !state.paused) state.yaw += dt * 0.07;
+  // срез
+  if (state.slice){
+    if (state.sweep){ state.sweepT += dt * 0.55; setH(Math.sin(state.sweepT) * 0.97); }
+    if (!state.paused || state.sweep) computeSection();
+    const s = section;
+    const name = PLATONIC[s.nv + '/' + s.nf];
+    $('secInfo').textContent = s.nf ? `в нашем мире: ${plural(s.nv, 'вершина', 'вершины', 'вершин')} · ${plural(s.nf, 'грань', 'грани', 'граней')}${name ? ' — ' + name : ''}` : 'гиперплоскость не задевает тело';
+  }
+
+  const eye = [state.dist * Math.cos(state.pitch) * Math.sin(state.yaw), state.dist * Math.sin(state.pitch), state.dist * Math.cos(state.pitch) * Math.cos(state.yaw)];
+  // на узком (портретном) экране угол обзора подгоняется под ширину, чтобы тело не вылезало за края
+  const aspect = RW / RH, halfFov = 19 * Math.PI / 180;
+  const fovy = aspect < 1 ? 2 * Math.atan(Math.tan(halfFov) / aspect) : 2 * halfFov;
+  const view = lookAt(eye), persp = perspective(fovy, aspect, 0.05, 200);
+  const P = POLY[state.poly];
+  const uni = {rot4:rot4Array(state.R), view, persp, proj:state.proj, width:4.6 * DPR, far:3.2 + state.proj * 7.5, alpha:P.alpha * (state.slice ? 0.32 : 1)};
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, hdr.f); gl.viewport(0, 0, RW, RH);
+  gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+  drawLines(LVAO, state.segCount, uni);
+  // вершины
+  const D = PR.dot;
+  gl.useProgram(D.p);
+  gl.uniformMatrix4fv(D.u.uRot4, false, uni.rot4); gl.uniformMatrix4fv(D.u.uView, false, view); gl.uniformMatrix4fv(D.u.uPersp, false, persp);
+  gl.uniform1f(D.u.uProj, state.proj); gl.uniform1f(D.u.uD, 2.2); gl.uniform1f(D.u.uSize, 7 * DPR); gl.uniform1f(D.u.uCamDist, state.dist); gl.uniform1f(D.u.uFar, uni.far);
+  gl.uniform2f(D.u.uRes, RW, RH); gl.uniform1f(D.u.uAlpha, P.dot * (state.slice ? 0.3 : 1));
+  gl.bindVertexArray(DVAO); gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, state.V.length);
+
+  // сечение: стеклянные грани и яркие рёбра
+  if (state.slice && section && section.tri.length){
+    const scale = 2.2 / (2.2 - state.h);
+    const H = PR.hull;
+    gl.useProgram(H.p);
+    gl.uniformMatrix4fv(H.u.uView, false, view); gl.uniformMatrix4fv(H.u.uPersp, false, persp);
+    gl.uniform1f(H.u.uScale, scale); gl.uniform3fv(H.u.uEye, eye);
+    const h = state.h, tint = h < 0 ? [0.18 + 0.78 * (1 + h), 0.85 + 0.1 * (1 + h), 1.0 - 0.1 * (1 + h)] : [0.96 + 0.04 * h, 0.945 - 0.53 * h, 0.9 - 0.66 * h];
+    gl.uniform3fv(H.u.uTint, tint);
+    gl.bindBuffer(gl.ARRAY_BUFFER, hullBuf); gl.bufferData(gl.ARRAY_BUFFER, section.tri, gl.DYNAMIC_DRAW);
+    gl.bindVertexArray(HVAO);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.FRONT); gl.drawArrays(gl.TRIANGLES, 0, section.tri.length / 6);
+    gl.cullFace(gl.BACK); gl.drawArrays(gl.TRIANGLES, 0, section.tri.length / 6);
+    gl.disable(gl.CULL_FACE);
+    gl.blendFunc(gl.ONE, gl.ONE);
+    gl.bindBuffer(gl.ARRAY_BUFFER, secInst); gl.bufferData(gl.ARRAY_BUFFER, section.edges, gl.DYNAMIC_DRAW);
+    drawLines(SVAO, section.edges.length / 10, {...uni, rot4:IDENT, proj:0, width:6 * DPR, alpha:1.6, constW:state.h, useConst:1});
+  }
+  gl.disable(gl.BLEND);
+
+  // свечение и итог
+  gl.useProgram(PR.down.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, hdr.t);
+  gl.uniform1i(PR.down.u.uSrc, 0); gl.uniform2f(PR.down.u.uTexel, 1 / bA.w, 1 / bA.h);
+  fullscreen(PR.down, bA);
+  gl.useProgram(PR.blur.p); gl.uniform1i(PR.blur.u.uSrc, 0); gl.uniform2f(PR.blur.u.uTexel, 1 / bA.w, 1 / bA.h);
+  gl.bindTexture(gl.TEXTURE_2D, bA.t); gl.uniform2f(PR.blur.u.uDir, 1.5 / bA.w, 0); fullscreen(PR.blur, bB);
+  gl.bindTexture(gl.TEXTURE_2D, bB.t); gl.uniform2f(PR.blur.u.uDir, 0, 1.5 / bA.h); fullscreen(PR.blur, bA);
+  gl.useProgram(PR.final.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, hdr.t); gl.uniform1i(PR.final.u.uHdr, 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bA.t); gl.uniform1i(PR.final.u.uBloom, 1);
+  gl.uniform2f(PR.final.u.uRes, RW, RH); gl.uniform1f(PR.final.u.uTime, t);
+  fullscreen(PR.final, null);
+  gl.activeTexture(gl.TEXTURE0);
+}
+
+resize();
+// стартовый вид: немного повёрнутый стодвадцатиячейник
+rotatePlane(state.R, 0, 3, 0.55); rotatePlane(state.R, 1, 2, 0.4); rotatePlane(state.R, 2, 3, 0.3);
+loadPoly(4);
+setProj(1);
+syncSpeeds();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ветер планеты · 115</title>
+<meta name="description" content="Живой ветер Земли по данным Open-Meteo: светящиеся нити текут по карте на четырёх высотах, с изобарами и прогнозом на двое суток.">
+<meta name="theme-color" content="#05080c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Science+Gothic:wdth,wght@62..200,300..600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="scene" role="img" aria-label="Карта ветра: светящиеся нити показывают, куда и как быстро дует ветер"></canvas>
+<div id="grat" aria-hidden="true"></div>
+<div id="marks" aria-hidden="true"></div>
+<div id="probeMark" class="probe-mark" hidden aria-hidden="true">
+  <svg viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="9"/><path d="M20 2v9M20 29v9M2 20h9M29 20h9"/></svg>
+</div>
+
+<header class="head">
+  <p class="kicker" id="status" data-state="loading"><span class="dot" aria-hidden="true"></span><span id="statusText">Загружаю ветер с&nbsp;Open-Meteo…</span><button id="retry" class="retry" type="button" hidden>Повторить</button></p>
+  <h1>Ветер планеты</h1>
+  <p class="lead">Каждая нить&nbsp;— воздух, который движется прямо сейчас.</p>
+  <p class="lead-m">Коснитесь точки&nbsp;— ветер на&nbsp;четырёх высотах</p>
+</header>
+
+<div class="controls">
+  <div class="ctl">
+    <h2 class="label" id="altTitle">Высота</h2>
+    <div class="seg alt" role="group" aria-labelledby="altTitle">
+      <button type="button" data-level="0" aria-pressed="true">10&nbsp;м</button>
+      <button type="button" data-level="1" aria-pressed="false">1,5&nbsp;км</button>
+      <button type="button" data-level="2" aria-pressed="false">5,6&nbsp;км</button>
+      <button type="button" data-level="3" aria-pressed="false">10,4&nbsp;км</button>
+    </div>
+    <p class="ctl-note" id="altNote">у&nbsp;земли</p>
+  </div>
+  <div class="ctl">
+    <h2 class="label" id="projTitle">Проекция</h2>
+    <nav class="seg proj" aria-labelledby="projTitle">
+      <button type="button" data-proj="0" aria-pressed="true">Карта</button>
+      <button type="button" data-proj="1" aria-pressed="false">Глобус</button>
+      <button type="button" data-proj="2" aria-pressed="false">Полюс</button>
+    </nav>
+  </div>
+</div>
+
+<section class="legend" aria-labelledby="legTitle">
+  <div class="leg-head">
+    <h2 id="legTitle" class="label">Скорость ветра, м/с</h2>
+  </div>
+  <div class="leg-ramp" id="legRamp"></div>
+  <div class="leg-ticks" id="legTicks"></div>
+  <p class="leg-note" id="legNote"></p>
+</section>
+
+<div class="layers" role="group" aria-label="Слои карты">
+  <button type="button" class="chip" id="tIsobars" aria-pressed="true"><i aria-hidden="true"></i>Изобары</button>
+  <button type="button" class="chip" id="tTemp" aria-pressed="false" aria-label="Температура у земли"><i aria-hidden="true"></i><span class="long">Температура</span><span class="short">t°</span></button>
+  <button type="button" class="chip" id="tNight" aria-pressed="true"><i aria-hidden="true"></i>Ночь</button>
+</div>
+
+<section class="time" aria-label="Время прогноза">
+  <button type="button" class="play" id="play" aria-label="Проиграть прогноз на двое суток">
+    <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+    <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
+  </button>
+  <div class="time-main">
+    <div class="time-top">
+      <output id="timeLabel" class="time-label">—</output>
+      <button type="button" class="now" id="nowBtn" hidden>К&nbsp;текущему часу</button>
+    </div>
+    <div class="track" id="track">
+      <div class="track-ticks" id="ticks" aria-hidden="true"></div>
+      <div class="track-now" id="trackNow" aria-hidden="true"></div>
+      <input type="range" id="timeRange" min="0" max="48" step="0.05" value="0" aria-label="Час прогноза">
+    </div>
+  </div>
+</section>
+
+<aside class="probe" id="probe" hidden aria-live="polite">
+  <button type="button" class="probe-close" id="probeClose" aria-label="Закрыть карточку">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+  <p class="probe-where" id="pWhere">—</p>
+  <div class="probe-main">
+    <svg class="probe-arrow" id="pArrow" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M24 9l7 13h-5v17h-4V22h-5z"/></svg>
+    <div>
+      <p class="probe-speed"><span id="pSpeed">—</span> <small>м/с</small></p>
+      <p class="probe-dir" id="pDir">—</p>
+    </div>
+  </div>
+  <p class="probe-meta" id="pMeta"></p>
+  <div class="probe-levels" id="pLevels"></div>
+  <div class="probe-spark">
+    <p class="probe-sub" id="pSparkTitle">Ветер за&nbsp;двое суток</p>
+    <svg id="pSpark" viewBox="0 0 260 54" preserveAspectRatio="none" aria-hidden="true"></svg>
+  </div>
+  <p class="probe-src" id="pSrc"></p>
+</aside>
+
+<footer class="credits">
+  <p class="hint" id="hint">Щелчок по&nbsp;карте&nbsp;— ветер в&nbsp;точке · тяните и&nbsp;крутите колесо</p>
+  <p>Данные <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC&nbsp;BY&nbsp;4.0) · берега Natural Earth · <button type="button" class="about-btn" id="aboutBtn" aria-expanded="false" aria-controls="about">Как это устроено</button></p>
+</footer>
+<button type="button" class="about-q" id="aboutQ" aria-label="Как это устроено" aria-expanded="false" aria-controls="about">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.6M12 16.6v.1"/></svg>
+</button>
+
+<section class="about" id="about" hidden aria-labelledby="aboutTitle">
+  <button type="button" class="probe-close" id="aboutClose" aria-label="Закрыть">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+  <h2 class="label" id="aboutTitle">Как это устроено</h2>
+  <ol>
+    <li><b>Один запрос к&nbsp;Open-Meteo.</b> 514 точек почти равномерной сетки с&nbsp;шагом около 1000&nbsp;км: ветер на&nbsp;четырёх высотах, температура и&nbsp;давление у&nbsp;земли, прогноз на&nbsp;48&nbsp;часов.</li>
+    <li><b>Сплайны по&nbsp;сфере.</b> Скорость и&nbsp;направление превращаются в&nbsp;трёхмерные векторы и&nbsp;сглаживаются на&nbsp;сетку 1°. У&nbsp;полюса ряд продолжается по&nbsp;противоположному меридиану, поэтому шва нет.</li>
+    <li><b>Частицы на&nbsp;видеокарте.</b> <span id="aboutCount">Двадцать тысяч частиц</span> шагают вдоль ветра 60&nbsp;раз в&nbsp;секунду, хвост каждой&nbsp;— её путь за&nbsp;последние 0,8&nbsp;секунды.</li>
+    <li><b>Синоптика.</b> Изобары проведены через 4&nbsp;гПа, «Н» и&nbsp;«В»&nbsp;— центры циклонов и&nbsp;антициклонов по&nbsp;той&nbsp;же сетке.</li>
+  </ol>
+  <p class="about-note">Сетка крупнее многих вихрей: ураганы и&nbsp;глубина циклонов сглажены. Щелчок по&nbsp;карте запрашивает прогноз для&nbsp;самой точки. Данные: Open-Meteo.com, CC&nbsp;BY&nbsp;4.0.</p>
+</section>
+
+<div class="fatal" id="fatal" hidden>
+  <h2>Нужен WebGL2</h2>
+  <p>Этот браузер не&nbsp;умеет рисовать поток частиц на&nbsp;видеокарте. Откройте страницу в&nbsp;свежем Chrome, Safari или Firefox.</p>
+</div>
+
+<script src="land.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

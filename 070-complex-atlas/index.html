@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Атлас комплексных функций</title>
+<meta name="description" content="Окраска области: введите f(z) — формула компилируется в шейдер и превращается в фазовый портрет с нулями и полюсами. Сфера Римана, гамма- и дзета-функции.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0d10;
+    --panel:#121419;
+    --line:#262a32;
+    --line2:#353a44;
+    --ink:#ece8df;
+    --dim:#aaa79e;
+    --gold:#f0c46a;
+    --err:#ff9a86;
+    --side:372px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink)}
+  body{font:400 15px/1.5 "Spectral",Georgia,serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+  .app{display:grid;grid-template-columns:1fr var(--side);height:100vh;height:100dvh}
+
+  /* ---------- плоскость ---------- */
+  .stage{position:relative;overflow:hidden;background:#07080a;cursor:grab;touch-action:none}
+  .stage.drag{cursor:grabbing}
+  #plot,#axes{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #axes{pointer-events:none}
+  .frame{position:absolute;inset:14px;border:1px solid rgba(236,232,223,.16);pointer-events:none}
+
+  .readout{position:absolute;left:28px;top:26px;padding:12px 14px 11px;min-width:268px;background:rgba(10,11,14,.78);border:1px solid var(--line);
+           font:400 12.5px/1.65 "IBM Plex Mono",monospace;color:var(--dim);pointer-events:none;backdrop-filter:blur(6px)}
+  .readout b{color:var(--ink);font-weight:500}
+  .readout .row{display:flex;justify-content:space-between;gap:18px;white-space:nowrap}
+
+  .legend{position:absolute;left:28px;bottom:54px;display:flex;align-items:center;gap:14px;padding:10px 14px 10px 10px;background:rgba(10,11,14,.78);
+          border:1px solid var(--line);font:400 12px/1.45 "IBM Plex Mono",monospace;color:var(--dim);pointer-events:none}
+  .legend canvas{width:62px;height:62px;display:block}
+  .legend b{color:var(--ink);font-weight:500}
+
+  .sphere{position:absolute;right:30px;bottom:50px;width:236px;text-align:center;font:400 12px/1.4 "IBM Plex Mono",monospace;color:var(--dim)}
+  #sphere{width:236px;height:236px;display:block;cursor:grab;touch-action:none}
+  .sphere span{display:inline-block;margin-top:4px;padding:3px 9px;background:rgba(10,11,14,.8);border:1px solid var(--line)}
+  #sphere.drag{cursor:grabbing}
+
+  .handle{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:2px solid #fff;background:rgba(12,13,16,.35);
+          box-shadow:0 0 0 1px rgba(0,0,0,.6),0 2px 10px rgba(0,0,0,.5);cursor:move;display:none;touch-action:none}
+  .handle::after{content:"a";position:absolute;left:34px;top:3px;font:italic 400 18px "Spectral",serif;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.9)}
+  .handle:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+
+  .zoom{position:absolute;right:30px;top:26px;display:flex;flex-direction:column;border:1px solid var(--line);background:rgba(10,11,14,.78)}
+  .zoom button{width:40px;height:40px;background:none;border:0;color:var(--ink);font:400 18px/1 "IBM Plex Mono",monospace;cursor:pointer}
+  .zoom button+button{border-top:1px solid var(--line)}
+  .zoom button:hover{background:rgba(236,232,223,.07)}
+  .zoom button:focus-visible{outline:1px solid var(--gold);outline-offset:-3px}
+
+  /* ---------- боковая панель ---------- */
+  aside{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;overflow-x:hidden;min-width:0;padding:30px 28px 28px;display:flex;flex-direction:column;gap:26px}
+  h1{margin:0;font:300 31px/1.08 "Spectral",serif;letter-spacing:-.01em}
+  h1 em{font-style:italic;color:var(--gold)}
+  .lead{margin:10px 0 0;color:var(--dim);font-size:15px;line-height:1.5}
+  h2{margin:0 0 10px;font:500 12px/1.2 "IBM Plex Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+
+  .formula{display:flex;align-items:stretch;border:1px solid var(--line2);background:#0b0c0f;transition:border-color .25s}
+  .formula:focus-within{border-color:var(--gold)}
+  .formula label{display:flex;align-items:center;padding:0 10px 0 13px;font:italic 400 19px "Spectral",serif;color:var(--dim);white-space:nowrap;border-right:1px solid var(--line)}
+  .formula input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ink);font:400 15px "IBM Plex Mono",monospace;padding:13px 12px;caret-color:var(--gold)}
+  .msg{min-height:20px;margin-top:7px;font:400 12px/1.5 "IBM Plex Mono",monospace;color:var(--dim)}
+  .msg.err{color:var(--err)}
+  .names{margin-top:4px;font:400 12px/1.6 "IBM Plex Mono",monospace;color:var(--dim)}
+  .names code{color:var(--ink)}
+
+  .params{display:flex;flex-wrap:wrap;gap:8px 16px;font:400 12.5px "IBM Plex Mono",monospace;color:var(--dim)}
+  .params[hidden]{display:none}
+  .params b{color:var(--ink);font-weight:500}
+  .chip{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border:1px solid var(--line2);background:none;color:var(--ink);font:inherit;cursor:pointer}
+  .chip:hover{border-color:var(--dim)}
+  .chip:focus-visible{outline:1px solid var(--gold);outline-offset:2px}
+
+  .gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .preset{position:relative;min-width:0;text-align:left;padding:10px 11px 10px;border:1px solid var(--line);background:#0f1115;color:var(--ink);cursor:pointer;
+          transition:border-color .2s,background .2s;min-height:64px}
+  .preset:hover{border-color:var(--line2);background:#14171c}
+  .preset:focus-visible{outline:1px solid var(--gold);outline-offset:2px}
+  .preset.on{border-color:var(--gold)}
+  .preset .nm{display:block;font:400 14.5px/1.25 "Spectral",serif}
+  .preset .fx{display:block;margin-top:5px;font:400 12px/1.35 "IBM Plex Mono",monospace;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line2)}
+  .seg button{height:40px;background:none;border:0;color:var(--dim);font:400 13.5px "Spectral",serif;cursor:pointer;transition:color .2s,background .2s}
+  .seg button+button{border-left:1px solid var(--line2)}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:#111}
+  .seg button:focus-visible{outline:1px solid var(--gold);outline-offset:-3px}
+  .toggle{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:14.5px;color:var(--dim);cursor:pointer;user-select:none}
+  .toggle input{appearance:none;-webkit-appearance:none;width:34px;height:20px;border-radius:10px;background:var(--line2);position:relative;cursor:pointer;margin:0;transition:background .2s}
+  .toggle input::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:var(--ink);transition:transform .2s cubic-bezier(.3,.7,.3,1)}
+  .toggle input:checked{background:#8a7447}
+  .toggle input:checked::after{transform:translateX(14px)}
+  .toggle input:focus-visible{outline:1px solid var(--gold);outline-offset:2px}
+
+  .note{margin:0;color:var(--dim);font-size:14px;line-height:1.55}
+  .note i{color:var(--ink)}
+  .fallback{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:32px;background:var(--bg);font:300 26px/1.4 "Spectral",serif}
+
+  @media (max-width:900px){
+    body{overflow:auto}
+    .app{display:block;height:auto}
+    .stage{height:66vh;height:66svh;min-height:380px}
+    aside{border-left:0;border-top:1px solid var(--line);padding:24px 18px 36px}
+    .readout{left:18px;top:18px;min-width:0;font-size:12px;padding:9px 11px}
+    .legend{display:none}
+    .sphere{right:14px;bottom:14px;width:128px}
+    #sphere{width:128px;height:128px}
+    .sphere span{display:none}
+    .zoom{right:18px;top:18px}
+    .zoom button{width:40px;height:40px}
+    .frame{inset:8px}
+    h1{font-size:28px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <main class="stage" id="stage" aria-label="Комплексная плоскость. Тяните, чтобы сдвинуть, колесо — масштаб.">
+    <canvas id="plot"></canvas>
+    <canvas id="axes"></canvas>
+    <div class="frame"></div>
+    <div class="handle" id="handle" tabindex="0" role="slider" aria-label="Параметр a: перетащите по плоскости"></div>
+    <div class="readout" id="readout" aria-live="off">
+      <div class="row"><span>z</span><b id="rz">—</b></div>
+      <div class="row"><span>f(z)</span><b id="rf">—</b></div>
+      <div class="row"><span>|f| · arg f</span><b id="rm">—</b></div>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <canvas id="wheel" width="124" height="124"></canvas>
+      <div>цвет — <b>arg f</b><br>кольцо — <b>|f|</b> удвоился<br>чёрное — ноль, белое — ∞</div>
+    </div>
+    <div class="zoom">
+      <button id="zin" aria-label="Приблизить">+</button>
+      <button id="zout" aria-label="Отдалить">−</button>
+      <button id="zreset" aria-label="Вернуть вид пресета">⌂</button>
+    </div>
+    <div class="sphere">
+      <canvas id="sphere" aria-label="Сфера Римана: тяните, чтобы повернуть"></canvas>
+      <span>сфера Римана · ∞ — северный полюс</span>
+    </div>
+  </main>
+
+  <aside>
+    <header>
+      <h1>Атлас <em>комплексных</em> функций</h1>
+      <p class="lead">Каждая точка плоскости окрашена по&nbsp;аргументу и&nbsp;модулю f(z). Нули видны как точки, вокруг которых цвета идут по&nbsp;кругу, полюса&nbsp;— как такие&nbsp;же точки в&nbsp;обратном порядке.</p>
+    </header>
+
+    <section>
+      <h2>Формула</h2>
+      <div class="formula"><label for="fx">f(z) =</label><input id="fx" spellcheck="false" autocomplete="off" autocapitalize="off" value=""></div>
+      <div class="msg" id="msg">Формула компилируется в шейдер на лету.</div>
+      <div class="names">Имена: <code>z i a t pi e</code> · <code>sin cos tan exp log sqrt sinh cosh tanh conj re im abs arg gamma zeta</code> · можно писать <code>2z</code> и <code>(z+1)(z−1)</code></div>
+      <div class="params" id="params" hidden>
+        <span id="pa" hidden>a = <b id="av">0</b> · маркер на&nbsp;плоскости</span>
+        <span id="pt" hidden><button class="chip" id="tplay" aria-pressed="true">⏸ t = <b id="tv">0</b></button></span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Галерея</h2>
+      <div class="gallery" id="gallery"></div>
+    </section>
+
+    <section>
+      <h2>Раскраска</h2>
+      <div class="seg" id="modes">
+        <button data-m="0" aria-pressed="true">Фаза и кольца</button>
+        <button data-m="1" aria-pressed="false">Классика</button>
+        <button data-m="2" aria-pressed="false">Рельеф</button>
+      </div>
+      <label class="toggle"><input type="checkbox" id="grid" checked> Координатная сетка</label>
+    </section>
+
+    <p class="note" id="about"></p>
+  </aside>
+</div>
+<div class="fallback" id="fallback">Атласу нужен WebGL2 — откройте страницу в&nbsp;свежем браузере.</div>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   1. Парсер формул: токены → дерево (Пратт) с неявным умножением
+   ===================================================================== */
+const FUNCS = {
+  sin: 'csin', cos: 'ccos', tan: 'ctan', exp: 'cexp', log: 'clog', ln: 'clog', sqrt: 'csqrt',
+  sinh: 'csinh', cosh: 'ccosh', tanh: 'ctanh', conj: 'cconj', re: 'cre', im: 'cim', abs: 'cabs', arg: 'carg',
+  gamma: 'cgamma', 'Γ': 'cgamma', zeta: 'czeta', 'ζ': 'czeta'
+};
+const VARS = new Set(['z', 'a', 't']);
+const CONSTS = { pi: Math.PI, 'π': Math.PI, e: Math.E };
+
+function tokenize(src) {
+  const s = src.replace(/[−–]/g, '-').replace(/[·×]/g, '*').replace(/²/g, '^2').replace(/³/g, '^3');
+  const out = [];
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (/[0-9.]/.test(c)) {
+      const m = /^(\d+\.?\d*|\.\d+)(e[+-]?\d+)?/i.exec(s.slice(i));
+      if (!m) throw err('Не понял число', i);
+      out.push({ k: 'num', v: parseFloat(m[0]), p: i }); i += m[0].length; continue;
+    }
+    if (/[a-zA-Zα-ωΑ-Ωπ]/.test(c)) {
+      const m = /^[a-zA-Zα-ωΑ-Ωπ]+/.exec(s.slice(i));
+      out.push({ k: 'id', v: m[0], p: i }); i += m[0].length; continue;
+    }
+    if ('+-*/^(),'.includes(c)) { out.push({ k: c, p: i }); i++; continue; }
+    throw err('Неожиданный символ «' + c + '»', i);
+  }
+  out.push({ k: 'end', p: s.length });
+  return out;
+}
+function err(text, pos) { const e = new Error(text); e.pos = pos; return e; }
+
+function parse(src) {
+  const toks = tokenize(src);
+  let p = 0;
+  const peek = () => toks[p], next = () => toks[p++];
+  const startsPrimary = t => t.k === 'num' || t.k === 'id' || t.k === '(';
+
+  function splitIdent(t) {
+    // «zi», «2pi», «az» → разбиваем склеенные имена на известные части
+    const v = t.v;
+    if (FUNCS[v] || VARS.has(v) || CONSTS[v] !== undefined || v === 'i') return [v];
+    const parts = [];
+    let rest = v;
+    while (rest.length) {
+      const known = ['pi', 'π', 'z', 'a', 't', 'i', 'e'].find(n => rest.startsWith(n));
+      if (!known) throw err('Неизвестное имя «' + v + '»', t.p);
+      parts.push(known); rest = rest.slice(known.length);
+    }
+    return parts;
+  }
+  function atom(name, t) {
+    if (name === 'i') return { t: 'i' };
+    if (VARS.has(name)) return { t: 'var', n: name };
+    if (CONSTS[name] !== undefined) return { t: 'num', v: CONSTS[name] };
+    throw err('Неизвестное имя «' + name + '»', t.p);
+  }
+  function primary() {
+    const t = next();
+    if (t.k === 'num') return { t: 'num', v: t.v };
+    if (t.k === '(') { const e = expr(0); expect(')'); return e; }
+    if (t.k === 'id') {
+      if (FUNCS[t.v]) {
+        if (peek().k !== '(') throw err('После «' + t.v + '» нужна скобка', t.p);
+        next();
+        const a = expr(0); expect(')');
+        return { t: 'call', f: t.v, a };
+      }
+      const parts = splitIdent(t);
+      let node = atom(parts[0], t);
+      for (let k = 1; k < parts.length; k++) node = { t: 'bin', op: '*', a: node, b: atom(parts[k], t) };
+      return node;
+    }
+    if (t.k === 'end') throw err('Формула оборвалась', t.p);
+    throw err('Лишний символ «' + t.k + '»', t.p);
+  }
+  function expect(k) { const t = next(); if (t.k !== k) throw err(k === ')' ? 'Не хватает закрывающей скобки' : 'Ожидал «' + k + '»', t.p); }
+  function unary() {
+    if (peek().k === '-') { next(); return { t: 'neg', a: unary() }; }
+    if (peek().k === '+') { next(); return unary(); }
+    return power();
+  }
+  function power() {
+    const base = primary();
+    if (peek().k === '^') { next(); return { t: 'bin', op: '^', a: base, b: unary() }; }
+    return base;
+  }
+  function expr(minBp) {
+    let left = unary();
+    for (;;) {
+      const t = peek();
+      let op = null, bp = 0;
+      if (t.k === '+' || t.k === '-') { op = t.k; bp = 10; }
+      else if (t.k === '*' || t.k === '/') { op = t.k; bp = 20; }
+      else if (startsPrimary(t)) { op = 'imp'; bp = 20; }
+      else break;
+      if (bp <= minBp) break;
+      if (op !== 'imp') next();
+      const right = expr(bp);
+      left = { t: 'bin', op: op === 'imp' ? '*' : op, a: left, b: right };
+    }
+    return left;
+  }
+  const tree = expr(0);
+  if (peek().k !== 'end') throw err(peek().k === ')' ? 'Лишняя закрывающая скобка' : 'Не понял продолжение формулы', peek().p);
+  return tree;
+}
+function uses(node, name) {
+  if (!node) return false;
+  if (node.t === 'var') return node.n === name;
+  return uses(node.a, name) || uses(node.b, name);
+}
+
+/* ---------- кодогенерация GLSL ---------- */
+const fmt = v => { if (!isFinite(v)) throw err('Слишком большое число', 0); const s = String(+v.toPrecision(9)); return /[.eE]/.test(s) ? (/e/i.test(s) && !/\./.test(s) ? s.replace(/e/i, '.0e') : s) : s + '.0'; };
+function glsl(n) {
+  switch (n.t) {
+    case 'num': return `vec2(${fmt(n.v)}, 0.0)`;
+    case 'i': return 'vec2(0.0, 1.0)';
+    case 'var': return n.n === 'z' ? 'z' : n.n === 'a' ? 'uA' : 'vec2(uT, 0.0)';
+    case 'neg': return `(-${glsl(n.a)})`;
+    case 'call': return `${FUNCS[n.f]}(${glsl(n.a)})`;
+    case 'bin':
+      if (n.op === '+') return `(${glsl(n.a)} + ${glsl(n.b)})`;
+      if (n.op === '-') return `(${glsl(n.a)} - ${glsl(n.b)})`;
+      if (n.op === '*') return `cmul(${glsl(n.a)}, ${glsl(n.b)})`;
+      if (n.op === '/') return `cdiv(${glsl(n.a)}, ${glsl(n.b)})`;
+      if (n.op === '^') {
+        const e = n.b.t === 'num' ? n.b.v : n.b.t === 'neg' && n.b.a.t === 'num' ? -n.b.a.v : null;
+        if (e !== null && Number.isInteger(e) && Math.abs(e) <= 64) return `cpowi(${glsl(n.a)}, ${e})`;
+        return `cpow(${glsl(n.a)}, ${glsl(n.b)})`;
+      }
+  }
+  throw err('Внутренняя ошибка', 0);
+}
+
+/* =====================================================================
+   2. Комплексная арифметика на JS (для подсказки значения под курсором)
+   ===================================================================== */
+const X = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1]],
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1]],
+  mul: (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]],
+  div: (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; },
+  exp: a => { const e = Math.exp(a[0]); return [e * Math.cos(a[1]), e * Math.sin(a[1])]; },
+  log: a => [Math.log(Math.hypot(a[0], a[1])), Math.atan2(a[1], a[0])],
+  pow: (a, b) => (a[0] === 0 && a[1] === 0) ? [0, 0] : X.exp(X.mul(b, X.log(a))),
+  powi: (a, n) => { let r = [1, 0], b = a, m = Math.abs(n); while (m) { if (m & 1) r = X.mul(r, b); b = X.mul(b, b); m >>= 1; } return n < 0 ? X.div([1, 0], r) : r; },
+  sqrt: a => { const r = Math.hypot(a[0], a[1]); return [Math.sqrt(Math.max(0, (r + a[0]) / 2)), (a[1] < 0 ? -1 : 1) * Math.sqrt(Math.max(0, (r - a[0]) / 2))]; },
+  sin: a => [Math.sin(a[0]) * Math.cosh(a[1]), Math.cos(a[0]) * Math.sinh(a[1])],
+  cos: a => [Math.cos(a[0]) * Math.cosh(a[1]), -Math.sin(a[0]) * Math.sinh(a[1])],
+  sinh: a => [Math.sinh(a[0]) * Math.cos(a[1]), Math.cosh(a[0]) * Math.sin(a[1])],
+  cosh: a => [Math.cosh(a[0]) * Math.cos(a[1]), Math.sinh(a[0]) * Math.sin(a[1])]
+};
+X.tan = a => X.div(X.sin(a), X.cos(a));
+X.tanh = a => X.div(X.sinh(a), X.cosh(a));
+const LANCZOS = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+function gammaPos(z) {
+  z = [z[0] - 1, z[1]];
+  let x = [LANCZOS[0], 0];
+  for (let i = 1; i < 9; i++) x = X.add(x, X.div([LANCZOS[i], 0], [z[0] + i, z[1]]));
+  const t = [z[0] + 7.5, z[1]];
+  return X.mul([2.5066282746310002, 0], X.mul(X.mul(X.pow(t, [z[0] + 0.5, z[1]]), X.exp([-t[0], -t[1]])), x));
+}
+X.gamma = z => z[0] < 0.5 ? X.div([Math.PI, 0], X.mul(X.sin([Math.PI * z[0], Math.PI * z[1]]), gammaPos([1 - z[0], -z[1]]))) : gammaPos(z);
+// Борвейн: η(s) = −Σ (−1)^k c_k (k+1)^{−s}, c_k = (d_k − d_n)/d_n
+const ETA_N = 30;
+const ETA = (() => {
+  const n = ETA_N, fact = [1];
+  for (let i = 1; i <= 2 * n; i++) fact[i] = fact[i - 1] * i;
+  const d = [];
+  let acc = 0;
+  for (let k = 0; k <= n; k++) { acc += fact[n + k - 1] * Math.pow(4, k) / (fact[n - k] * fact[2 * k]); d[k] = n * acc; }
+  return d.slice(0, n).map(dk => (dk - d[n]) / d[n]);
+})();
+function zetaPos(s) {
+  let sum = [0, 0];
+  for (let k = 0; k < ETA_N; k++) {
+    const L = Math.log(k + 1), term = X.exp([-s[0] * L, -s[1] * L]), c = (k % 2 ? -1 : 1) * ETA[k];
+    sum = [sum[0] + c * term[0], sum[1] + c * term[1]];
+  }
+  const eta = [-sum[0], -sum[1]];
+  return X.div(eta, X.sub([1, 0], X.pow([2, 0], [1 - s[0], -s[1]])));
+}
+X.zeta = s => {
+  if (s[0] >= 0.5) return zetaPos(s);
+  const oms = [1 - s[0], -s[1]];
+  const f = X.mul(X.mul(X.pow([2, 0], s), X.pow([Math.PI, 0], [s[0] - 1, s[1]])), X.mul(X.sin([Math.PI * s[0] / 2, Math.PI * s[1] / 2]), gammaPos(oms)));
+  return X.mul(f, zetaPos(oms));
+};
+const JSF = {
+  sin: X.sin, cos: X.cos, tan: X.tan, exp: X.exp, log: X.log, ln: X.log, sqrt: X.sqrt, sinh: X.sinh, cosh: X.cosh, tanh: X.tanh,
+  conj: a => [a[0], -a[1]], re: a => [a[0], 0], im: a => [a[1], 0], abs: a => [Math.hypot(a[0], a[1]), 0], arg: a => [Math.atan2(a[1], a[0]), 0],
+  gamma: X.gamma, 'Γ': X.gamma, zeta: X.zeta, 'ζ': X.zeta
+};
+function evalNode(n, env) {
+  switch (n.t) {
+    case 'num': return [n.v, 0];
+    case 'i': return [0, 1];
+    case 'var': return n.n === 'z' ? env.z : n.n === 'a' ? env.a : [env.t, 0];
+    case 'neg': { const v = evalNode(n.a, env); return [-v[0], -v[1]]; }
+    case 'call': return JSF[n.f](evalNode(n.a, env));
+    case 'bin': {
+      const a = evalNode(n.a, env);
+      if (n.op === '^' && n.b.t === 'num' && Number.isInteger(n.b.v) && Math.abs(n.b.v) <= 64) return X.powi(a, n.b.v);
+      const b = evalNode(n.b, env);
+      return n.op === '+' ? X.add(a, b) : n.op === '-' ? X.sub(a, b) : n.op === '*' ? X.mul(a, b) : n.op === '/' ? X.div(a, b) : X.pow(a, b);
+    }
+  }
+}
+
+/* =====================================================================
+   3. Шейдеры: общая библиотека комплексных функций + раскраска
+   ===================================================================== */
+const LIB = `
+#define PI 3.14159265358979
+uniform vec2 uA;
+uniform float uT;
+uniform float uEta[${ETA_N}];
+vec2 cmul(vec2 a, vec2 b){ return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x); }
+vec2 cdiv(vec2 a, vec2 b){ float d = dot(b, b); return vec2(a.x*b.x + a.y*b.y, a.y*b.x - a.x*b.y) / d; }
+vec2 cconj(vec2 a){ return vec2(a.x, -a.y); }
+vec2 cre(vec2 a){ return vec2(a.x, 0.0); }
+vec2 cim(vec2 a){ return vec2(a.y, 0.0); }
+vec2 cabs(vec2 a){ return vec2(length(a), 0.0); }
+vec2 carg(vec2 a){ return vec2(atan(a.y, a.x), 0.0); }
+vec2 cexp(vec2 a){ return exp(a.x) * vec2(cos(a.y), sin(a.y)); }
+vec2 clog(vec2 a){ return vec2(log(length(a)), atan(a.y, a.x)); }
+vec2 cpow(vec2 a, vec2 b){ return dot(a, a) == 0.0 ? vec2(0.0) : cexp(cmul(b, clog(a))); }
+vec2 cpowi(vec2 a, int n){ vec2 r = vec2(1.0, 0.0), b = a; int m = n < 0 ? -n : n;
+  for (int i = 0; i < 8; i++){ if (m == 0) break; if ((m & 1) == 1) r = cmul(r, b); b = cmul(b, b); m >>= 1; }
+  return n < 0 ? cdiv(vec2(1.0, 0.0), r) : r; }
+vec2 csqrt(vec2 a){ float r = length(a); return vec2(sqrt(max(0.0, 0.5*(r + a.x))), (a.y < 0.0 ? -1.0 : 1.0) * sqrt(max(0.0, 0.5*(r - a.x)))); }
+vec2 csin(vec2 a){ return vec2(sin(a.x)*cosh(a.y), cos(a.x)*sinh(a.y)); }
+vec2 ccos(vec2 a){ return vec2(cos(a.x)*cosh(a.y), -sin(a.x)*sinh(a.y)); }
+vec2 ctan(vec2 a){ return cdiv(csin(a), ccos(a)); }
+vec2 csinh(vec2 a){ return vec2(sinh(a.x)*cos(a.y), cosh(a.x)*sin(a.y)); }
+vec2 ccosh(vec2 a){ return vec2(cosh(a.x)*cos(a.y), sinh(a.x)*sin(a.y)); }
+vec2 ctanh(vec2 a){ return cdiv(csinh(a), ccosh(a)); }
+const float LG[9] = float[](0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+  -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7);
+vec2 cgammaPos(vec2 z){
+  z -= vec2(1.0, 0.0);
+  vec2 x = vec2(LG[0], 0.0);
+  for (int i = 1; i < 9; i++) x += cdiv(vec2(LG[i], 0.0), z + vec2(float(i), 0.0));
+  vec2 t = z + vec2(7.5, 0.0);
+  return 2.5066282746310002 * cmul(cmul(cpow(t, z + vec2(0.5, 0.0)), cexp(-t)), x);
+}
+vec2 cgamma(vec2 z){
+  if (z.x < 0.5) return cdiv(vec2(PI, 0.0), cmul(csin(PI * z), cgammaPos(vec2(1.0, 0.0) - z)));
+  return cgammaPos(z);
+}
+vec2 czetaPos(vec2 s){
+  vec2 sum = vec2(0.0);
+  for (int k = 0; k < ${ETA_N}; k++){
+    float L = log(float(k + 1));
+    vec2 term = exp(-s.x * L) * vec2(cos(s.y * L), -sin(s.y * L));
+    sum += ((k & 1) == 1 ? -1.0 : 1.0) * uEta[k] * term;
+  }
+  return cdiv(-sum, vec2(1.0, 0.0) - cpow(vec2(2.0, 0.0), vec2(1.0, 0.0) - s));
+}
+vec2 czeta(vec2 s){
+  if (s.x >= 0.5) return czetaPos(s);
+  vec2 oms = vec2(1.0, 0.0) - s;
+  vec2 f = cmul(cmul(cpow(vec2(2.0, 0.0), s), cpow(vec2(PI, 0.0), s - vec2(1.0, 0.0))), cmul(csin(0.5 * PI * s), cgammaPos(oms)));
+  return cmul(f, czetaPos(oms));
+}
+`;
+
+const SHADE = `
+uniform int uMode;
+vec3 oklab2lin(vec3 c){
+  float l_ = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
+  float m_ = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
+  float s_ = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
+  float l = l_*l_*l_, m = m_*m_*m_, s = s_*s_*s_;
+  return vec3(4.0767416621*l - 3.3077115913*m + 0.2309699292*s,
+             -1.2684380046*l + 2.6097574011*m - 0.3413193965*s,
+             -0.0041960863*l - 0.7034186147*m + 1.7076147010*s);
+}
+vec3 toSRGB(vec3 c){ c = clamp(c, 0.0, 1.0); return mix(12.92 * c, 1.055 * pow(c, vec3(1.0/2.4)) - 0.055, step(0.0031308, c)); }
+// циклическая палитра в OKLCH: одинаковая светлота на всех фазах
+vec3 phase(float ang, float L, float C){ return oklab2lin(vec3(L, C * cos(ang + 0.6), C * sin(ang + 0.6))); }
+float aaLine(float x, float w){ float d = abs(fract(x + 0.5) - 0.5); return 1.0 - smoothstep(0.0, w, d); }
+
+vec3 shade(vec2 w, vec2 z, float px){
+  bool bad = any(isnan(w)) || any(isinf(w)) || dot(w, w) > 1e36;
+  if (bad) return vec3(0.95, 0.94, 0.9);
+  float r = length(w), ang = atan(w.y, w.x);
+  vec3 col;
+  if (uMode == 1){
+    // классика: светлота по модулю — ноль чёрный, бесконечность белая
+    float k = 2.0 / PI * atan(r);
+    float L = 0.08 + 0.9 * k;
+    float C = 0.16 * (1.0 - pow(abs(2.0 * k - 1.0), 2.0));
+    col = phase(ang, L, C);
+  } else {
+    float lr = log2(max(r, 1e-30));
+    float flr = fwidth(lr);
+    float ring = mix(fract(lr), 0.5, smoothstep(0.3, 0.9, flr));
+    if (uMode == 0){
+      float pa = ang / (2.0 * PI) * 12.0;
+      float fpa = min(fwidth(pa), fwidth(fract(pa + 0.5)));
+      float line = aaLine(pa, fpa * 1.1) * (1.0 - smoothstep(0.12, 0.45, fpa));
+      col = phase(ang, 0.56 + 0.26 * ring, 0.15) * (1.0 - 0.42 * line);
+    } else {
+      // рельеф: log|f| как высота, освещение по градиенту
+      float h = log(max(r, 1e-30));
+      vec2 g = vec2(dFdx(h), dFdy(h)) / max(px, 1e-9);
+      vec3 n = normalize(vec3(-g * 0.35, 1.0));
+      float diff = max(dot(n, normalize(vec3(-0.55, 0.62, 0.56))), 0.0);
+      float spec = pow(max(dot(n, normalize(vec3(-0.2, 0.3, 1.0))), 0.0), 40.0);
+      col = phase(ang, 0.66, 0.13) * (0.22 + 0.9 * diff) + spec * 0.25;
+      col *= 0.82 + 0.18 * ring;
+    }
+  }
+  return col;
+}
+`;
+
+const VS = `#version 300 es
+void main(){ vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
+
+function planeFS(body) {
+  return `#version 300 es
+precision highp float;
+precision highp int;
+${LIB}
+vec2 f(vec2 z){ return ${body}; }
+${SHADE}
+uniform vec2 uRes, uCenter;
+uniform float uScale, uGrid, uStep;
+out vec4 o;
+void main(){
+  vec2 z = uCenter + (gl_FragCoord.xy - 0.5 * uRes) * uScale;
+  vec3 col = shade(f(z), z, uScale);
+  // сетка по z: целые линии и оси
+  if (uGrid > 0.5){
+    vec2 gz = z / uStep;
+    vec2 fw = fwidth(gz);
+    vec2 d = abs(fract(gz + 0.5) - 0.5) / max(fw, 1e-9);
+    float g = 1.0 - smoothstep(0.0, 1.0, min(d.x, d.y));
+    vec2 ax = abs(z) / max(fwidth(z), 1e-12);
+    float axis = 1.0 - smoothstep(0.5, 1.6, min(ax.x, ax.y));
+    col = mix(col, vec3(0.0), g * 0.16);
+    col = mix(col, vec3(0.0), axis * 0.55);
+  }
+  o = vec4(toSRGB(col), 1.0);
+}`;
+}
+function sphereFS(body) {
+  return `#version 300 es
+precision highp float;
+precision highp int;
+${LIB}
+vec2 f(vec2 z){ return ${body}; }
+${SHADE}
+uniform vec2 uRes;
+uniform mat3 uRot;
+out vec4 o;
+void main(){
+  vec2 p = (gl_FragCoord.xy - 0.5 * uRes) / (0.5 * uRes.y) * 1.06;
+  float r2 = dot(p, p);
+  float edge = fwidth(sqrt(r2));
+  float cover = 1.0 - smoothstep(1.0 - edge, 1.0 + edge, sqrt(r2));
+  if (cover <= 0.0){ o = vec4(0.0); return; }
+  vec3 nrm = vec3(p, sqrt(max(0.0, 1.0 - r2)));
+  vec3 P = uRot * nrm;                        // точка на сфере в мировых координатах
+  vec2 z = P.xy / max(1.0 - P.z, 1e-6);      // обратная стереографическая проекция
+  float px = 0.02 * (1.0 + dot(z, z));
+  vec3 col = shade(f(z), z, px);
+  float lam = 0.35 + 0.75 * max(dot(nrm, normalize(vec3(-0.45, 0.55, 0.7))), 0.0);
+  float rim = pow(1.0 - nrm.z, 3.0);
+  col = col * lam + vec3(0.9, 0.92, 1.0) * rim * 0.22;
+  // экватор |z| = 1
+  float eq = 1.0 - smoothstep(0.0, 1.8 * fwidth(P.z), abs(P.z));
+  col = mix(col, vec3(1.0), eq * 0.55);
+  o = vec4(toSRGB(col) * cover, cover);
+}`;
+}
+
+/* =====================================================================
+   4. WebGL: два контекста — плоскость и сфера
+   ===================================================================== */
+const plotCv = document.getElementById('plot'), sphCv = document.getElementById('sphere');
+const gl = plotCv.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: false });
+const gs = sphCv.getContext('webgl2', { antialias: false, alpha: true, premultipliedAlpha: true });
+if (!gl || !gs) { document.getElementById('fallback').style.display = 'grid'; return; }
+[gl, gs].forEach(c => c.bindVertexArray(c.createVertexArray()));
+
+function build(ctx, fsSrc) {
+  const mk = (type, src) => {
+    const s = ctx.createShader(type);
+    ctx.shaderSource(s, src); ctx.compileShader(s);
+    if (!ctx.getShaderParameter(s, ctx.COMPILE_STATUS)) { const log = ctx.getShaderInfoLog(s); ctx.deleteShader(s); throw new Error(log); }
+    return s;
+  };
+  const p = ctx.createProgram();
+  ctx.attachShader(p, mk(ctx.VERTEX_SHADER, VS));
+  ctx.attachShader(p, mk(ctx.FRAGMENT_SHADER, fsSrc));
+  ctx.linkProgram(p);
+  if (!ctx.getProgramParameter(p, ctx.LINK_STATUS)) throw new Error(ctx.getProgramInfoLog(p));
+  const u = n => ctx.getUniformLocation(p, n);
+  const prog = { p, u: {} };
+  ['uRes', 'uCenter', 'uScale', 'uGrid', 'uStep', 'uMode', 'uA', 'uT', 'uRot'].forEach(n => prog.u[n] = u(n));
+  ctx.useProgram(p);
+  const eta = u('uEta');
+  if (eta) ctx.uniform1fv(eta, new Float32Array(ETA));
+  return prog;
+}
+
+/* =====================================================================
+   5. Состояние, пресеты
+   ===================================================================== */
+const PRESETS = [
+  { nm: 'Корни из единицы', fx: 'z^3 - 1', c: [0, 0], w: 4.4,
+    about: 'Три нуля на единичной окружности: вокруг каждого цвета проходят полный круг. Кольца модуля сгущаются к нулям.' },
+  { nm: 'Классический портрет', fx: '(z^2 - 1)(z - 2 - i)^2 / (z^2 + 2 + 2i)', c: [0, 0], w: 7,
+    about: 'Нули в ±1, двойной ноль в 2 + i (цвета обходят его дважды) и два полюса — там порядок цветов обратный.' },
+  { nm: 'Синус', fx: 'sin(z)', c: [0, 0], w: 13,
+    about: 'Нули на вещественной оси через каждые π. Вверх и вниз модуль растёт экспоненциально — кольца бегут часто.' },
+  { nm: 'Существенная особенность', fx: 'exp(1/z)', c: [0, 0], w: 2.2,
+    about: 'Около нуля функция принимает почти все значения бесконечно часто (теорема Пикара) — отсюда вихрь цветов.' },
+  { nm: 'Гамма-функция', fx: 'gamma(z)', c: [-1.5, 0], w: 11,
+    about: 'Полюса в 0, −1, −2, … Справа Γ растёт как факториал: Γ(n + 1) = n!. Считается формулой Ланцоша прямо в шейдере.' },
+  { nm: 'Дзета Римана', fx: 'zeta(z)', c: [0.5, 12], w: 30,
+    about: 'Полюс в 1, тривиальные нули в −2, −4, … Нетривиальные — на критической прямой Re z = ½: 14,13i, 21,02i, 25,01i. Гипотеза Римана: все они там.' },
+  { nm: 'Произведение Бляшке', fx: 'z^2 (z - a) / (1 - conj(a) z)', c: [0, 0], w: 3.6,
+    about: 'Единичная окружность переходит в себя. Перетащите маркер a — ноль внутри круга и полюс снаружи двигаются как зеркальная пара.' },
+  { nm: 'Разрезы корня', fx: 'sqrt(z^4 - 1)', c: [0, 0], w: 4.4,
+    about: 'Корень двузначен, и шейдер выбирает главную ветвь: там, где ветвь «переключается», видны резкие разрезы.' },
+  { nm: 'Танец нулей', fx: 'z^5 - 1.3 exp(i t) z + 0.5', c: [0, 0], w: 4.2,
+    about: 'Параметр t — время. Пять нулей многочлена кружат, сталкиваются почти вплотную и снова расходятся.' },
+  { nm: 'Тангенс', fx: 'tan(z)', c: [0, 0], w: 9,
+    about: 'Нули в kπ, полюса в π/2 + kπ. Вдали от вещественной оси tg z быстро стремится к ±i — цвет выравнивается.' }
+];
+
+const state = {
+  tree: null, center: [0, 0], scale: 0.01, mode: 0, grid: true, a: [0.55, 0.35], t: 0, playing: true,
+  preset: 0, usesA: false, usesT: false, dirty: true, rot: { yaw: 0.6, pitch: -0.9 }, sphDirty: true
+};
+let progPlane = null, progSphere = null;
+
+const input = document.getElementById('fx'), msg = document.getElementById('msg');
+const about = document.getElementById('about');
+
+function setFormula(src, fromPreset) {
+  let tree;
+  try { tree = parse(src); }
+  catch (e) { showErr(e.message + (e.pos !== undefined ? ' (позиция ' + (e.pos + 1) + ')' : '')); return false; }
+  let body;
+  try { body = glsl(tree); } catch (e) { showErr(e.message); return false; }
+  try {
+    const pp = build(gl, planeFS(body)), ps = build(gs, sphereFS(body));
+    if (progPlane) gl.deleteProgram(progPlane.p);
+    if (progSphere) gs.deleteProgram(progSphere.p);
+    progPlane = pp; progSphere = ps;
+  } catch (e) { showErr('Шейдер не собрался: ' + String(e.message).split('\n')[0]); return false; }
+  state.tree = tree;
+  state.usesA = uses(tree, 'a'); state.usesT = uses(tree, 't');
+  msg.classList.remove('err');
+  msg.textContent = 'Скомпилировано в GLSL · ' + body.length + ' символов шейдера';
+  document.getElementById('params').hidden = !(state.usesA || state.usesT);
+  document.getElementById('pa').hidden = !state.usesA;
+  document.getElementById('pt').hidden = !state.usesT;
+  handle.style.display = state.usesA ? 'block' : 'none';
+  if (!fromPreset) {
+    document.querySelectorAll('.preset').forEach(b => b.classList.remove('on'));
+    about.textContent = 'Своя формула. Наведите курсор на плоскость — сверху слева появится значение f(z).';
+  }
+  try { history.replaceState(null, '', '#f=' + encodeURIComponent(src)); } catch (e) { /* file:// без истории */ }
+  state.dirty = state.sphDirty = true;
+  return true;
+}
+function showErr(t) { msg.classList.add('err'); msg.textContent = t; }
+
+let typeTimer = 0;
+input.addEventListener('input', () => { clearTimeout(typeTimer); typeTimer = setTimeout(() => setFormula(input.value, false), 260); });
+input.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(typeTimer); setFormula(input.value, false); } });
+
+const gallery = document.getElementById('gallery');
+PRESETS.forEach((p, i) => {
+  const b = document.createElement('button');
+  b.className = 'preset';
+  b.innerHTML = `<span class="nm">${p.nm}</span><span class="fx">${p.fx.replace(/\^(\d)/g, (m, d) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d])}</span>`;
+  b.addEventListener('click', () => usePreset(i));
+  gallery.appendChild(b);
+});
+function usePreset(i) {
+  const p = PRESETS[i];
+  state.preset = i;
+  input.value = p.fx;
+  if (setFormula(p.fx, true)) {
+    fitView(p.c, p.w);
+    document.querySelectorAll('.preset').forEach((b, k) => b.classList.toggle('on', k === i));
+    about.textContent = p.about;
+  }
+}
+
+/* =====================================================================
+   6. Вид плоскости: сдвиг, масштаб, щипок
+   ===================================================================== */
+const stage = document.getElementById('stage');
+let W = 0, H = 0, DPR = 1;
+function fitView(c, width) {
+  state.center = [c[0], c[1]];
+  state.scale = width / Math.max(1, W * DPR);
+  state.dirty = true; drawAxes();
+}
+function resize() {
+  const r = stage.getBoundingClientRect();
+  W = r.width; H = r.height;
+  const oldW = plotCv.width || 1;
+  DPR = window.__SHOT__ ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+  plotCv.width = Math.max(2, Math.round(W * DPR)); plotCv.height = Math.max(2, Math.round(H * DPR));
+  if (oldW > 2) state.scale *= oldW / plotCv.width;
+  axesCv.width = plotCv.width; axesCv.height = plotCv.height;
+  const s = sphCv.getBoundingClientRect().width;
+  const sd = Math.min(window.devicePixelRatio || 1, 2);
+  sphCv.width = sphCv.height = Math.max(2, Math.round(s * sd));
+  state.dirty = state.sphDirty = true;
+  drawAxes();
+}
+const toZ = (x, y) => [state.center[0] + (x * DPR - plotCv.width / 2) * state.scale, state.center[1] - (y * DPR - plotCv.height / 2) * state.scale];
+const toXY = z => [((z[0] - state.center[0]) / state.scale + plotCv.width / 2) / DPR, (-(z[1] - state.center[1]) / state.scale + plotCv.height / 2) / DPR];
+
+function zoomAt(x, y, k) {
+  const z0 = toZ(x, y);
+  state.scale = Math.min(50, Math.max(1e-7, state.scale * k));
+  const z1 = toZ(x, y);
+  state.center[0] += z0[0] - z1[0]; state.center[1] += z0[1] - z1[1];
+  state.dirty = true; drawAxes(); placeHandle();
+}
+const pointers = new Map();
+let pinch0 = 0, lastPan = null;
+stage.addEventListener('pointerdown', e => {
+  if (e.target !== stage && e.target !== plotCv) return;
+  stage.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pointers.size === 2) { const [p, q] = [...pointers.values()]; pinch0 = Math.hypot(p[0] - q[0], p[1] - q[1]); }
+  lastPan = [e.clientX, e.clientY];
+  stage.classList.add('drag');
+});
+stage.addEventListener('pointermove', e => {
+  const r = stage.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  if (pointers.has(e.pointerId)) {
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 2) {
+      const [p, q] = [...pointers.values()], d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+      if (pinch0 > 0) zoomAt((p[0] + q[0]) / 2 - r.left, (p[1] + q[1]) / 2 - r.top, pinch0 / d);
+      pinch0 = d;
+    } else if (lastPan) {
+      state.center[0] -= (e.clientX - lastPan[0]) * DPR * state.scale;
+      state.center[1] += (e.clientY - lastPan[1]) * DPR * state.scale;
+      lastPan = [e.clientX, e.clientY];
+      state.dirty = true; drawAxes(); placeHandle();
+    }
+  }
+  readout(toZ(x, y));
+});
+const endPtr = e => { pointers.delete(e.pointerId); if (!pointers.size) { lastPan = null; stage.classList.remove('drag'); } pinch0 = 0; };
+stage.addEventListener('pointerup', endPtr);
+stage.addEventListener('pointercancel', endPtr);
+stage.addEventListener('pointerleave', () => { if (!pointers.size) clearReadout(); });
+stage.addEventListener('wheel', e => {
+  e.preventDefault();
+  const r = stage.getBoundingClientRect();
+  zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(e.deltaY * 0.0016));
+}, { passive: false });
+document.getElementById('zin').addEventListener('click', () => zoomAt(W / 2, H / 2, 0.6));
+document.getElementById('zout').addEventListener('click', () => zoomAt(W / 2, H / 2, 1 / 0.6));
+document.getElementById('zreset').addEventListener('click', () => { const p = PRESETS[state.preset]; fitView(p.c, p.w); placeHandle(); });
+
+/* ---------- маркер параметра a ---------- */
+const handle = document.getElementById('handle');
+function placeHandle() {
+  const [x, y] = toXY(state.a);
+  handle.style.left = x + 'px'; handle.style.top = y + 'px';
+  document.getElementById('av').textContent = fmtC(state.a, 2);
+}
+handle.addEventListener('pointerdown', e => {
+  e.stopPropagation(); handle.setPointerCapture(e.pointerId);
+  const move = ev => {
+    const r = stage.getBoundingClientRect();
+    state.a = toZ(ev.clientX - r.left, ev.clientY - r.top);
+    placeHandle(); state.dirty = state.sphDirty = true;
+  };
+  const up = () => { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); };
+  handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up);
+});
+handle.addEventListener('keydown', e => {
+  const st = 0.05, k = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] }[e.key];
+  if (!k) return;
+  e.preventDefault(); state.a = [state.a[0] + k[0], state.a[1] + k[1]]; placeHandle(); state.dirty = state.sphDirty = true;
+});
+
+/* ---------- значения под курсором ---------- */
+const fmtN = (v, d) => {
+  if (!isFinite(v)) return '∞';
+  const a = Math.abs(v);
+  if (a !== 0 && (a >= 1e5 || a < 1e-3)) { const [m, e] = v.toExponential(2).split('e'); return m.replace('.', ',').replace('-', '−') + '·10' + String(+e).replace('-', '⁻').replace(/\d/g, c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c]); }
+  return v.toFixed(d).replace('.', ',').replace('-', '−');
+};
+function fmtC(c, d = 3) {
+  const re = fmtN(c[0], d), im = fmtN(Math.abs(c[1]), d);
+  return re + (c[1] < 0 ? ' − ' : ' + ') + im + 'i';
+}
+const rz = document.getElementById('rz'), rf = document.getElementById('rf'), rm = document.getElementById('rm');
+function readout(z) {
+  rz.textContent = fmtC(z);
+  if (!state.tree) return;
+  let w;
+  try { w = evalNode(state.tree, { z, a: state.a, t: state.t }); } catch (e) { w = [NaN, NaN]; }
+  if (!isFinite(w[0]) || !isFinite(w[1])) { rf.textContent = '∞'; rm.textContent = '∞'; return; }
+  rf.textContent = fmtC(w);
+  rm.textContent = fmtN(Math.hypot(w[0], w[1]), 3) + ' · ' + fmtN(Math.atan2(w[1], w[0]) * 180 / Math.PI, 1) + '°';
+}
+function clearReadout() { rz.textContent = rf.textContent = rm.textContent = '—'; }
+
+/* ---------- оси: подписи делений по краям рамки ---------- */
+const axesCv = document.getElementById('axes'), actx = axesCv.getContext('2d');
+function niceStep(span) {
+  const raw = span / 8, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+  return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p;
+}
+function drawAxes() {
+  if (!axesCv.width) return;
+  actx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  actx.clearRect(0, 0, W, H);
+  const inset = W < 700 ? 8 : 14;
+  const z0 = toZ(inset, H - inset), z1 = toZ(W - inset, inset);
+  const step = niceStep(z1[0] - z0[0]);
+  const digits = Math.max(0, -Math.floor(Math.log10(step)));
+  actx.font = '400 12px "IBM Plex Mono", monospace';
+  actx.textBaseline = 'bottom';
+  const label = v => fmtN(Math.abs(v) < step * 1e-6 ? 0 : v, digits);
+  const tick = (x1, y1, x2, y2) => { actx.beginPath(); actx.moveTo(x1, y1); actx.lineTo(x2, y2); actx.stroke(); };
+  actx.strokeStyle = 'rgba(236,232,223,.5)'; actx.lineWidth = 1;
+  const pill = (txt, x, y, align) => {
+    const w = actx.measureText(txt).width + 8;
+    const lx = align === 'center' ? x - w / 2 : align === 'left' ? x : x - w;
+    actx.fillStyle = 'rgba(8,9,11,.72)'; actx.fillRect(lx, y - 16, w, 16);
+    actx.fillStyle = 'rgba(236,232,223,.86)'; actx.textAlign = 'left'; actx.fillText(txt, lx + 4, y - 2);
+  };
+  for (let v = Math.ceil(z0[0] / step) * step; v <= z1[0]; v += step) {
+    const x = toXY([v, 0])[0];
+    if (x < inset + 40 || x > W - inset - 40) continue;
+    tick(x, H - inset, x, H - inset - 7);
+    pill(label(v), x, H - inset - 9, 'center');
+  }
+  const stepY = step;
+  for (let v = Math.ceil(z0[1] / stepY) * stepY; v <= z1[1]; v += stepY) {
+    const y = toXY([0, v])[1];
+    if (y < inset + 30 || y > H - inset - 40) continue;
+    tick(inset, y, inset + 7, y);
+    const lv = label(v), im = lv === '0' ? '0' : lv === '1' ? 'i' : lv === '−1' ? '−i' : lv + 'i';
+    pill(im, inset + 10, y + 8, 'left');
+  }
+}
+
+/* ---------- легенда: цветовое колесо фазы ---------- */
+(function wheel() {
+  const cv = document.getElementById('wheel'), c = cv.getContext('2d'), N = 124, img = c.createImageData(N, N);
+  const lin2s = v => { v = Math.min(1, Math.max(0, v)); return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; };
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const dx = (x - N / 2 + 0.5) / (N / 2), dy = -(y - N / 2 + 0.5) / (N / 2), r = Math.hypot(dx, dy), i = (y * N + x) * 4;
+    if (r > 1 || r < 0.52) { img.data[i + 3] = 0; continue; }
+    const ang = Math.atan2(dy, dx) + 0.6, L = 0.7, C = 0.15, a = C * Math.cos(ang), b = C * Math.sin(ang);
+    const l_ = L + 0.3963377774 * a + 0.2158037573 * b, m_ = L - 0.1055613458 * a - 0.0638541728 * b, s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+    const l = l_ ** 3, m = m_ ** 3, s = s_ ** 3;
+    const rgb = [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s];
+    const aa = Math.min(1, (1 - r) * 60, (r - 0.52) * 60);
+    img.data[i] = lin2s(rgb[0]) * 255; img.data[i + 1] = lin2s(rgb[1]) * 255; img.data[i + 2] = lin2s(rgb[2]) * 255; img.data[i + 3] = aa * 255;
+  }
+  c.putImageData(img, 0, 0);
+  c.fillStyle = '#ece8df'; c.font = '500 19px "IBM Plex Mono", monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('0', 106, 62); c.fillText('π', 18, 62);
+})();
+
+/* ---------- сфера: вращение ---------- */
+let sphDrag = null;
+sphCv.addEventListener('pointerdown', e => { sphDrag = [e.clientX, e.clientY]; sphCv.setPointerCapture(e.pointerId); sphCv.classList.add('drag'); e.stopPropagation(); });
+sphCv.addEventListener('pointermove', e => {
+  if (!sphDrag) return;
+  state.rot.yaw += (e.clientX - sphDrag[0]) * 0.012; state.rot.pitch += (e.clientY - sphDrag[1]) * 0.012;
+  sphDrag = [e.clientX, e.clientY]; state.sphDirty = true; lastSphInteract = performance.now();
+});
+sphCv.addEventListener('pointerup', () => { sphDrag = null; sphCv.classList.remove('drag'); });
+let lastSphInteract = -1e9;
+function rotMat(yaw, pitch) {
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  // сначала наклон вокруг X, потом поворот вокруг Z (ось полюсов)
+  const Rx = [1, 0, 0, 0, cp, sp, 0, -sp, cp];
+  const Rz = [cy, sy, 0, -sy, cy, 0, 0, 0, 1];
+  const m = new Array(9).fill(0);
+  for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) for (let k = 0; k < 3; k++) m[c * 3 + r] += Rz[k * 3 + r] * Rx[c * 3 + k];
+  return new Float32Array(m);
+}
+
+/* ---------- режимы раскраски ---------- */
+document.querySelectorAll('#modes button').forEach(b => b.addEventListener('click', () => {
+  state.mode = +b.dataset.m;
+  document.querySelectorAll('#modes button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  state.dirty = state.sphDirty = true;
+}));
+document.getElementById('grid').addEventListener('change', e => { state.grid = e.target.checked; state.dirty = true; });
+const tplay = document.getElementById('tplay');
+tplay.addEventListener('click', () => {
+  state.playing = !state.playing;
+  tplay.setAttribute('aria-pressed', String(state.playing));
+  tplay.firstChild.textContent = (state.playing ? '⏸' : '▶') + ' t = ';
+});
+
+/* =====================================================================
+   7. Цикл отрисовки: плоскость — только когда что-то поменялось
+   ===================================================================== */
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let last = performance.now(), running = true;
+document.addEventListener('visibilitychange', () => { running = !document.hidden; if (running) { last = performance.now(); requestAnimationFrame(frame); } });
+function frame(now) {
+  if (!running) return;
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (state.usesT && state.playing) {
+    state.t += dt * 0.6; state.dirty = state.sphDirty = true;
+    document.getElementById('tv').textContent = fmtN(state.t, 2);
+  }
+  if (!sphDrag && !reduced && now - lastSphInteract > 2500) { state.rot.yaw += dt * 0.18; state.sphDirty = true; }
+
+  if (state.dirty && progPlane) {
+    gl.useProgram(progPlane.p);
+    gl.viewport(0, 0, plotCv.width, plotCv.height);
+    const u = progPlane.u;
+    gl.uniform2f(u.uRes, plotCv.width, plotCv.height);
+    gl.uniform2f(u.uCenter, state.center[0], state.center[1]);
+    gl.uniform1f(u.uScale, state.scale);
+    gl.uniform1f(u.uGrid, state.grid ? 1 : 0);
+    gl.uniform1f(u.uStep, niceStep(plotCv.width * state.scale));
+    gl.uniform1i(u.uMode, state.mode);
+    gl.uniform2f(u.uA, state.a[0], state.a[1]);
+    gl.uniform1f(u.uT, state.t);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    state.dirty = false;
+  }
+  if (state.sphDirty && progSphere) {
+    gs.useProgram(progSphere.p);
+    gs.viewport(0, 0, sphCv.width, sphCv.height);
+    gs.clearColor(0, 0, 0, 0); gs.clear(gs.COLOR_BUFFER_BIT);
+    const u = progSphere.u;
+    gs.uniform2f(u.uRes, sphCv.width, sphCv.height);
+    gs.uniform1i(u.uMode, state.mode);
+    gs.uniform2f(u.uA, state.a[0], state.a[1]);
+    gs.uniform1f(u.uT, state.t);
+    gs.uniformMatrix3fv(u.uRot, false, rotMat(state.rot.yaw, state.rot.pitch));
+    gs.drawArrays(gs.TRIANGLES, 0, 3);
+    state.sphDirty = false;
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- старт ---------- */
+new ResizeObserver(resize).observe(stage);
+resize();
+let startFx = null;
+try { const m = /[#&]f=([^&]+)/.exec(location.hash); if (m) startFx = decodeURIComponent(m[1]); } catch (e) { startFx = null; }
+usePreset(1);
+if (startFx && startFx !== PRESETS[1].fx) { input.value = startFx; setFormula(startFx, false); }
+placeHandle();
+readout([1.2, 0.8]);
+if (document.fonts) document.fonts.ready.then(drawAxes);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

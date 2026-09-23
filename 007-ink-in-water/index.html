@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тушь в воде</title>
+<meta name="description" content="Стабильные жидкости Стэма и математическое марморирование: капли туши, гребни и вихри прямо в браузере.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-mode="water" data-tool="drop">
+
+<canvas id="gl" aria-label="Ванна с водой: сюда капают тушь"></canvas>
+<svg id="guide" aria-hidden="true"></svg>
+
+<header class="brand">
+  <svg class="seal" viewBox="0 0 40 40" aria-hidden="true">
+    <path d="M3.4 4.1 L36.2 2.9 L37.4 36.6 L3.9 37.5 Z" fill="#B5402B"/>
+    <path d="M6.2 6.6 L33.9 5.8 L34.8 34.2 L6.6 34.9 Z" fill="none" stroke="#F3EADB" stroke-width="1.1" opacity=".9"/>
+    <text x="12.3" y="20.2" fill="#F3EADB" font-family="Cormorant Garamond, serif" font-weight="600" font-size="14">Т</text>
+    <text x="19.6" y="30.8" fill="#F3EADB" font-family="Cormorant Garamond, serif" font-weight="600" font-size="14">В</text>
+  </svg>
+  <div class="brand-text">
+    <h1>Тушь в&nbsp;воде</h1>
+    <p id="subtitle">Стабильные жидкости Стэма</p>
+  </div>
+</header>
+
+<div class="topbar">
+  <div class="modes" role="tablist" aria-label="Режим">
+    <button role="tab" data-mode="water" aria-selected="true">Вода</button>
+    <button role="tab" data-mode="marble" aria-selected="false">Мрамор</button>
+  </div>
+  <button class="round" id="btn-sound" aria-pressed="true" title="Звук" aria-label="Звук">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h3.5L12 18V6L7.5 10z"/><path class="wave" d="M15.5 9.2a4 4 0 0 1 0 5.6M18 6.8a7.4 7.4 0 0 1 0 10.4"/><path class="mute" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+  </button>
+  <button class="round" id="btn-info" title="Как это устроено" aria-label="Как это устроено">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.2"/><circle cx="12" cy="7.9" r=".6" fill="currentColor"/></svg>
+  </button>
+</div>
+
+<nav class="dock" aria-label="Инструменты">
+  <div class="group tools" data-for="water">
+    <button class="tool" data-tool="drop" aria-pressed="true" title="Капля — клик, удержание льёт тушь">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.2c3.6 4.5 6 7.8 6 10.9a6 6 0 0 1-12 0c0-3.1 2.4-6.4 6-10.9z"/><path d="M9.2 14.6a2.9 2.9 0 0 0 2.4 2.6" stroke-linecap="round"/></svg>
+      <span>Капля</span>
+    </button>
+    <button class="tool" data-tool="stir" aria-pressed="false" title="Палочка — перетаскивание мешает воду">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 19.5L18.6 5.9"/><path d="M3.6 14.8c2.2-.6 3.5.9 3.2 2.9M9.3 20.3c-.4-2.1 1-3.3 3-2.9" opacity=".7"/></svg>
+      <span>Палочка</span>
+    </button>
+  </div>
+  <div class="group tools" data-for="marble">
+    <button class="tool" data-tool="drop" aria-pressed="true" title="Капля — клик; удержание растит каплю; ведение даёт брызги">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>
+      <span>Капля</span>
+    </button>
+    <button class="tool" data-tool="needle" aria-pressed="false" title="Шило — проведите линию через ванну">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 20L15.5 8.5"/><path d="M15.5 8.5l2.6-2.6 1.6 1.6-2.6 2.6z" stroke-linejoin="round"/></svg>
+      <span>Шило</span>
+    </button>
+    <button class="tool" data-tool="comb" aria-pressed="false" title="Гребень — зубья проходят через всю ванну">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3.5 7h17"/><path d="M5.5 7v11M9.2 7v11M12.9 7v11M16.6 7v11"/></svg>
+      <span>Гребень</span>
+    </button>
+    <button class="tool" data-tool="swirl" aria-pressed="false" title="Вихрь — нажмите в центре и ведите по кругу">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 12.2c.9-.6 1.8.2 1.6 1.1-.3 1.6-2.6 2-3.8.9-1.8-1.6-1-4.6 1.2-5.3 3-1 5.8 1.4 5.6 4.4-.3 3.9-4.6 5.9-8 4.2"/></svg>
+      <span>Вихрь</span>
+    </button>
+  </div>
+
+  <div class="group inks">
+    <div class="swatches" id="swatches" role="radiogroup" aria-label="Цвет"></div>
+    <button class="palette-name" id="btn-palette" data-for="marble" title="Сменить набор красок">Османская</button>
+  </div>
+
+  <div class="group sliders" data-for="water">
+    <label class="slider"><span>Течение</span><input type="range" id="s-current" min="0" max="2" step="0.01" value="1"></label>
+    <label class="slider"><span>Вихри</span><input type="range" id="s-vort" min="0" max="45" step="0.5" value="24"></label>
+  </div>
+  <div class="group sliders" data-for="marble">
+    <label class="slider"><span>Капля</span><input type="range" id="s-drop" min="0.015" max="0.12" step="0.001" value="0.05"></label>
+    <label class="slider"><span>Шаг гребня</span><input type="range" id="s-comb" min="0.025" max="0.16" step="0.001" value="0.07"></label>
+  </div>
+
+  <div class="group actions">
+    <button class="act" id="btn-presets" data-for="marble" aria-expanded="false" title="Классические узоры">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7c2.7-2.4 5.3 2.4 8 0s5.3-2.4 8 0M4 12c2.7-2.4 5.3 2.4 8 0s5.3-2.4 8 0M4 17c2.7-2.4 5.3 2.4 8 0s5.3-2.4 8 0"/></svg>
+      <span>Узоры</span>
+    </button>
+    <button class="act" id="btn-undo" data-for="marble" title="Отменить последнее действие (Z)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7.5L4.5 12 9 16.5"/><path d="M5 12h9.5a5 5 0 0 1 0 10H12" transform="translate(0 -5)"/></svg>
+      <span>Назад</span>
+    </button>
+    <button class="act" id="btn-print" title="Снять оттиск на бумагу (P)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 3.5h9l3 3v14H6z"/><path d="M9 11c1.5-1.3 3 1.3 4.5 0s3-1.3 4.5 0M9 15c1.5-1.3 3 1.3 4.5 0" stroke-linecap="round"/></svg>
+      <span>Оттиск</span>
+    </button>
+    <button class="act" id="btn-clear" title="Слить воду и начать заново (C)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5h17l-1.6 8.2a2.4 2.4 0 0 1-2.4 1.8H7.5a2.4 2.4 0 0 1-2.4-1.8z"/><path d="M8 6.2c1.3-1.2 2.7 1.2 4 0s2.7-1.2 4 0"/></svg>
+      <span>Слить</span>
+    </button>
+  </div>
+</nav>
+
+<div class="presets" id="presets" hidden>
+  <p class="presets-title">Классические узоры</p>
+  <div class="presets-list" id="presets-list"></div>
+</div>
+
+<p class="hint" id="hint"></p>
+
+<aside class="info" id="info" hidden aria-labelledby="info-title">
+  <button class="round info-close" id="btn-info-close" aria-label="Закрыть">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+  <h2 id="info-title">Как это устроено</h2>
+  <section>
+    <h3>Вода</h3>
+    <p>Жидкость посчитана на&nbsp;сетке по&nbsp;методу Джоса Стэма «Стабильные жидкости» (1999). Каждый кадр:</p>
+    <ol>
+      <li>скорость переносит саму себя и&nbsp;тушь&nbsp;— полулагранжевой адвекцией, а&nbsp;для туши с&nbsp;поправкой МакКормака, чтобы кромки не&nbsp;мылились;</li>
+      <li>24 итерации Якоби решают уравнение Пуассона для давления, его градиент вычитается&nbsp;— вода остаётся несжимаемой;</li>
+      <li>«удержание завихрённости» возвращает мелкие вихри, которые численная схема успела съесть.</li>
+    </ol>
+    <p>Тушь хранится как оптическая плотность, поэтому краски смешиваются субтрактивно: индиго с&nbsp;охрой дают зелень, как на&nbsp;бумаге.</p>
+  </section>
+  <section>
+    <h3>Мрамор</h3>
+    <p>Здесь сетки нет. Капля радиуса <i>r</i> в&nbsp;точке <i>c</i> раздвигает всё вокруг, сохраняя площадь каждого кольца:</p>
+    <p class="formula">p′ = c + (p − c) · √(1 + r² / |p − c|²)</p>
+    <p>Гребень сдвигает краску вдоль направления движения, слабея с&nbsp;расстоянием&nbsp;<i>d</i> до&nbsp;ближайшего зуба:</p>
+    <p class="formula">p′ = p + z · λ / (d + λ) · M</p>
+    <p>Все преобразования обратимы. Поэтому каждый пиксель прогоняется по&nbsp;цепочке операций назад&nbsp;— до&nbsp;той капли, в&nbsp;которую попал. Узор точен при любом увеличении и&nbsp;не&nbsp;размывается, сколько ни&nbsp;чеши гребнем.</p>
+    <p class="note">Метод: S.&nbsp;Lu, A.&nbsp;Jaffer и&nbsp;соавторы, «Mathematical Marbling», 2012.</p>
+  </section>
+  <section>
+    <h3>Клавиши</h3>
+    <dl class="keys">
+      <dt>1–5</dt><dd>цвет</dd>
+      <dt>M</dt><dd>вода / мрамор</dd>
+      <dt>Z</dt><dd>отменить (мрамор)</dd>
+      <dt>P</dt><dd>оттиск</dd>
+      <dt>C</dt><dd>слить</dd>
+      <dt>Пробел</dt><dd>пауза (вода)</dd>
+    </dl>
+  </section>
+</aside>
+
+<div class="print" id="print" hidden role="dialog" aria-label="Оттиск">
+  <div class="print-stage"><canvas id="sheet"></canvas></div>
+  <div class="print-bar">
+    <button class="pbtn pbtn-main" id="btn-download">Скачать PNG</button>
+    <button class="pbtn" id="btn-newsheet">Новый лист</button>
+    <button class="pbtn" id="btn-close">Вернуться</button>
+  </div>
+</div>
+
+<div class="fallback" id="fallback" hidden>
+  <h2>Тушь не&nbsp;растворилась</h2>
+  <p id="fallback-msg"></p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

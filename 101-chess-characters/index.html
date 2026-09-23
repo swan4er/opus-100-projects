@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Шахматы с характером</title>
+<meta name="description" content="3D-шахматы, где фигуры — живые персонажи: пешки дрожат, ферзь закатывает глаза, а на самоубийственный ход фигура может отказаться, и её придётся уговаривать.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Balsamiq+Sans:ital,wght@0,400;0,700;1,400&family=Dela+Gothic+One&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+</head>
+<body>
+<canvas id="scene" aria-label="Шахматная доска с фигурами-персонажами"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div id="bubbles" aria-live="polite"></div>
+
+<header class="top">
+  <div class="brand">
+    <h1>Шахматы <span>с&nbsp;характером</span></h1>
+    <div id="status" class="status">Загружаем труппу…</div>
+  </div>
+  <div class="tools">
+    <span id="demoFlag" class="demo-flag" hidden>демо-режим — нейросеть не&nbsp;подключена</span>
+    <span id="cost" class="cost" title="Потрачено на нейросеть в этой вкладке">$0.0000</span>
+    <button id="bSound" class="tool" type="button" aria-pressed="false" title="Звук">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="on-only" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="off-only" d="M16 9l5 6M21 9l-5 6"/></svg><span>Звук</span>
+    </button>
+    <button id="bRoster" class="tool" type="button" aria-pressed="true" title="Штаб: доверие фигур">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg><span>Штаб</span>
+    </button>
+    <button id="bLog" class="tool" type="button" aria-pressed="true" title="Эфир: все реплики">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span>Эфир</span>
+    </button>
+    <button id="bNew" class="tool icon-only" type="button" title="Новая партия" aria-label="Новая партия">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>
+    </button>
+  </div>
+</header>
+
+<aside id="roster" class="panel roster" aria-labelledby="rosterTitle">
+  <div class="panel-head">
+    <h2 id="rosterTitle">Штаб</h2>
+    <div class="morale"><span>Боевой дух</span><b id="morale">—</b></div>
+  </div>
+  <p class="panel-note">Доверие к&nbsp;командиру. Чем оно ниже, тем чаще фигуры спорят.</p>
+  <ul id="rosterList"></ul>
+</aside>
+
+<aside id="log" class="panel log" aria-labelledby="logTitle">
+  <div class="panel-head"><h2 id="logTitle">Эфир</h2><span id="moveNo" class="move-no"></span></div>
+  <div id="logBody" class="log-body"></div>
+</aside>
+
+<section id="dock" class="dock" data-mode="idle" aria-live="polite">
+  <div class="dock-idle">
+    <p id="hint" class="hint"></p>
+    <div class="idle-actions"><button id="bEtude" type="button" class="chip solid">Этюд «Пешка за&nbsp;ферзя»</button><span>или просто сделайте первый ход</span></div>
+  </div>
+  <div class="dock-talk">
+    <div class="talk-head">
+      <div class="talk-who"><b id="talkName"></b><span id="talkRole"></span></div>
+      <div class="trust" title="Доверие к командиру"><span>доверие</span><i><em id="talkTrust"></em></i><b id="talkTrustN"></b></div>
+    </div>
+    <p id="talkQuote" class="quote"></p>
+    <p id="talkWhy" class="why"></p>
+    <form id="talkForm" class="talk-form" autocomplete="off">
+      <input id="talkInput" type="text" maxlength="220" placeholder="Уговорите: пообещайте, польстите, пригрозите…" aria-label="Ваши слова фигуре">
+      <button id="talkSend" type="submit" class="btn primary">Сказать</button>
+    </form>
+    <div class="talk-chips">
+      <button type="button" class="chip" data-say="promise">Пообещать</button>
+      <button type="button" class="chip" data-say="flatter">Польстить</button>
+      <button type="button" class="chip" data-say="threat">Пригрозить</button>
+      <span class="grow"></span>
+      <button id="bOrder" type="button" class="btn ghost" title="Фигура пойдёт, но доверие рухнет у всех">Приказать <small>−25<span class="lg"> доверия</span></small></button>
+      <button id="bCancel" type="button" class="btn ghost">Отменить ход</button>
+    </div>
+  </div>
+  <div class="dock-promo">
+    <p class="hint">Во что превращаемся?</p>
+    <div class="promo-row">
+      <button type="button" class="btn" data-promo="5">Ферзь</button>
+      <button type="button" class="btn" data-promo="2">Конь</button>
+      <button type="button" class="btn" data-promo="4">Ладья</button>
+      <button type="button" class="btn" data-promo="3">Слон</button>
+    </div>
+  </div>
+  <div class="dock-over">
+    <p id="overText" class="over-text"></p>
+    <div class="promo-row"><button id="bAgain" type="button" class="btn primary">Ещё партию</button><button id="bEtude2" type="button" class="btn">Этюд «Пешка за&nbsp;ферзя»</button></div>
+  </div>
+</section>
+
+<div id="fatal" class="fatal" hidden>
+  <div><b>Доска не приехала.</b><p>Для 3D нужна библиотека three.js из интернета. Проверьте связь и обновите страницу.</p></div>
+</div>
+
+<script src="../_ai/ai.js"></script>
+<script src="chess.js"></script>
+<script src="cast.js"></script>
+<script src="rig.js"></script>
+<script src="scene.js"></script>
+<script src="audio.js"></script>
+<script src="brain.js"></script>
+<script src="game.js"></script>
+<script type="module">
+  // three.js с CDN: если не загрузился — понятное сообщение вместо пустого экрана
+  const fail = () => { document.getElementById('fatal').hidden = false; };
+  try {
+    const THREE = await import('three');
+    const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+    window.__threeReady = true;
+    document.getElementById('fatal').hidden = true;
+    window.bootGame(THREE, OrbitControls);
+  } catch (e) { fail(); }
+</script>
+<script>
+  // запасной сторож: сеть «висит» без ошибки — через 25 с всё равно объясняем, в чём дело
+  setTimeout(function () { if (!window.__threeReady) document.getElementById('fatal').hidden = false; }, 25000);
+</script>
+</body>
+</html>

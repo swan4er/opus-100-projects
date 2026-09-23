@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>13,8 миллиарда лет — шкала глубокого времени</title>
+<meta name="description" content="Вся история от Большого взрыва до сегодняшнего дня: логарифмическая спираль, линейная шкала и космический календарь Сагана в цветах Международной стратиграфической шкалы.">
+<meta name="theme-color" content="#0d0c0a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Display:ital,wdth,wght@0,62.5..100,200..500;1,62.5..100,200..500&family=Commissioner:wght@300..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="m-spiral">
+
+<canvas id="art" aria-hidden="true"></canvas>
+<canvas id="fx" role="img" aria-label="Шкала времени от Большого взрыва до сегодняшнего дня"></canvas>
+
+<aside class="side" id="side">
+  <div class="top" id="top">
+    <header class="brand">
+      <p class="kicker">Шкала глубокого времени <span class="dot">·</span> ICS</p>
+      <h1><span class="h-num">13,8</span> <span class="h-word">миллиарда лет</span></h1>
+      <p class="lead">От Большого взрыва через геологические эры к сегодняшнему дню. Цвета — официальные, Международной стратиграфической шкалы.</p>
+    </header>
+
+    <nav class="modes" role="tablist" aria-label="Способ показа">
+      <button class="mode" role="tab" data-mode="spiral" aria-selected="true">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 10.2c0-.9.8-1.5 1.6-1.2 1.2.4 1.5 2 .7 3-1.2 1.5-3.6 1.3-4.6-.3-1.4-2.2-.2-5 2.2-5.8 3.2-1 6.3 1.2 6.6 4.4.4 4-2.8 7.1-6.7 6.9C5.3 17 2.2 13.4 2.6 9.2 3.1 4.6 7.2 1.5 11.8 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>Спираль</span>
+      </button>
+      <button class="mode" role="tab" data-mode="ruler" aria-selected="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 7.5h16v5H2z M5.5 7.5v2.5 M9 7.5v3.5 M12.5 7.5v2.5 M16 7.5v3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        <span>Линейка</span>
+      </button>
+      <button class="mode" role="tab" data-mode="calendar" aria-selected="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5h14v11.5H3z M3 9h14 M7 3v4 M13 3v4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><rect x="12.2" y="12.2" width="2.6" height="2.6" fill="currentColor"/></svg>
+        <span>Календарь</span>
+      </button>
+    </nav>
+  </div>
+
+  <section class="sheet" id="sheet" aria-live="polite">
+    <button class="grip" id="grip" aria-label="Развернуть описание"><span></span></button>
+    <article class="card" id="card"></article>
+  </section>
+</aside>
+
+<!-- инструменты режимов -->
+<div class="dock" id="dock-spiral" data-for="spiral">
+  <div class="depth">
+    <p class="depth-cap" id="depth-cap">Внешний виток</p>
+    <div class="slider" id="depth" role="slider" tabindex="0" aria-label="Глубина в прошлое" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="track"></div>
+      <div class="ticks" id="depth-ticks"></div>
+      <span class="end end-now">сегодня</span>
+      <span class="end end-bb">Большой взрыв</span>
+      <div class="thumb" id="depth-thumb"></div>
+    </div>
+  </div>
+  <div class="btns">
+    <button class="icon" data-act="sp-out" aria-label="Дальше в прошлое"><svg viewBox="0 0 20 20"><path d="M5 10h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+    <button class="icon" data-act="sp-in" aria-label="Ближе к сегодняшнему дню"><svg viewBox="0 0 20 20"><path d="M5 10h10M10 5v10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+    <button class="icon" data-act="sp-reset" aria-label="Показать всю историю"><svg viewBox="0 0 20 20"><path d="M4.6 8.2A5.8 5.8 0 1 1 4.4 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M3.6 4.6v3.9h3.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+</div>
+
+<div class="dock" id="dock-ruler" data-for="ruler">
+  <p class="scale-read" id="ruler-read"></p>
+  <div class="row">
+    <div class="chips" id="ruler-chips"></div>
+    <div class="btns">
+      <button class="icon" data-act="ru-out" aria-label="Отдалить"><svg viewBox="0 0 20 20"><path d="M5 10h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      <button class="icon" data-act="ru-in" aria-label="Приблизить"><svg viewBox="0 0 20 20"><path d="M5 10h10M10 5v10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="crumbs" id="crumbs" data-for="calendar" aria-label="Уровень календаря"></div>
+<div class="dock" id="dock-calendar" data-for="calendar">
+  <p class="scale-read" id="cal-read"></p>
+  <div class="btns">
+    <button class="text" data-act="cal-up" id="cal-up"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 15V5M5.5 9.5 10 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Выше</span></button>
+    <button class="text strong" data-act="cal-dive" id="cal-dive"><span>К полуночи</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 5v10M5.5 10.5 10 15l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+</div>
+
+<div class="pulse" id="pulse" aria-hidden="true"><i></i></div>
+<div class="tip" id="tip" role="tooltip"></div>
+<p class="hint" id="hint"></p>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

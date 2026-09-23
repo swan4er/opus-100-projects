@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Внутренности Git</title>
+<meta name="description" content="Терминал с настоящими командами git и живой граф объектов: блобы, деревья, коммиты, ветки. SHA-1 считаются по настоящему формату Git.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Martian+Mono:wght@400;500&family=Wix+Madefor+Display:wght@600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <section class="left">
+    <header class="head">
+      <div>
+        <h1>Внутренности <span class="accent">Git</span></h1>
+        <p class="sub">Настоящие объекты и&nbsp;настоящие SHA-1&nbsp;— при тех же данных хеши совпадут с&nbsp;git. Пишите команды, граф справа перестраивается.</p>
+      </div>
+    </header>
+
+    <section class="lessons" aria-label="Уроки">
+      <div class="lessons-top">
+        <h2 class="sr">Уроки</h2>
+        <div class="ltabs" id="lessonTabs"></div>
+      </div>
+      <div class="lesson-body" id="lessonBody"></div>
+    </section>
+
+    <section class="term" id="term" aria-label="Терминал">
+      <div class="term-bar"><span class="term-t">Терминал</span><span class="term-branch" id="termBranch"></span></div>
+      <div class="term-out" id="out" role="log" aria-live="polite"></div>
+      <div class="term-in">
+        <label class="prompt" id="prompt" for="cmd"></label>
+        <input id="cmd" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send" aria-label="Команда">
+      </div>
+      <div class="suggest" id="suggest" aria-label="Подсказки"></div>
+    </section>
+
+    <section class="trees" aria-label="Три дерева">
+      <div class="trees-top"><h2 class="cap">Три дерева</h2><span class="legend-mini"><i class="lm mod"></i>изменён <i class="lm stg"></i>в индексе</span></div>
+      <div class="trees-scroll">
+        <table>
+          <thead><tr><th>Файл</th><th>Рабочая папка</th><th>Индекс</th><th>HEAD</th></tr></thead>
+          <tbody id="treesBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+
+  <main class="graph" id="graph">
+    <svg id="svg" role="img" aria-label="Граф объектов git">
+      <g class="g-back"></g>
+      <g class="g-edges"></g>
+      <g class="g-nodes"></g>
+      <g class="g-refs"></g>
+    </svg>
+    <div class="legend" aria-hidden="true">
+      <span><svg viewBox="-20 -20 40 40"><circle r="14" class="lg-commit"/><circle r="5" class="lg-dot"/></svg>коммит</span>
+      <span><svg viewBox="-20 -20 40 40"><rect x="-10" y="-10" width="20" height="20" rx="4" transform="rotate(45)" class="lg-tree"/></svg>дерево</span>
+      <span><svg viewBox="-20 -20 40 40"><path d="M-10 -13 H4 L10 -7 V13 H-10 Z" class="lg-blob"/></svg>блоб</span>
+      <span><svg viewBox="-20 -12 40 24"><rect x="-18" y="-9" width="36" height="18" rx="6" class="lg-ref"/></svg>ссылка</span>
+    </div>
+    <div class="gtools">
+      <button class="gbtn" id="fitBtn" title="Вписать граф в окно">Уложить</button>
+      <button class="gbtn" id="demoBtn" title="Пересобрать демо-репозиторий">Демо</button>
+      <button class="gbtn" id="newBtn" title="Пустая папка без репозитория">Пусто</button>
+    </div>
+    <p class="empty-graph" id="emptyGraph" hidden>Объектов пока нет.<br>Наберите <code>git init</code>, создайте файл и&nbsp;сделайте <code>git add</code>.</p>
+
+    <aside class="insp" id="insp" hidden aria-label="Объект">
+      <div class="insp-head">
+        <span class="badge" id="inspType">Коммит</span>
+        <button class="x" id="inspClose" aria-label="Закрыть">
+          <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+        </button>
+      </div>
+      <p class="insp-sha" id="inspSha"></p>
+      <p class="insp-size" id="inspSize"></p>
+      <pre class="insp-body" id="inspBody"></pre>
+      <p class="insp-note" id="inspNote"></p>
+      <button class="insp-cmd" id="inspCmd"></button>
+    </aside>
+  </main>
+</div>
+<script src="git.js"></script>
+<script src="commands.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

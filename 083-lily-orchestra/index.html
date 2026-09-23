@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Оркестр на кувшинке — музыкальный мультфильм</title>
+<meta name="description" content="Музыкальный мультфильм: лягушки, стрекозы и жуки играют на кувшинке. Партитура и анимация — одна программа.">
+<meta name="theme-color" content="#F1E5CC">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,600;1,800&family=Alegreya+Sans:wght@500;700&family=Marck+Script&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="app" id="app">
+  <div class="screen" id="screen">
+    <div class="frame" id="frame">
+      <canvas id="film" role="img" aria-label="Мультфильм «Оркестр на кувшинке»: лягушки, стрекозы и жуки играют концерт на кувшинке на закате"></canvas>
+      <button class="again" id="again" type="button" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" /><path d="M4 3.8v4.4h4.4" /></svg>
+        <span>Смотреть ещё раз</span>
+      </button>
+    </div>
+    <button class="sound-cta" id="soundCta" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path class="fill" d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z" /><path d="M15.4 9.2a4 4 0 0 1 0 5.6" /><path d="M17.9 6.8a7.4 7.4 0 0 1 0 10.4" /></svg>
+      <span>Смотреть со звуком</span>
+    </button>
+  </div>
+
+  <section class="bar" aria-label="Плеер">
+    <div class="title">
+      <p class="kicker">083 · мультфильм</p>
+      <h1>Оркестр на&nbsp;кувшинке</h1>
+    </div>
+    <div class="controls">
+      <button class="btn play" id="play" type="button" aria-label="Пауза" title="Пауза — пробел">
+        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="5.5" width="3.4" height="13" rx="1.2" /><rect x="13.6" y="5.5" width="3.4" height="13" rx="1.2" /></svg>
+        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 5.6v12.8a.8.8 0 0 0 1.2.7l10-6.4a.8.8 0 0 0 0-1.4l-10-6.4a.8.8 0 0 0-1.2.7z" /></svg>
+      </button>
+      <span class="time" id="time">0:00</span>
+      <div class="timeline" id="timeline" role="slider" tabindex="0" aria-label="Время фильма" aria-valuemin="0" aria-valuemax="113" aria-valuenow="0" aria-valuetext="0:00, Настройка">
+        <div class="track"><div class="tl-fill" id="fill"></div></div>
+        <div class="marks" id="marks"></div>
+        <div class="head" id="head"></div>
+      </div>
+      <span class="time dim" id="dur">1:53</span>
+      <div class="tools">
+        <button class="btn" id="mute" type="button" aria-label="Включить звук" title="Звук — M">
+          <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path class="fill" d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z" /><path d="M16 9.5l5 5M21 9.5l-5 5" /></svg>
+          <svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path class="fill" d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z" /><path d="M15.4 9.2a4 4 0 0 1 0 5.6" /><path d="M17.9 6.8a7.4 7.4 0 0 1 0 10.4" /></svg>
+        </button>
+        <button class="btn" id="replay" type="button" aria-label="Смотреть сначала" title="Сначала">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" /><path d="M4 3.8v4.4h4.4" /></svg>
+        </button>
+        <button class="btn" id="fs" type="button" aria-label="Во весь экран" title="Во весь экран — F">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+        </button>
+      </div>
+    </div>
+    <p class="scene-now" id="sceneNow" aria-live="off">Настройка</p>
+  </section>
+</main>
+<noscript><p class="nojs">Мультфильм рисуется и звучит кодом — включите JavaScript.</p></noscript>
+<script src="score.js"></script>
+<script src="audio.js"></script>
+<script src="paint.js"></script>
+<script src="cast.js"></script>
+<script src="film.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

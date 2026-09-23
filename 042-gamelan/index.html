@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Гамелан</title>
+<meta name="description" content="Яванский гамелан в браузере: колотомический цикл гонгов, балунган и переплетение партий, строи пелог и слендро. Весь звук синтезирован.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Forum&family=Commissioner:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <header>
+      <p class="kicker">Ява и Бали · оркестр гонгов</p>
+      <h1>Гамелан</h1>
+      <p class="lead">Музыка течёт циклами. Большой гонг закрывает каждый цикл&nbsp;— гонган, кенонг делит его на&nbsp;четыре части, кемпул звучит между ударами кенонга, кетук отмечает слабые доли.</p>
+    </header>
+
+    <div class="controls">
+      <div class="seg" role="radiogroup" aria-label="Строй">
+        <button class="seg-b is-on" data-tuning="pelog" role="radio" aria-checked="true">Пелог</button>
+        <button class="seg-b" data-tuning="slendro" role="radio" aria-checked="false">Слендро</button>
+      </div>
+      <p class="tuning-note" id="tuningNote"></p>
+
+      <div class="ctl">
+        <div class="row"><label for="tempo">Темп балунгана</label><output id="tempoOut">72 уд/мин</output></div>
+        <input type="range" id="tempo" min="40" max="112" step="1" value="72">
+      </div>
+
+      <div class="row switches">
+        <div class="seg small" role="radiogroup" aria-label="Плотность переплетения">
+          <button class="seg-b" data-dens="2" role="radio" aria-checked="false">×2</button>
+          <button class="seg-b is-on" data-dens="4" role="radio" aria-checked="true">×4</button>
+        </div>
+        <button class="toggle" id="ombak" aria-pressed="false" title="В балийском гамелане парные инструменты нарочно настроены на несколько герц врозь — звук мерцает">
+          <span class="dot" aria-hidden="true"></span>Омбак — мерцание
+        </button>
+      </div>
+    </div>
+
+    <section class="layers" aria-label="Инструменты">
+      <h2 class="cap">Инструменты</h2>
+      <ul id="layers"></ul>
+    </section>
+
+    <footer class="foot">Мелодия — оригинальная, в&nbsp;манере лансарана. Строи — типичные варианты: каждый гамелан настроен по-своему.</footer>
+  </aside>
+
+  <main class="stage" id="stage">
+    <canvas id="clock" aria-label="Колотомический цикл: шестнадцать ударов по кругу"></canvas>
+    <button class="boss" id="boss" aria-label="Ударить в гонг и включить звук">
+      <span class="boss-t" id="bossT">Ударить</span>
+      <span class="boss-s" id="bossS">включить звук</span>
+    </button>
+    <div class="legend" aria-hidden="true">
+      <span><i class="lg lg-gong"></i>гонг</span>
+      <span><i class="lg lg-kenong"></i>кенонг</span>
+      <span><i class="lg lg-kempul"></i>кемпул</span>
+      <span><i class="lg lg-kethuk"></i>кетук</span>
+      <span><i class="lg lg-polos"></i>полос</span>
+      <span><i class="lg lg-sangsih"></i>сангсих</span>
+    </div>
+    <p class="notation" id="notation" aria-live="off"></p>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Древо жизни</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f3ecdc;
+    --paper-2: #ebe2cc;
+    --ink: #3a2e22;
+    --ink-2: #5e5142;
+    --ink-3: #75685a;
+    --rule: #cdbd9e;
+    --serif: "Alegreya", Georgia, serif;
+    --sans: "Alegreya Sans", "Gill Sans", "Helvetica Neue", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); font-family: var(--sans); overflow: hidden; }
+  .stage { position: fixed; inset: 0; }
+  svg#tree { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+  svg#tree.drag { cursor: grabbing; }
+  .tip-label { font: 400 11.5px var(--sans); fill: var(--ink); cursor: pointer; }
+  .tip-label:hover, .tip-label.on { fill: #000; font-weight: 700; }
+  .clade-label { font: italic 500 12.5px var(--serif); fill: var(--ink-2); letter-spacing: .02em; pointer-events: none; }
+  .ring-label { font: 500 11px var(--sans); fill: var(--ink-3); letter-spacing: .04em; pointer-events: none; }
+
+  header { position: fixed; left: clamp(18px, 3vw, 40px); top: clamp(16px, 3.5vh, 34px); pointer-events: none; max-width: 360px; }
+  header h1 { margin: 0; font: italic 500 clamp(40px, 4.6vw, 64px)/0.95 var(--serif); letter-spacing: -.01em; }
+  header p { margin: 10px 0 0; font-size: 15.5px; line-height: 1.45; color: var(--ink-2); }
+
+  .panel {
+    position: fixed; right: clamp(14px, 2.4vw, 32px); top: clamp(14px, 3vh, 30px); bottom: clamp(14px, 3vh, 30px); width: 330px;
+    background: rgba(250, 245, 233, .9); border: 1px solid var(--rule); border-radius: 4px; padding: 20px 20px 16px;
+    display: flex; flex-direction: column; gap: 14px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    box-shadow: 0 1px 0 #fffaf0 inset, 0 14px 36px rgba(0, 0, 0, .08);
+  }
+  .search { position: relative; }
+  .search input { width: 100%; font: 400 16px var(--sans); color: var(--ink); background: #fffaf0; border: 1px solid var(--rule); border-radius: 3px; padding: 10px 12px 10px 36px; outline: none; }
+  .search input:focus { border-color: var(--ink-3); }
+  .search svg { position: absolute; left: 11px; top: 12px; width: 16px; height: 16px; stroke: var(--ink-3); fill: none; stroke-width: 1.6; }
+  .sugg { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; background: #fffaf0; border: 1px solid var(--rule); border-radius: 3px; list-style: none; padding: 4px; max-height: 240px; overflow: auto; z-index: 3; display: none; }
+  .sugg.on { display: block; }
+  .sugg li { padding: 8px 10px; border-radius: 2px; cursor: pointer; font-size: 15px; display: flex; justify-content: space-between; gap: 10px; }
+  .sugg li i { color: var(--ink-3); font-size: 13px; }
+  .sugg li:hover, .sugg li.act { background: var(--paper-2); }
+
+  .btn { appearance: none; border: 1px solid var(--ink); background: var(--ink); color: #f8f1e1; font: 500 15px var(--sans); padding: 10px 14px; min-height: 42px; border-radius: 3px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background .2s, color .2s; }
+  .btn:hover { background: #231b13; }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--rule); }
+  .btn.ghost:hover { border-color: var(--ink-3); background: rgba(58, 46, 34, .04); }
+  .btn.ghost[aria-pressed=true] { border-color: var(--ink); background: rgba(58, 46, 34, .07); }
+  .btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .btn:focus-visible, .zoom button:focus-visible { outline: 2px solid #9b3d3d; outline-offset: 2px; }
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btns .btn:first-child { grid-column: 1 / -1; }
+
+  .card { flex: 1; min-height: 0; overflow: auto; border-top: 1px solid var(--rule); padding-top: 14px; }
+  .card h2 { margin: 0; font: italic 500 28px/1.05 var(--serif); }
+  .card .la { font: italic 400 16px var(--serif); color: var(--ink-3); margin-top: 4px; }
+  .card .mrca { margin: 14px 0 10px; font-size: 15.5px; line-height: 1.45; color: var(--ink-2); }
+  .card .mrca b { color: var(--ink); font-weight: 700; }
+  .card .intro { font-size: 15px; line-height: 1.5; color: var(--ink-2); margin: 0; }
+  .lineage { list-style: none; margin: 8px 0 0; padding: 0 0 0 14px; border-left: 1px dashed var(--rule); }
+  .lineage li { position: relative; font-size: 14px; line-height: 1.35; padding: 5px 0; color: var(--ink-2); display: flex; justify-content: space-between; gap: 12px; }
+  .lineage li::before { content: ""; position: absolute; left: -18px; top: 11px; width: 7px; height: 7px; border-radius: 50%; background: var(--paper); border: 1.5px solid var(--ink-3); }
+  .lineage li.hit { color: var(--ink); font-weight: 700; }
+  .lineage li.hit::before { background: #9b3d3d; border-color: #9b3d3d; }
+  .lineage li span:last-child { font-variant-numeric: tabular-nums; color: var(--ink-3); white-space: nowrap; }
+  .fact { font-size: 14.5px; line-height: 1.45; color: var(--ink); background: var(--paper-2); padding: 10px 12px; border-radius: 3px; margin: 10px 0; }
+  .note { font-size: 12.5px; color: var(--ink-3); line-height: 1.4; }
+
+  .legend { position: fixed; left: clamp(18px, 3vw, 40px); bottom: clamp(16px, 3vh, 30px); display: grid; grid-template-columns: repeat(2, auto); gap: 5px 18px; font-size: 13.5px; color: var(--ink-2); pointer-events: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; opacity: .85; }
+  .zoom { position: fixed; left: clamp(18px, 3vw, 40px); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 6px; }
+  .zoom button { width: 40px; height: 40px; border-radius: 3px; border: 1px solid var(--rule); background: rgba(250, 245, 233, .9); color: var(--ink); font: 500 20px var(--sans); cursor: pointer; display: grid; place-items: center; }
+  .zoom button:hover { border-color: var(--ink-3); }
+  .tooltip { position: fixed; pointer-events: none; background: var(--ink); color: #f8f1e1; padding: 7px 10px; border-radius: 3px; font-size: 14px; line-height: 1.3; opacity: 0; transition: opacity .15s; max-width: 260px; z-index: 5; }
+  .tooltip i { color: #d9ccb2; }
+  .tooltip.on { opacity: 1; }
+
+  @media (max-width: 900px) {
+    html, body { overflow: auto; height: auto; }
+    .stage { position: relative; height: 70vh; min-height: 380px; }
+    header { position: absolute; }
+    header h1 { font-size: 36px; }
+    header p { display: none; }
+    .panel { position: relative; inset: auto; width: auto; margin: 0 12px 16px; bottom: auto; top: auto; right: auto; }
+    .card { max-height: none; overflow: visible; }
+    .legend { position: relative; left: auto; bottom: auto; margin: 0 16px 24px; }
+    .zoom { top: 12px; bottom: auto; position: absolute; right: 12px; left: auto; transform: none; flex-direction: row; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration: .01s !important; animation-duration: .01s !important; } }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <svg id="tree" aria-label="Радиальное древо жизни: от общего предка в центре к современным видам по краю">
+    <defs>
+      <filter id="wash" x="-20%" y="-20%" width="140%" height="140%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="7" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="26" xChannelSelector="R" yChannelSelector="G"/>
+        <feGaussianBlur stdDeviation="2.2"/>
+      </filter>
+      <filter id="paper" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3"/>
+        <feColorMatrix values="0 0 0 0 0.35  0 0 0 0 0.27  0 0 0 0 0.18  0 0 0 0.07 0"/>
+      </filter>
+    </defs>
+    <rect width="100%" height="100%" filter="url(#paper)"/>
+    <g id="world"></g>
+  </svg>
+  <header>
+    <h1>Древо жизни</h1>
+  </header>
+  <div class="zoom"><button id="zin" aria-label="Приблизить">+</button><button id="zout" aria-label="Отдалить">−</button><button id="zfit" aria-label="Показать целиком"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"/></svg></button></div>
+</div>
+
+<aside class="panel">
+  <div class="search">
+    <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.8"/><path d="M10.6 10.6l3.6 3.6"/></svg>
+    <input id="q" placeholder="Найти: кошка, дуб, дрожжи…" autocomplete="off" spellcheck="false" aria-label="Поиск вида">
+    <ul class="sugg" id="sugg"></ul>
+  </div>
+  <div class="btns">
+    <button class="btn" id="journey"><svg viewBox="0 0 16 16"><path d="M3 13c3-1 3-9 10-10"/><circle cx="3" cy="13" r="1.5"/><circle cx="13" cy="3" r="1.5"/></svg>Путь от LUCA до человека</button>
+    <button class="btn ghost" id="compare" aria-pressed="false">Сравнить двух</button>
+    <button class="btn ghost" id="reset">Сбросить</button>
+  </div>
+  <div class="card" id="card"></div>
+  <div class="note">Возрасты — округлённые оценки молекулярных часов (ориентир — TimeTree). Для древнейших ветвей разброс оценок — сотни миллионов лет.</div>
+</aside>
+
+<div class="legend" id="legend"></div>
+<div class="tooltip" id="tip"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ─────────────────────────────────────────────────────────────
+// Данные: N(возраст, название, …дети), T(русское имя, латинское)
+// Возраст — млн лет назад, округлённые оценки молекулярных часов
+// ─────────────────────────────────────────────────────────────
+// Дерево записано отступами (два пробела — уровень), так его легко читать и проверять.
+// «* возраст имя [группа]» — развилка (возраст в млн лет, «-» — без имени), «русское = латинское» — лист.
+const TREE_TEXT = `
+* 4200 LUCA — последний общий предок
+  * 3400 Бактерии [bac]
+    * 3200 -
+      * 2900 -
+        Цианобактерии = Cyanobacteria
+        Хлорофлексы = Chloroflexota
+      * 2800 Бациллоты
+        Сенная палочка = Bacillus subtilis
+        Клостридии = Clostridium
+      Стрептомицеты = Streptomyces
+      Деинококк = Deinococcus radiodurans
+    * 3000 -
+      * 2500 Протеобактерии
+        * 800 -
+          Кишечная палочка = Escherichia coli
+          Холерный вибрион = Vibrio cholerae
+        Риккетсии = Rickettsia
+      Спирохеты = Spirochaetota
+      Хламидии = Chlamydia
+      Бактероиды = Bacteroides
+    Аквифексы = Aquifex
+    Термотоги = Thermotoga
+  * 3600 Археи и эукариоты
+    * 3300 Эвриархеоты [arc]
+      Метаногены = Methanococcus
+      Галобактерии = Halobacterium
+    * 2800 Археи TACK [arc]
+      Сульфолобус = Sulfolobus
+      Нитрозопумилус = Nitrosopumilus
+    * 2200 Асгард-археи и эукариоты
+      Асгард-археи = Asgardarchaeota [arc]
+      * 1800 Эукариоты
+        * 1600 -
+          * 1500 Архепластиды [pla]
+            Красные водоросли = Rhodophyta
+            * 1000 Зелёные растения
+              Хламидомонада = Chlamydomonas
+              * 480 Наземные растения
+                * 450 Мохообразные
+                  Печёночники = Marchantiophyta
+                  Мхи = Bryophyta
+                * 430 Сосудистые
+                  Плауны = Lycopodiopsida
+                  * 410 -
+                    Папоротники = Polypodiopsida
+                    * 313 Семенные
+                      * 300 Голосеменные
+                        Гинкго = Ginkgo biloba
+                        * 140 Сосновые
+                          Сосна = Pinus sylvestris
+                          Ель = Picea abies
+                      * 185 Цветковые
+                        Амборелла = Amborella trichopoda
+                        * 175 -
+                          Кувшинка = Nymphaea
+                          * 155 -
+                            * 130 Однодольные
+                              Орхидеи = Orchidaceae
+                              * 50 Злаки
+                                Рис = Oryza sativa
+                                Пшеница = Triticum aestivum
+                            * 120 Двудольные
+                              * 105 Розиды
+                                * 55 Розоцветные
+                                  Роза = Rosa
+                                  Яблоня = Malus domestica
+                                Дуб = Quercus robur
+                              * 105 Астериды
+                                Подсолнечник = Helianthus annuus
+                                Картофель = Solanum tuberosum
+                                Кофе = Coffea arabica
+          * 1400 SAR [pro]
+            * 1000 Страменопилы
+              Диатомеи = Bacillariophyta
+              Ламинария = Laminaria
+            * 1000 Альвеоляты
+              Малярийный плазмодий = Plasmodium falciparum
+              Инфузория-туфелька = Paramecium
+              Динофлагелляты = Dinoflagellata
+            Фораминиферы = Foraminifera
+        * 1650 Экскаваты [pro]
+          Эвглена = Euglena
+          Трипаносома = Trypanosoma
+        * 1300 Аморфеи
+          Слизевик-диктиостелиум = Dictyostelium [pro]
+          * 1100 Заднежгутиковые
+            * 900 Грибы [fun]
+              Хитридиомицеты = Chytridiomycota
+              * 590 Высшие грибы
+                * 400 Аскомицеты
+                  Пекарские дрожжи = Saccharomyces cerevisiae
+                  Пеницилл = Penicillium
+                * 300 Базидиомицеты
+                  Шампиньон = Agaricus bisporus
+                  Мухомор = Amanita muscaria
+            * 950 -
+              Хоанофлагелляты = Choanoflagellata [pro]
+              * 780 Животные [inv]
+                Гребневики = Ctenophora
+                * 760 -
+                  Губки = Porifera
+                  * 740 -
+                    Трихоплакс = Trichoplax adhaerens
+                    * 720 -
+                      * 600 Книдарии
+                        Медузы = Scyphozoa
+                        Кораллы = Anthozoa
+                        Гидра = Hydra
+                      * 694 Двусторонне-симметричные
+                        * 670 Первичноротые
+                          * 620 Линяющие
+                            Нематода = Caenorhabditis elegans
+                            * 600 -
+                              Тихоходка = Tardigrada
+                              * 560 Членистоногие
+                                * 480 Хелицеровые
+                                  Паук-крестовик = Araneus diadematus
+                                  Мечехвост = Limulus polyphemus
+                                * 530 -
+                                  Сороконожка = Chilopoda
+                                  * 500 Ракообразные и насекомые
+                                    Краб = Brachyura
+                                    Дафния = Daphnia
+                                    * 410 Насекомые
+                                      Стрекоза = Odonata
+                                      * 350 С полным превращением
+                                        Пчела медоносная = Apis mellifera
+                                        * 330 -
+                                          Жук-олень = Lucanus cervus
+                                          * 290 -
+                                            Махаон = Papilio machaon
+                                            * 250 Двукрылые
+                                              Дрозофила = Drosophila melanogaster
+                                              Комар = Culex pipiens
+                          * 610 Спиральные
+                            * 550 Моллюски
+                              Осьминог = Octopus vulgaris
+                              Виноградная улитка = Helix pomatia
+                              Мидия = Mytilus edulis
+                            Дождевой червь = Lumbricus terrestris
+                            Планария = Planaria
+                        * 684 Вторичноротые
+                          * 480 Иглокожие
+                            Морская звезда = Asteroidea
+                            Морской ёж = Echinoidea
+                          * 680 Хордовые
+                            Ланцетник = Branchiostoma
+                            * 670 -
+                              Асцидия = Ciona intestinalis
+                              * 600 Позвоночные [fish]
+                                * 380 Круглоротые
+                                  Минога = Petromyzon marinus
+                                  Миксина = Myxine glutinosa
+                                * 473 Челюстноротые
+                                  * 420 Хрящевые рыбы
+                                    Химера = Chimaeriformes
+                                    * 300 Пластиножаберные
+                                      Белая акула = Carcharodon carcharias
+                                      Скат = Batoidea
+                                  * 435 Костные рыбы
+                                    * 380 Лучепёрые
+                                      Осётр = Acipenser
+                                      * 290 Костистые
+                                        Угорь = Anguilla anguilla
+                                        * 230 -
+                                          * 150 -
+                                            Данио-рерио = Danio rerio
+                                            Сом = Silurus glanis
+                                          * 200 -
+                                            Лосось = Salmo salar
+                                            Треска = Gadus morhua
+                                            Морской конёк = Hippocampus
+                                    * 413 Лопастепёрые
+                                      Латимерия = Latimeria chalumnae
+                                      * 408 -
+                                        Двоякодышащие = Dipnoi
+                                        * 352 Четвероногие [amp]
+                                          * 330 Земноводные
+                                            Червяга = Gymnophiona
+                                            * 290 -
+                                              Травяная лягушка = Rana temporaria
+                                              Тритон = Triturus
+                                          * 319 Амниоты [rep]
+                                            * 280 Рептилии и птицы
+                                              * 240 Лепидозавры
+                                                Гаттерия = Sphenodon punctatus
+                                                * 200 Чешуйчатые
+                                                  Геккон = Gekkonidae
+                                                  * 170 -
+                                                    Прыткая ящерица = Lacerta agilis
+                                                    Гадюка = Vipera berus
+                                              * 255 -
+                                                Черепахи = Testudines
+                                                * 245 Архозавры
+                                                  Нильский крокодил = Crocodylus niloticus
+                                                  * 110 Птицы
+                                                    Страус = Struthio camelus
+                                                    * 90 -
+                                                      * 80 -
+                                                        Курица = Gallus gallus
+                                                        Кряква = Anas platyrhynchos
+                                                      * 70 Новонёбные
+                                                        Голубь = Columba livia
+                                                        Пингвин = Spheniscidae
+                                                        Сова = Strigiformes
+                                                        * 45 Воробьиные
+                                                          Воробей = Passer domesticus
+                                                          Ворон = Corvus corax
+                                            * 180 Млекопитающие [mam]
+                                              Утконос = Ornithorhynchus anatinus
+                                              * 160 Живородящие
+                                                * 80 Сумчатые
+                                                  Опоссум = Didelphis virginiana
+                                                  * 55 -
+                                                    Кенгуру = Macropus
+                                                    Коала = Phascolarctos cinereus
+                                                * 100 Плацентарные
+                                                  * 90 -
+                                                    * 70 Афротерии
+                                                      Африканский слон = Loxodonta africana
+                                                      Ламантин = Trichechus
+                                                    * 65 Неполнозубые
+                                                      Броненосец = Dasypodidae
+                                                      Ленивец = Folivora
+                                                  * 96 Бореоэутерии
+                                                    * 85 Лавразиатерии
+                                                      Летучая мышь = Chiroptera
+                                                      * 80 -
+                                                        * 55 Хищные
+                                                          Кошка = Felis catus
+                                                          * 45 -
+                                                            Собака = Canis familiaris
+                                                            Тюлень = Phocidae
+                                                        * 78 -
+                                                          Лошадь = Equus caballus
+                                                          * 62 Китопарнокопытные
+                                                            Свинья = Sus scrofa
+                                                            Корова = Bos taurus
+                                                            * 55 -
+                                                              Бегемот = Hippopotamus amphibius
+                                                              Синий кит = Balaenoptera musculus
+                                                    * 90 Эуархонтоглиры
+                                                      * 82 Грызуны и зайцеобразные
+                                                        * 70 Грызуны
+                                                          Белка = Sciurus vulgaris
+                                                          * 13 -
+                                                            Мышь = Mus musculus
+                                                            Крыса = Rattus norvegicus
+                                                        Кролик = Oryctolagus cuniculus
+                                                      * 74 Приматы
+                                                        Кошачий лемур = Lemur catta
+                                                        * 43 Обезьяны
+                                                          Обыкновенная игрунка = Callithrix jacchus
+                                                          * 29 Узконосые
+                                                            Макак-резус = Macaca mulatta
+                                                            * 20 Человекообразные
+                                                              Гиббон = Hylobatidae
+                                                              * 15 Гоминиды
+                                                                Орангутан = Pongo
+                                                                * 8.6 -
+                                                                  Горилла = Gorilla gorilla
+                                                                  * 6.4 -
+                                                                    * 2 Шимпанзе
+                                                                      Обыкновенный шимпанзе = Pan troglodytes
+                                                                      Бонобо = Pan paniscus
+                                                                    Человек = Homo sapiens
+`;
+function parseTree(text) {
+  const root = { kids: [] }, stack = [{ node: root, depth: -1 }];
+  for (const raw of text.split('\n')) {
+    if (!raw.trim()) continue;
+    const depth = (raw.length - raw.trimStart().length) / 2;
+    let line = raw.trim(), group = null;
+    const gm = line.match(/\s*\[(\w+)\]$/);
+    if (gm) { group = gm[1]; line = line.slice(0, gm.index); }
+    let node;
+    if (line.startsWith('* ')) {
+      const m = line.match(/^\* ([\d.]+) (.+)$/);
+      node = { age: +m[1], name: m[2] === '-' ? null : m[2], kids: [] };
+    } else {
+      const [ru, la] = line.split(' = ');
+      node = { ru, la, age: 0 };
+    }
+    if (group) node.group = group;
+    while (stack[stack.length - 1].depth >= depth) stack.pop();
+    stack[stack.length - 1].node.kids.push(node);
+    stack.push({ node, depth });
+  }
+  return root.kids[0];
+}
+const TREE = parseTree(TREE_TEXT);
+
+const GROUPS = {
+  bac: { name: 'Бактерии', color: '#4f8580' },
+  arc: { name: 'Археи', color: '#8a8544' },
+  pro: { name: 'Протисты', color: '#b08a3e' },
+  pla: { name: 'Растения и водоросли', color: '#5b7d36' },
+  fun: { name: 'Грибы', color: '#86627f' },
+  inv: { name: 'Беспозвоночные', color: '#b0643b' },
+  fish: { name: 'Рыбы', color: '#4b6f93' },
+  amp: { name: 'Земноводные', color: '#6b8b4c' },
+  rep: { name: 'Рептилии и птицы', color: '#a86b3a' },
+  mam: { name: 'Млекопитающие', color: '#9b3d3d' },
+};
+
+// Вехи пути к человеку: короткие проверенные факты
+const FACTS = {
+  'LUCA — последний общий предок': 'Не первая жизнь, а последний общий предок всех ныне живущих клеток. Оценки — около 3,8–4,2 млрд лет назад.',
+  'Эукариоты': 'Клетки с ядром и митохондриями. Митохондрии — потомки бактерий, поселившихся внутри клетки.',
+  'Заднежгутиковые': 'Общая ветвь животных и грибов: грибы нам ближе, чем растения.',
+  'Животные': 'Многоклеточность у животных возникла один раз — все животные потомки одного предка.',
+  'Двусторонне-симметричные': 'Левая и правая стороны, голова и хвост. Сюда входят и черви, и насекомые, и мы.',
+  'Позвоночные': 'Позвоночник, череп и нервный гребень — клетки, из которых строится лицо.',
+  'Челюстноротые': 'Челюсти — бывшие жаберные дуги.',
+  'Четвероногие': 'Выход на сушу: лопастепёрые рыбы с мясистыми плавниками.',
+  'Амниоты': 'Яйцо с оболочками, которое не высыхает на суше.',
+  'Млекопитающие': 'Шерсть, молоко и три слуховые косточки — две из них раньше были костями челюсти.',
+  'Приматы': 'Хватательные кисти и глаза, смотрящие вперёд.',
+  'Человек': 'Наш вид появился около 300 тысяч лет назад. На линейной шкале эта эпоха заняла бы пару сотых пикселя — поэтому время здесь отложено логарифмически.',
+};
+
+// ─────────────────────────────────────────────────────────────
+// Подготовка дерева
+// ─────────────────────────────────────────────────────────────
+const tips = [], nodes = [];
+(function prep(n, parent, group, depth) {
+  n.parent = parent; n.depth = depth;
+  if (n.group) group = n.group; else n.group = group;
+  n.id = nodes.length; nodes.push(n);
+  if (n.kids) n.kids.forEach((k) => prep(k, n, group, depth + 1)); else tips.push(n);
+})(TREE, null, 'pro', 0);
+const HUMAN = tips.find((t) => t.la === 'Homo sapiens');
+const lineage = (n) => { const a = []; for (let x = n; x; x = x.parent) a.push(x); return a; };
+function mrca(a, b) { const s = new Set(lineage(a)); for (let x = b; x; x = x.parent) if (s.has(x)) return x; return TREE; }
+
+// Геометрия: радиус — логарифм возраста, углы — равномерно по листьям
+const R0 = 14, RIM = 330, AGE_MAX = 4200;
+const rOf = (age) => R0 + (RIM - R0) * (1 - Math.log10(1 + age) / Math.log10(1 + AGE_MAX));
+const GAP = 14; // градусов сверху — место для подписей колец
+tips.forEach((t, i) => { t.ang = -90 + GAP / 2 + (i / (tips.length - 1)) * (360 - GAP); });
+(function angles(n) { if (!n.kids) return n.ang; const a = n.kids.map(angles); n.a0 = Math.min(...a); n.a1 = Math.max(...a); n.ang = (n.a0 + n.a1) / 2; return n.ang; })(TREE);
+nodes.forEach((n) => { n.r = rOf(n.age); });
+const pol = (ang, r) => [Math.cos(ang * Math.PI / 180) * r, Math.sin(ang * Math.PI / 180) * r];
+
+// ─────────────────────────────────────────────────────────────
+// Отрисовка
+// ─────────────────────────────────────────────────────────────
+const world = $('world');
+function el(name, attrs, parent = world) { const e = document.createElementNS(NS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+function arcPath(r, a0, a1) {
+  const [x0, y0] = pol(a0, r), [x1, y1] = pol(a1, r);
+  const large = a1 - a0 > 180 ? 1 : 0;
+  return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+}
+// ветка от родителя к узлу: дуга на радиусе родителя + радиальный отрезок
+function branchPath(n) {
+  const p = n.parent;
+  const [x0, y0] = pol(n.ang, p.r), [x1, y1] = pol(n.ang, n.r);
+  // дуга по радиусу родителя от его угла к углу узла, затем радиальный отрезок
+  const dir = n.ang >= p.ang ? 1 : 0;
+  const [ax, ay] = pol(p.ang, p.r);
+  const large = Math.abs(n.ang - p.ang) > 180 ? 1 : 0;
+  const arcD = Math.abs(n.ang - p.ang) > 0.01 ? `M${ax.toFixed(2)} ${ay.toFixed(2)}A${p.r.toFixed(2)} ${p.r.toFixed(2)} 0 ${large} ${dir} ${x0.toFixed(2)} ${y0.toFixed(2)}` : `M${x0.toFixed(2)} ${y0.toFixed(2)}`;
+  return `${arcD}L${x1.toFixed(2)} ${y1.toFixed(2)}`;
+}
+
+const layers = {};
+function draw() {
+  world.innerHTML = '';
+  layers.wash = el('g', { filter: 'url(#wash)', opacity: 0.2 });
+  layers.rings = el('g', {});
+  layers.branches = el('g', { fill: 'none', 'stroke-linecap': 'round' });
+  layers.path = el('g', { fill: 'none', 'stroke-linecap': 'round' });
+  layers.clades = el('g', {});
+  layers.tips = el('g', {});
+  layers.fx = el('g', {});
+
+  // акварельные сектора групп
+  const byGroup = {};
+  tips.forEach((t) => { (byGroup[t.group] = byGroup[t.group] || []).push(t); });
+  const step = (360 - GAP) / (tips.length - 1);
+  // непрерывные участки одной группы
+  let runStart = 0;
+  for (let i = 1; i <= tips.length; i++) {
+    if (i === tips.length || tips[i].group !== tips[runStart].group) {
+      const g = tips[runStart].group, a0 = tips[runStart].ang - step / 2, a1 = tips[i - 1].ang + step / 2;
+      let anc = tips[runStart]; for (let k = runStart; k < i; k++) anc = mrca(anc, tips[k]);
+      const rIn = Math.max(R0 + 10, anc.r - 12), rOut = RIM + 128;
+      const [p0x, p0y] = pol(a0, rIn), [p1x, p1y] = pol(a1, rIn);
+      const d = `M${p0x} ${p0y}` + arcPath(rOut, a0, a1).replace(/^M/, 'L') + `L${p1x} ${p1y}` + `A${rIn} ${rIn} 0 ${a1 - a0 > 180 ? 1 : 0} 0 ${p0x} ${p0y}Z`;
+      el('path', { d, fill: GROUPS[g].color }, layers.wash);
+      runStart = i;
+    }
+  }
+  // кольца времени
+  [[1, '1 млн лет'], [10, '10 млн'], [100, '100 млн'], [1000, '1 млрд'], [4200, '']].forEach(([age, lab]) => {
+    const r = rOf(age);
+    el('circle', { cx: 0, cy: 0, r, fill: 'none', stroke: '#b7a383', 'stroke-width': 0.8, 'stroke-dasharray': '2 5' }, layers.rings);
+    if (lab) { const t = el('text', { x: 0, y: -r + 3.5, 'text-anchor': 'middle', class: 'ring-label' }, layers.rings); t.textContent = lab; }
+  });
+  const now = el('text', { x: 0, y: -RIM - 6, 'text-anchor': 'middle', class: 'ring-label' }, layers.rings); now.textContent = 'сегодня';
+
+  // ветви
+  nodes.forEach((n) => {
+    if (!n.parent) return;
+    n.el = el('path', { d: branchPath(n), stroke: GROUPS[n.group].color, 'stroke-width': n.kids ? 1.6 : 1.1, 'stroke-opacity': 0.9 }, layers.branches);
+  });
+  // корень
+  el('circle', { cx: 0, cy: 0, r: 4.5, fill: '#3a2e22' }, layers.branches);
+
+  // подписи крупных групп вдоль дуг
+  const CL = ['Бактерии', 'Археи TACK', 'Эукариоты', 'Животные', 'Позвоночные', 'Млекопитающие', 'Птицы', 'Цветковые', 'Грибы', 'Насекомые', 'Членистоногие', 'Приматы', 'Наземные растения', 'Рыбы'];
+  nodes.forEach((n) => {
+    if (!n.kids || !CL.includes(n.name)) return;
+    const r = n.r - 4, span = n.a1 - n.a0;
+    if (span < 5) return;
+    const mid = (n.a0 + n.a1) / 2;
+    const id = 'cl' + n.id;
+    // нижняя половина круга — дугу разворачиваем, чтобы текст не был вверх ногами
+    const bottom = Math.sin(mid * Math.PI / 180) > 0.15;
+    const a0 = mid - Math.min(span / 2, 60), a1 = mid + Math.min(span / 2, 60);
+    let d;
+    if (bottom) { const [x1, y1] = pol(a1, r + 12), [x0, y0] = pol(a0, r + 12); d = `M${x1} ${y1}A${r + 12} ${r + 12} 0 0 0 ${x0} ${y0}`; }
+    else d = arcPath(r, a0, a1);
+    el('path', { id, d, fill: 'none' }, layers.clades);
+    const t = el('text', { class: 'clade-label' }, layers.clades);
+    const tp = el('textPath', { href: '#' + id, startOffset: '50%', 'text-anchor': 'middle' }, t);
+    tp.textContent = n.name;
+  });
+
+  // листья и подписи
+  tips.forEach((t) => {
+    const [x, y] = pol(t.ang, RIM);
+    t.dot = el('circle', { cx: x, cy: y, r: 2.6, fill: GROUPS[t.group].color }, layers.tips);
+    const flip = t.ang > 90 && t.ang < 270;
+    const [lx, ly] = pol(t.ang, RIM + 7);
+    const lab = el('text', { x: lx, y: ly, class: 'tip-label', 'dominant-baseline': 'central', 'text-anchor': flip ? 'end' : 'start', transform: `rotate(${flip ? t.ang + 180 : t.ang} ${lx} ${ly})` }, layers.tips);
+    lab.textContent = t.ru;
+    lab.addEventListener('pointerenter', (e) => hover(t, e));
+    lab.addEventListener('pointerleave', () => hover(null));
+    lab.addEventListener('click', (e) => { e.stopPropagation(); pick(t); });
+    t.lab = lab;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// Подсветка путей
+// ─────────────────────────────────────────────────────────────
+function pathD(from, to = TREE) { let d = ''; for (let x = from; x && x !== to; x = x.parent) d += branchPath(x); return d; }
+function showPath(n, color = '#2a2019', width = 3.2, cls = '') {
+  const p = el('path', { d: pathD(n), stroke: color, 'stroke-width': width, class: cls, 'stroke-linejoin': 'round' }, layers.path);
+  return p;
+}
+function clearPaths() { layers.path.innerHTML = ''; layers.fx.innerHTML = ''; tips.forEach((t) => t.lab.classList.remove('on')); }
+function ringAt(n, color = '#9b3d3d') {
+  const [x, y] = pol(n.ang, n.r);
+  el('circle', { cx: x, cy: y, r: 6.5, fill: '#f3ecdc', stroke: color, 'stroke-width': 2.4 }, layers.fx);
+}
+
+const fmtAge = (a) => a >= 1000 ? `${(a / 1000).toFixed(a % 1000 ? 1 : 0).replace('.', ',')} млрд лет` : a >= 1 ? `${String(a).replace('.', ',')} млн лет` : `${Math.round(a * 1000)} тыс. лет`;
+const tipEl = $('tip');
+function hover(t, e) {
+  if (!t) { tipEl.classList.remove('on'); return; }
+  const m = mrca(t, HUMAN);
+  tipEl.innerHTML = `<b>${t.ru}</b> <i>${t.la}</i><br>${t === HUMAN ? 'Это мы' : `общий предок с человеком — ${fmtAge(m.age)} назад`}`;
+  tipEl.style.left = Math.min(innerWidth - 270, e.clientX + 14) + 'px';
+  tipEl.style.top = e.clientY + 14 + 'px';
+  tipEl.classList.add('on');
+}
+
+// ─────────────────────────────────────────────────────────────
+// Карточка
+// ─────────────────────────────────────────────────────────────
+let compareMode = false, firstPick = null;
+function card(html) { $('card').innerHTML = html; }
+function lineageHTML(t, mark) {
+  return '<ul class="lineage">' + lineage(t).filter((x) => x.name || x === t).reverse().map((x) =>
+    `<li class="${x === mark ? 'hit' : ''}"><span>${x.name || x.ru}</span><span>${x.age ? fmtAge(x.age) : 'сегодня'}</span></li>`).join('') + '</ul>';
+}
+function pick(t) {
+  clearPaths();
+  if (compareMode) {
+    if (!firstPick || firstPick === t) { firstPick = t; showPath(t, GROUPS[t.group].color, 3.4); t.lab.classList.add('on'); card(`<h2>${t.ru}</h2><div class="la">${t.la}</div><p class="mrca">Теперь выберите второй вид — найдём их общего предка.</p>`); return; }
+    const a = firstPick, b = t, m = mrca(a, b);
+    showPath(a, GROUPS[a.group].color, 3.4); showPath(b, GROUPS[b.group].color, 3.4); ringAt(m);
+    a.lab.classList.add('on'); b.lab.classList.add('on');
+    card(`<h2>${a.ru} и ${b.ru}</h2><div class="la">${a.la} · ${b.la}</div><p class="mrca">Общий предок жил <b>${fmtAge(m.age)} назад</b>${m.name ? ` — это узел «${m.name}»` : ''}.</p>${lineageHTML(b, m)}`);
+    firstPick = null;
+    return;
+  }
+  const m = mrca(t, HUMAN);
+  showPath(t, GROUPS[t.group].color, 3.4);
+  if (t !== HUMAN) { showPath(HUMAN, '#2a2019', 2); ringAt(m); }
+  t.lab.classList.add('on');
+  card(`<h2>${t.ru}</h2><div class="la">${t.la}</div>
+    <p class="mrca">${t === HUMAN ? 'Наш вид. Путь к корню — вся история предков.' : `Общий предок с человеком жил <b>${fmtAge(m.age)} назад</b>${m.name ? ` — узел «${m.name}»` : ''}.`}</p>
+    ${lineageHTML(t, t === HUMAN ? null : m)}`);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Путешествие от LUCA к человеку
+// ─────────────────────────────────────────────────────────────
+let journeyId = 0;
+async function journey() {
+  const id = ++journeyId;
+  clearPaths(); compareMode = false; $('compare').setAttribute('aria-pressed', 'false');
+  const stops = lineage(HUMAN).reverse();
+  const named = stops.filter((x) => x.name || x === HUMAN);
+  card(`<h2>От LUCA до человека</h2><div class="la">${named.length} узлов · ${fmtAge(TREE.age)}</div><div class="fact" id="fact"></div>${lineageHTML(HUMAN, null)}`);
+  const items = [...$('card').querySelectorAll('.lineage li')];
+  const trail = el('path', { d: '', stroke: '#2a2019', 'stroke-width': 3.4, 'stroke-linejoin': 'round' }, layers.path);
+  const dot = el('circle', { r: 7, fill: '#9b3d3d', stroke: '#f3ecdc', 'stroke-width': 2.5 }, layers.fx);
+  let d = '';
+  for (let i = 1; i < stops.length; i++) {
+    if (id !== journeyId) return;
+    const n = stops[i];
+    d += branchPath(n);
+    trail.setAttribute('d', d);
+    const [x, y] = pol(n.ang, n.r);
+    dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+    const k = named.indexOf(n);
+    if (k >= 0) {
+      items.forEach((li, j) => li.classList.toggle('hit', j === k));
+      items[k] && items[k].scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+      const f = FACTS[n.name || n.ru];
+      if (f) $('fact').innerHTML = `<b>${n.name || n.ru}</b> · ${n.age ? fmtAge(n.age) + ' назад' : 'сегодня'}<br>${f}`;
+    }
+    await new Promise((r) => setTimeout(r, reduced ? 60 : (FACTS[n.name || n.ru] ? 1500 : 380)));
+  }
+  HUMAN.lab.classList.add('on');
+}
+
+// ─────────────────────────────────────────────────────────────
+// Масштаб и панорама
+// ─────────────────────────────────────────────────────────────
+const svg = $('tree');
+const view = { s: 1, x: 0, y: 0 };
+function fit() {
+  const w = svg.clientWidth, h = svg.clientHeight;
+  const wide = innerWidth > 900;
+  const availW = wide ? w - 380 : w, availH = h;
+  view.s = Math.min(availW, availH) / (2 * (RIM + 135));
+  view.x = wide ? (w - 360) / 2 + 50 : w / 2;
+  view.y = h / 2 + (wide ? 10 : 20);
+  apply();
+}
+function apply() {
+  world.setAttribute('transform', `translate(${view.x} ${view.y}) scale(${view.s})`);
+  // мелкие подписи прячем, когда они меньше 7 пикселей
+  layers.tips && layers.tips.querySelectorAll('.tip-label').forEach((t) => { t.style.display = 11.5 * view.s < 6.5 ? 'none' : ''; });
+}
+function zoomAt(k, cx, cy) {
+  const ns = Math.max(0.3, Math.min(6, view.s * k));
+  const f = ns / view.s;
+  view.x = cx - (cx - view.x) * f; view.y = cy - (cy - view.y) * f; view.s = ns;
+  apply();
+}
+svg.addEventListener('wheel', (e) => { e.preventDefault(); const b = svg.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - b.left, e.clientY - b.top); }, { passive: false });
+const ptrs = new Map(); let pinch = null;
+svg.addEventListener('pointerdown', (e) => { svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); svg.classList.add('drag'); if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) }; } });
+svg.addEventListener('pointermove', (e) => {
+  if (!ptrs.has(e.pointerId)) return;
+  const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 2 && pinch) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); const r = svg.getBoundingClientRect(); zoomAt(d / pinch.d, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top); pinch.d = d; return; }
+  view.x += e.clientX - prev.x; view.y += e.clientY - prev.y; apply();
+});
+const up = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) svg.classList.remove('drag'); };
+svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+$('zin').addEventListener('click', () => zoomAt(1.35, svg.clientWidth / 2, svg.clientHeight / 2));
+$('zout').addEventListener('click', () => zoomAt(1 / 1.35, svg.clientWidth / 2, svg.clientHeight / 2));
+$('zfit').addEventListener('click', fit);
+addEventListener('resize', fit);
+
+// ─────────────────────────────────────────────────────────────
+// Поиск
+// ─────────────────────────────────────────────────────────────
+const q = $('q'), sugg = $('sugg');
+let act = 0, found = [];
+function renderSugg() {
+  const s = q.value.trim().toLowerCase();
+  found = s ? tips.filter((t) => t.ru.toLowerCase().includes(s) || t.la.toLowerCase().includes(s)).slice(0, 8) : [];
+  act = 0;
+  sugg.innerHTML = found.map((t, i) => `<li class="${i === act ? 'act' : ''}" data-i="${i}"><span>${t.ru}</span><i>${t.la}</i></li>`).join('');
+  sugg.classList.toggle('on', found.length > 0);
+}
+q.addEventListener('input', renderSugg);
+q.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); act = (act + (e.key === 'ArrowDown' ? 1 : -1) + found.length) % Math.max(1, found.length); [...sugg.children].forEach((li, i) => li.classList.toggle('act', i === act)); }
+  if (e.key === 'Enter' && found[act]) { pick(found[act]); sugg.classList.remove('on'); q.blur(); }
+  if (e.key === 'Escape') sugg.classList.remove('on');
+});
+sugg.addEventListener('click', (e) => { const li = e.target.closest('li'); if (!li) return; pick(found[+li.dataset.i]); sugg.classList.remove('on'); });
+q.addEventListener('blur', () => setTimeout(() => sugg.classList.remove('on'), 150));
+
+$('journey').addEventListener('click', journey);
+$('compare').addEventListener('click', () => { compareMode = !compareMode; firstPick = null; $('compare').setAttribute('aria-pressed', String(compareMode)); clearPaths(); card(compareMode ? '<h2>Сравнение</h2><p class="mrca">Выберите два вида на древе или через поиск — покажу, когда жил их общий предок.</p>' : intro()); });
+$('reset').addEventListener('click', () => { journeyId++; compareMode = false; firstPick = null; $('compare').setAttribute('aria-pressed', 'false'); clearPaths(); card(intro()); fit(); });
+
+function intro() {
+  return `<p class="intro">От общего предка всего живого в&nbsp;центре — к&nbsp;143 современным видам и&nbsp;группам по&nbsp;краю. Каждая развилка — общий предок. Радиус — время в&nbsp;логарифмическом масштабе: кольца отмечают 1&nbsp;млн, 10&nbsp;млн, 100&nbsp;млн и&nbsp;1&nbsp;млрд лет назад.</p>
+  <p class="intro" style="margin-top:10px">Наведите на вид — узнаете, когда у нас с ним был общий предок. Нажмите «Путь от LUCA до человека», чтобы пройти всю родословную.</p>`;
+}
+
+// легенда
+$('legend').innerHTML = Object.values(GROUPS).map((g) => `<span><i style="background:${g.color}"></i>${g.name}</span>`).join('');
+
+draw();
+fit();
+card(intro());
+// первый кадр: наша родословная уже подсвечена
+showPath(HUMAN, '#2a2019', 2.6);
+HUMAN.lab.classList.add('on');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Анатомия JPEG</title>
+<meta name="description" content="Кодек JPEG по косточкам: YCbCr, прореживание цвета, ДКП 8×8, квантование, зигзаг и коды Хаффмана — вживую, на вашей картинке.">
+<meta name="theme-color" content="#EFEEE8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect width='8' height='8' fill='%23111114'/%3E%3Crect x='0' y='0' width='4' height='4' fill='%23EFEEE8'/%3E%3Crect x='4' y='4' width='4' height='4' fill='%23E8432A'/%3E%3Crect x='4' y='0' width='2' height='2' fill='%232A3CDB'/%3E%3Crect x='0' y='4' width='2' height='2' fill='%23FFDD3C'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Handjet&family=Piazzolla:ital,opsz,wght@0,8..30,400;0,8..30,600;1,8..30,400&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-id">
+    <span class="bar-issue">№&nbsp;040</span>
+    <span class="bar-name">Объяснялка</span>
+    <span class="bar-dim">ITU-T T.81 · 1992</span>
+  </div>
+  <div class="bar-pick">
+    <span class="lbl" id="pickLbl">Картинка</span>
+    <div class="seg" id="imgSeg" role="group" aria-labelledby="pickLbl">
+      <button type="button" data-img="lighthouse" aria-pressed="true">Маяк</button>
+      <button type="button" data-img="chart" aria-pressed="false">Таблица</button>
+      <button type="button" data-img="page" aria-pressed="false">Вёрстка</button>
+      <button type="button" data-img="own" aria-pressed="false" id="ownBtn" title="Или перетащите файл на страницу">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v7M3 4.5 6 1l3 3.5M1.5 8.5v2h9v-2" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Своя
+      </button>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" hidden>
+  </div>
+</header>
+
+<main>
+  <!-- ============ Обложка: кодек вживую ============ -->
+  <section class="cover" aria-label="Кодек вживую">
+    <div class="stage-col">
+      <figure class="stage" id="stage">
+        <div class="stage-box" id="stageBox" tabindex="0" aria-label="Картинка после кодека. Стрелки двигают выбранный блок, Enter закрепляет его.">
+          <canvas id="view" width="448" height="320"></canvas>
+          <div class="grid8" id="grid8" hidden></div>
+          <div class="cursor" id="cursor"><span class="cursor-tag" id="cursorTag">Y · 0:0</span></div>
+          <div class="stage-tag" id="stageTag" hidden></div>
+          <div class="stage-legend" id="legend" hidden></div>
+        </div>
+        <figcaption class="cap" id="cap1"><b>Рис. 1.</b> Что осталось от&nbsp;картинки после кодека. Наведите курсор&nbsp;— справа разберём блок под ним, щелчок закрепит выбор.</figcaption>
+      </figure>
+
+      <div class="console">
+        <div class="ruler" id="ruler" data-size="big"></div>
+        <dl class="readout">
+          <div class="ro">
+            <dt>Файл</dt>
+            <dd><b id="roSize">—</b><span id="roSizeUnit">байт</span></dd>
+            <dd class="ro-sub" id="roRaw">было —</dd>
+          </div>
+          <div class="ro">
+            <dt>Сжатие</dt>
+            <dd><b id="roRatio">—</b></dd>
+            <dd class="ro-sub" id="roBpp">— бит на&nbsp;пиксель</dd>
+          </div>
+          <div class="ro">
+            <dt title="Пиковое отношение сигнала к шуму: чем больше, тем ближе к оригиналу">PSNR</dt>
+            <dd><b id="roPsnr">—</b><span>дБ</span></dd>
+            <dd class="ro-sub" id="roPsnrNote">&nbsp;</dd>
+          </div>
+        </dl>
+        <div class="modes">
+          <div class="seg" id="viewSeg" role="group" aria-label="Что показать">
+            <button type="button" data-view="result" aria-pressed="true">Итог</button>
+            <button type="button" data-view="original" aria-pressed="false">Оригинал</button>
+            <button type="button" data-view="y" aria-pressed="false">Y</button>
+            <button type="button" data-view="cb" aria-pressed="false">Cb</button>
+            <button type="button" data-view="cr" aria-pressed="false">Cr</button>
+            <button type="button" data-view="error" aria-pressed="false">Ошибка</button>
+            <button type="button" data-view="bits" aria-pressed="false">Биты</button>
+          </div>
+          <div class="seg" id="subSeg" role="group" aria-label="Прореживание цвета">
+            <button type="button" data-sub="444" aria-pressed="false">4:4:4</button>
+            <button type="button" data-sub="422" aria-pressed="false">4:2:2</button>
+            <button type="button" data-sub="420" aria-pressed="true">4:2:0</button>
+          </div>
+          <button type="button" class="tgl" id="gridBtn" aria-pressed="false" title="Показать сетку блоков">
+            <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 .5v11M8 .5v11M.5 4h11M.5 8h11" fill="none" stroke="currentColor"/></svg>8×8
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="deck">
+      <h1 class="mast"><span>Анатомия</span> <span class="mast-2">JPEG</span></h1>
+      <p class="lead" id="lead">Картинка <span data-dim>448&nbsp;×&nbsp;288</span>&nbsp;— это <span data-raw>387&nbsp;072</span>&nbsp;<span data-raw-w>байта</span>, по&nbsp;три на&nbsp;пиксель. JPEG ужимает её в&nbsp;десятки раз, а&nbsp;глаз почти ничего не&nbsp;замечает. Кодек написан вручную и&nbsp;работает прямо здесь: двигайте качество и&nbsp;смотрите, где рождаются артефакты.</p>
+
+      <figure class="lightbox" id="lightbox">
+        <figcaption class="lb-head">
+          <span><b>Рис. 2.</b> 64 волны блока <span class="lb-id" id="lbId">Y 0:0</span></span>
+          <span class="seg seg-mini" id="compSeg" role="group" aria-label="Канал блока">
+            <button type="button" data-comp="0" aria-pressed="true">Y</button>
+            <button type="button" data-comp="1" aria-pressed="false">Cb</button>
+            <button type="button" data-comp="2" aria-pressed="false">Cr</button>
+          </span>
+        </figcaption>
+        <div class="lb-body">
+          <div class="lb-plate">
+            <div class="lb-grid" id="lbGrid" role="img" aria-label="Базисные функции ДКП, подсвечены пережившие квантование"></div>
+            <div class="lb-note" id="lbNote">&nbsp;</div>
+          </div>
+          <div class="strip" id="strip">
+            <figure><canvas width="8" height="8" data-k="src"></canvas><figcaption>пиксели</figcaption></figure>
+            <figure><canvas width="8" height="8" data-k="dct"></canvas><figcaption>ДКП</figcaption></figure>
+            <figure><canvas width="8" height="8" data-k="q"></canvas><figcaption>÷ таблица</figcaption></figure>
+            <figure><canvas width="8" height="8" data-k="dec"></canvas><figcaption>декодер</figcaption></figure>
+            <figure><canvas width="8" height="8" data-k="err"></canvas><figcaption>ошибка ×4</figcaption></figure>
+          </div>
+        </div>
+        <div class="lb-tip" id="lbTip" hidden></div>
+      </figure>
+
+      <div class="bits">
+        <canvas id="bitsCanvas" height="10"></canvas>
+        <p class="bits-text" id="bitsText">&nbsp;</p>
+      </div>
+    </aside>
+  </section>
+
+  <!-- ============ 01. YCbCr ============ -->
+  <section class="ch" id="ch1" data-ch="1" aria-labelledby="h-ch1">
+    <div class="ch-rail"><span class="ch-num">01</span><span class="ch-kick">Цвет</span></div>
+    <div class="ch-text">
+      <h2 id="h-ch1">Яркость отдельно, цвет отдельно</h2>
+      <p>Первым делом каждый пиксель переводится из&nbsp;RGB в&nbsp;YCbCr. Y&nbsp;— яркость: взвешенная сумма трёх каналов, где зелёный весит больше всего, потому что к&nbsp;нему глаз чувствительнее. Cb и&nbsp;Cr&nbsp;— насколько цвет уходит в&nbsp;синий и&nbsp;в&nbsp;красный.</p>
+      <p>Чисел столько&nbsp;же, но&nbsp;распределены они иначе: почти все детали оказываются в&nbsp;Y, а&nbsp;цветовые каналы выходят гладкими и&nbsp;бедными. На&nbsp;этом держится всё остальное: дальше JPEG обходится с&nbsp;цветом гораздо строже, чем с&nbsp;яркостью.</p>
+      <div class="formula" id="formula">
+        <div class="f-in"><span class="sw" id="fSw"></span><span>R&nbsp;<b id="fR">0</b></span><span>G&nbsp;<b id="fG">0</b></span><span>B&nbsp;<b id="fB">0</b></span></div>
+        <div class="f-row"><span class="f-l">Y</span><span class="f-e">=&nbsp;0,299·R + 0,587·G + 0,114·B</span><b id="fY">0</b></div>
+        <div class="f-row"><span class="f-l">Cb</span><span class="f-e">=&nbsp;128 − 0,169·R − 0,331·G + 0,5·B</span><b id="fCb">0</b></div>
+        <div class="f-row"><span class="f-l">Cr</span><span class="f-e">=&nbsp;128 + 0,5·R − 0,419·G − 0,081·B</span><b id="fCr">0</b></div>
+      </div>
+    </div>
+    <figure class="ch-fig">
+      <div class="plates" id="plates">
+        <div class="plate plate-y" data-p="y"><canvas></canvas><div class="xh"></div><span class="plate-l"><b>Y</b> яркость</span></div>
+        <div class="plate" data-p="cb"><canvas></canvas><div class="xh"></div><span class="plate-l"><b>Cb</b> синий ↔ жёлтый</span></div>
+        <div class="plate" data-p="cr"><canvas></canvas><div class="xh"></div><span class="plate-l"><b>Cr</b> красный ↔ зелёный</span></div>
+      </div>
+      <figcaption class="cap"><b>Рис. 3.</b> Три канала исходной картинки. Цветовые показаны при постоянной средней яркости и&nbsp;усилены в&nbsp;1,6&nbsp;раза&nbsp;— иначе они почти серые. Наведите на&nbsp;любой&nbsp;— формула пересчитает пиксель под курсором.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ 02. Прореживание ============ -->
+  <section class="ch" id="ch2" data-ch="2" aria-labelledby="h-ch2">
+    <div class="ch-rail"><span class="ch-num">02</span><span class="ch-kick">Прореживание</span></div>
+    <div class="ch-text">
+      <h2 id="h-ch2">Цвету хватит четверти</h2>
+      <p>Глаз различает мелкие детали яркости намного лучше, чем мелкие детали цвета. Поэтому Cb и&nbsp;Cr можно хранить вдвое реже по&nbsp;горизонтали (4:2:2) или по&nbsp;обеим осям (4:2:0). Во&nbsp;втором случае одна пара цветовых отсчётов приходится на&nbsp;квадрат 2&nbsp;×&nbsp;2 пикселя, и&nbsp;вместо трёх чисел на&nbsp;пиксель остаётся полтора.</p>
+      <p>Проверьте сами: на&nbsp;рисунке одна и&nbsp;та&nbsp;же картинка, размытая двумя способами.</p>
+      <div class="subpick" id="subPick" role="group" aria-label="Схема прореживания">
+        <button type="button" data-sub="444" aria-pressed="false"><canvas width="4" height="2"></canvas><span><b>4:4:4</b> 3&nbsp;байта на&nbsp;пиксель</span></button>
+        <button type="button" data-sub="422" aria-pressed="false"><canvas width="4" height="2"></canvas><span><b>4:2:2</b> 2&nbsp;байта</span></button>
+        <button type="button" data-sub="420" aria-pressed="true"><canvas width="4" height="2"></canvas><span><b>4:2:0</b> 1,5&nbsp;байта</span></button>
+      </div>
+      <p class="note">Схема действует на&nbsp;весь кодек: переключите и&nbsp;посмотрите на&nbsp;размер файла.</p>
+    </div>
+    <figure class="ch-fig">
+      <div class="twin">
+        <div class="twin-i"><canvas id="blurC"></canvas><span class="twin-l">Цвет размыт в&nbsp;<b data-f>8</b>&nbsp;раз</span></div>
+        <div class="twin-i"><canvas id="blurY"></canvas><span class="twin-l">Яркость размыта в&nbsp;<b data-f>8</b>&nbsp;раз</span></div>
+      </div>
+      <div class="fig-ctl">
+        <span class="lbl" id="blurLbl">Размытие</span>
+        <div class="seg" id="blurSeg" role="group" aria-labelledby="blurLbl">
+          <button type="button" data-f="2" aria-pressed="false">×2</button>
+          <button type="button" data-f="4" aria-pressed="false">×4</button>
+          <button type="button" data-f="8" aria-pressed="true">×8</button>
+          <button type="button" data-f="16" aria-pressed="false">×16</button>
+        </div>
+      </div>
+      <div class="zoom3" id="zoom3">
+        <div><canvas width="40" height="40"></canvas><span>Cr как есть</span></div>
+        <div><canvas width="40" height="40"></canvas><span id="z3sub">Cr после 4:2:0</span></div>
+        <div><canvas width="40" height="40"></canvas><span>цвет собран обратно</span></div>
+      </div>
+      <figcaption class="cap"><b>Рис. 4.</b> Вверху слева размыт только цвет&nbsp;— картинка почти не&nbsp;изменилась, справа только яркость&nbsp;— и&nbsp;детали пропали. Внизу тот&nbsp;же приём в&nbsp;JPEG крупно: красный канал до&nbsp;и&nbsp;после прореживания и&nbsp;цвет, восстановленный по&nbsp;полной яркости.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ 03. ДКП ============ -->
+  <section class="ch" id="ch3" data-ch="3" aria-labelledby="h-ch3">
+    <div class="ch-rail"><span class="ch-num">03</span><span class="ch-kick">ДКП</span></div>
+    <div class="ch-text">
+      <h2 id="h-ch3">Шестьдесят четыре волны</h2>
+      <p>Дальше каждый канал режется на&nbsp;блоки 8&nbsp;×&nbsp;8, а&nbsp;из&nbsp;каждого значения вычитается 128, чтобы средний серый стал нулём. Дискретное косинусное преобразование (ДКП) раскладывает блок на&nbsp;сумму 64&nbsp;узоров&nbsp;— от&nbsp;ровной заливки в&nbsp;левом верхнем углу до&nbsp;мелкой шахматки в&nbsp;правом нижнем.</p>
+      <p>Само по&nbsp;себе ДКП ничего не&nbsp;теряет: из&nbsp;64 коэффициентов блок собирается обратно точно. Выигрыш в&nbsp;другом&nbsp;— у&nbsp;фотографий почти вся энергия сосредоточена в&nbsp;нескольких первых волнах, а&nbsp;остальные коэффициенты близки к&nbsp;нулю.</p>
+    </div>
+    <figure class="ch-fig">
+      <div class="build">
+        <div class="build-l">
+          <div class="build-pair">
+            <div><canvas id="bSrc" width="8" height="8"></canvas><span>блок</span></div>
+            <div><canvas id="bSum" width="8" height="8"></canvas><span id="bSumL">сумма волн</span></div>
+          </div>
+          <div class="build-ctl">
+            <button type="button" class="play" id="bPlay" aria-label="Проиграть сборку заново">
+              <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.5v9l7.5-4.5z" fill="currentColor"/></svg>
+            </button>
+            <div class="ruler" id="kRuler" data-size="small"></div>
+          </div>
+          <p class="build-stat" id="bStat">&nbsp;</p>
+        </div>
+        <div class="build-r">
+          <div class="basis" id="basis" role="img" aria-label="64 базисные функции ДКП в порядке зигзага"></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>Рис. 5.</b> Блок, выбранный на&nbsp;рис.&nbsp;1, собирается из&nbsp;волн в&nbsp;порядке зигзага; числа&nbsp;— коэффициенты ДКП. Первые волны задают общий тон и&nbsp;направление, последние добавляют мелкую рябь.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ 04. Квантование ============ -->
+  <section class="ch ch--wide" id="ch4" data-ch="4" aria-labelledby="h-ch4">
+    <div class="ch-rail"><span class="ch-num">04</span><span class="ch-kick">Квантование</span></div>
+    <div class="ch-text">
+      <h2 id="h-ch4">Здесь теряется качество</h2>
+      <p>Каждый коэффициент делится на&nbsp;своё число из&nbsp;таблицы квантования и&nbsp;округляется до&nbsp;целого. Высокие частоты делятся на&nbsp;большие числа&nbsp;— к&nbsp;ним глаз менее чувствителен&nbsp;— и&nbsp;чаще всего превращаются в&nbsp;ноль. Округление не&nbsp;отменить: это главный шаг с&nbsp;потерями.</p>
+      <p>Ползунок качества только масштабирует типовые таблицы из&nbsp;приложения K&nbsp;стандарта. Сама шкала от&nbsp;1 до&nbsp;100&nbsp;— соглашение библиотеки IJG libjpeg: при 50 таблица берётся как есть, при 100 все шаги равны единице, при 1 упираются в&nbsp;255.</p>
+      <p class="stat-line" id="zStat">&nbsp;</p>
+    </div>
+    <figure class="ch-fig">
+      <div class="eq" id="eq">
+        <div class="mx" id="mxDct"><span class="mx-l">ДКП</span><div class="mx-g"></div></div>
+        <span class="op" aria-hidden="true">÷</span>
+        <div class="mx" id="mxQ"><span class="mx-l" id="mxQL">шаги</span><div class="mx-g"></div></div>
+        <span class="op" aria-hidden="true">=</span>
+        <div class="mx" id="mxR"><span class="mx-l">после округления</span><div class="mx-g"></div></div>
+      </div>
+      <div class="charts">
+        <div class="chart">
+          <p class="chart-t">Доля нулей по&nbsp;номеру в&nbsp;зигзаге, вся картинка</p>
+          <canvas id="zChart"></canvas>
+        </div>
+        <div class="chart">
+          <p class="chart-t">Размер файла от&nbsp;качества</p>
+          <canvas id="sChart"></canvas>
+        </div>
+      </div>
+      <figcaption class="cap"><b>Рис. 6.</b> Коэффициенты блока делятся на&nbsp;шаги и&nbsp;округляются; бледные клетки&nbsp;— нули, их&nbsp;большинство. Внизу&nbsp;— как часто обнуляется каждая частота и&nbsp;во&nbsp;что обходится каждая единица качества.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ 05. Зигзаг ============ -->
+  <section class="ch" id="ch5" data-ch="5" aria-labelledby="h-ch5">
+    <div class="ch-rail"><span class="ch-num">05</span><span class="ch-kick">Зигзаг</span></div>
+    <div class="ch-text">
+      <h2 id="h-ch5">Змейка и&nbsp;серии нулей</h2>
+      <p>Квантованные коэффициенты читаются зигзагом&nbsp;— от&nbsp;низких частот к&nbsp;высоким,&nbsp;— чтобы нули собрались в&nbsp;хвосте. Каждый ненулевой коэффициент записывается парой: сколько нулей было перед ним и&nbsp;сколько бит занимает само число.</p>
+      <p>Хвост из&nbsp;одних нулей заменяет один символ&nbsp;— «конец блока», EOB. Если перед числом больше пятнадцати нулей подряд, каждые шестнадцать записываются символом ZRL.</p>
+    </div>
+    <figure class="ch-fig">
+      <div class="zz">
+        <canvas id="zzCanvas" class="zz-c"></canvas>
+        <div class="zz-r">
+          <p class="lbl">64 числа в&nbsp;порядке зигзага</p>
+          <canvas id="zzStrip" class="zz-strip"></canvas>
+          <p class="lbl">Символы</p>
+          <div class="tokens" id="tokens"></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>Рис. 7.</b> Путь зигзага по&nbsp;квантованному блоку и&nbsp;символы, в&nbsp;которые превращаются его 64&nbsp;числа.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ 06. Хаффман ============ -->
+  <section class="ch" id="ch6" data-ch="6" aria-labelledby="h-ch6">
+    <div class="ch-rail"><span class="ch-num">06</span><span class="ch-kick">Хаффман</span></div>
+    <div class="ch-text">
+      <h2 id="h-ch6">Короткие коды для&nbsp;частых символов</h2>
+      <p>Символы встречаются с&nbsp;очень разной частотой. Код Хаффмана даёт частым короткие коды, редким&nbsp;— длинные, и&nbsp;ни&nbsp;один код не&nbsp;совпадает с&nbsp;началом другого, поэтому поток читается без разделителей. Первый коэффициент блока, DC, кодируется разностью с&nbsp;предыдущим блоком: у&nbsp;соседей средний тон обычно близок.</p>
+      <p>Стандарт приводит типовые таблицы, но&nbsp;кодер вправе построить свои, оптимальные для конкретной картинки,&nbsp;— и&nbsp;файл становится меньше.</p>
+      <div class="optpick">
+        <span class="lbl" id="optLbl">Таблицы</span>
+        <div class="seg" id="optSeg" role="group" aria-labelledby="optLbl">
+          <button type="button" data-opt="0" aria-pressed="true">Типовые</button>
+          <button type="button" data-opt="1" aria-pressed="false">Свои</button>
+        </div>
+      </div>
+      <p class="stat-line" id="hStat">&nbsp;</p>
+    </div>
+    <figure class="ch-fig">
+      <div class="huff">
+        <div class="huff-b">
+          <p class="lbl">Биты выбранного блока</p>
+          <table class="tbl" id="hBlock"><thead><tr><th>символ</th><th>значение</th><th>код</th><th>+&nbsp;биты</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="huff-f">
+          <p class="lbl">Частые символы яркости во&nbsp;всей картинке</p>
+          <table class="tbl" id="hFreq"><thead><tr><th>символ</th><th>смысл</th><th>сколько раз</th><th>код</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <figcaption class="cap"><b>Рис. 8.</b> Слева&nbsp;— символы блока с&nbsp;рис.&nbsp;1 и&nbsp;их&nbsp;коды. Справа&nbsp;— статистика всей картинки: «0/1» значит «перед числом нет нулей, само число занимает 1&nbsp;бит».</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ 07. Файл ============ -->
+  <section class="ch ch--wide" id="ch7" data-ch="7" aria-labelledby="h-ch7">
+    <div class="ch-rail"><span class="ch-num">07</span><span class="ch-kick">Файл</span></div>
+    <div class="ch-text">
+      <h2 id="h-ch7">Байты по&nbsp;полочкам</h2>
+      <p>Осталось упаковать всё в&nbsp;файл. Он&nbsp;начинается маркером FF&nbsp;D8 и&nbsp;заканчивается FF&nbsp;D9, а&nbsp;между ними лежат таблицы квантования (FF&nbsp;DB), размер и&nbsp;схема каналов (FF&nbsp;C0), таблицы Хаффмана (FF&nbsp;C4) и&nbsp;сжатые данные после FF&nbsp;DA.</p>
+      <p>Если в&nbsp;данных случайно получится байт FF, кодер вставляет после него 00, иначе декодер принял&nbsp;бы его за&nbsp;маркер. Файл настоящий: его можно скачать и&nbsp;открыть любой программой.</p>
+      <div class="file-act">
+        <button type="button" class="btn-main" id="dlBtn">
+          <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v7M3 5l3 3 3-3M1.5 10.5h9" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+          <span>Скачать этот JPEG</span>
+        </button>
+        <span class="dl-name" id="dlName">.jpg</span>
+      </div>
+      <p class="check" id="check">&nbsp;</p>
+    </div>
+    <figure class="ch-fig">
+      <div class="mosaic-w" id="mosaicW">
+        <canvas id="mosaic" class="mosaic"></canvas>
+        <div class="mosaic-tip" id="mosaicTip" hidden></div>
+      </div>
+      <ul class="legend" id="segLegend"></ul>
+      <pre class="hex" id="hex" aria-label="Начало файла в шестнадцатеричном виде"></pre>
+      <figcaption class="cap"><b>Рис. 9.</b> Весь файл, по&nbsp;байту на&nbsp;клетку: заголовки цветные, сжатые данные серые, красным отмечены вставленные 00. Наведите, чтобы увидеть адрес и&nbsp;значение.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ 08. Декодер и артефакты ============ -->
+  <section class="ch" id="ch8" data-ch="8" aria-labelledby="h-ch8">
+    <div class="ch-rail"><span class="ch-num">08</span><span class="ch-kick">Декодер</span></div>
+    <div class="ch-text">
+      <h2 id="h-ch8">Обратный путь и&nbsp;его&nbsp;следы</h2>
+      <p>Декодер проходит шаги в&nbsp;обратном порядке: коды Хаффмана → коэффициенты → умножение на&nbsp;шаги → обратное ДКП → растяжение цвета → RGB. Картинка на&nbsp;рис.&nbsp;1 получена именно так&nbsp;— из&nbsp;байтов файла.</p>
+      <p>Что округлено при квантовании, не&nbsp;вернуть. Следы видны в&nbsp;четырёх местах; на&nbsp;каждой паре слева оригинал, справа JPEG.</p>
+    </div>
+    <figure class="ch-fig">
+      <div class="arts" id="arts">
+        <div class="art" data-a="blocks"><canvas></canvas><h3>Блоки</h3><p>На&nbsp;плавном переходе каждый блок сводится к&nbsp;ровному тону, и&nbsp;граница блоков становится ступенькой.</p></div>
+        <div class="art" data-a="ringing"><canvas></canvas><h3>Звон</h3><p>Резкому краю не&nbsp;хватает высоких частот, и&nbsp;вокруг него идёт рябь&nbsp;— как у&nbsp;обрезанного ряда Фурье.</p></div>
+        <div class="art" data-a="bleed"><canvas></canvas><h3>Подтёки цвета</h3><p>Цвет хранится грубее яркости и&nbsp;вытекает за&nbsp;контуры.</p></div>
+        <div class="art" data-a="texture"><canvas></canvas><h3>Потеря текстуры</h3><p>Зерно и&nbsp;мелкая рябь исчезают первыми: их&nbsp;волны самые высокие.</p></div>
+      </div>
+      <div class="ladder-w">
+        <p class="lbl">Одно и&nbsp;то&nbsp;же место при разном качестве</p>
+        <div class="ladder" id="ladder"></div>
+      </div>
+      <figcaption class="cap"><b>Рис. 10.</b> Пары сверху&nbsp;— при качестве с&nbsp;ползунка, ряд снизу&nbsp;— фиксированные ступени. Для своей картинки места выбираются автоматически по&nbsp;статистике блоков.</figcaption>
+    </figure>
+  </section>
+
+  <footer class="colophon">
+    <div>
+      <p class="col-h">Как это сделано</p>
+      <p>Кодер и&nbsp;декодер написаны вручную на&nbsp;JavaScript без библиотек: baseline JPEG по&nbsp;ITU-T T.81, 8&nbsp;бит, коды Хаффмана, упаковка JFIF. ДКП считается в&nbsp;плавающей точке, цвет прореживается усреднением и&nbsp;восстанавливается «треугольным» фильтром, как в&nbsp;libjpeg. Картинка на&nbsp;рис.&nbsp;1 каждый раз декодируется из&nbsp;только что собранного файла.</p>
+    </div>
+    <div>
+      <p class="col-h">Чего здесь нет</p>
+      <p>Прогрессивного режима, арифметического кодирования и&nbsp;маркеров перезапуска. Рабочий размер ограничен <span data-maxdim>448&nbsp;×&nbsp;288</span>, чтобы кодек успевал за&nbsp;ползунком. Встроенные картинки нарисованы кодом; своя обрабатывается в&nbsp;браузере и&nbsp;никуда не&nbsp;отправляется.</p>
+    </div>
+    <div>
+      <p class="col-h">Цвета страницы</p>
+      <p>Взяты с&nbsp;осей цветовых каналов: синий и&nbsp;жёлтый&nbsp;— концы оси Cb, красный&nbsp;— верх оси Cr, чёрный&nbsp;— яркость.</p>
+      <div class="swatches" aria-hidden="true"><i style="--c: var(--blue)"></i><i style="--c: var(--yellow)"></i><i style="--c: var(--red)"></i><i style="--c: var(--ink)"></i></div>
+    </div>
+  </footer>
+</main>
+
+<div class="dock" id="dock" aria-hidden="true">
+  <span class="dock-l">Качество</span>
+  <div class="ruler" id="dockRuler" data-size="small"></div>
+  <span class="dock-size" id="dockSize">—</span>
+  <div class="seg seg-mini" id="dockSub" role="group" aria-label="Прореживание цвета">
+    <button type="button" data-sub="444" aria-pressed="false" tabindex="-1">4:4:4</button>
+    <button type="button" data-sub="422" aria-pressed="false" tabindex="-1">4:2:2</button>
+    <button type="button" data-sub="420" aria-pressed="true" tabindex="-1">4:2:0</button>
+  </div>
+</div>
+
+<div class="veil" id="veil" hidden><div class="veil-box"><b>Отпустите файл</b><span>разберём вашу картинку по&nbsp;косточкам</span></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="codec.js"></script>
+<script src="images.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

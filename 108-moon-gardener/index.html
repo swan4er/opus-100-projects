@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Садовник на Луне — пиксельный мультфильм</title>
+<meta name="description" content="Короткий пиксельный мультфильм: маленький робот, единственный цветок на Луне и метеорный дождь. Картинка, свет и музыка — код.">
+<meta name="theme-color" content="#07060d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500;600&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="player" id="player">
+  <header class="head">
+    <h1>Садовник на&nbsp;Луне</h1>
+    <p class="sub">пиксельный мультфильм · <span id="dur">1:48</span></p>
+  </header>
+
+  <div class="screen" id="screen">
+    <canvas id="film" width="320" height="180" role="img" aria-label="Кадр мультфильма «Садовник на Луне»"></canvas>
+    <button class="cta" id="soundCta" type="button">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path d="M11 5.5c1 .8 1 4.2 0 5M13 3.5c2 1.8 2 7.2 0 9" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="square"/></svg>
+      <span>Смотреть со&nbsp;звуком</span>
+    </button>
+    <button class="again" id="again" type="button" hidden>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.5-3.6" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M2 2v4h4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      <span>Смотреть ещё раз</span>
+    </button>
+    <p class="nojs" id="fallback">Мультфильм рисуется кодом — включите JavaScript.</p>
+  </div>
+
+  <div class="bar" id="bar">
+    <button class="btn wide" id="play" type="button" title="Пауза (пробел)">
+      <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3h3v10H4zM9 3h3v10H9z" fill="currentColor"/></svg>
+      <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2l10 6-10 6z" fill="currentColor"/></svg>
+      <span id="playLabel">Пауза</span>
+    </button>
+    <div class="timeline" id="timeline" role="slider" tabindex="0" aria-label="Время фильма" aria-valuemin="0" aria-valuemax="108" aria-valuenow="0" aria-valuetext="0:00">
+      <div class="segs" id="segs"></div>
+      <div class="knob" id="knob"></div>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+    <span class="time" id="time">0:00 / 1:48</span>
+    <button class="btn" id="mute" type="button" aria-label="Включить звук" title="Звук (M)">
+      <svg class="i-on" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path d="M11 5.5c1 .8 1 4.2 0 5M13 3.5c2 1.8 2 7.2 0 9" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>
+      <svg class="i-off" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path d="M11 6l4 4M15 6l-4 4" stroke="currentColor" stroke-width="1.4"/></svg>
+    </button>
+    <button class="btn" id="replay" type="button" aria-label="С начала" title="С начала">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.5-3.6" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M2 2v4h4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+    </button>
+    <button class="btn" id="full" type="button" aria-label="Во весь экран" title="Во весь экран (F)">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+    </button>
+  </div>
+  <ol class="chapters" id="chapters" aria-label="Сцены"></ol>
+  <p class="hint">Пробел — пауза · ←&nbsp;→ — на&nbsp;5&nbsp;секунд · F — во&nbsp;весь экран</p>
+</main>
+
+<script src="engine.js"></script>
+<script src="world.js"></script>
+<script src="actors.js"></script>
+<script src="film.js"></script>
+<script src="acting.js"></script>
+<script src="shots.js"></script>
+<script src="audio.js"></script>
+<script src="player.js"></script>
+</body>
+</html>

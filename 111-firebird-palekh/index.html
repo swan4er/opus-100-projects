@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Перо Жар-птицы — палехская миниатюра</title>
+<meta name="description" content="Короткий мультфильм в технике палехской лаковой миниатюры: чёрный лак, золото, темпера, гусли, свирель и колокольчики. Всё нарисовано и сыграно кодом.">
+<meta name="theme-color" content="#0b0807">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kurale&family=Ponomar&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="app">
+  <header class="head">
+    <h1>Перо Жар-птицы</h1>
+    <p>Палехская миниатюра в&nbsp;шести сценах по&nbsp;мотивам русской народной сказки</p>
+  </header>
+
+  <section class="player" id="player" aria-label="Мультфильм «Перо Жар-птицы»">
+    <div class="screen" id="screen">
+      <div class="frame" id="frame">
+        <canvas id="film" role="img" aria-label="Мультфильм в технике палехской миниатюры: чёрный лак, золото и темпера"></canvas>
+      </div>
+      <p class="caption" id="caption"></p>
+    </div>
+
+    <div class="bar">
+      <button class="btn play" id="play" type="button" aria-label="Пауза">
+        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.2v14H7zM13.8 5H17v14h-3.2z"/></svg>
+        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 4.8 19 12 7.5 19.2z"/></svg>
+        <span class="lbl">Пауза</span>
+      </button>
+      <button class="btn primary" id="withSound" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.2h3.6L12.4 5v14l-4.8-4.2H4z"/><path class="wave" d="M15.3 8.6a4.6 4.6 0 0 1 0 6.8M17.9 6.1a8.2 8.2 0 0 1 0 11.8"/></svg>
+        <span>Смотреть со&nbsp;звуком</span>
+      </button>
+      <div class="timeline" id="timeline" role="slider" tabindex="0" aria-label="Время фильма" aria-valuemin="0" aria-valuemax="119" aria-valuenow="0">
+        <div class="track"><div class="fill" id="fill"></div></div>
+        <div class="ticks" id="ticks"></div>
+        <div class="thumb" id="thumb"></div>
+        <div class="tip" id="tip"></div>
+      </div>
+      <span class="time" id="time">0:00 / 1:59</span>
+      <div class="tools">
+        <button class="btn icon" id="replay" type="button" aria-label="Смотреть сначала" title="Сначала">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.6 8.4A7.5 7.5 0 1 1 4.5 13"/><path d="M4.6 4.4v4.5h4.5"/></svg>
+        </button>
+        <button class="btn icon" id="mute" type="button" aria-label="Включить звук" aria-pressed="false" title="Звук">
+          <svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.2h3.6L12.4 5v14l-4.8-4.2H4z"/><path class="wave" d="M15.3 8.6a4.6 4.6 0 0 1 0 6.8M17.9 6.1a8.2 8.2 0 0 1 0 11.8"/></svg>
+          <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.2h3.6L12.4 5v14l-4.8-4.2H4z"/><path class="wave" d="M15.5 9.5l5 5M20.5 9.5l-5 5"/></svg>
+        </button>
+        <button class="btn icon" id="fs" type="button" aria-label="Во весь экран" title="Во весь экран">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path class="wave" d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15"/></svg>
+        </button>
+      </div>
+    </div>
+    <ol class="chapters" id="chapters" aria-label="Сцены"></ol>
+  </section>
+
+  <p class="keys">Пробел — пауза · ← → — на&nbsp;5&nbsp;секунд · F — во&nbsp;весь экран · M — звук</p>
+</main>
+
+<script src="core.js"></script>
+<script src="art.js"></script>
+<script src="actors.js"></script>
+<script src="film.js"></script>
+<script src="scenes.js"></script>
+<script src="audio.js"></script>
+<script src="player.js"></script>
+</body>
+</html>

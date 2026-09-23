@@ -1,0 +1,969 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Стеклянная кабина — полёт над горами</title>
+<meta name="description" content="Лёгкий самолёт над процедурными горами: вид из кабины, пилотажный дисплей с синтетическим рельефом, карта с предупреждением о земле, автопилот.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jura:wght@500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --panel:#17191C;
+    --bezel:#26292D;
+    --text:#E8ECEF;
+    --dim:#A9B1B8;
+    --cyan:#35E0F0;
+    --magenta:#F04BD8;
+    --green:#4BE36A;
+    --amber:#FFB321;
+    --red:#FF4040;
+    --disp:"Jura", "Manrope", system-ui, sans-serif;
+    --ui:"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#0C0D0F;color:var(--text);font-family:var(--ui);-webkit-font-smoothing:antialiased}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+  #gl{z-index:0}
+  #hud{z-index:1;touch-action:none}
+  .softkeys{position:fixed;z-index:2;display:flex;gap:6px}
+  .sk{min-width:58px;height:34px;padding:0 8px;border-radius:5px;border:1px solid #3A3F45;cursor:pointer;
+    background:linear-gradient(180deg,#34383D,#23262A);color:#DDE3E8;font:600 12px/1 var(--disp);letter-spacing:.06em;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 2px 3px rgba(0,0,0,.5);transition:transform .08s,background .2s,color .2s}
+  .sk:active{transform:translateY(1px)}
+  .sk[aria-pressed=true]{color:#0C0D0F;background:linear-gradient(180deg,#9EF2FA,#35E0F0)}
+  .sk:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .help{position:fixed;z-index:2;right:18px;top:14px;max-width:330px;font:500 13px/1.5 var(--ui);color:#F2F5F7;
+    background:rgba(12,14,16,.72);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;transition:opacity .8s}
+  .help b{font-weight:700;color:#fff}
+  .help kbd{font:700 12px/1 var(--disp);border:1px solid rgba(255,255,255,.3);border-radius:3px;padding:1px 4px}
+  .help.faded{opacity:0;pointer-events:none}
+  .brand{position:fixed;z-index:2;left:20px;top:14px;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.65),0 0 14px rgba(0,0,0,.45)}
+  .brand h1{font:700 26px/1 var(--disp);letter-spacing:.06em;color:#fff;text-transform:uppercase}
+  .brand p{font:500 14px/1.4 var(--ui);color:#E6EBEF;margin-top:5px;max-width:380px}
+  .thr{display:none;position:fixed;z-index:2;right:10px;width:44px;border-radius:22px;background:rgba(12,14,16,.7);border:1px solid rgba(255,255,255,.15);touch-action:none}
+  .thr .knob{position:absolute;left:4px;width:34px;height:34px;border-radius:50%;background:linear-gradient(180deg,#F2F5F7,#9AA3AB)}
+  .thr span{position:absolute;left:0;right:0;top:-20px;text-align:center;font:700 12px/1 var(--disp);color:#fff}
+  @media (max-width:760px){
+    .help{display:none}
+    .brand h1{font-size:19px}
+    .brand p{display:none}
+    .thr{display:block}
+    .sk{min-width:48px;height:36px;font-size:12px}
+  }
+</style>
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<canvas id="hud" aria-label="Кабина: пилотажный дисплей и карта"></canvas>
+<div class="brand">
+  <h1>Стеклянная кабина</h1>
+  <p>«Стриж» идёт над горами по&nbsp;маршруту. Возьмите управление — автопилот отключится.</p>
+</div>
+<div class="help" id="help">
+  <b>На себя</b> — <kbd>↓</kbd> или <kbd>S</kbd>, <b>от себя</b> — <kbd>↑</kbd> или <kbd>W</kbd> · <b>крен</b> — <kbd>←</kbd><kbd>→</kbd> или <kbd>A</kbd><kbd>D</kbd><br>
+  <b>Газ</b> — <kbd>+</kbd> <kbd>−</kbd> · <b>закрылки</b> — <kbd>F</kbd> · <b>автопилот</b> — <kbd>P</kbd><br>
+  Можно тянуть мышью по лобовому стеклу — как штурвал.
+</div>
+<div class="softkeys" id="skPFD"></div>
+<div class="softkeys" id="skMFD"></div>
+<div class="thr" id="thr"><span id="thrTxt">72%</span><div class="knob" id="thrKnob"></div></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Стеклянная кабина. WebGL: вид из кабины и синтетический рельеф PFD.
+   Canvas 2D: рамка панели, символика PFD, карта с относительным
+   рельефом и профилем, приборы двигателя. Упрощённая модель полёта
+   «материальная точка + углы», автопилот по маршруту.
+   ===================================================================== */
+const DEG = Math.PI / 180;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const wrapPi = (a) => { if (!Number.isFinite(a)) return 0; const t = (a + Math.PI) % (2 * Math.PI); return (t < 0 ? t + 2 * Math.PI : t) - Math.PI; };
+const SHOT = !!window.__SHOT__;
+
+// ---------------------------------------------------------------------
+// Рельеф: периодический шум (мир повторяется без швов)
+// ---------------------------------------------------------------------
+const TS = 192, CELL = 213.33, WORLD = TS * CELL; // ≈ 40,96 км
+const WATER = 260;
+function hash2(x, y) { let h = x * 374761393 + y * 668265263; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967295; }
+function noiseP(x, y, P) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const w = (a, b) => hash2(((a % P) + P) % P, ((b % P) + P) % P);
+  return lerp(lerp(w(xi, yi), w(xi + 1, yi), u), lerp(w(xi, yi + 1), w(xi + 1, yi + 1), u), v);
+}
+const H = new Float32Array(TS * TS);
+(function genTerrain() {
+  for (let j = 0; j < TS; j++) for (let i = 0; i < TS; i++) {
+    let base = 0, amp = 0.5, s = 48;
+    for (let o = 0; o < 5; o++) { base += amp * noiseP(i / s, j / s, TS / s); amp *= 0.5; s /= 2; }
+    let ridge = 0; amp = 0.6; s = 32;
+    for (let o = 0; o < 4; o++) { const n = noiseP(i / s + 17, j / s + 5, TS / s); ridge += amp * Math.pow(1 - Math.abs(2 * n - 1), 2); amp *= 0.5; s /= 2; }
+    const mask = Math.pow(noiseP(i / 64 + 3, j / 64 + 9, TS / 64), 1.3);
+    H[j * TS + i] = 120 + Math.pow(base, 1.7) * 1250 + ridge * mask * 2000;
+  }
+})();
+const hAt = (i, j) => H[(((j % TS) + TS) % TS) * TS + (((i % TS) + TS) % TS)];
+function heightAt(x, z) {
+  const gx = x / CELL, gz = z / CELL, i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j;
+  return lerp(lerp(hAt(i, j), hAt(i + 1, j), fx), lerp(hAt(i, j + 1), hAt(i + 1, j + 1), fx), fz);
+}
+// аэродромы: ищем пологие низины в трёх частях мира и выравниваем площадку
+const AIRFIELDS = [];
+(function placeAirfields() {
+  const names = ['Кедровый', 'Озёрное', 'Сосновка'];
+  const zones = [[0.1, 0.1, 0.45, 0.45], [0.55, 0.2, 0.9, 0.55], [0.2, 0.6, 0.6, 0.92]];
+  zones.forEach(([x0, z0, x1, z1], k) => {
+    let best = null;
+    for (let j = Math.floor(z0 * TS); j < z1 * TS; j += 2) for (let i = Math.floor(x0 * TS); i < x1 * TS; i += 2) {
+      const h = hAt(i, j);
+      if (h < WATER + 40) continue;
+      let rough = 0; for (let d = -3; d <= 3; d++) rough += Math.abs(hAt(i + d, j) - h) + Math.abs(hAt(i, j + d) - h);
+      const sc = h * 0.6 + rough * 2.2;
+      if (!best || sc < best.sc) best = { sc, i, j, h };
+    }
+    const hdg = [30, 110, 160][k] * DEG;
+    const af = { name: names[k], x: best.i * CELL, z: best.j * CELL, elev: best.h + 4, hdg, len: 1300, wid: 36 };
+    for (let dj = -7; dj <= 7; dj++) for (let di = -7; di <= 7; di++) {
+      const d = Math.hypot(di, dj) / 7; if (d > 1) continue;
+      const ii = (((best.i + di) % TS) + TS) % TS, jj = (((best.j + dj) % TS) + TS) % TS;
+      const w = Math.pow(1 - d, 0.6);
+      H[jj * TS + ii] = lerp(H[jj * TS + ii], af.elev - 4, w);
+    }
+    AIRFIELDS.push(af);
+  });
+})();
+const ROUTE = [1, 2, 0];
+
+// ---------------------------------------------------------------------
+// Самолёт: состояние и модель полёта
+// ---------------------------------------------------------------------
+const AC = { m: 1100, S: 16.2 };
+const plane = { x: 0, z: 0, h: 1950, V: 58, gam: 0, psi: 0, th: 2.4 * DEG, phi: 0, thr: 0.74, flaps: 0, alpha: 0, vs: 0, crashed: 0 };
+const ap = { on: true, alt: 1950, wp: 0, disc: 0 };
+const input = { pitch: 0, roll: 0, drag: null };
+function resetPlane() {
+  const a = AIRFIELDS[ROUTE[0]], b = AIRFIELDS[ROUTE[1]];
+  let dx = b.x - a.x, dz = b.z - a.z;
+  if (Math.abs(dx) > WORLD / 2) dx -= Math.sign(dx) * WORLD;
+  if (Math.abs(dz) > WORLD / 2) dz -= Math.sign(dz) * WORLD;
+  plane.x = a.x + dx * 0.18; plane.z = a.z + dz * 0.18;
+  plane.h = 1950; plane.V = 57; plane.gam = 0; plane.th = 2.2 * DEG; plane.phi = 0; plane.thr = 0.74; plane.flaps = 0;
+  plane.psi = Math.atan2(dx, -dz);
+  ap.on = true; ap.alt = 1950; ap.wp = 1; plane.crashed = 0;
+}
+const rho = (h) => 1.225 * Math.exp(-h / 8500);
+function stepPlane(dt) {
+  const p = plane;
+  if (p.crashed > 0) { p.crashed -= dt; if (p.crashed <= 0) resetPlane(); return; }
+  // автопилот: курс на ППМ + удержание высоты
+  if (ap.on) {
+    const wp = AIRFIELDS[ROUTE[ap.wp]];
+    const d = relVec(wp.x, wp.z);
+    const brg = Math.atan2(d.x, -d.z);
+    if (Math.hypot(d.x, d.z) < 1500) ap.wp = (ap.wp + 1) % ROUTE.length;
+    const err = wrapPi(brg - p.psi);
+    const phiC = clamp(err * 1.4, -25 * DEG, 25 * DEG);
+    p.phi += clamp(phiC - p.phi, -12 * DEG * dt, 12 * DEG * dt);
+    const vsC = clamp((ap.alt - p.h) * 0.12, -4, 4);
+    const thC = clamp(p.th + (vsC - p.vs) * 0.9 * DEG * dt * 4, -8 * DEG, 12 * DEG);
+    p.th = thC;
+  } else {
+    p.th += input.pitch * 11 * DEG * dt;
+    p.phi += input.roll * 42 * DEG * dt;
+    p.phi -= p.phi * 0.03 * dt; // слабая спиральная устойчивость
+  }
+  p.th = clamp(p.th, -35 * DEG, 35 * DEG);
+  p.phi = clamp(wrapPi(p.phi), -70 * DEG, 70 * DEG);
+  const r = rho(p.h), q = 0.5 * r * p.V * p.V;
+  p.alpha = p.th - p.gam;
+  const fl = p.flaps / 30;
+  const aStall = (15 + 2 * fl) * DEG;
+  let CL = 0.28 + 0.35 * fl + 5.0 * p.alpha;
+  if (p.alpha > aStall) CL = Math.max(0.3, (0.28 + 0.35 * fl + 5.0 * aStall) - (p.alpha - aStall) * 6);
+  const CD = 0.031 + 0.03 * fl + 0.047 * CL * CL;
+  const L = q * AC.S * CL, D = q * AC.S * CD;
+  const T = p.thr * 2900 * Math.max(0, 1 - p.V / 88);
+  const g = 9.81, m = AC.m;
+  const dV = (T * Math.cos(p.alpha) - D) / m - g * Math.sin(p.gam);
+  const dG = (L * Math.cos(p.phi) + T * Math.sin(p.alpha) - m * g * Math.cos(p.gam)) / (m * Math.max(p.V, 15));
+  const dPsi = (L * Math.sin(p.phi)) / (m * Math.max(p.V, 15) * Math.cos(p.gam));
+  p.V = Math.max(12, p.V + dV * dt);
+  p.gam = clamp(p.gam + dG * dt, -80 * DEG, 80 * DEG);
+  p.psi = wrapPi(p.psi + dPsi * dt);
+  const hv = p.V * Math.cos(p.gam);
+  p.x = ((p.x + hv * Math.sin(p.psi) * dt) % WORLD + WORLD) % WORLD;
+  p.z = ((p.z - hv * Math.cos(p.psi) * dt) % WORLD + WORLD) % WORLD;
+  p.vs = p.V * Math.sin(p.gam);
+  p.h += p.vs * dt;
+  if (p.h < heightAt(p.x, p.z) + 3) { p.crashed = 2.5; flash('СТОЛКНОВЕНИЕ С ЗЕМЛЁЙ', 2.4); }
+}
+function relVec(x, z) { let dx = x - plane.x, dz = z - plane.z; if (dx > WORLD / 2) dx -= WORLD; if (dx < -WORLD / 2) dx += WORLD; if (dz > WORLD / 2) dz -= WORLD; if (dz < -WORLD / 2) dz += WORLD; return { x: dx, z: dz }; }
+const ias = () => plane.V * Math.sqrt(rho(plane.h) / 1.225) * 3.6; // км/ч
+
+// ---------------------------------------------------------------------
+// WebGL
+// ---------------------------------------------------------------------
+const glc = document.getElementById('gl');
+const gl = glc.getContext('webgl2', { antialias: true });
+const hudc = document.getElementById('hud');
+const hx = hudc.getContext('2d');
+if (!gl) { document.querySelector('.brand p').textContent = 'Нужен браузер с поддержкой WebGL2.'; throw new Error('WebGL2 недоступен'); }
+
+const COMMON = `
+precision highp float;
+precision highp int;
+uniform vec3 uSun; uniform vec3 uCam; uniform int uStyle; uniform float uWater;
+uniform vec4 uRw[3]; uniform vec2 uRwDir[3];
+float h21(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+float vn(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f*f*(3.-2.*f); return mix(mix(h21(i), h21(i+vec2(1,0)), u.x), mix(h21(i+vec2(0,1)), h21(i+vec2(1,1)), u.x), u.y); }
+float fbm(vec2 p){ float s = 0., a = .5; for (int i = 0; i < 4; i++){ s += a * vn(p); p *= 2.07; a *= .5; } return s; }
+vec3 skyCol(vec3 d){
+  float y = d.y;
+  if (uStyle == 1){ return mix(vec3(0.18,0.42,0.86), vec3(0.02,0.18,0.55), clamp(y*2.5, 0., 1.)); }
+  vec3 zen = vec3(0.09, 0.24, 0.56), hor = vec3(0.80, 0.74, 0.70);
+  vec3 c = mix(hor, zen, pow(clamp(y, 0., 1.), 0.5));
+  float s = max(dot(d, uSun), 0.);
+  c += vec3(1.0, 0.70, 0.40) * (pow(s, 5.) * 0.55 + pow(s, 48.) * 0.8);
+  c += vec3(1.0, 0.95, 0.85) * smoothstep(0.9993, 0.9997, s) * 4.0;
+  c = mix(c, vec3(0.62, 0.66, 0.70), smoothstep(0.0, -0.25, y));
+  return c;
+}
+`;
+const VS_TER = `#version 300 es
+${COMMON}
+layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNor;
+uniform mat4 uVP; uniform vec2 uOff;
+out vec3 vW; out vec3 vN;
+void main(){ vec3 w = aPos + vec3(uOff.x, 0., uOff.y); vW = w; vN = aNor; gl_Position = uVP * vec4(w, 1.); }`;
+const FS_TER = `#version 300 es
+${COMMON}
+in vec3 vW; in vec3 vN; out vec4 o;
+float runway(vec2 p){
+  float m = 0.;
+  for (int k = 0; k < 3; k++){
+    vec2 d = p - uRw[k].xy; vec2 ax = uRwDir[k];
+    float along = dot(d, ax), across = dot(d, vec2(-ax.y, ax.x));
+    if (abs(along) < uRw[k].z * .5 && abs(across) < uRw[k].w * .5){
+      float cl = step(abs(across), 0.5) * step(0.5, fract(along / 30.));
+      float edge = step(uRw[k].w * .5 - 1.2, abs(across));
+      float thr = step(uRw[k].z * .5 - 30., abs(along)) * step(0.5, fract(across / 3.));
+      m = 1. + max(max(cl, edge), thr);
+    }
+  }
+  return m;
+}
+void main(){
+  vec3 n = normalize(vN);
+  float h = vW.y, slope = 1. - n.y;
+  float d = length(vW - uCam);
+  float det = fbm(vW.xz * 0.0021);
+  vec3 c;
+  if (uStyle == 1){
+    // синтетический вид: цвет по абсолютной высоте и сетка через километр
+    c = mix(vec3(0.16,0.42,0.12), vec3(0.62,0.55,0.20), smoothstep(400., 1100., h));
+    c = mix(c, vec3(0.50,0.34,0.20), smoothstep(1100., 1700., h));
+    c = mix(c, vec3(0.92), smoothstep(1800., 2100., h));
+    if (h < uWater + 1.) c = vec3(0.10, 0.30, 0.70);
+    float diff = max(dot(n, normalize(vec3(0.3, 0.8, 0.4))), 0.);
+    c *= 0.55 + 0.6 * diff;
+    vec2 gpos = vW.xz / 1000.;
+    vec2 gg = abs(fract(gpos) - .5);
+    float line = 1. - smoothstep(0., fwidth(gpos.x) * 1.4 + 0.004, min(.5 - gg.x, .5 - gg.y));
+    c = mix(c, vec3(0.95), line * 0.35 * clamp(1. - d / 18000., 0., 1.));
+    float rw = runway(vW.xz); if (rw > 0.5) c = rw > 1.5 ? vec3(1.) : vec3(0.35);
+    c = mix(c, vec3(0.55, 0.72, 0.95), smoothstep(8000., 30000., d));
+    o = vec4(c, 1.);
+    return;
+  }
+  vec3 grass = vec3(0.20, 0.30, 0.11), forest = vec3(0.075, 0.15, 0.07), rock = vec3(0.33, 0.30, 0.27), snow = vec3(0.93, 0.94, 0.97);
+  c = mix(grass, forest, smoothstep(0.38, 0.62, det + (h - 700.) / 4000.));
+  c = mix(c, vec3(0.42, 0.40, 0.25), smoothstep(0.55, 0.8, fbm(vW.xz * 0.0006)) * (1. - smoothstep(900., 1300., h)) * 0.6);
+  c = mix(c, rock, smoothstep(0.22, 0.42, slope + (h - 1300.) / 2200.));
+  c = mix(c, snow, smoothstep(1700., 1900., h + det * 260.) * (1. - smoothstep(0.35, 0.62, slope)));
+  float rw = runway(vW.xz);
+  if (rw > 0.5) c = rw > 1.5 ? vec3(0.85) : vec3(0.2, 0.2, 0.21);
+  bool water = h < uWater + 1.;
+  if (water) { c = vec3(0.05, 0.12, 0.18); n = vec3(0., 1., 0.); }
+  float diff = max(dot(n, uSun), 0.);
+  vec3 lit = c * (vec3(1.0, 0.82, 0.62) * diff * 2.0 + vec3(0.26, 0.34, 0.50) * (0.5 + 0.5 * n.y));
+  if (water){
+    vec3 v = normalize(uCam - vW);
+    vec3 r = reflect(-v, vec3(0., 1., 0.));
+    float fres = 0.04 + 0.96 * pow(1. - max(v.y, 0.), 5.);
+    lit = mix(lit, skyCol(r), fres) + vec3(1.0, 0.8, 0.55) * pow(max(dot(r, uSun), 0.), 180.) * 3.;
+  }
+  // воздушная перспектива
+  vec3 vd = normalize(vW - uCam);
+  float fog = 1. - exp(-d * 0.000032);
+  vec3 haze = mix(vec3(0.56, 0.64, 0.76), vec3(1.0, 0.78, 0.55), pow(max(dot(vd, uSun), 0.), 3.) * 0.9);
+  lit = mix(lit, haze, fog);
+  lit = lit / (1. + lit * 0.15);
+  o = vec4(pow(lit, vec3(1. / 2.2)), 1.);
+}`;
+const VS_SKY = `#version 300 es
+const vec2 P[3] = vec2[3](vec2(-1.,-1.), vec2(3.,-1.), vec2(-1.,3.));
+out vec2 vP; void main(){ vP = P[gl_VertexID]; gl_Position = vec4(P[gl_VertexID], .9999, 1.); }`;
+const FS_SKY = `#version 300 es
+${COMMON}
+uniform mat4 uInv; in vec2 vP; out vec4 o;
+void main(){
+  vec4 a = uInv * vec4(vP, -1., 1.), b = uInv * vec4(vP, 1., 1.);
+  vec3 d = normalize(b.xyz / b.w - a.xyz / a.w);
+  vec3 c = skyCol(d);
+  if (uStyle == 0){
+    // лёгкие перистые облака высоко
+    if (d.y > 0.02){
+      vec2 uv = d.xz / d.y * 0.6;
+      float cl = smoothstep(0.47, 0.82, fbm(uv * 1.3 + vec2(0.0, 3.0)));
+      vec3 cc = mix(vec3(0.86, 0.87, 0.92), vec3(1.0, 0.86, 0.68), pow(max(dot(d, uSun), 0.), 3.));
+      c = mix(c, cc, cl * 0.75 * smoothstep(0.02, 0.18, d.y));
+    }
+    c = c / (1. + c * 0.15);
+    c = pow(c, vec3(1. / 2.2));
+  }
+  o = vec4(c, 1.);
+}`;
+function compile(t, s) { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) { const l = gl.getShaderInfoLog(sh); console.error(l); throw new Error(l); } return sh; }
+function prog(v, f) { const p = gl.createProgram(); gl.attachShader(p, compile(gl.VERTEX_SHADER, v)); gl.attachShader(p, compile(gl.FRAGMENT_SHADER, f)); gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(p)); } const c = {}; return { p, u: (n) => (n in c ? c[n] : (c[n] = gl.getUniformLocation(p, n))) }; }
+const pTer = prog(VS_TER, FS_TER), pSky = prog(VS_SKY, FS_SKY);
+// сетка рельефа
+const terVAO = gl.createVertexArray();
+let terCount = 0;
+const LOD = []; // [{ buf, count }] для шага сетки 1, 2 и 4
+(function buildMesh() {
+  const V = TS + 1;
+  const pos = new Float32Array(V * V * 3), nor = new Float32Array(V * V * 3);
+  for (let j = 0; j < V; j++) for (let i = 0; i < V; i++) {
+    const k = (j * V + i) * 3, h = hAt(i, j);
+    pos[k] = i * CELL; pos[k + 1] = Math.max(h, WATER); pos[k + 2] = j * CELL;
+    const nx = hAt(i - 1, j) - hAt(i + 1, j), nz = hAt(i, j - 1) - hAt(i, j + 1), ny = 2 * CELL;
+    const l = Math.hypot(nx, ny, nz); nor[k] = nx / l; nor[k + 1] = ny / l; nor[k + 2] = nz / l;
+  }
+  const idx = new Uint32Array(TS * TS * 6);
+  let n = 0;
+  for (let j = 0; j < TS; j++) for (let i = 0; i < TS; i++) { const a = j * V + i, b = a + 1, c = a + V, d = c + 1; idx.set([a, c, b, b, c, d], n); n += 6; }
+  terCount = n;
+  // уровни детализации для дальних плиток: те же вершины, реже треугольники
+  const lodIdx = (st) => { const q = TS / st, out = new Uint32Array(q * q * 6); let m = 0; for (let j = 0; j < TS; j += st) for (let i = 0; i < TS; i += st) { const a = j * V + i, b = a + st, c = a + st * V, d = c + st; out.set([a, c, b, b, c, d], m); m += 6; } return out; };
+  gl.bindVertexArray(terVAO);
+  const bp = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bp); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  const bn = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bn); gl.bufferData(gl.ARRAY_BUFFER, nor, gl.STATIC_DRAW); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+  const bi = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bi); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+  gl.bindVertexArray(null);
+  LOD.push({ buf: bi, count: n });
+  for (const st of [2, 4]) { const d = lodIdx(st); const b2 = gl.createBuffer(); gl.bindVertexArray(terVAO); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b2); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, d, gl.STATIC_DRAW); gl.bindVertexArray(null); LOD.push({ buf: b2, count: d.length }); }
+})();
+const skyVAO = gl.createVertexArray();
+
+// матрицы
+function persp(fovy, asp, n, f, shiftY = 0) { const t = 1 / Math.tan(fovy / 2), m = new Float32Array(16); m[0] = t / asp; m[5] = t; m[9] = -shiftY; m[10] = (f + n) / (n - f); m[11] = -1; m[14] = 2 * f * n / (n - f); return m; }
+function mul(a, b) { const r = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k]; r[i * 4 + j] = s; } return r; }
+function inv(m) {
+  const a = m, o = new Float32Array(16);
+  const b00 = a[0] * a[5] - a[1] * a[4], b01 = a[0] * a[6] - a[2] * a[4], b02 = a[0] * a[7] - a[3] * a[4], b03 = a[1] * a[6] - a[2] * a[5], b04 = a[1] * a[7] - a[3] * a[5], b05 = a[2] * a[7] - a[3] * a[6];
+  const b06 = a[8] * a[13] - a[9] * a[12], b07 = a[8] * a[14] - a[10] * a[12], b08 = a[8] * a[15] - a[11] * a[12], b09 = a[9] * a[14] - a[10] * a[13], b10 = a[9] * a[15] - a[11] * a[13], b11 = a[10] * a[15] - a[11] * a[14];
+  let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06; det = 1 / det;
+  o[0] = (a[5] * b11 - a[6] * b10 + a[7] * b09) * det; o[1] = (a[2] * b10 - a[1] * b11 - a[3] * b09) * det; o[2] = (a[13] * b05 - a[14] * b04 + a[15] * b03) * det; o[3] = (a[10] * b04 - a[9] * b05 - a[11] * b03) * det;
+  o[4] = (a[6] * b08 - a[4] * b11 - a[7] * b07) * det; o[5] = (a[0] * b11 - a[2] * b08 + a[3] * b07) * det; o[6] = (a[14] * b02 - a[12] * b05 - a[15] * b01) * det; o[7] = (a[8] * b05 - a[10] * b02 + a[11] * b01) * det;
+  o[8] = (a[4] * b10 - a[5] * b08 + a[7] * b06) * det; o[9] = (a[1] * b08 - a[0] * b10 - a[3] * b06) * det; o[10] = (a[12] * b04 - a[13] * b02 + a[15] * b00) * det; o[11] = (a[9] * b02 - a[8] * b04 - a[11] * b00) * det;
+  o[12] = (a[5] * b07 - a[4] * b09 - a[6] * b06) * det; o[13] = (a[0] * b09 - a[1] * b07 + a[2] * b06) * det; o[14] = (a[13] * b01 - a[12] * b03 - a[14] * b00) * det; o[15] = (a[8] * b03 - a[9] * b01 + a[10] * b00) * det;
+  return o;
+}
+function viewMat(eye, psi, th, phi) {
+  const f = [Math.sin(psi) * Math.cos(th), Math.sin(th), -Math.cos(psi) * Math.cos(th)];
+  const r0 = [Math.cos(psi), 0, Math.sin(psi)];
+  const u0 = [-Math.sin(psi) * Math.sin(th), Math.cos(th), Math.cos(psi) * Math.sin(th)];
+  const r = r0.map((v, k) => v * Math.cos(phi) - u0[k] * Math.sin(phi));
+  const u = u0.map((v, k) => v * Math.cos(phi) + r0[k] * Math.sin(phi));
+  const m = new Float32Array(16);
+  m[0] = r[0]; m[4] = r[1]; m[8] = r[2];
+  m[1] = u[0]; m[5] = u[1]; m[9] = u[2];
+  m[2] = -f[0]; m[6] = -f[1]; m[10] = -f[2];
+  m[12] = -(r[0] * eye[0] + r[1] * eye[1] + r[2] * eye[2]);
+  m[13] = -(u[0] * eye[0] + u[1] * eye[1] + u[2] * eye[2]);
+  m[14] = (f[0] * eye[0] + f[1] * eye[1] + f[2] * eye[2]);
+  m[15] = 1;
+  return m;
+}
+const SUN = (() => { const az = 250 * DEG, el = 14 * DEG; return [Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)]; })();
+function renderView(vx, vy, vw, vh, style, fovy, shiftY) {
+  gl.viewport(vx, vy, vw, vh);
+  gl.scissor(vx, vy, vw, vh);
+  const eye = [plane.x, plane.h + 1.5, plane.z];
+  const V = viewMat(eye, plane.psi, plane.th, plane.phi);
+  const P = persp(fovy, vw / vh, 5, 60000, shiftY);
+  const VP = mul(P, V);
+  // небо
+  gl.disable(gl.DEPTH_TEST);
+  gl.useProgram(pSky.p);
+  gl.uniformMatrix4fv(pSky.u('uInv'), false, inv(VP));
+  gl.uniform3fv(pSky.u('uSun'), SUN); gl.uniform1i(pSky.u('uStyle'), style);
+  gl.bindVertexArray(skyVAO); gl.drawArrays(gl.TRIANGLES, 0, 3);
+  // рельеф — 3×3 плитки вокруг самолёта
+  gl.enable(gl.DEPTH_TEST);
+  gl.useProgram(pTer.p);
+  gl.uniformMatrix4fv(pTer.u('uVP'), false, VP);
+  gl.uniform3fv(pTer.u('uSun'), SUN); gl.uniform3fv(pTer.u('uCam'), eye); gl.uniform1i(pTer.u('uStyle'), style); gl.uniform1f(pTer.u('uWater'), WATER);
+  const rw = [], rd = [];
+  AIRFIELDS.forEach((a) => { const d = relVec(a.x, a.z); rw.push(plane.x + d.x, plane.z + d.z, a.len, a.wid); rd.push(Math.sin(a.hdg), -Math.cos(a.hdg)); });
+  gl.uniform4fv(pTer.u('uRw'), rw); gl.uniform2fv(pTer.u('uRwDir'), rd);
+  gl.bindVertexArray(terVAO);
+  // отсечение плиток позади камеры и дальше 30 км; дальние — с редкой сеткой
+  const fx = Math.sin(plane.psi), fz = -Math.cos(plane.psi);
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+    const x0 = i * WORLD, x1 = x0 + WORLD, z0 = j * WORLD, z1 = z0 + WORLD;
+    const dx = Math.max(x0 - plane.x, 0, plane.x - x1), dz = Math.max(z0 - plane.z, 0, plane.z - z1);
+    const dmin = Math.hypot(dx, dz);
+    if (dmin > 30000) continue;
+    const ahead = [[x0, z0], [x1, z0], [x0, z1], [x1, z1]].some(([cx, cz]) => (cx - plane.x) * fx + (cz - plane.z) * fz > -2000);
+    if (!ahead && dmin > 0) continue;
+    const lod = dmin === 0 ? LOD[0] : dmin < 15000 ? LOD[1] : LOD[2];
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, lod.buf);
+    gl.uniform2f(pTer.u('uOff'), i * WORLD, j * WORLD);
+    gl.drawElements(gl.TRIANGLES, lod.count, gl.UNSIGNED_INT, 0);
+  }
+}
+
+// ---------------------------------------------------------------------
+// Раскладка экрана
+// ---------------------------------------------------------------------
+let W = 1, Hh = 1, DPR = 1, L = null;
+function layout() {
+  W = innerWidth; Hh = innerHeight;
+  DPR = SHOT ? 1 : Math.min(devicePixelRatio || 1, 2);
+  glc.width = Math.round(W * DPR); glc.height = Math.round(Hh * DPR);
+  hudc.width = Math.round(W * DPR); hudc.height = Math.round(Hh * DPR);
+  const mobile = W < 760;
+  if (!mobile) {
+    const wsH = Math.round(Hh * 0.4);
+    const panelTop = wsH + 26;
+    const dispH = Math.min(Hh - panelTop - 74, (W - 140) / 2 * 0.75);
+    const dispW = dispH / 0.75;
+    const gap = Math.max(40, (W - dispW * 2) / 3);
+    L = { mobile, ws: { x: 0, y: 0, w: W, h: wsH }, pfd: { x: gap, y: panelTop + 14, w: dispW, h: dispH }, mfd: { x: gap * 2 + dispW, y: panelTop + 14, w: dispW, h: dispH }, panelTop };
+  } else {
+    const wsH = Math.round(Hh * 0.3);
+    const dispW = W - 16, dispH = Math.min(dispW * 0.78, (Hh - wsH - 120) * 0.55);
+    const mfdH = Hh - wsH - 22 - dispH - 16 - 60;
+    L = { mobile, ws: { x: 0, y: 0, w: W, h: wsH }, pfd: { x: 8, y: wsH + 16, w: dispW, h: dispH }, mfd: { x: 8, y: wsH + 16 + dispH + 12, w: dispW, h: Math.max(120, mfdH) }, panelTop: wsH + 6 };
+  }
+  placeSoftkeys();
+  mapCache.stamp = -1;
+}
+addEventListener('resize', () => { clearTimeout(layout.t); layout.t = setTimeout(layout, 120); });
+
+// ---------------------------------------------------------------------
+// Экранные кнопки
+// ---------------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+const mapState = { range: 16000, relief: true };
+const SK_PFD = [
+  { t: 'АП', f: () => toggleAP(), on: () => ap.on },
+  { t: 'ВЫС−', f: () => { ap.alt = Math.max(300, ap.alt - 100); } },
+  { t: 'ВЫС+', f: () => { ap.alt = Math.min(5000, ap.alt + 100); } },
+  { t: 'ЗАКР', f: () => cycleFlaps(), on: () => plane.flaps > 0 },
+  { t: 'ГАЗ−', f: () => { plane.thr = clamp(plane.thr - 0.05, 0, 1); syncThr(); } },
+  { t: 'ГАЗ+', f: () => { plane.thr = clamp(plane.thr + 0.05, 0, 1); syncThr(); } },
+];
+const SK_MFD = [
+  { t: 'РЕЛЬЕФ', f: () => { mapState.relief = !mapState.relief; mapCache.stamp = -1; }, on: () => mapState.relief },
+  { t: 'МАСШ−', f: () => { mapState.range = Math.max(4000, mapState.range / 2); } },
+  { t: 'МАСШ+', f: () => { mapState.range = Math.min(32000, mapState.range * 2); } },
+  { t: 'ППМ ▸', f: () => { ap.wp = (ap.wp + 1) % ROUTE.length; } },
+];
+function buildSoftkeys(el, list) {
+  el.innerHTML = '';
+  list.forEach((k) => {
+    const b = document.createElement('button'); b.className = 'sk'; b.textContent = k.t;
+    if (k.on) b.setAttribute('aria-pressed', k.on());
+    b.addEventListener('click', () => { k.f(); refreshSoftkeys(); ensureAudio(); });
+    el.appendChild(b); k.el = b;
+  });
+}
+function refreshSoftkeys() { [...SK_PFD, ...SK_MFD].forEach((k) => k.on && k.el && k.el.setAttribute('aria-pressed', k.on())); }
+buildSoftkeys($('skPFD'), SK_PFD); buildSoftkeys($('skMFD'), SK_MFD);
+function placeSoftkeys() {
+  const a = $('skPFD'), b = $('skMFD');
+  if (!L.mobile) {
+    a.style.left = L.pfd.x + 'px'; a.style.top = (L.pfd.y + L.pfd.h + 16) + 'px'; a.style.width = L.pfd.w + 'px'; a.style.justifyContent = 'center';
+    b.style.left = L.mfd.x + 'px'; b.style.top = (L.mfd.y + L.mfd.h + 16) + 'px'; b.style.width = L.mfd.w + 'px'; b.style.justifyContent = 'center';
+    b.style.display = 'flex';
+  } else {
+    a.style.left = '8px'; a.style.top = (L.mfd.y + L.mfd.h + 10) + 'px'; a.style.width = (W - 16) + 'px'; a.style.justifyContent = 'space-between';
+    b.style.display = 'none';
+  }
+  const t = $('thr');
+  t.style.top = (L.ws.y + 40) + 'px'; t.style.height = (L.ws.h - 56) + 'px';
+  syncThr();
+}
+function toggleAP() {
+  ap.on = !ap.on;
+  if (ap.on) { ap.alt = Math.round(plane.h / 50) * 50; flash('АВТОПИЛОТ ВКЛЮЧЁН', 1.6, '#4BE36A'); }
+  else disconnectAP();
+  refreshSoftkeys();
+}
+function disconnectAP() { ap.on = false; ap.disc = 3; flash('АВТОПИЛОТ ОТКЛЮЧЁН', 2.2, '#FFB321'); beep([880, 660], 0.12); refreshSoftkeys(); }
+function cycleFlaps() { plane.flaps = (plane.flaps + 10) % 40; flash(`ЗАКРЫЛКИ ${plane.flaps}°`, 1.4, '#E8ECEF'); refreshSoftkeys(); }
+
+// ---------------------------------------------------------------------
+// Управление
+// ---------------------------------------------------------------------
+const keys = new Set();
+addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const c = e.code;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyS', 'KeyA', 'KeyD'].includes(c)) {
+    e.preventDefault(); keys.add(c); if (ap.on) disconnectAP(); hideHelp(); ensureAudio();
+  }
+  if (c === 'KeyP') toggleAP();
+  if (c === 'KeyF') cycleFlaps();
+  if (c === 'Equal' || c === 'NumpadAdd') { plane.thr = clamp(plane.thr + 0.05, 0, 1); syncThr(); }
+  if (c === 'Minus' || c === 'NumpadSubtract') { plane.thr = clamp(plane.thr - 0.05, 0, 1); syncThr(); }
+});
+addEventListener('keyup', (e) => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+// «штурвал» мышью или пальцем по лобовому стеклу
+hudc.addEventListener('pointerdown', (e) => {
+  if (e.clientY > L.ws.h) return;
+  hudc.setPointerCapture(e.pointerId);
+  input.drag = { x: e.clientX, y: e.clientY, cx: e.clientX, cy: e.clientY };
+  if (ap.on) disconnectAP();
+  hideHelp(); ensureAudio();
+});
+hudc.addEventListener('pointermove', (e) => { if (input.drag) { input.drag.cx = e.clientX; input.drag.cy = e.clientY; } });
+const endDrag = () => { input.drag = null; };
+hudc.addEventListener('pointerup', endDrag); hudc.addEventListener('pointercancel', endDrag);
+function readControls() {
+  let p = 0, r = 0;
+  if (keys.has('ArrowDown') || keys.has('KeyS')) p += 1; // на себя — нос вверх
+  if (keys.has('ArrowUp') || keys.has('KeyW')) p -= 1;   // от себя — нос вниз
+  if (keys.has('ArrowLeft') || keys.has('KeyA')) r -= 1;
+  if (keys.has('ArrowRight') || keys.has('KeyD')) r += 1;
+  if (input.drag) { p += clamp((input.drag.cy - input.drag.y) / 90, -1, 1); r += clamp((input.drag.cx - input.drag.x) / 120, -1, 1); }
+  input.pitch = clamp(p, -1, 1); input.roll = clamp(r, -1, 1);
+}
+// рычаг газа на мобильном
+(function throttle() {
+  const t = $('thr');
+  const set = (e) => { const r = t.getBoundingClientRect(); plane.thr = clamp(1 - (e.clientY - r.top - 17) / (r.height - 34), 0, 1); syncThr(); };
+  t.addEventListener('pointerdown', (e) => { t.setPointerCapture(e.pointerId); set(e); t.dragging = true; ensureAudio(); });
+  t.addEventListener('pointermove', (e) => { if (t.dragging) set(e); });
+  t.addEventListener('pointerup', () => (t.dragging = false));
+})();
+function syncThr() { const t = $('thr'); const h = t.clientHeight || 100; $('thrKnob').style.top = (4 + (1 - plane.thr) * (h - 42)) + 'px'; $('thrTxt').textContent = Math.round(plane.thr * 100) + '%'; }
+let helpHidden = false;
+function hideHelp() { if (!helpHidden) { helpHidden = true; setTimeout(() => $('help').classList.add('faded'), 3000); } }
+
+// ---------------------------------------------------------------------
+// Сообщения и звук
+// ---------------------------------------------------------------------
+let msg = null;
+function flash(text, dur, col = '#FF4040') { msg = { text, t: dur, col }; }
+let audio = null;
+function ensureAudio() {
+  if (audio) { if (audio.ctx.state === 'suspended') audio.ctx.resume(); return; }
+  const Ctor = window.AudioContext || window.webkitAudioContext; if (!Ctor) return;
+  const ctx = new Ctor();
+  const master = ctx.createGain(); master.gain.value = 0.35; master.connect(ctx.destination);
+  const eng = ctx.createOscillator(); eng.type = 'sawtooth';
+  const eng2 = ctx.createOscillator(); eng2.type = 'square';
+  const ef = ctx.createBiquadFilter(); ef.type = 'lowpass'; ef.frequency.value = 320;
+  const eg = ctx.createGain(); eg.gain.value = 0.18;
+  eng.connect(ef); eng2.connect(ef); ef.connect(eg).connect(master);
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const wn = ctx.createBufferSource(); wn.buffer = buf; wn.loop = true;
+  const wf = ctx.createBiquadFilter(); wf.type = 'bandpass'; wf.frequency.value = 700; wf.Q.value = 0.5;
+  const wg = ctx.createGain(); wg.gain.value = 0.05;
+  wn.connect(wf).connect(wg).connect(master);
+  eng.start(); eng2.start(); wn.start();
+  audio = { ctx, master, eng, eng2, ef, eg, wg, wf };
+}
+function updateAudio() {
+  if (!audio) return;
+  const t = audio.ctx.currentTime;
+  const rpm = 1400 + plane.thr * 1250 + (plane.V - 50) * 8;
+  const f = rpm / 60 * 2; // два цилиндровых такта за оборот у четырёхцилиндрового
+  audio.eng.frequency.setTargetAtTime(f, t, 0.2);
+  audio.eng2.frequency.setTargetAtTime(f * 0.5, t, 0.2);
+  audio.ef.frequency.setTargetAtTime(220 + plane.thr * 380, t, 0.3);
+  audio.eg.gain.setTargetAtTime(plane.crashed > 0 ? 0 : 0.1 + plane.thr * 0.12, t, 0.2);
+  audio.wg.gain.setTargetAtTime(plane.crashed > 0 ? 0 : Math.min(0.12, plane.V * 0.0012), t, 0.3);
+  audio.wf.frequency.setTargetAtTime(400 + plane.V * 9, t, 0.3);
+}
+function beep(freqs, dur) {
+  if (!audio) return;
+  const { ctx, master } = audio; let t = ctx.currentTime;
+  for (const f of freqs) {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.02); t += dur;
+  }
+}
+
+// ---------------------------------------------------------------------
+// Панель и символика
+// ---------------------------------------------------------------------
+const C = { cyan: '#35E0F0', magenta: '#F04BD8', green: '#4BE36A', amber: '#FFB321', red: '#FF4040', white: '#F4F7F9', dim: '#A9B1B8' };
+const FONT = (w, s) => `${w} ${s}px Jura, Manrope, sans-serif`;
+function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function drawPanel(g) {
+  // приборная доска
+  const top = L.panelTop;
+  const pg = g.createLinearGradient(0, top, 0, Hh);
+  pg.addColorStop(0, '#202326'); pg.addColorStop(1, '#131517');
+  g.fillStyle = pg; g.fillRect(0, top, W, Hh - top);
+  // козырёк приборной доски
+  g.fillStyle = '#0E0F11';
+  g.beginPath(); g.moveTo(0, top + 8); g.quadraticCurveTo(W / 2, top - 22, W, top + 8); g.lineTo(W, top + 20); g.quadraticCurveTo(W / 2, top - 6, 0, top + 20); g.closePath(); g.fill();
+  // стойки фонаря
+  if (!L.mobile) {
+    g.fillStyle = '#0E0F11';
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(46, 0); g.lineTo(96, top); g.lineTo(0, top); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(W, 0); g.lineTo(W - 46, 0); g.lineTo(W - 96, top); g.lineTo(W, top); g.closePath(); g.fill();
+    // верхняя кромка фонаря
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(W, 0); g.lineTo(W, 8); g.quadraticCurveTo(W / 2, 30, 0, 8); g.closePath(); g.fill();
+  }
+  for (const r of [L.pfd, L.mfd]) {
+    const b = L.mobile ? 5 : 12;
+    const bg = g.createLinearGradient(0, r.y - b, 0, r.y + r.h + b);
+    bg.addColorStop(0, '#34383D'); bg.addColorStop(1, '#1D2023');
+    g.fillStyle = bg; rr(g, r.x - b, r.y - b, r.w + b * 2, r.h + b * 2 + (L.mobile ? 0 : 50), L.mobile ? 8 : 14); g.fill();
+    g.fillStyle = '#000'; g.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
+    // окно в панели: под PFD виден синтетический рельеф из WebGL
+    if (r === L.pfd) g.clearRect(r.x, r.y, r.w, r.h);
+    if (!L.mobile) for (const [kx, ky] of [[r.x - b - 0, r.y + r.h + 40], [r.x + r.w + b, r.y + r.h + 40]]) {
+      const kg = g.createRadialGradient(kx - 3, ky - 3, 2, kx, ky, 15); kg.addColorStop(0, '#5A5F66'); kg.addColorStop(1, '#16181A');
+      g.fillStyle = kg; g.beginPath(); g.arc(kx + (kx < r.x ? 22 : -22), ky, 14, 0, Math.PI * 2); g.fill();
+    }
+  }
+}
+function tape(g, x, y, w, h, value, step, labelEvery, fmt, pxPer, align) {
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+  g.fillStyle = 'rgba(20,24,30,.55)'; g.fillRect(x, y, w, h);
+  const cy = y + h / 2;
+  const lo = Math.floor((value - (h / 2) / pxPer) / step) * step;
+  g.strokeStyle = C.white; g.fillStyle = C.white; g.lineWidth = 1.5;
+  g.font = FONT(600, 15); g.textBaseline = 'middle';
+  for (let v = lo; v <= value + (h / 2) / pxPer + step; v += step) {
+    const yy = cy - (v - value) * pxPer;
+    const major = Math.round(v / step) % labelEvery === 0;
+    const tx = align === 'left' ? x + w : x;
+    g.beginPath(); g.moveTo(tx, yy); g.lineTo(tx + (align === 'left' ? -1 : 1) * (major ? 12 : 7), yy); g.stroke();
+    if (major && v >= 0) { g.textAlign = align === 'left' ? 'right' : 'left'; g.fillText(fmt(v), align === 'left' ? x + w - 16 : x + 16, yy); }
+  }
+  g.restore();
+}
+function readout(g, x, y, w, h, text, align) {
+  g.fillStyle = '#000'; g.strokeStyle = C.white; g.lineWidth = 1.5;
+  g.beginPath();
+  if (align === 'left') { g.moveTo(x, y - h / 2); g.lineTo(x + w, y - h / 2); g.lineTo(x + w + 9, y); g.lineTo(x + w, y + h / 2); g.lineTo(x, y + h / 2); }
+  else { g.moveTo(x + w, y - h / 2); g.lineTo(x, y - h / 2); g.lineTo(x - 9, y); g.lineTo(x, y + h / 2); g.lineTo(x + w, y + h / 2); }
+  g.closePath(); g.fill(); g.stroke();
+  g.fillStyle = C.white; g.font = FONT(700, 20); g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, x + w / 2, y + 1);
+}
+function drawPFD(g, r) {
+  const cx = r.x + r.w / 2, cy = r.y + r.h * 0.43;
+  const ppd = r.h / 30; // пикселей на градус — совпадает с камерой синтетического вида
+  const s = Math.min(1, r.w / 620);
+  g.save(); g.beginPath(); g.rect(r.x, r.y, r.w, r.h); g.clip();
+  // шкала тангажа и линия горизонта
+  g.save();
+  g.translate(cx, cy); g.rotate(-plane.phi);
+  const pitch = plane.th / DEG;
+  g.strokeStyle = C.white; g.fillStyle = C.white; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(-r.w, pitch * ppd); g.lineTo(r.w, pitch * ppd); g.stroke();
+  g.font = FONT(600, 13); g.textBaseline = 'middle';
+  for (let a = -30; a <= 30; a += 2.5) {
+    if (a === 0) continue;
+    const y = (pitch - a) * ppd;
+    if (Math.abs(y) > r.h * 0.32) continue;
+    const wdt = a % 10 === 0 ? 70 : a % 5 === 0 ? 40 : 18;
+    g.lineWidth = 1.6; g.beginPath(); g.moveTo(-wdt * s, y); g.lineTo(wdt * s, y); g.stroke();
+    if (a % 10 === 0) { g.textAlign = 'right'; g.fillText(Math.abs(a), -wdt * s - 6, y); g.textAlign = 'left'; g.fillText(Math.abs(a), wdt * s + 6, y); }
+  }
+  g.restore();
+  // шкала крена и указатель неба
+  const R = r.h * 0.33;
+  g.strokeStyle = C.white; g.lineWidth = 2;
+  g.beginPath(); g.arc(cx, cy, R, -Math.PI / 2 - 60 * DEG, -Math.PI / 2 + 60 * DEG); g.stroke();
+  for (const a of [-60, -45, -30, -20, -10, 10, 20, 30, 45, 60]) {
+    const ang = -Math.PI / 2 + a * DEG, len = Math.abs(a) % 30 === 0 ? 14 : 8;
+    g.beginPath(); g.moveTo(cx + Math.cos(ang) * R, cy + Math.sin(ang) * R); g.lineTo(cx + Math.cos(ang) * (R + len), cy + Math.sin(ang) * (R + len)); g.stroke();
+  }
+  g.fillStyle = C.white; g.beginPath(); g.moveTo(cx, cy - R); g.lineTo(cx - 8, cy - R - 12); g.lineTo(cx + 8, cy - R - 12); g.closePath(); g.fill();
+  g.save(); g.translate(cx, cy); g.rotate(-plane.phi);
+  g.fillStyle = C.white; g.beginPath(); g.moveTo(0, -R + 2); g.lineTo(-8, -R + 14); g.lineTo(8, -R + 14); g.closePath(); g.fill();
+  g.restore();
+  // силуэт самолёта
+  g.fillStyle = '#FFD21F'; g.strokeStyle = '#000'; g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx - 70 * s, cy + 22 * s); g.lineTo(cx - 40 * s, cy + 22 * s); g.lineTo(cx, cy + 8 * s); g.lineTo(cx + 40 * s, cy + 22 * s); g.lineTo(cx + 70 * s, cy + 22 * s); g.closePath(); g.fill(); g.stroke();
+  g.fillRect(cx - 110 * s, cy - 2, 26 * s, 5); g.strokeRect(cx - 110 * s, cy - 2, 26 * s, 5);
+  g.fillRect(cx + 84 * s, cy - 2, 26 * s, 5); g.strokeRect(cx + 84 * s, cy - 2, 26 * s, 5);
+  // вектор пути: куда реально летим
+  const fpY = cy + (plane.th - plane.gam) * ppd / DEG;
+  g.strokeStyle = C.green; g.lineWidth = 2;
+  g.beginPath(); g.arc(cx, fpY, 7, 0, Math.PI * 2); g.moveTo(cx - 18, fpY); g.lineTo(cx - 7, fpY); g.moveTo(cx + 7, fpY); g.lineTo(cx + 18, fpY); g.moveTo(cx, fpY - 7); g.lineTo(cx, fpY - 14); g.stroke();
+  // ленты скорости и высоты
+  const tapeH = r.h * 0.56, ty = cy - tapeH / 2;
+  const sw = 86 * s + 10, sx = r.x + 14;
+  const V = ias();
+  tape(g, sx, ty, sw, tapeH, V, 10, 2, (v) => v.toFixed(0), 2.2, 'left');
+  // цветные дуги скорости: белая (закрылки), зелёная, жёлтая, красная черта
+  const band = (v0, v1, col, xo) => { const y0 = cy - (v0 - V) * 2.2, y1 = cy - (v1 - V) * 2.2; g.fillStyle = col; g.fillRect(sx + sw - 4 - xo, Math.max(ty, y1), 4, Math.min(ty + tapeH, y0) - Math.max(ty, y1)); };
+  g.save(); g.beginPath(); g.rect(sx, ty, sw, tapeH); g.clip();
+  band(74, 157, '#F4F7F9', 5); band(89, 239, C.green, 0); band(239, 302, C.amber, 0); band(302, 360, C.red, 0);
+  g.restore();
+  readout(g, sx + 4, cy, sw - 16, 34, V.toFixed(0), 'left');
+  g.fillStyle = C.white; g.font = FONT(600, 13); g.textAlign = 'center';
+  g.fillText('км/ч', sx + sw / 2, ty - 10);
+  g.fillStyle = C.cyan; g.fillText(`ИСТ ${Math.round(plane.V * 3.6)}`, sx + sw / 2, ty + tapeH + 14);
+  const aw = 92 * s + 12, ax = r.x + r.w - aw - 40;
+  tape(g, ax, ty, aw, tapeH, plane.h, 20, 5, (v) => Math.round(v).toString(), 0.62, 'right');
+  // заданная высота (бирюзовая метка)
+  const bugY = cy - (ap.alt - plane.h) * 0.62;
+  g.fillStyle = C.cyan; g.fillRect(ax, clamp(bugY, ty, ty + tapeH) - 7, 7, 14);
+  g.fillStyle = C.cyan; g.font = FONT(700, 16); g.textAlign = 'center'; g.fillText(`${ap.alt}`, ax + aw / 2, ty - 12);
+  readout(g, ax + 14, cy, aw - 14, 34, Math.round(plane.h).toString(), 'right');
+  g.fillStyle = C.white; g.font = FONT(600, 13); g.fillText('м', ax + aw / 2, ty + tapeH + 14);
+  // вариометр
+  const vx = ax + aw + 6, vh = tapeH * 0.9, vy = cy - vh / 2;
+  g.fillStyle = 'rgba(20,24,30,.55)'; g.fillRect(vx, vy, 26, vh);
+  g.strokeStyle = C.white; g.lineWidth = 1.2; g.font = FONT(600, 12); g.textAlign = 'left'; g.fillStyle = C.white;
+  for (const v of [-10, -5, 0, 5, 10]) { const yy = cy - v / 10 * vh / 2; g.beginPath(); g.moveTo(vx, yy); g.lineTo(vx + 7, yy); g.stroke(); if (v) g.fillText(Math.abs(v), vx + 9, yy + 1); }
+  const vsy = cy - clamp(plane.vs, -10, 10) / 10 * vh / 2;
+  g.strokeStyle = C.green; g.lineWidth = 3; g.beginPath(); g.moveTo(vx + 26, cy); g.lineTo(vx + 2, vsy); g.stroke();
+  // курс: дуга компаса внизу
+  const hcx = cx, hcy = r.y + r.h + r.h * 0.12, HR = r.h * 0.34;
+  g.fillStyle = 'rgba(10,14,20,.78)'; g.beginPath(); g.arc(hcx, hcy, HR + 4, 0, Math.PI * 2); g.fill();
+  g.save(); g.translate(hcx, hcy); g.rotate(-plane.psi);
+  g.strokeStyle = C.white; g.fillStyle = C.white; g.font = FONT(700, 14); g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let a = 0; a < 360; a += 5) {
+    g.save(); g.rotate(a * DEG);
+    const big = a % 30 === 0;
+    g.lineWidth = big ? 2 : 1.2; g.beginPath(); g.moveTo(0, -HR); g.lineTo(0, -HR + (big ? 12 : a % 10 === 0 ? 8 : 5)); g.stroke();
+    if (big) g.fillText(a === 0 ? 'С' : a === 90 ? 'В' : a === 180 ? 'Ю' : a === 270 ? 'З' : String(a / 10), 0, -HR + 26);
+    g.restore();
+  }
+  // стрелка на ППМ (пурпурная)
+  const wp = AIRFIELDS[ROUTE[ap.wp]], dv = relVec(wp.x, wp.z);
+  const brg = Math.atan2(dv.x, -dv.z);
+  g.save(); g.rotate(brg); g.strokeStyle = C.magenta; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(0, HR - 20); g.lineTo(0, -HR + 38); g.stroke();
+  g.fillStyle = C.magenta; g.beginPath(); g.moveTo(0, -HR + 32); g.lineTo(-8, -HR + 46); g.lineTo(8, -HR + 46); g.closePath(); g.fill();
+  g.restore();
+  g.restore();
+  g.fillStyle = C.white; g.beginPath(); g.moveTo(hcx, hcy - HR - 2); g.lineTo(hcx - 8, hcy - HR - 14); g.lineTo(hcx + 8, hcy - HR - 14); g.closePath(); g.fill();
+  const hdg = ((plane.psi / DEG) % 360 + 360) % 360;
+  g.fillStyle = '#000'; g.fillRect(hcx - 30, hcy - HR - 44, 60, 26); g.strokeStyle = C.white; g.lineWidth = 1.5; g.strokeRect(hcx - 30, hcy - HR - 44, 60, 26);
+  g.fillStyle = C.white; g.font = FONT(700, 18); g.textAlign = 'center'; g.fillText(String(Math.round(hdg) % 360).padStart(3, '0') + '°', hcx, hcy - HR - 30);
+  // верхняя строка: маршрут
+  const dist = Math.hypot(dv.x, dv.z);
+  const gs = plane.V * Math.cos(plane.gam) * 3.6;
+  const trk = hdg;
+  g.fillStyle = 'rgba(0,0,0,.72)'; g.fillRect(r.x, r.y, r.w, 30);
+  g.font = FONT(700, 14); g.textBaseline = 'middle'; g.textAlign = 'left';
+  const items = [['ППМ', wp.name, C.magenta], ['ДАЛ', `${(dist / 1000).toFixed(1).replace('.', ',')} км`, C.magenta], ['ЗПУ', `${String(Math.round(((brg / DEG) + 360) % 360)).padStart(3, '0')}°`, C.magenta], ['ФПУ', `${String(Math.round(trk)).padStart(3, '0')}°`, C.white], ['ПС', `${Math.round(gs)}`, C.white]];
+  let x = r.x + 12;
+  for (const [k, v, col] of items) {
+    if (x > r.x + r.w - 60) break;
+    g.fillStyle = C.dim; g.fillText(k, x, r.y + 15); x += g.measureText(k).width + 6;
+    g.fillStyle = col; g.fillText(v, x, r.y + 15); x += g.measureText(v).width + 18;
+  }
+  // табло режимов автопилота
+  g.font = FONT(700, 14); g.textAlign = 'right';
+  const apx = r.x + r.w - 14, apy = r.y + r.h - 16;
+  if (ap.on) { g.fillStyle = C.green; g.fillText('АП · НАВ · ВЫС', apx, apy); }
+  else if (ap.disc > 0 && Math.floor(ap.disc * 3) % 2 === 0) { g.fillStyle = C.amber; g.fillText('АП ОТКЛ', apx, apy); }
+  // предупреждения
+  const agl = plane.h - heightAt(plane.x, plane.z);
+  if (plane.alpha > 13 * DEG && plane.crashed <= 0) { g.fillStyle = C.red; g.fillRect(cx - 80, cy + r.h * 0.2, 160, 28); g.fillStyle = '#fff'; g.font = FONT(700, 16); g.fillText('СВАЛИВАНИЕ', cx, cy + r.h * 0.2 + 15); }
+  else if (agl < 150 && plane.vs < -2 && plane.crashed <= 0) { g.fillStyle = C.amber; g.fillRect(cx - 70, cy + r.h * 0.2, 140, 28); g.fillStyle = '#000'; g.font = FONT(700, 16); g.fillText('ЗЕМЛЯ', cx, cy + r.h * 0.2 + 15); }
+  g.fillStyle = C.dim; g.font = FONT(600, 13); g.textAlign = 'left'; g.fillText(`РВ ${Math.max(0, Math.round(agl))} м`, r.x + 14, r.y + r.h - 16);
+  g.restore();
+}
+// ---------- карта ----------
+const mapCache = { cv: document.createElement('canvas'), stamp: -1, alt: 0 };
+function rebuildMap() {
+  // карта вдвое подробнее сетки рельефа: высоты берутся билинейно
+  const N = TS * 2, cv = mapCache.cv; cv.width = N; cv.height = N;
+  const c = cv.getContext('2d'), img = c.createImageData(N, N);
+  const alt = plane.h, step = WORLD / N;
+  const hs = new Float32Array(N * N);
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) hs[j * N + i] = heightAt((i + 0.5) * step, (j + 0.5) * step);
+  const hq = (i, j) => hs[(((j % N) + N) % N) * N + (((i % N) + N) % N)];
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const h = hq(i, j), k = (j * N + i) * 4;
+    let col;
+    if (h < WATER + 1) col = [18, 52, 110];
+    else if (mapState.relief) {
+      const d = h - alt;
+      col = d > 0 ? [205, 38, 38] : d > -300 ? [214, 170, 20] : d > -700 ? [52, 92, 40] : [26, 54, 28];
+    } else {
+      const t = clamp((h - 200) / 1900, 0, 1);
+      col = t < 0.4 ? [40 + t * 200, 90 + t * 120, 40] : t < 0.8 ? [150 + (t - 0.4) * 100, 130 - (t - 0.4) * 80, 60] : [230, 230, 230];
+    }
+    const nx = hq(i - 1, j) - hq(i + 1, j), nz = hq(i, j - 1) - hq(i, j + 1);
+    const shade = clamp(1 + (nx - nz) / 380, 0.6, 1.3);
+    img.data[k] = col[0] * shade; img.data[k + 1] = col[1] * shade; img.data[k + 2] = col[2] * shade; img.data[k + 3] = 255;
+  }
+  c.putImageData(img, 0, 0);
+  mapCache.alt = alt;
+}
+function drawMFD(g, r, now) {
+  if (mapCache.stamp < 0 || Math.abs(mapCache.alt - plane.h) > 40 || now - mapCache.stamp > 1500) { rebuildMap(); mapCache.stamp = now; }
+  g.save(); g.beginPath(); g.rect(r.x, r.y, r.w, r.h); g.clip();
+  g.fillStyle = '#05080C'; g.fillRect(r.x, r.y, r.w, r.h);
+  const eisW = L.mobile ? 0 : Math.min(118, r.w * 0.19);
+  const profH = L.mobile ? 0 : r.h * 0.22;
+  const mx = r.x + eisW, mw = r.w - eisW, mh = r.h - profH;
+  const acx = mx + mw / 2, acy = r.y + mh * 0.68;
+  const scale = (mh * 0.62) / mapState.range; // пикселей на метр
+  g.save(); g.beginPath(); g.rect(mx, r.y, mw, mh); g.clip();
+  g.translate(acx, acy); g.rotate(-plane.psi);
+  const tile = WORLD * scale;
+  g.imageSmoothingEnabled = true;
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+    g.drawImage(mapCache.cv, (i * WORLD - plane.x) * scale, (j * WORLD - plane.z) * scale, tile, tile);
+  }
+  // маршрут
+  g.strokeStyle = C.magenta; g.lineWidth = 3; g.beginPath();
+  const pts = ROUTE.map((k) => { const d = relVec(AIRFIELDS[k].x, AIRFIELDS[k].z); return [d.x * scale, d.z * scale]; });
+  const order = [ap.wp, (ap.wp + 1) % ROUTE.length, (ap.wp + 2) % ROUTE.length];
+  g.moveTo(0, 0); order.forEach((k) => g.lineTo(pts[k][0], pts[k][1])); g.stroke();
+  // аэродромы
+  AIRFIELDS.forEach((a, k) => {
+    const d = relVec(a.x, a.z), x = d.x * scale, y = d.z * scale;
+    g.save(); g.translate(x, y); g.rotate(a.hdg);
+    g.strokeStyle = '#E8ECEF'; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 9, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#E8ECEF'; g.fillRect(-2, -13, 4, 26);
+    g.restore();
+    g.save(); g.translate(x, y); g.rotate(plane.psi);
+    g.fillStyle = ROUTE[ap.wp] === k ? C.magenta : '#F4F7F9'; g.font = FONT(700, 14); g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.fillText(a.name, 14, -10);
+    g.restore();
+  });
+  g.restore();
+  // кольца дальности и самолёт
+  g.strokeStyle = 'rgba(232,236,239,.45)'; g.lineWidth = 1.2; g.setLineDash([4, 5]);
+  for (const k of [0.5, 1]) { g.beginPath(); g.arc(acx, acy, mapState.range * k * scale, Math.PI * 1.05, Math.PI * 1.95); g.stroke(); }
+  g.setLineDash([]);
+  g.fillStyle = '#E8ECEF'; g.font = FONT(600, 13); g.textAlign = 'center';
+  g.fillText(`${(mapState.range / 2000).toFixed(0)}`, acx - mapState.range * 0.5 * scale * 0.72, acy - mapState.range * 0.5 * scale * 0.7);
+  g.fillText(`${(mapState.range / 1000).toFixed(0)} км`, acx - mapState.range * scale * 0.72, acy - mapState.range * scale * 0.7);
+  g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(acx, acy - 14); g.lineTo(acx + 5, acy - 2); g.lineTo(acx + 16, acy + 4); g.lineTo(acx + 5, acy + 5); g.lineTo(acx + 3, acy + 12); g.lineTo(acx + 7, acy + 15); g.lineTo(acx - 7, acy + 15); g.lineTo(acx - 3, acy + 12); g.lineTo(acx - 5, acy + 5); g.lineTo(acx - 16, acy + 4); g.lineTo(acx - 5, acy - 2); g.closePath(); g.fill(); g.stroke();
+  // линия пути вперёд
+  g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(acx, acy - 16); g.lineTo(acx, r.y + 36); g.stroke();
+  // заголовок карты
+  g.fillStyle = '#05080C'; g.fillRect(mx, r.y, mw, 30);
+  g.fillStyle = '#F4F7F9'; g.font = FONT(700, 14); g.textAlign = 'left'; g.textBaseline = 'middle';
+  g.fillText('КАРТА · КУРС ВВЕРХ', mx + 10, r.y + 15);
+  if (mapState.relief) {
+    const lg = [['выше', '#CD2626'], ['< 300 м', '#D6AA14'], ['ниже', '#345C28']];
+    let lx = mx + mw - 12; g.textAlign = 'right'; g.font = FONT(600, 13);
+    for (let k = lg.length - 1; k >= 0; k--) { g.fillStyle = '#E8ECEF'; g.fillText(lg[k][0], lx, r.y + 15); lx -= g.measureText(lg[k][0]).width + 6; g.fillStyle = lg[k][1]; g.fillRect(lx - 12, r.y + 9, 12, 12); lx -= 24; }
+  }
+  // профиль рельефа вперёд по курсу
+  if (profH) {
+    const py = r.y + mh, pw = mw, ph = profH;
+    g.fillStyle = '#0A0F14'; g.fillRect(mx, py, pw, ph);
+    g.strokeStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.moveTo(mx, py + 0.5); g.lineTo(mx + pw, py + 0.5); g.stroke();
+    const span = mapState.range * 1.2, n = 90;
+    const top = plane.h + 600, bot = Math.max(0, plane.h - 2200);
+    const yOf = (h) => py + ph - 6 - (h - bot) / (top - bot) * (ph - 24);
+    g.beginPath(); g.moveTo(mx, py + ph);
+    for (let k = 0; k <= n; k++) {
+      const d = span * k / n, x = plane.x + Math.sin(plane.psi) * d, z = plane.z - Math.cos(plane.psi) * d;
+      g.lineTo(mx + pw * k / n, yOf(Math.max(WATER, heightAt(x, z))));
+    }
+    g.lineTo(mx + pw, py + ph); g.closePath();
+    const pgr = g.createLinearGradient(0, py, 0, py + ph); pgr.addColorStop(0, '#8A6A3A'); pgr.addColorStop(1, '#2C3A20');
+    g.fillStyle = pgr; g.fill();
+    g.strokeStyle = C.cyan; g.lineWidth = 2; g.beginPath(); g.moveTo(mx, yOf(plane.h)); g.lineTo(mx + pw, yOf(plane.h + plane.vs / Math.max(plane.V, 1) * span)); g.stroke();
+    g.fillStyle = '#F4F7F9'; g.font = FONT(600, 13); g.textAlign = 'left'; g.fillText('ПРОФИЛЬ ПО КУРСУ', mx + 10, py + 14);
+    g.textAlign = 'right'; g.fillText(`${(span / 1000).toFixed(0)} км`, mx + pw - 8, py + 14);
+  }
+  // приборы двигателя
+  if (eisW) {
+    const ex = r.x, ew = eisW;
+    g.fillStyle = '#0B0E12'; g.fillRect(ex, r.y, ew, r.h);
+    g.strokeStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.moveTo(ex + ew - 0.5, r.y); g.lineTo(ex + ew - 0.5, r.y + r.h); g.stroke();
+    const rpm = Math.round(1400 + plane.thr * 1250 + (plane.V - 50) * 8);
+    const gx = ex + ew / 2, gy = r.y + 72, gr = ew * 0.36;
+    g.lineWidth = 7;
+    const arc = (a0, a1, col) => { g.strokeStyle = col; g.beginPath(); g.arc(gx, gy, gr, Math.PI * (0.75 + a0 * 1.5), Math.PI * (0.75 + a1 * 1.5)); g.stroke(); };
+    arc(0, 0.72, '#3A4047'); arc(0.72, 0.93, C.green); arc(0.93, 1, C.red);
+    const t = clamp(rpm / 2900, 0, 1), ang = Math.PI * (0.75 + t * 1.5);
+    g.strokeStyle = '#fff'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(gx, gy); g.lineTo(gx + Math.cos(ang) * (gr + 2), gy + Math.sin(ang) * (gr + 2)); g.stroke();
+    g.fillStyle = '#fff'; g.font = FONT(700, 16); g.textAlign = 'center'; g.fillText(rpm, gx, gy + gr * 0.55);
+    g.fillStyle = C.dim; g.font = FONT(600, 13); g.fillText('ОБ/МИН', gx, r.y + 24);
+    const bars = [['ГАЗ', plane.thr, C.cyan, `${Math.round(plane.thr * 100)}%`], ['ТОПЛ', 0.62, C.green, '112 л'], ['Т МАСЛ', 0.55, C.green, '86°'], ['Д МАСЛ', 0.6, C.green, '4,6']];
+    let by = gy + gr + 30;
+    for (const [k, v, col, txt] of bars) {
+      g.fillStyle = C.dim; g.font = FONT(600, 13); g.textAlign = 'left'; g.fillText(k, ex + 10, by);
+      g.fillStyle = '#fff'; g.textAlign = 'right'; g.fillText(txt, ex + ew - 10, by);
+      g.fillStyle = '#2A3036'; g.fillRect(ex + 10, by + 10, ew - 20, 7);
+      g.fillStyle = col; g.fillRect(ex + 10, by + 10, (ew - 20) * v, 7);
+      by += 44;
+    }
+    g.fillStyle = C.dim; g.font = FONT(600, 13); g.textAlign = 'left'; g.fillText(`ЗАКР ${plane.flaps}°`, ex + 10, by + 4);
+  }
+  g.restore();
+}
+function drawOverlay(g, now) {
+  if (msg && msg.t > 0) {
+    const y = L.ws.h * 0.5;
+    g.font = FONT(700, L.mobile ? 18 : 24); g.textAlign = 'center'; g.textBaseline = 'middle';
+    const w = g.measureText(msg.text).width + 40;
+    g.fillStyle = 'rgba(0,0,0,.6)'; rr(g, W / 2 - w / 2, y - 24, w, 48, 8); g.fill();
+    g.fillStyle = msg.col; g.fillText(msg.text, W / 2, y + 1);
+  }
+}
+
+// ---------------------------------------------------------------------
+// Главный цикл
+// ---------------------------------------------------------------------
+resetPlane();
+layout();
+refreshSoftkeys();
+// на старте самолёт уже в полёте несколько секунд
+for (let k = 0; k < 120; k++) stepPlane(1 / 30);
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
+  readControls();
+  const sub = 4;
+  for (let k = 0; k < sub; k++) stepPlane(dt / sub);
+  if (ap.disc > 0) ap.disc -= dt;
+  if (msg) msg.t -= dt;
+  updateAudio();
+  // WebGL: вид из кабины и синтетический рельеф PFD
+  gl.enable(gl.SCISSOR_TEST);
+  const ws = L.ws, pf = L.pfd;
+  gl.clearColor(0.05, 0.06, 0.07, 1);
+  gl.viewport(0, 0, glc.width, glc.height); gl.scissor(0, 0, glc.width, glc.height); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  renderView(0, Math.round((Hh - ws.h) * DPR), Math.round(ws.w * DPR), Math.round(ws.h * DPR), 0, (L.mobile ? 50 : 34) * DEG, 0);
+  const pcy = 0.43; // центр авиагоризонта выше середины дисплея
+  renderView(Math.round(pf.x * DPR), Math.round((Hh - pf.y - pf.h) * DPR), Math.round(pf.w * DPR), Math.round(pf.h * DPR), 1, 30 * DEG, 1 - 2 * pcy);
+  gl.disable(gl.SCISSOR_TEST);
+  // 2D: панель и символика
+  hx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  hx.clearRect(0, 0, W, Hh);
+  drawPanel(hx);
+  drawPFD(hx, L.pfd);
+  drawMFD(hx, L.mfd, now);
+  drawOverlay(hx, now);
+}
+const go = () => requestAnimationFrame(frame);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(go); else go();
+</script>
+</body>
+</html>

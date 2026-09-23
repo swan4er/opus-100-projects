@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тихоречинск — город, где у каждого своя жизнь</title>
+<meta name="description" content="3D-город на 10 000 жителей: у каждого своё расписание, дом, работа и связи. Нейросеть превращает толпу в людей.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="scene" aria-label="Трёхмерный город Тихоречинск"></canvas>
+
+<!-- заставка на время генерации -->
+<div id="veil" aria-hidden="true">
+  <div class="veil-in">
+    <div class="veil-name">Тихоречинск</div>
+    <div class="veil-sub">10&nbsp;000 жизней просыпаются…</div>
+  </div>
+</div>
+<div id="fail" hidden>
+  <div class="fail-in">
+    <h2>Город не загрузился</h2>
+    <p>Для трёхмерной сцены нужна библиотека three.js из&nbsp;интернета (cdn.jsdelivr.net). Проверьте соединение и&nbsp;обновите страницу.</p>
+  </div>
+</div>
+
+<!-- шапка: название, часы, скорость -->
+<header id="top">
+  <div class="brand">
+    <h1>Тихоречинск</h1>
+    <div class="brand-sub">10&nbsp;000 жителей. Статистов нет</div>
+  </div>
+  <div class="clock" aria-live="off">
+    <div class="clock-time"><span id="c-day">пт</span> <span id="c-time">18:25</span></div>
+    <div class="speed" role="group" aria-label="Скорость времени">
+      <button type="button" data-speed="0" aria-label="Пауза" title="Пауза (пробел)"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="3" width="2.6" height="10" rx="0.8"/><rect x="9.4" y="3" width="2.6" height="10" rx="0.8"/></svg></button>
+      <button type="button" data-speed="1" class="on" title="Минута за секунду">×1</button>
+      <button type="button" data-speed="4" title="Быстрее">×4</button>
+      <button type="button" data-speed="15" title="Сутки за полторы минуты">×15</button>
+    </div>
+  </div>
+</header>
+
+<!-- счётчики -->
+<div id="counts" aria-label="Где сейчас жители">
+  <span><b id="n-walk">0</b> на&nbsp;улицах</span>
+  <span><b id="n-car">0</b> за&nbsp;рулём</span>
+  <span><b id="n-metro">0</b> в&nbsp;метро</span>
+  <span><b id="n-home">0</b> дома</span>
+</div>
+
+<!-- поиск и газета -->
+<div id="tools">
+  <form id="search" autocomplete="off" role="search">
+    <svg class="s-ico" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4 4"/></svg>
+    <input id="q" type="text" placeholder="Найти человека по смыслу…" aria-label="Поиск жителя по смыслу" maxlength="140">
+    <button type="submit" id="q-go" aria-label="Искать">Найти</button>
+  </form>
+  <div id="q-tips">
+    <button type="button" class="tip">самый одинокий человек в&nbsp;городе</button>
+    <button type="button" class="tip">кто сегодня опаздывает на&nbsp;свидание</button>
+    <button type="button" class="tip">влюблён тайно</button>
+  </div>
+  <button type="button" id="paper-btn" class="paper-btn">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="1.5"/><path d="M6 8h8M6 11h8M6 13.5h5"/></svg>
+    <span>Газета</span>
+  </button>
+</div>
+
+<!-- подсказка -->
+<div id="hint">Нажмите на&nbsp;любого прохожего или машину&nbsp;— у&nbsp;каждого своя жизнь</div>
+
+<!-- статус нейросети -->
+<div id="ai-bar">
+  <span id="ai-mode"></span>
+  <span id="ai-cost" title="Потрачено на нейросеть"></span>
+</div>
+
+<!-- карточка жителя -->
+<aside id="card" aria-live="polite" hidden>
+  <div class="grab" aria-hidden="true"></div>
+  <button type="button" class="card-x" id="card-x" aria-label="Закрыть">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+  </button>
+  <div class="card-scroll" id="card-scroll">
+    <div class="who">
+      <div class="who-name" id="p-name"></div>
+      <div class="who-meta" id="p-meta"></div>
+    </div>
+    <div class="now" id="p-now"></div>
+    <div class="why" id="p-why" hidden></div>
+    <section class="bio">
+      <h2>Жизнь</h2>
+      <div class="bio-text" id="p-bio"></div>
+    </section>
+    <section class="facts">
+      <h2>Факты</h2>
+      <dl id="p-facts"></dl>
+    </section>
+    <section class="day">
+      <h2>Сегодня</h2>
+      <div class="agenda" id="p-agenda"></div>
+    </section>
+    <section class="rels">
+      <h2>Связи</h2>
+      <div id="p-rels"></div>
+    </section>
+    <section class="talk">
+      <h2>Заговорить</h2>
+      <div class="chat" id="chat"></div>
+      <form id="say" autocomplete="off">
+        <input id="say-in" type="text" placeholder="Спросите что-нибудь…" maxlength="200" aria-label="Реплика жителю">
+        <button type="submit" aria-label="Отправить"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h12M11 5l5 5-5 5"/></svg></button>
+      </form>
+    </section>
+  </div>
+</aside>
+
+<!-- газета -->
+<div id="paper" hidden>
+  <div class="paper-sheet" role="dialog" aria-modal="true" aria-labelledby="paper-title">
+    <button type="button" class="paper-x" id="paper-x" aria-label="Закрыть газету"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+    <div id="paper-body"></div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="../_ai/ai.js"></script>
+<script src="data.js"></script>
+<script src="core.js"></script>
+<script src="citygen.js"></script>
+<script src="people.js"></script>
+<script src="life.js"></script>
+<script src="days.js"></script>
+<script src="traffic.js"></script>
+<script src="sky.js"></script>
+<script src="render.js"></script>
+<script src="actors.js"></script>
+<script src="brain.js"></script>
+<script src="paper.js"></script>
+<script src="ui.js"></script>
+<script src="main.js"></script>
+<script type="module">
+  try {
+    const THREE = await import('three');
+    const { MapControls } = await import('three/addons/controls/MapControls.js');
+    await window.LC.boot(THREE, { MapControls });
+  } catch (e) {
+    window.LC.bootFailed(e);
+  }
+</script>
+</body>
+</html>

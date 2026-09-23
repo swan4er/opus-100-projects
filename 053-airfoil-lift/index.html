@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Подъёмная сила</title>
+<meta name="description" content="Потенциальное обтекание профиля Жуковского: дым, давление, циркуляция и разоблачение мифа о «равном времени».">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --panel: #101318;
+    --line: rgba(190, 205, 225, .14);
+    --line-strong: rgba(190, 205, 225, .3);
+    --text: #e8edf3;
+    --muted: #9aa6b5;
+    --smoke: #f4f6f8;
+    --low: #4f8dff;
+    --high: #ff6a45;
+    --lift: #ffc857;
+    --ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden; font-family: var(--ui); -webkit-font-smoothing: antialiased; }
+  canvas.layer { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #ov { pointer-events: none; }
+
+  .story { position: fixed; left: 24px; top: 24px; bottom: 24px; width: 372px; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; }
+  .story header { padding: 22px 24px 16px; border-bottom: 1px solid var(--line); }
+  .kicker { font: 500 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  h1 { margin: 10px 0 4px; font: 600 34px/1.05 var(--ui); letter-spacing: -.015em; }
+  .sub { margin: 0; font: italic 400 16px/1.35 var(--ui); color: var(--muted); }
+  .tabs { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--line); }
+  .tabs button { min-height: 48px; background: transparent; border: 0; border-right: 1px solid var(--line); color: var(--muted); font: 500 13px/1.15 var(--ui); cursor: pointer; padding: 6px 4px; transition: color .2s, background .2s; }
+  .tabs button:last-child { border-right: 0; }
+  .tabs button b { display: block; font: 500 12px/1 var(--mono); margin-bottom: 4px; opacity: .8; }
+  .tabs button:hover { color: var(--text); }
+  .tabs button[aria-selected=true] { color: var(--text); background: rgba(255, 255, 255, .045); box-shadow: inset 0 -2px 0 var(--text); }
+  .chapter { padding: 20px 24px; overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  .chapter h2 { margin: 0 0 12px; font: 600 22px/1.2 var(--ui); letter-spacing: -.01em; }
+  .chapter p { margin: 0 0 12px; font: 400 15px/1.55 var(--ui); color: #cdd5df; }
+  .chapter p b { color: var(--text); font-weight: 600; }
+  .chapter .lo { color: #8fb4ff; } .chapter .hi { color: #ff9a80; } .chapter .gold { color: var(--lift); }
+  .cta { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 18px; margin: 4px 0 12px; background: var(--text); color: #0a0c0f; border: 0; border-radius: 2px; font: 600 15px/1 var(--ui); cursor: pointer; transition: background .2s, transform .2s; }
+  .cta:hover { background: #fff; }
+  .cta:active { transform: translateY(1px); }
+  .cta.ghost { background: transparent; color: var(--text); border: 1px solid var(--line-strong); }
+  .cta.ghost:hover { border-color: var(--text); }
+  .cta svg { width: 16px; height: 16px; }
+  .note { font: 400 13px/1.5 var(--ui); color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; }
+  .result { font: 500 14px/1.5 var(--mono); color: var(--text); background: rgba(255, 200, 87, .08); border: 1px solid rgba(255, 200, 87, .35); padding: 10px 12px; margin: 0 0 12px; border-radius: 2px; display: none; }
+  .result.show { display: block; }
+
+  .instr { position: fixed; right: 24px; bottom: 24px; width: 420px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 16px 18px 16px; }
+  .readouts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+  .readouts dt { font: 500 12px/1.2 var(--ui); color: var(--muted); }
+  .readouts dd { margin: 4px 0 0; font: 500 24px/1 var(--mono); font-variant-numeric: tabular-nums; }
+  .readouts dd small { font: 400 12px/1 var(--mono); color: var(--muted); margin-left: 3px; }
+  .readouts .gold dd { color: var(--lift); }
+  .sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+  .field .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .field label { font: 500 13px/1.2 var(--ui); color: #cdd5df; }
+  .field output { font: 500 13px/1 var(--mono); color: var(--text); }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 24px; background: transparent; cursor: pointer; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { height: 2px; background: linear-gradient(90deg, var(--text) var(--p, 50%), rgba(190, 205, 225, .22) var(--p, 50%)); }
+  input[type=range]::-moz-range-track { height: 2px; background: rgba(190, 205, 225, .22); }
+  input[type=range]::-moz-range-progress { height: 2px; background: var(--text); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -6px; border-radius: 50%; background: var(--bg); border: 2px solid var(--text); transition: transform .15s; }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--text); }
+  input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.15); }
+  input[type=range]:focus-visible { outline: 1px solid var(--text); outline-offset: 3px; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .tg { min-height: 36px; padding: 0 12px; background: transparent; color: var(--muted); border: 1px solid var(--line-strong); border-radius: 2px; font: 500 13px/1 var(--ui); cursor: pointer; transition: color .2s, border-color .2s, background .2s; }
+  .tg:hover { color: var(--text); }
+  .tg[aria-pressed=true] { color: var(--text); border-color: var(--text); background: rgba(255, 255, 255, .05); }
+  button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  #chart { width: 100%; height: 110px; display: block; margin-top: 14px; }
+
+  .legend { position: fixed; top: 24px; right: 24px; display: flex; gap: 18px; align-items: center; font: 500 12px/1 var(--mono); color: var(--muted); background: rgba(10, 12, 15, .7); padding: 10px 14px; border: 1px solid var(--line); border-radius: 2px; }
+  .legend i { display: inline-block; width: 70px; height: 8px; border-radius: 1px; background: linear-gradient(90deg, #2c64e6, #6ea0ff, #1a1f28, #ff8a66, #ff4a24); vertical-align: middle; margin: 0 8px; }
+  .nogl { position: fixed; inset: 0; display: none; place-items: center; font: 400 18px/1.5 var(--ui); padding: 30px; text-align: center; }
+
+  @media (max-width: 1180px) { .story { width: 330px; } .instr { width: 380px; } .legend { display: none; } }
+  @media (max-width: 760px) {
+    html, body { overflow: auto; height: auto; }
+    canvas.layer { height: 52vh; height: 52svh; }
+    .story { position: relative; left: auto; top: auto; bottom: auto; width: auto; margin: calc(52svh + 8px) 10px 10px; }
+    .story header { padding: 16px 18px 12px; }
+    h1 { font-size: 26px; }
+    .tabs button { font-size: 12px; min-height: 46px; }
+    .chapter { padding: 16px 18px; overflow: visible; }
+    .instr { position: relative; right: auto; bottom: auto; width: auto; margin: 0 10px 24px; }
+    .readouts dd { font-size: 20px; }
+    .sliders { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<canvas class="layer" id="gl" aria-label="Аэродинамическая труба"></canvas>
+<canvas class="layer" id="ov" aria-hidden="true"></canvas>
+<div class="nogl" id="nogl">Для этой труби нужен WebGL2. Откройте страницу в свежем браузере.</div>
+
+<aside class="story">
+  <header>
+    <div class="kicker">Аэродинамическая труба</div>
+    <h1>Подъёмная сила</h1>
+    <p class="sub">почему летает крыло — и почему не так, как пишут в учебниках</p>
+  </header>
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+  <section class="chapter" id="chapter" aria-live="polite"></section>
+</aside>
+
+<div class="legend" id="legend">давление <span>ниже</span><i></i><span>выше</span></div>
+
+<section class="instr" aria-label="Приборы">
+  <dl class="readouts">
+    <div><dt>Коэффициент C<sub>L</sub></dt><dd id="rCL">—</dd></div>
+    <div><dt>Циркуляция Γ</dt><dd id="rG">—</dd></div>
+    <div class="gold"><dt>Держит на 1 м крыла</dt><dd id="rKg">—</dd></div>
+  </dl>
+  <div class="sliders">
+    <div class="field"><div class="row"><label for="sA">Угол атаки</label><output id="oA"></output></div><input id="sA" type="range" min="-6" max="18" step="0.1" value="6"></div>
+    <div class="field"><div class="row"><label for="sV">Скорость потока</label><output id="oV"></output></div><input id="sV" type="range" min="10" max="90" step="1" value="50"></div>
+    <div class="field"><div class="row"><label for="sT">Толщина профиля</label><output id="oT"></output></div><input id="sT" type="range" min="0.02" max="0.22" step="0.005" value="0.1"></div>
+    <div class="field"><div class="row"><label for="sC">Кривизна</label><output id="oC"></output></div><input id="sC" type="range" min="0" max="0.2" step="0.005" value="0.08"></div>
+  </div>
+  <div class="toggles">
+    <button class="tg" id="tSmoke" aria-pressed="true">Дым</button>
+    <button class="tg" id="tTime" aria-pressed="false">Временные линии</button>
+    <button class="tg" id="tStream" aria-pressed="true">Линии тока</button>
+    <button class="tg" id="tPress" aria-pressed="true">Давление</button>
+    <button class="tg" id="tKutta" aria-pressed="true">Условие Кутты</button>
+  </div>
+  <canvas id="chart" aria-label="График коэффициента подъёмной силы от угла атаки"></canvas>
+</section>
+
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const fmt = (x, d) => x.toFixed(d).replace('.', ',').replace('-', '−');
+const SHOT = !!window.__SHOT__;
+
+// ───────────────────────── Физика: профиль Жуковского ─────────────────────────
+// ζ-плоскость: окружность с центром μ = (−t, c), проходящая через ζ = 1; z = ζ + 1/ζ.
+// W(ζ') = U(ζ' e^{−iα} + R² e^{iα}/ζ') + (iΓ/2π) ln ζ',  ζ' = ζ − μ.  Кутта: Γ = 4πUR·sin(α + β).
+const S = { alpha: 6, V: 50, t: 0.1, c: 0.08, kutta: true, smoke: true, time: false, stream: true, press: true, chapter: 0 };
+const P = { mu: [0, 0], R: 1, beta: 0, G: 0, a: 0, chord: 4, le: -2, te: 2, cl: 0 };
+function geometry() {
+  const a = S.alpha * Math.PI / 180;
+  P.a = a; P.mu = [-S.t, S.c];
+  P.R = Math.hypot(1 + S.t, S.c);
+  P.beta = Math.atan2(S.c, 1 + S.t);
+  P.G = S.kutta ? 4 * Math.PI * P.R * Math.sin(a + P.beta) : 0;
+  // хорда: крайние точки контура
+  let mn = 1e9, mx = -1e9; P.outline = [];
+  for (let k = 0; k <= 360; k++) {
+    const th = (k / 360) * Math.PI * 2;
+    const zx = P.mu[0] + P.R * Math.cos(th), zy = P.mu[1] + P.R * Math.sin(th);
+    const d = zx * zx + zy * zy; const X = zx + zx / d, Y = zy - zy / d;
+    P.outline.push([X, Y]); mn = Math.min(mn, X); mx = Math.max(mx, X);
+  }
+  P.le = mn; P.te = mx; P.chord = mx - mn;
+  P.cl = 2 * P.G / P.chord;
+  // значение функции тока на поверхности (разделяющая линия тока)
+  P.psi0 = (P.G / (2 * Math.PI)) * Math.log(P.R);
+}
+// Скорость в точке z = (x, y) при U = 1: возвращает [u, v] или null внутри профиля
+function zeta(x, y) {
+  // ζ = (z ± √(z² − 4)) / 2 — берём корень вне окружности
+  const ax = x * x - y * y - 4, ay = 2 * x * y;
+  const r = Math.hypot(ax, ay);
+  let sx = Math.sqrt(Math.max(0, (r + ax) / 2)), sy = Math.sqrt(Math.max(0, (r - ax) / 2)); if (ay < 0) sy = -sy;
+  const z1x = (x + sx) / 2, z1y = (y + sy) / 2, z2x = (x - sx) / 2, z2y = (y - sy) / 2;
+  const d1 = Math.hypot(z1x - P.mu[0], z1y - P.mu[1]), d2 = Math.hypot(z2x - P.mu[0], z2y - P.mu[1]);
+  return d1 >= d2 ? [z1x, z1y, d1] : [z2x, z2y, d2];
+}
+function velocity(x, y) {
+  const [zx, zy, dist] = zeta(x, y);
+  if (dist < P.R * 1.0005) return null;
+  const px = zx - P.mu[0], py = zy - P.mu[1];
+  const ca = Math.cos(P.a), sa = Math.sin(P.a), R2 = P.R * P.R;
+  // 1/ζ'²
+  const d2 = (px * px + py * py) ** 2, ix = (px * px - py * py) / d2, iy = -2 * px * py / d2;
+  // e^{iα}/ζ'²
+  const ex = ca * ix - sa * iy, ey = ca * iy + sa * ix;
+  // dW/dζ = (e^{−iα} − R² e^{iα}/ζ'²) + iΓ/(2π ζ')
+  const pd = px * px + py * py, k = P.G / (2 * Math.PI);
+  let wx = ca - R2 * ex + k * (py / pd), wy = -sa - R2 * ey + k * (px / pd);
+  // dz/dζ = 1 − 1/ζ²
+  const zd = (zx * zx + zy * zy) ** 2, jx = 1 - (zx * zx - zy * zy) / zd, jy = 2 * zx * zy / zd;
+  const jd = jx * jx + jy * jy;
+  const ux = (wx * jx + wy * jy) / jd, uy = (wy * jx - wx * jy) / jd;   // w = u − iv
+  return [ux, -uy];
+}
+function streamFn(x, y) {
+  const [zx, zy] = zeta(x, y); const px = zx - P.mu[0], py = zy - P.mu[1];
+  const ca = Math.cos(P.a), sa = Math.sin(P.a), pd = px * px + py * py, R2 = P.R * P.R;
+  // Im[ζ' e^{−iα}] + R² Im[e^{iα}/ζ'] + (Γ/2π) ln|ζ'|
+  return (py * ca - px * sa) + R2 * (sa * px - ca * py) / pd + (P.G / (2 * Math.PI)) * Math.log(Math.sqrt(pd));
+}
+
+// ───────────────────────── WebGL: поле давления и линии тока ─────────────────────────
+const cv = $('gl'), ov = $('ov'), o = ov.getContext('2d');
+const gl = cv.getContext('webgl2', { antialias: true, alpha: false, preserveDrawingBuffer: SHOT });
+if (!gl) { $('nogl').style.display = 'grid'; return; }
+const FS = `#version 300 es
+precision highp float;
+uniform vec2 uRes, uC; uniform float uPPU, uR, uAlpha, uG, uPsi0, uPress, uStream, uTime;
+uniform vec2 uMu;
+out vec4 o;
+vec2 cm(vec2 a, vec2 b){ return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x); }
+vec2 cd(vec2 a, vec2 b){ float d = dot(b,b); return vec2(a.x*b.x + a.y*b.y, a.y*b.x - a.x*b.y) / d; }
+vec2 csq(vec2 z){ float r = length(z); float sy = sqrt(max(0.,(r - z.x)*.5)); return vec2(sqrt(max(0.,(r + z.x)*.5)), z.y < 0. ? -sy : sy); }
+vec3 cmap(float cp){
+  // Cp < 0 — разрежение (синий), Cp > 0 — избыток (красный)
+  float t = clamp(-cp / 2.6, 0., 1.), u = clamp(cp, 0., 1.);
+  vec3 lo = mix(vec3(0.08,0.10,0.14), vec3(0.18,0.40,0.95), smoothstep(0.,.55,t)); lo = mix(lo, vec3(0.62,0.78,1.0), smoothstep(.55,1.,t));
+  vec3 hi = mix(vec3(0.08,0.10,0.14), vec3(0.95,0.36,0.18), smoothstep(0.,.8,u)); hi = mix(hi, vec3(1.0,0.72,0.45), smoothstep(.8,1.,u));
+  return cp < 0. ? lo : hi;
+}
+void main(){
+  vec2 f = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
+  vec2 z = vec2(f.x - uC.x, uC.y - f.y) / uPPU;
+  // фон трубы: тёмный градиент и сетка
+  vec3 col = mix(vec3(0.050,0.058,0.072), vec3(0.028,0.032,0.040), f.y / uRes.y);
+  vec2 gcell = abs(fract(z + 0.5) - 0.5) * uPPU;
+  col += 0.018 * (1. - smoothstep(0., 1.2, min(gcell.x, gcell.y)));
+  vec2 s = csq(cm(z,z) - vec2(4.,0.));
+  vec2 z1 = (z + s) * .5, z2 = (z - s) * .5;
+  vec2 zt = length(z1 - uMu) >= length(z2 - uMu) ? z1 : z2;
+  vec2 p = zt - uMu;
+  float rr = length(p);
+  if (rr < uR * 1.0005) { o = vec4(col, 1.); return; }      // внутри профиля — рисует верхний слой
+  vec2 ea = vec2(cos(uAlpha), -sin(uAlpha)), eb = vec2(cos(uAlpha), sin(uAlpha));
+  vec2 dW = ea - uR*uR * cd(eb, cm(p,p)) + cd(vec2(0., uG / 6.2831853), p);
+  vec2 dz = vec2(1.,0.) - cd(vec2(1.,0.), cm(zt,zt));
+  vec2 w = cd(dW, dz);
+  float q2 = dot(w,w);
+  float cp = 1. - q2;
+  col = mix(col, cmap(cp), uPress * 0.62);
+  // функция тока: Im W
+  // Im[ζ' e^{−iα}] = p.y·cosα − p.x·sinα  (ea = (cosα, −sinα))
+  float psi = dot(p, vec2(ea.y, ea.x)) + uR*uR * (eb.y*p.x - eb.x*p.y) / dot(p,p) + uG / 6.2831853 * log(rr);
+  float sp = 0.16;
+  float k = psi / sp;
+  float fw = fwidth(k);
+  float line = 1. - smoothstep(0., fw * 1.3, abs(fract(k + .5) - .5));
+  col += uStream * line * 0.14 * vec3(0.85, 0.9, 1.0);
+  float d0 = (psi - uPsi0);
+  float fw0 = fwidth(d0);
+  col = mix(col, vec3(1.0, 0.79, 0.34), uStream * 0.55 * (1. - smoothstep(0., fw0 * 1.6, abs(d0))));
+  o = vec4(col, 1.);
+}`;
+const VS = `#version 300 es
+in vec2 a; void main(){ gl_Position = vec4(a,0.,1.); }`;
+// Дым: точки с аддитивным смешиванием
+const PVS = `#version 300 es
+in vec3 a; uniform vec2 uRes, uC; uniform float uPPU, uSize; out float vA;
+void main(){ vec2 s = uC + vec2(a.x, -a.y) * uPPU; gl_Position = vec4(s / uRes * 2. - 1., 0., 1.); gl_Position.y *= -1.; gl_PointSize = uSize; vA = a.z; }`;
+const PFS = `#version 300 es
+precision mediump float; in float vA; uniform vec3 uCol; out vec4 o;
+void main(){ vec2 c = gl_PointCoord - .5; float d = length(c); float m = smoothstep(.5, .0, d); o = vec4(uCol * m * vA, m * vA); }`;
+function prog(vs, fs) {
+  const mk = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
+  const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); return p;
+}
+const fieldP = prog(VS, FS), partP = prog(PVS, PFS);
+const U = (p, n) => gl.getUniformLocation(p, n);
+const quad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const vaoF = gl.createVertexArray(); gl.bindVertexArray(vaoF); const fa = gl.getAttribLocation(fieldP, 'a'); gl.enableVertexAttribArray(fa); gl.vertexAttribPointer(fa, 2, gl.FLOAT, false, 0, 0);
+const pbuf = gl.createBuffer();
+const vaoP = gl.createVertexArray(); gl.bindVertexArray(vaoP); gl.bindBuffer(gl.ARRAY_BUFFER, pbuf); const pa = gl.getAttribLocation(partP, 'a'); gl.enableVertexAttribArray(pa); gl.vertexAttribPointer(pa, 3, gl.FLOAT, false, 0, 0);
+
+// ───────────────────────── Вид ─────────────────────────
+let W = 0, H = 0, DPR = 1, PPU = 100, CX = 0, CY = 0;
+const view = { x0: -6, x1: 6, y0: -3, y1: 3 };
+function layout() {
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  if (SHOT) DPR = 1;
+  const mobile = innerWidth < 760;
+  W = innerWidth; H = mobile ? Math.round(innerHeight * 0.52) : innerHeight;
+  cv.width = ov.width = Math.round(W * DPR); cv.height = ov.height = Math.round(H * DPR);
+  cv.style.height = ov.style.height = H + 'px';
+  let left = 0, right = W, top = 0, bottom = H;
+  if (!mobile) { left = W >= 1180 ? 420 : 378; bottom = H - (W >= 1180 ? 0 : 0); }
+  const areaW = right - left, areaH = bottom - top;
+  PPU = Math.min(areaW / 7.6, areaH / (mobile ? 3.6 : 4.4));
+  CX = left + areaW * (mobile ? 0.5 : 0.47); CY = mobile ? H * 0.5 : H * 0.36;
+  view.x0 = (0 - CX) / PPU - 0.5; view.x1 = (W - CX) / PPU + 0.5; view.y0 = -(H - CY) / PPU - 0.5; view.y1 = CY / PPU + 0.5;
+  drawChart();
+}
+addEventListener('resize', layout);
+
+// ───────────────────────── Дым ─────────────────────────
+const MAXP = 26000;
+const px = new Float32Array(MAXP), py = new Float32Array(MAXP), pAge = new Float32Array(MAXP), pRow = new Float32Array(MAXP);
+let np = 0;
+const RAKE = 28;
+function emit(dt) {
+  if (S.time) {
+    // временные линии: вертикальные «строчки» частиц выпускаются одновременно
+    emit.acc = (emit.acc || 0) + dt;
+    if (emit.acc > 0.42) { emit.acc = 0; const n = 110; for (let k = 0; k < n && np < MAXP; k++) { px[np] = view.x0 + 0.3; py[np] = view.y0 + 0.25 + (view.y1 - view.y0 - 0.5) * k / (n - 1); pAge[np] = 0; pRow[np] = 1; np++; } }
+  }
+  if (S.smoke) {
+    for (let r = 0; r < RAKE && np < MAXP; r++) {
+      const y = -2.1 + 4.2 * (r + 0.5) / RAKE + (r % 2 ? 0.0 : 0.0);
+      if (y < view.y0 + 0.1 || y > view.y1 - 0.1) continue;
+      px[np] = view.x0 + 0.2 + Math.random() * 0.02; py[np] = y + (Math.random() - 0.5) * 0.004; pAge[np] = 0; pRow[np] = 0; np++;
+    }
+  }
+}
+function advect(dt) {
+  const stall = S.alpha > 13.5 && S.kutta;
+  let w = 0;
+  for (let i = 0; i < np; i++) {
+    let x = px[i], y = py[i];
+    const v1 = velocity(x, y);
+    if (!v1) continue;
+    const mx = x + v1[0] * dt * 0.5, my = y + v1[1] * dt * 0.5;
+    const v2 = velocity(mx, my) || v1;
+    x += v2[0] * dt; y += v2[1] * dt;
+    // условный срыв потока на больших углах (идеальная жидкость его не описывает)
+    if (stall && x > P.le + P.chord * 0.3 && x < P.te + 2.5 && y > -0.2) {
+      const surf = x < P.te ? topAt(x) : P.outline[0][1];
+      if (y - surf < 0.2 + (x - P.le) * 0.25 * (S.alpha - 13.5) / 5) { x -= v2[0] * dt * 0.55; y += (Math.random() - 0.35) * 0.05; }
+    }
+    const age = pAge[i] + dt;
+    if (x > view.x1 || y < view.y0 - 0.5 || y > view.y1 + 0.5 || age > 24) continue;
+    px[w] = x; py[w] = y; pAge[w] = age; pRow[w] = pRow[i]; w++;
+  }
+  np = w;
+}
+function topAt(x) { let best = -9; for (const [X, Y] of P.outline) if (Math.abs(X - x) < 0.06 && Y > best) best = Y; return best; }
+const pdata = new Float32Array(MAXP * 3);
+
+// ───────────────────────── Миф о равном времени ─────────────────────────
+let myth = null;
+function launchMyth() {
+  // находим разделяющую линию тока далеко перед профилем бисекцией
+  const x0 = view.x0 + 0.6;
+  let a = -2, b = 2;
+  for (let k = 0; k < 60; k++) { const m = (a + b) / 2; if (streamFn(x0, m) > P.psi0) b = m; else a = m; }
+  const y0 = (a + b) / 2;
+  myth = { t: 0, a: { x: x0, y: y0 + 0.05, tr: [] }, b: { x: x0, y: y0 - 0.05, tr: [] }, done: false, result: '' };
+  $('mythRes') && $('mythRes').classList.remove('show');
+}
+function stepMyth(dt) {
+  if (!myth) return;
+  for (const p of [myth.a, myth.b]) {
+    if (p.x > view.x1) continue;
+    for (let k = 0; k < 4; k++) { const v = velocity(p.x, p.y); if (!v) break; const h = dt / 4; const v2 = velocity(p.x + v[0] * h / 2, p.y + v[1] * h / 2) || v; p.x += v2[0] * h; p.y += v2[1] * h; }
+    p.tr.push([p.x, p.y]); if (p.tr.length > 400) p.tr.shift();
+  }
+  myth.t += dt;
+  if (!myth.done && myth.a.x >= P.te) {
+    myth.done = true;
+    const frac = Math.max(0, Math.min(1, (myth.b.x - P.le) / P.chord));
+    myth.result = `Верхняя частица уже у задней кромки, а нижняя прошла лишь ${Math.round(frac * 100)} % хорды. Встречаться они не собираются.`;
+    const el = $('mythRes'); if (el) { el.textContent = myth.result; el.classList.add('show'); }
+  }
+  if (myth.a.x > view.x1 && myth.b.x > view.x1) myth.fade = (myth.fade || 0) + dt;
+}
+
+// ───────────────────────── Главы ─────────────────────────
+const CHAPTERS = [
+  { tab: 'Поток', title: 'Воздух обтекает крыло',
+    html: `<p>Перед вами профиль Жуковского в <b>идеальной жидкости</b>: без вязкости и без сжатия. Это классическая модель, из которой выросла вся теория крыла.</p>
+<p>Белые струйки — дым, как в настоящей аэродинамической трубе. Тонкие линии — <b>линии тока</b>: воздух движется вдоль них и никогда их не пересекает. <span class="gold">Золотая линия</span> разделяет поток: всё, что выше, уходит над крылом.</p>
+<p>Посмотрите на струйки над профилем: они сгущаются. Где линии тока ближе друг к другу, воздух течёт быстрее.</p>`,
+    set: { press: false, stream: true, smoke: true, time: false } },
+  { tab: 'Давление', title: 'Быстрее — значит ниже давление',
+    html: `<p>Цвет показывает коэффициент давления C<sub>p</sub>. <span class="lo">Синее</span> — разрежение, <span class="hi">красное</span> — избыток давления.</p>
+<p>Над крылом воздух разгоняется, и давление падает — это закон Бернулли. Под крылом поток тормозится, давление чуть выше. Разница давлений на верхней и нижней поверхности и есть подъёмная сила.</p>
+<p>Возле передней кромки красное пятно — <b>точка торможения</b>: здесь воздух на миг останавливается и решает, в какую сторону обходить крыло.</p>`,
+    set: { press: true, stream: true, smoke: false, time: false } },
+  { tab: 'Кутта', title: 'Острая задняя кромка решает всё',
+    html: `<p>Уравнения идеальной жидкости допускают бесконечно много решений. Какое выберет природа? Подсказывает острая задняя кромка: в реальном воздухе вязкость не даёт потоку обогнуть её с бесконечной скоростью.</p>
+<p><b>Условие Кутты</b>: поток сходит с задней кромки плавно. Отсюда однозначно получается <b>циркуляция</b> Γ = 4πUR·sin(α + β), а по теореме Жуковского подъёмная сила L = ρUΓ.</p>
+<button class="cta ghost" id="kuttaBtn">Выключить условие Кутты</button>
+<p class="note">Без условия Кутты воздух обтекает острую кромку снизу вверх, точка схода уезжает на верх профиля, а подъёмная сила становится нулевой. Так не бывает — поэтому условие и нужно.</p>`,
+    set: { press: true, stream: true, smoke: true, time: false } },
+  { tab: 'Миф', title: 'Миф о равном времени',
+    html: `<p>Популярное объяснение: «частицы воздуха, разделившиеся у передней кромки, должны встретиться у задней, поэтому верхней приходится бежать быстрее по более длинному пути». Звучит логично — и неверно.</p>
+<p>Выпустим две частицы рядом, по разные стороны разделяющей линии тока.</p>
+<button class="cta" id="mythBtn"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5l9 5.5-9 5.5z"/></svg>Выпустить частицы</button>
+<div class="result" id="mythRes"></div>
+<p>Верхняя частица приходит к задней кромке заметно раньше. Воздух над крылом движется быстрее, чем требовал бы миф, — именно из-за циркуляции. Включите «Временные линии», чтобы увидеть это на целых строчках дыма.</p>`,
+    set: { press: false, stream: true, smoke: false, time: true } },
+  { tab: 'Ньютон', title: 'Крыло толкает воздух вниз',
+    html: `<p>Есть и второе, столь же верное описание. Крыло отклоняет поток вниз — за ним образуется <b>скос потока</b>. Раз крыло толкает воздух вниз, воздух по третьему закону Ньютона толкает крыло вверх.</p>
+<p>Бернулли и Ньютон не спорят: это две стороны одного и того же течения. Давление на поверхности и изменение импульса воздуха дают одну и ту же силу.</p>
+<p class="note">А сопротивление в этой модели равно нулю — это <b>парадокс Даламбера</b>: в идеальной жидкости тело без вязкости не тормозится. Настоящее сопротивление рождает вязкий пограничный слой.</p>`,
+    set: { press: true, stream: false, smoke: true, time: false, arrows: true } },
+];
+function setChapter(i) {
+  S.chapter = i; S.arrows = false;
+  const ch = CHAPTERS[i];
+  Object.assign(S, ch.set);
+  if (i !== 2) S.kutta = true;
+  $('chapter').innerHTML = `<h2>${ch.title}</h2>${ch.html}`;
+  [...$('tabs').children].forEach((b, k) => b.setAttribute('aria-selected', String(k === i)));
+  const kb = $('kuttaBtn'); if (kb) kb.addEventListener('click', () => { S.kutta = !S.kutta; kb.textContent = S.kutta ? 'Выключить условие Кутты' : 'Включить условие Кутты'; geometry(); syncUI(); np = 0; });
+  const mb = $('mythBtn'); if (mb) mb.addEventListener('click', launchMyth);
+  if (i === 3) setTimeout(launchMyth, 600);
+  geometry(); syncUI();
+  if (i !== 3) myth = null;
+}
+CHAPTERS.forEach((c, i) => { const b = document.createElement('button'); b.setAttribute('role', 'tab'); b.innerHTML = `<b>0${i + 1}</b>${c.tab}`; b.addEventListener('click', () => setChapter(i)); $('tabs').appendChild(b); });
+
+// ───────────────────────── Приборы ─────────────────────────
+const sA = $('sA'), sV = $('sV'), sT = $('sT'), sC = $('sC');
+const paint = (el) => el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100).toFixed(1) + '%');
+function syncUI() {
+  sA.value = S.alpha; sV.value = S.V; sT.value = S.t; sC.value = S.c; [sA, sV, sT, sC].forEach(paint);
+  $('oA').textContent = fmt(S.alpha, 1) + '°'; $('oV').textContent = S.V + ' м/с';
+  $('oT').textContent = Math.round(S.t * 100 / 1.1) + ' %'; $('oC').textContent = Math.round(S.c * 100) + ' %';
+  [['tSmoke', 'smoke'], ['tTime', 'time'], ['tStream', 'stream'], ['tPress', 'press'], ['tKutta', 'kutta']].forEach(([id, k]) => $(id).setAttribute('aria-pressed', String(!!S[k])));
+  $('rCL').textContent = fmt(P.cl, 2);
+  $('rG').textContent = fmt(P.G, 2);
+  // подъёмная сила на метр размаха: крыло лёгкого самолёта с хордой 1,5 м, воздух 1,225 кг/м³
+  const Lp = 0.5 * 1.225 * S.V * S.V * 1.5 * P.cl;
+  $('rKg').innerHTML = `${Math.round(Lp / 9.81)}<small>кг</small>`;
+  $('legend').style.opacity = S.press ? 1 : 0;
+  drawChart();
+}
+function onSlide() { S.alpha = +sA.value; S.V = +sV.value; S.t = +sT.value; S.c = +sC.value; geometry(); syncUI(); }
+[sA, sV, sT, sC].forEach((el) => el.addEventListener('input', onSlide));
+[['tSmoke', 'smoke'], ['tTime', 'time'], ['tStream', 'stream'], ['tPress', 'press'], ['tKutta', 'kutta']].forEach(([id, k]) => $(id).addEventListener('click', () => {
+  S[k] = !S[k]; if (k === 'kutta') { geometry(); np = 0; const kb = $('kuttaBtn'); if (kb) kb.textContent = S.kutta ? 'Выключить условие Кутты' : 'Включить условие Кутты'; } syncUI();
+}));
+
+// График C_L(α): теория потенциального потока и условная кривая реального профиля со срывом
+const ch = $('chart'), cg = ch.getContext('2d');
+function drawChart() {
+  const r = ch.getBoundingClientRect(); if (!r.width) return;
+  const d = Math.min(devicePixelRatio || 1, 2); ch.width = r.width * d; ch.height = r.height * d; cg.setTransform(d, 0, 0, d, 0, 0);
+  const w = r.width, h = r.height, L = 34, B = 20, T = 8, Rr = 8;
+  cg.clearRect(0, 0, w, h);
+  const a0 = -6, a1 = 18, c0 = -0.4, c1 = 2.4;
+  const X = (a) => L + (a - a0) / (a1 - a0) * (w - L - Rr), Y = (c) => T + (1 - (c - c0) / (c1 - c0)) * (h - T - B);
+  cg.strokeStyle = 'rgba(190,205,225,.14)'; cg.lineWidth = 1; cg.font = '500 11px "IBM Plex Mono", monospace'; cg.fillStyle = '#9aa6b5';
+  for (let c = 0; c <= 2; c += 1) { cg.beginPath(); cg.moveTo(L, Y(c)); cg.lineTo(w - Rr, Y(c)); cg.stroke(); cg.fillText(String(c), 8, Y(c) + 4); }
+  for (let a = 0; a <= 15; a += 5) { cg.beginPath(); cg.moveTo(X(a), T); cg.lineTo(X(a), h - B); cg.stroke(); cg.fillText(a + '°', X(a) - 8, h - 5); }
+  const clAt = (a) => { const ar = a * Math.PI / 180; return 2 * 4 * Math.PI * P.R * Math.sin(ar + P.beta) / P.chord; };
+  // «реальный» профиль: линейный участок, затем срыв (иллюстрация)
+  cg.setLineDash([4, 4]); cg.strokeStyle = 'rgba(255,154,128,.8)'; cg.beginPath();
+  for (let a = a0; a <= a1; a += 0.25) { let c = clAt(a) * 0.92; if (a > 13) c = clAt(13) * 0.92 - (a - 13) * 0.09 - 0.05 * (a - 13) ** 1.6; a === a0 ? cg.moveTo(X(a), Y(c)) : cg.lineTo(X(a), Y(c)); }
+  cg.stroke(); cg.setLineDash([]);
+  cg.strokeStyle = '#e8edf3'; cg.lineWidth = 1.5; cg.beginPath();
+  for (let a = a0; a <= a1; a += 0.25) { const c = clAt(a); a === a0 ? cg.moveTo(X(a), Y(c)) : cg.lineTo(X(a), Y(c)); } cg.stroke();
+  const cur = S.kutta ? P.cl : 0;
+  cg.fillStyle = '#ffc857'; cg.beginPath(); cg.arc(X(S.alpha), Y(cur), 4.5, 0, 7); cg.fill();
+  cg.fillStyle = '#9aa6b5'; cg.fillText('теория', w - Rr - 52, Y(clAt(17)) + 16);
+  cg.fillStyle = 'rgba(255,154,128,.95)'; cg.fillText('реальный срыв (условно)', X(4.2), Y(0.12) + 2);
+}
+
+// ───────────────────────── Кадр ─────────────────────────
+let last = performance.now(), frameN = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) return;
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; frameN++;
+  const sim = dt * 1.4;
+  // предварительный прогон при старте, чтобы первый кадр уже был с дымом
+  if (frameN === 1) {
+    // дым должен заполнить трубу уже в первом кадре: крупный шаг, выпуск со сдвигом, чтобы не было разрывов
+    for (let k = 0; k < 280; k++) { for (let j = 0; j < 3; j++) { const n0 = np; emit(1 / 60); for (let q = n0; q < np; q++) px[q] += j * 0.024; } advect(1 / 20 * 1.4); }
+  }
+  if (!(SHOT && frameN % 2)) { emit(dt); advect(sim); }
+  stepMyth(sim);
+  gl.viewport(0, 0, cv.width, cv.height);
+  gl.disable(gl.BLEND);
+  gl.useProgram(fieldP); gl.bindVertexArray(vaoF);
+  gl.uniform2f(U(fieldP, 'uRes'), cv.width, cv.height); gl.uniform2f(U(fieldP, 'uC'), CX * DPR, CY * DPR);
+  gl.uniform1f(U(fieldP, 'uPPU'), PPU * DPR); gl.uniform1f(U(fieldP, 'uR'), P.R); gl.uniform1f(U(fieldP, 'uAlpha'), P.a);
+  gl.uniform1f(U(fieldP, 'uG'), P.G); gl.uniform1f(U(fieldP, 'uPsi0'), P.psi0); gl.uniform2f(U(fieldP, 'uMu'), P.mu[0], P.mu[1]);
+  S.pressA = (S.pressA ?? 1) + ((S.press ? 1 : 0) - (S.pressA ?? 1)) * Math.min(1, dt * 5);
+  S.streamA = (S.streamA ?? 1) + ((S.stream ? 1 : 0) - (S.streamA ?? 1)) * Math.min(1, dt * 5);
+  gl.uniform1f(U(fieldP, 'uPress'), S.pressA); gl.uniform1f(U(fieldP, 'uStream'), S.streamA); gl.uniform1f(U(fieldP, 'uTime'), now / 1000);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  // частицы дыма
+  if (np) {
+    for (let i = 0; i < np; i++) { pdata[i * 3] = px[i]; pdata[i * 3 + 1] = py[i]; const fade = Math.min(1, pAge[i] * 3) * Math.max(0, 1 - Math.max(0, pAge[i] - 18) / 6); pdata[i * 3 + 2] = (pRow[i] ? 0.85 : 0.5) * fade; }
+    gl.useProgram(partP); gl.bindVertexArray(vaoP);
+    gl.bindBuffer(gl.ARRAY_BUFFER, pbuf); gl.bufferData(gl.ARRAY_BUFFER, pdata.subarray(0, np * 3), gl.STREAM_DRAW);
+    gl.uniform2f(U(partP, 'uRes'), cv.width, cv.height); gl.uniform2f(U(partP, 'uC'), CX * DPR, CY * DPR); gl.uniform1f(U(partP, 'uPPU'), PPU * DPR);
+    gl.uniform1f(U(partP, 'uSize'), 3.2 * DPR); gl.uniform3f(U(partP, 'uCol'), 0.95, 0.97, 1.0);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.drawArrays(gl.POINTS, 0, np);
+  }
+  drawOverlay(now);
+}
+
+function sx(x) { return CX + x * PPU; } function sy(y) { return CY - y * PPU; }
+function drawOverlay(now) {
+  o.setTransform(DPR, 0, 0, DPR, 0, 0); o.clearRect(0, 0, W, H);
+  // стены трубы
+  // профиль: металл с бликом, по коже — полоса давления
+  const pts = P.outline;
+  o.beginPath(); pts.forEach(([x, y], i) => (i ? o.lineTo(sx(x), sy(y)) : o.moveTo(sx(x), sy(y)))); o.closePath();
+  const top = Math.min(...pts.map((p) => sy(p[1]))), bot = Math.max(...pts.map((p) => sy(p[1])));
+  const grd = o.createLinearGradient(0, top, 0, bot);
+  grd.addColorStop(0, '#dfe5ec'); grd.addColorStop(0.28, '#9aa3ae'); grd.addColorStop(0.62, '#4b525c'); grd.addColorStop(1, '#2a2f36');
+  o.fillStyle = grd; o.fill();
+  o.strokeStyle = 'rgba(255,255,255,.55)'; o.lineWidth = 1; o.stroke();
+  // Cp на поверхности — цветная кромка
+  if (S.pressA > 0.05) {
+    o.lineWidth = 3.2; o.globalAlpha = S.pressA;
+    for (let k = 0; k < pts.length - 1; k += 2) {
+      const [x, y] = pts[k], [x2, y2] = pts[Math.min(pts.length - 1, k + 2)];
+      const nx = (x + x2) / 2, ny = (y + y2) / 2, v = velocityNear(nx, ny); const cp = 1 - v;
+      o.strokeStyle = cp < 0 ? `rgba(${90 - Math.min(1, -cp / 2.6) * 20 | 0},${150 + Math.min(1, -cp / 2.6) * 60 | 0},255,1)` : `rgba(255,${120 - cp * 40 | 0},${80 - cp * 40 | 0},1)`;
+      o.beginPath(); o.moveTo(sx(x), sy(y)); o.lineTo(sx(x2), sy(y2)); o.stroke();
+    }
+    o.globalAlpha = 1;
+  }
+  // вектор подъёмной силы в четверти хорды
+  const Lx = P.le + P.chord * 0.25, Ly = 0.15;
+  const len = Math.max(-1.6, Math.min(2.6, P.cl * 0.9)) * PPU;
+  if (Math.abs(len) > 4) {
+    o.strokeStyle = '#ffc857'; o.fillStyle = '#ffc857'; o.lineWidth = 2.5;
+    const x0 = sx(Lx), y0 = sy(Ly);
+    o.beginPath(); o.moveTo(x0, y0); o.lineTo(x0, y0 - len); o.stroke();
+    const s = Math.sign(len); o.beginPath(); o.moveTo(x0, y0 - len - s * 10); o.lineTo(x0 - 7, y0 - len + s * 2); o.lineTo(x0 + 7, y0 - len + s * 2); o.closePath(); o.fill();
+    o.font = '600 14px "IBM Plex Sans", sans-serif'; o.fillText('подъёмная сила', x0 + 12, y0 - len * 0.8);
+  }
+  // скос потока (глава «Ньютон»): стрелки скорости за крылом
+  if (S.arrows) {
+    o.lineWidth = 1.6;
+    for (let gx = P.te - 1.5; gx < view.x1 - 0.3; gx += 0.55) for (let gy = -1.4; gy <= 1.4; gy += 0.5) {
+      const v = velocity(gx, gy); if (!v) continue;
+      const ang = Math.atan2(v[1], v[0]), m = Math.hypot(v[0], v[1]);
+      const x = sx(gx), y = sy(gy), L2 = 18 * Math.min(1.6, m);
+      o.strokeStyle = v[1] < -0.02 ? 'rgba(255,200,87,.9)' : 'rgba(232,237,243,.45)';
+      o.beginPath(); o.moveTo(x, y); o.lineTo(x + Math.cos(ang) * L2, y - Math.sin(ang) * L2); o.stroke();
+      o.beginPath(); o.arc(x + Math.cos(ang) * L2, y - Math.sin(ang) * L2, 1.8, 0, 7); o.fillStyle = o.strokeStyle; o.fill();
+    }
+  }
+  // частицы мифа
+  if (myth) {
+    const alpha = myth.fade ? Math.max(0, 1 - myth.fade / 2) : 1;
+    for (const [p, c, label] of [[myth.a, '#ffc857', 'сверху'], [myth.b, '#6ec8ff', 'снизу']]) {
+      o.globalAlpha = alpha; o.strokeStyle = c; o.lineWidth = 2; o.beginPath();
+      p.tr.forEach(([x, y], i) => (i ? o.lineTo(sx(x), sy(y)) : o.moveTo(sx(x), sy(y)))); o.stroke();
+      o.fillStyle = c; o.beginPath(); o.arc(sx(p.x), sy(p.y), 7, 0, 7); o.fill();
+      o.strokeStyle = '#0a0c0f'; o.lineWidth = 2; o.stroke();
+      o.font = '600 13px "IBM Plex Sans", sans-serif'; o.fillText(label, sx(p.x) - 18, sy(p.y) + (c === '#ffc857' ? -14 : 24));
+    }
+    if (myth.done) {
+      o.strokeStyle = 'rgba(255,255,255,.5)'; o.setLineDash([3, 4]); o.beginPath(); o.moveTo(sx(P.te), sy(-1.4)); o.lineTo(sx(P.te), sy(1.4)); o.stroke(); o.setLineDash([]);
+    }
+    o.globalAlpha = 1;
+  }
+  // предупреждение о срыве
+  if (S.alpha > 13.5 && S.kutta) {
+    o.font = '600 14px "IBM Plex Sans", sans-serif'; o.fillStyle = '#ff9a80';
+    o.fillText('Срыв потока: на таком угле реальное крыло теряет подъёмную силу.', sx(P.le), sy(-1.25));
+    o.font = '400 13px "IBM Plex Sans", sans-serif'; o.fillStyle = '#9aa6b5';
+    o.fillText('Модель идеальной жидкости его не описывает — завихрения нарисованы условно.', sx(P.le), sy(-1.25) + 20);
+  }
+  if (!S.kutta) {
+    o.font = '600 14px "IBM Plex Sans", sans-serif'; o.fillStyle = '#ff9a80';
+    o.fillText('Без условия Кутты поток огибает острую кромку — подъёмной силы нет.', sx(P.le), sy(-1.25));
+  }
+}
+function velocityNear(x, y) {
+  // скорость чуть снаружи контура: смещаемся от центра профиля
+  const cx = (P.le + P.te) / 2, dx = x - cx, dy = y - 0.05, d = Math.hypot(dx, dy) || 1;
+  const v = velocity(x + dx / d * 0.03, y + dy / d * 0.03) || [0, 0];
+  return v[0] * v[0] + v[1] * v[1];
+}
+
+// ───────────────────────── Старт ─────────────────────────
+layout();
+geometry();
+setChapter(0);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

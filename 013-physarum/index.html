@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Слизевик-градостроитель</title>
+<meta name="description" content="Сотни тысяч агентов Physarum polycephalum прокладывают сеть между городами. WebGL2.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070504;
+  --amber:#e9a23b;
+  --gold:#ffd98a;
+  --pale:#fff1d6;
+  --dim:rgba(255,226,180,.56);
+  --line:rgba(255,198,120,.17);
+  --serif:'Cormorant Garamond','Iowan Old Style','Times New Roman',serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--pale);overflow:hidden;font-family:var(--mono);-webkit-font-smoothing:antialiased}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#ov{cursor:crosshair;touch-action:none;z-index:1}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible{outline:1px solid var(--gold);outline-offset:2px}
+
+/* ── заголовок ── */
+.title{position:fixed;left:44px;top:40px;max-width:440px;z-index:2;pointer-events:none;transition:opacity .4s}
+.title::before{content:'';position:absolute;z-index:-1;inset:-80px -120px -70px -90px;background:radial-gradient(closest-side,rgba(7,5,4,.8),rgba(7,5,4,.55) 58%,rgba(7,5,4,0));pointer-events:none}
+.latin{font-family:var(--serif);font-style:italic;font-size:18px;color:var(--gold);letter-spacing:.01em}
+.latin span{font-family:var(--mono);font-style:normal;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-left:12px}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(44px,5.3vw,78px);line-height:.84;letter-spacing:-.012em;margin:12px 0 20px;color:#ffe8bc}
+.lead{font-family:var(--serif);font-size:18.5px;line-height:1.36;color:rgba(255,236,205,.84);max-width:35ch}
+.hint{margin-top:18px;font-size:12px;letter-spacing:.02em;color:rgba(255,226,180,.66);line-height:1.8}
+.hint i{font-style:normal;color:var(--gold)}
+
+/* ── панель лаборатории ── */
+.panel{position:fixed;right:24px;top:24px;width:300px;z-index:3;background:rgba(11,8,6,.8);border:1px solid var(--line);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);transition:opacity .4s,transform .4s}
+.phead{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line)}
+.phead strong{font-weight:500;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.phead button{background:none;border:0;cursor:pointer;width:40px;height:30px;margin:-8px -10px -8px 0;display:grid;place-items:center;color:var(--dim)}
+.phead button svg{transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+.panel.collapsed .phead button svg{transform:rotate(180deg)}
+.pbody{max-height:calc(100vh - 110px);overflow:auto;scrollbar-width:thin}
+.panel.collapsed .pbody{display:none}
+.panel section{padding:14px 16px 15px;border-bottom:1px solid var(--line)}
+.panel section:last-child{border-bottom:0}
+.panel h2{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,226,180,.66);font-weight:500;margin-bottom:10px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font-size:13px;background:transparent;border:1px solid rgba(255,210,140,.24);padding:7px 10px 8px;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+.seg button:hover{border-color:rgba(255,210,140,.6)}
+.seg button.on{background:var(--amber);color:#1c0e03;border-color:var(--amber)}
+.caption{font-family:var(--serif);font-style:italic;font-size:15px;line-height:1.3;color:rgba(255,232,196,.78);margin-top:11px;min-height:2.6em}
+.row{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:2px 10px;margin-bottom:9px}
+.row:last-child{margin-bottom:0}
+.row span{font-size:12.5px;color:rgba(255,236,205,.84)}
+.row output{font-size:12.5px;color:var(--gold);font-variant-numeric:tabular-nums}
+input[type=range]{grid-column:1/-1;-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;cursor:pointer;--p:50%}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:linear-gradient(to right,var(--amber) var(--p),rgba(255,210,140,.2) var(--p))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#ffe6b0;margin-top:-5.5px;border:2px solid #0b0806;transition:transform .2s}
+input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.18)}
+input[type=range]::-moz-range-track{height:2px;background:rgba(255,210,140,.2)}
+input[type=range]::-moz-range-progress{height:2px;background:var(--amber)}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;background:#ffe6b0}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.actions button{display:flex;align-items:center;gap:8px;font-size:12.5px;background:transparent;border:1px solid rgba(255,210,140,.24);padding:9px 10px;cursor:pointer;text-align:left;transition:background .2s,border-color .2s}
+.actions button:hover{background:rgba(233,162,59,.1);border-color:rgba(255,210,140,.55)}
+.actions button svg{flex:none;opacity:.8}
+.actions kbd{margin-left:auto;font:inherit;font-size:11px;color:rgba(255,226,180,.62)}
+
+/* ── статистика и масштаб ── */
+.stats{position:fixed;left:44px;bottom:30px;z-index:2;pointer-events:none;font-size:12px;letter-spacing:.04em;color:rgba(255,226,180,.66);font-variant-numeric:tabular-nums;white-space:nowrap}
+.stats b{color:var(--gold);font-weight:500}
+.stats .sep{margin:0 10px;opacity:.5}
+.toast{position:fixed;left:50%;bottom:34px;transform:translate(-50%,12px);opacity:0;z-index:4;font-size:12px;letter-spacing:.05em;padding:9px 14px;background:rgba(11,8,6,.9);border:1px solid var(--line);color:var(--gold);transition:opacity .3s,transform .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+body.clean .title,body.clean .stats{opacity:0}
+body.clean .panel{opacity:0;transform:translateX(12px);pointer-events:none}
+
+.fail{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:32px;z-index:10;background:var(--bg)}
+.fail h2{font-family:var(--serif);font-size:42px;font-weight:600;color:#ffe8bc;margin-bottom:12px}
+.fail p{font-family:var(--serif);font-size:19px;color:var(--dim);max-width:36ch;margin:0 auto}
+
+@media (max-width:760px){
+  .title{left:20px;right:20px;top:18px;max-width:none}
+  .title::before{inset:-18px -20px -46px -20px;background:linear-gradient(to bottom,rgba(7,5,4,.94),rgba(7,5,4,.82) 68%,rgba(7,5,4,0))}
+  .latin{font-size:15px}
+  .latin span{display:none}
+  h1{font-size:40px;margin:6px 0 8px}
+  .lead{font-size:15px;max-width:32ch}
+  .hint{display:none}
+  .panel{left:0;right:0;top:auto;bottom:0;width:auto;border-left:0;border-right:0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom)}
+  .pbody{max-height:52vh}
+  .stats{display:none}
+  .toast{bottom:auto;top:18px}
+}
+@media (max-width:760px) and (max-height:700px){ .lead{display:none} }
+@media (prefers-reduced-motion:reduce){ .toast,.panel,.title{transition:none} }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="ov" aria-label="Чашка Петри: клик — положить еду"></canvas>
+
+<header class="title">
+  <div class="latin"><em>Physarum polycephalum</em><span>модель Джонса</span></div>
+  <h1>Слизевик-<br>градостроитель</h1>
+  <p class="lead">У&nbsp;него нет мозга, но он умеет строить дороги. В&nbsp;2010&nbsp;году учёные разложили овсяные хлопья на&nbsp;месте городов вокруг Токио, и&nbsp;слизевик соединил их&nbsp;сетью, сравнимой по&nbsp;эффективности с&nbsp;настоящей железной дорогой.</p>
+  <p class="hint"><i>клик</i> — положить еду-город · <i>клик по городу</i> — убрать<br><i>shift</i> или <i>правая кнопка</i> — соль, которой он избегает</p>
+</header>
+
+<aside class="panel" id="panel">
+  <div class="phead">
+    <strong>Лаборатория</strong>
+    <button id="pToggle" aria-label="Свернуть панель" aria-expanded="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 9l4-4 4 4"/></svg></button>
+  </div>
+  <div class="pbody">
+    <section>
+      <h2>Культура</h2>
+      <div class="seg" id="presets">
+        <button data-p="moscow" class="on">Подмосковье</button>
+        <button data-p="stars">Созвездие</button>
+        <button data-p="ring">Кольцо</button>
+        <button data-p="chaos">Хаос</button>
+        <button data-p="free">Без еды</button>
+      </div>
+      <p class="caption" id="caption"></p>
+    </section>
+    <section>
+      <h2>Инструмент</h2>
+      <div class="seg" id="tools">
+        <button data-t="food" class="on">Еда</button>
+        <button data-t="salt">Соль</button>
+        <button data-t="erase">Ластик</button>
+      </div>
+    </section>
+    <section id="sliders"></section>
+    <section>
+      <div class="actions">
+        <button id="bPause"><svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" id="icPause"><rect x="2" y="1.5" width="2.6" height="9"/><rect x="7.4" y="1.5" width="2.6" height="9"/></svg><span>Пауза</span><kbd>␣</kbd></button>
+        <button id="bSeed"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6" cy="6" r="4.2"/><circle cx="6" cy="6" r="1.2" fill="currentColor"/></svg><span>Из точки</span></button>
+        <button id="bReseed"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M10 6a4 4 0 1 1-1.2-2.85"/><path d="M9.2 1.2v2.4H6.8"/></svg><span>Заново</span><kbd>R</kbd></button>
+        <button id="bClear"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg><span>Очистить</span><kbd>C</kbd></button>
+        <button id="bSnap"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.2" y="3" width="9.6" height="7" /><circle cx="6" cy="6.5" r="1.9"/><path d="M4 3l.8-1.4h2.4L8 3"/></svg><span>Снимок</span><kbd>S</kbd></button>
+        <button id="bClean"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 6s1.8-3.6 5-3.6S11 6 11 6s-1.8 3.6-5 3.6S1 6 1 6z"/><circle cx="6" cy="6" r="1.5"/></svg><span>Скрыть</span><kbd>H</kbd></button>
+      </div>
+    </section>
+  </div>
+</aside>
+
+<footer class="stats" id="stats"></footer>
+<div class="toast" id="toast"></div>
+<div class="fail" id="fail"><div><h2>Нужен WebGL2</h2><p>Этому браузеру не хватает поддержки WebGL2 с плавающей точкой. Откройте страницу в свежем Chrome, Safari или Firefox.</p></div></div>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════════
+   Слизевик-градостроитель — модель Physarum по Джеффу Джонсу (2010)
+   Каждый агент: позиция, направление, три сенсора впереди.
+   Шаг: смотрит в след → поворачивает к сильному → идёт → оставляет след.
+   След размывается и испаряется. Еда (города) постоянно подпитывает след.
+   ════════════════════════════════════════════════════════════════ */
+
+const $ = (s) => document.querySelector(s);
+const glCanvas = $('#gl');
+const ov = $('#ov');
+const octx = ov.getContext('2d');
+const gl = glCanvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance' });
+
+function fail() { $('#fail').style.display = 'grid'; throw new Error('WebGL2 недоступен'); }
+if (!gl || !gl.getExtension('EXT_color_buffer_float')) fail();
+
+/* уровень качества: 2 — полный, 1 — облегчённый, 0 — для программного рендера */
+const dbgInfo = gl.getExtension('WEBGL_debug_renderer_info');
+const RENDERER = dbgInfo ? String(gl.getParameter(dbgInfo.UNMASKED_RENDERER_WEBGL)) : '';
+const SHOT = !!window.__SHOT__;   // съёмка обложки: полное разрешение, скорость неважна
+let quality = SHOT ? 3 : /swiftshader|llvmpipe|software|basic render/i.test(RENDERER) ? 0 : 2;
+const QUALITY = [
+  { texels: 0.26e6, dpr: 1, spf: 1 },
+  { texels: 0.8e6, dpr: 1.5, spf: 1 },
+  { texels: 1.6e6, dpr: 2, spf: 6 },
+  { texels: 0.5625 * innerWidth * innerHeight, dpr: 1, spf: 1 },
+];
+
+/* ── шейдеры ─────────────────────────────────────────────────── */
+const VS_TRI = `#version 300 es
+const vec2 P[3] = vec2[3](vec2(-1.,-1.), vec2(3.,-1.), vec2(-1.,3.));
+void main(){ gl_Position = vec4(P[gl_VertexID], 0., 1.); }`;
+
+const FS_UPDATE = `#version 300 es
+precision highp float; precision highp int;
+uniform highp sampler2D uAgents, uTrail, uField, uAttr;
+uniform vec2 uSim;
+uniform float uSA, uSO, uRA, uSS, uAttW, uLost;
+uniform uint uFrame;
+uniform vec4 uC[64];
+uniform int uCN;
+out vec4 o;
+uint pcg(uint v){ uint s=v*747796405u+2891336453u; uint w=((s>>((s>>28u)+4u))^s)*277803737u; return (w>>22u)^w; }
+float rnd(uint v){ return float(pcg(v))*(1./4294967296.); }
+float sense(vec2 p, float a){ vec2 uv = (p + vec2(cos(a), sin(a))*uSO)/uSim; return texture(uTrail, uv).r + uAttW*texture(uAttr, uv).r; }
+void main(){
+  ivec2 ip = ivec2(gl_FragCoord.xy);
+  vec4 A = texelFetch(uAgents, ip, 0);
+  vec2 p = A.xy; float a = A.z;
+  float r = rnd(uint(ip.x) + uint(ip.y)*8192u + uFrame*2654435761u);
+  float F = sense(p,a), L = sense(p,a+uSA), R = sense(p,a-uSA);
+  if (F > L && F > R) {}
+  else if (F < L && F < R) a += (r < .5 ? 1. : -1.) * uRA;
+  else if (L > R) a += uRA*(.65 + .35*r);
+  else if (R > L) a -= uRA*(.65 + .35*r);
+  else a += (r - .5)*uRA*.5;
+  vec2 np = p + vec2(cos(a), sin(a))*uSS*A.w;
+  if (np.x < .5 || np.x > uSim.x - .5){ a = 3.14159265 - a; np.x = clamp(np.x, .5, uSim.x - .5); }
+  if (np.y < .5 || np.y > uSim.y - .5){ a = -a; np.y = clamp(np.y, .5, uSim.y - .5); }
+  if (texelFetch(uField, ivec2(np), 0).g > .3){ a += 3.14159265 + (r - .5); np = p; }
+  /* заблудившийся агент (далеко от всех кормушек) изредка возвращается к еде */
+  if (uCN > 0){
+    uint id = uint(ip.x) + uint(ip.y)*8192u;
+    float r2 = rnd(id*7919u + uFrame*104729u + 17u);
+    if (texture(uAttr, np/uSim).r < uLost && r2 < .025){
+      int k = min(uCN - 1, int(rnd(id*31337u + uFrame*7u + 3u)*float(uCN)));
+      float t = rnd(id*977u + uFrame*13u)*6.2831853;
+      np = uC[k].xy + vec2(cos(t), sin(t))*2.5; a = t;
+    }
+  }
+  o = vec4(np, mod(a, 6.28318531), A.w);
+}`;
+
+const FS_ATTRACT = `#version 300 es
+precision highp float;
+uniform vec4 uC[64]; uniform int uCN; uniform float uLam;
+out vec4 o;
+void main(){
+  float a = 0.;
+  for (int i = 0; i < 64; i++){ if (i >= uCN) break; a += uC[i].z*exp(-distance(gl_FragCoord.xy, uC[i].xy)/uLam); }
+  o = vec4(a, 0., 0., 1.);
+}`;
+
+const VS_DEPOSIT = `#version 300 es
+precision highp float;
+uniform highp sampler2D uAgents;
+uniform vec2 uSim; uniform int uAW;
+void main(){
+  vec2 p = texelFetch(uAgents, ivec2(gl_VertexID % uAW, gl_VertexID / uAW), 0).xy;
+  gl_Position = vec4(p/uSim*2. - 1., 0., 1.);
+  gl_PointSize = 1.;
+}`;
+const FS_DEPOSIT = `#version 300 es
+precision highp float;
+uniform float uDep; out vec4 o;
+void main(){ o = vec4(uDep, 0., 0., 0.); }`;
+
+const FS_DIFFUSE = `#version 300 es
+precision highp float;
+uniform highp sampler2D uTrail, uField;
+uniform float uDecay, uFood;
+out vec4 o;
+void main(){
+  ivec2 p = ivec2(gl_FragCoord.xy), sz = textureSize(uTrail, 0) - 1;
+  float s = 0.;
+  for (int j=-1; j<=1; j++) for (int i=-1; i<=1; i++) s += texelFetch(uTrail, clamp(p + ivec2(i,j), ivec2(0), sz), 0).r;
+  vec2 f = texelFetch(uField, p, 0).rg;
+  float v = (s/9.)*uDecay + f.r*uFood;
+  v = mix(v, -6., f.g);
+  o = vec4(clamp(v, -20., 400.), 0., 0., 1.);
+}`;
+
+const FS_DISPLAY = `#version 300 es
+precision highp float;
+uniform highp sampler2D uTrail, uField, uAttr;
+uniform vec2 uRes; uniform float uTime, uExp;
+out vec4 o;
+float h12(vec2 p){ vec3 q = fract(vec3(p.xyx)*.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y)*q.z); }
+float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3. - 2.*f);
+  return mix(mix(h12(i), h12(i + vec2(1,0)), f.x), mix(h12(i + vec2(0,1)), h12(i + vec2(1,1)), f.x), f.y); }
+vec3 ramp(float x){
+  const vec3 c0 = vec3(.024,.016,.011), c1 = vec3(.17,.066,.014), c2 = vec3(.58,.23,.03),
+             c3 = vec3(.93,.60,.13), c4 = vec3(1.,.86,.47), c5 = vec3(1.,.975,.9);
+  if (x < .16) return mix(c0, c1, x/.16);
+  if (x < .38) return mix(c1, c2, (x - .16)/.22);
+  if (x < .64) return mix(c2, c3, (x - .38)/.26);
+  if (x < .87) return mix(c3, c4, (x - .64)/.23);
+  return mix(c4, c5, (x - .87)/.13);
+}
+void main(){
+  vec2 uv = gl_FragCoord.xy/uRes;
+  vec2 ts = 1./vec2(textureSize(uTrail, 0));
+  float t = texture(uTrail, uv).r;
+  float g = 0.;
+  for (int i = 0; i < 8; i++){ float an = float(i)*.785398 + .39; g += texture(uTrail, uv + vec2(cos(an), sin(an))*ts*4.).r; }
+  g *= .125;
+  /* степенная компрессия: пена едва тлеет, трубки дают градацию от янтаря к белому */
+  float x = 1. - exp(-pow(max(t, 0.), .55)*uExp);
+  float gx = 1. - exp(-pow(max(g, 0.), .55)*uExp*.45);
+  vec3 col = ramp(x);
+  col += vec3(1., .5, .12)*gx*.16;
+  float att = texture(uAttr, uv).r;
+  col += vec3(.95,.48,.12)*smoothstep(.15, 2.6, att)*.05*(1. - x);
+  /* агар: тёплая неровная подложка */
+  float n = vnoise(uv*uRes/90.)*.6 + vnoise(uv*uRes/23.)*.4;
+  col += vec3(.034,.022,.014)*(.45 + .9*n)*(1. - x);
+  /* соль: кристаллическая крошка */
+  float salt = texture(uField, uv).g;
+  if (salt > 0.){
+    float sp = step(.82, h12(floor(gl_FragCoord.xy/1.6) + 17.));
+    col = mix(col, vec3(.8,.85,.9)*(.08 + .5*sp), salt*.72);
+  }
+  vec2 q = uv - .5; q.x *= uRes.x/uRes.y;
+  col *= 1. - .6*smoothstep(.32, 1.05, length(q));
+  col += (h12(gl_FragCoord.xy + fract(uTime*7.13)*917.) - .5)*.032;
+  o = vec4(max(col, 0.), 1.);
+}`;
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(vs, fs, uniforms) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {};
+  for (const n of uniforms) u[n] = gl.getUniformLocation(p, n);
+  return { p, u };
+}
+const P_UPDATE = program(VS_TRI, FS_UPDATE, ['uAgents','uTrail','uField','uAttr','uSim','uSA','uSO','uRA','uSS','uAttW','uLost','uFrame','uC','uCN']);
+const P_ATTRACT = program(VS_TRI, FS_ATTRACT, ['uC','uCN','uLam']);
+const P_DEPOSIT = program(VS_DEPOSIT, FS_DEPOSIT, ['uAgents','uSim','uAW','uDep']);
+const P_DIFFUSE = program(VS_TRI, FS_DIFFUSE, ['uTrail','uField','uDecay','uFood']);
+const P_DISPLAY = program(VS_TRI, FS_DISPLAY, ['uTrail','uField','uAttr','uRes','uTime','uExp']);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+
+function makeTex(w, h, internal, format, type, filter, data = null) {
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, format, type, data);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return t;
+}
+function makeFB(tex) {
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  return fb;
+}
+
+/* ── параметры ───────────────────────────────────────────────── */
+const PARAMS = [
+  { id: 'sa', label: 'Угол сенсоров', min: 10, max: 80, step: 1, val: 26, fmt: (v) => v + '°' },
+  { id: 'so', label: 'Дальность сенсоров', min: 4, max: 36, step: 0.5, val: 13, fmt: (v) => v + ' px' },
+  { id: 'ra', label: 'Поворот за шаг', min: 6, max: 80, step: 1, val: 24, fmt: (v) => v + '°' },
+  { id: 'ss', label: 'Длина шага', min: 0.4, max: 2.4, step: 0.05, val: 1.15, fmt: (v) => v.toFixed(2).replace('.', ',') + ' px' },
+  { id: 'ev', label: 'Испарение следа', min: 1, max: 20, step: 0.5, val: 6, fmt: (v) => String(v).replace('.', ',') + ' %' },
+  { id: 'spf', label: 'Скорость времени', min: 1, max: 6, step: 1, val: 2, fmt: (v) => '×' + v },
+];
+const P = Object.fromEntries(PARAMS.map((p) => [p.id, p.val]));
+const DEPOSIT = 1.0, FOOD = 6, EXPOSURE = 0.105, ATTR_W = 1.6, LOST = Math.exp(-3.2);
+
+/* ── состояние симуляции ─────────────────────────────────────── */
+let W = 0, H = 0, DPR = 1;           // CSS-размер окна
+let simW = 0, simH = 0, simK = 1;    // размер поля следа и масштаб CSS → поле
+let AW = 512, AH = 0, N = 0;         // текстура агентов
+let agentTex = [], agentFB = [], trailTex = [], trailFB = [], fieldTex = null, attrTex = null, attrFB = null;
+let cityU = new Float32Array(64 * 4), cityN = 0, lam = 60;
+let field = null;                    // Float32Array RG: еда и соль
+let fieldDirty = null;               // прямоугольник для дозагрузки
+let ai = 0, ti = 0, frame = 0, steps = 0;
+let paused = false;
+let cities = [];                     // {u, v, name, big}
+let presetId = 'moscow', layoutPristine = true;
+const ripples = [];
+
+function allocate() {
+  const Q = QUALITY[quality];
+  DPR = Math.min(window.devicePixelRatio || 1, Q.dpr);
+  W = window.innerWidth; H = window.innerHeight;
+  glCanvas.width = Math.round(W * DPR); glCanvas.height = Math.round(H * DPR);
+  ov.width = Math.round(W * DPR); ov.height = Math.round(H * DPR);
+  octx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  simK = Math.min(1, Math.sqrt(Q.texels / (W * H)));
+  simW = Math.max(64, Math.round(W * simK)); simH = Math.max(64, Math.round(H * simK));
+  N = Math.min(524288, Math.max(32768, Math.round(simW * simH * 0.21)));
+  AH = Math.ceil(N / AW); N = AW * AH;
+
+  [...agentTex, ...trailTex, fieldTex, attrTex].forEach((t) => t && gl.deleteTexture(t));
+  [...agentFB, ...trailFB, attrFB].forEach((f) => f && gl.deleteFramebuffer(f));
+  attrTex = makeTex(simW, simH, gl.R16F, gl.RED, gl.HALF_FLOAT, gl.LINEAR);
+  attrFB = makeFB(attrTex);
+  lam = 0.09 * Math.min(simW, simH) / Math.max(0.6, Math.min(1, Math.min(simW, simH) / 900));
+  agentTex = [0, 1].map(() => makeTex(AW, AH, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST));
+  agentFB = agentTex.map(makeFB);
+  trailTex = [0, 1].map(() => makeTex(simW, simH, gl.R16F, gl.RED, gl.HALF_FLOAT, gl.LINEAR));
+  trailFB = trailTex.map(makeFB);
+  field = new Float32Array(simW * simH * 2);
+  fieldTex = makeTex(simW, simH, gl.RG32F, gl.RG, gl.FLOAT, gl.NEAREST, field);
+  clearTrail();
+}
+
+function clearTrail() {
+  for (const fb of trailFB) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+  }
+}
+
+/* посев: равномерно по полю или диском вокруг точки */
+function seed(mode = 'uniform', cx, cy) {
+  const d = new Float32Array(N * 4);
+  for (let i = 0; i < N; i++) {
+    let x, y, a;
+    if (mode === 'cities' && cityN > 0) {
+      const k = pickCity();
+      const r = Math.sqrt(Math.random()) * Math.min(simW, simH) * 0.012 + 1;
+      const t = Math.random() * Math.PI * 2;
+      x = cityU[k * 4] + Math.cos(t) * r; y = cityU[k * 4 + 1] + Math.sin(t) * r; a = t;
+    } else if (mode === 'point') {
+      const r = Math.sqrt(Math.random()) * Math.min(simW, simH) * 0.035;
+      const t = Math.random() * Math.PI * 2;
+      x = cx + Math.cos(t) * r; y = cy + Math.sin(t) * r; a = t;
+    } else {
+      x = Math.random() * simW; y = Math.random() * simH; a = Math.random() * Math.PI * 2;
+    }
+    d[i * 4] = Math.min(simW - 1, Math.max(1, x));
+    d[i * 4 + 1] = Math.min(simH - 1, Math.max(1, y));
+    d[i * 4 + 2] = a;
+    d[i * 4 + 3] = 0.85 + Math.random() * 0.3;
+  }
+  gl.bindTexture(gl.TEXTURE_2D, agentTex[ai]);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, AW, AH, gl.RGBA, gl.FLOAT, d);
+  clearTrail();
+  steps = 0;
+}
+
+let cityCum = [];
+function pickCity() {
+  const r = Math.random() * cityCum[cityCum.length - 1];
+  let i = 0; while (cityCum[i] < r) i++;
+  return i;
+}
+/* пересчёт «запаха» кормушек на GPU: сумма экспонент от расстояния */
+function updateCities() {
+  cityN = Math.min(64, cities.length);
+  cityCum = [];
+  let acc = 0;
+  for (let i = 0; i < cityN; i++) {
+    const [x, y] = toSim(cities[i].u, cities[i].v), w = cityAmount(cities[i]);
+    cityU.set([x, y, w, 0], i * 4);
+    acc += w; cityCum.push(acc);
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, attrFB);
+  gl.viewport(0, 0, simW, simH);
+  gl.useProgram(P_ATTRACT.p);
+  gl.uniform4fv(P_ATTRACT.u.uC, cityU);
+  gl.uniform1i(P_ATTRACT.u.uCN, cityN);
+  gl.uniform1f(P_ATTRACT.u.uLam, lam);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  labelsDirty = true;
+}
+const seedMode = () => (presetId === 'free' || cityN === 0 ? 'uniform' : 'cities');
+
+/* ── поле еды и соли ─────────────────────────────────────────── */
+const toSim = (u, v) => [u * simW, (1 - v) * simH];
+const cityRadius = (c) => (c.big ? 7.5 : 4.6) * Math.max(0.75, simK);
+const cityAmount = (c) => (c.big ? 2.6 : 1);
+
+function markDirty(x0, y0, x1, y1) {
+  x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0));
+  x1 = Math.min(simW, Math.ceil(x1)); y1 = Math.min(simH, Math.ceil(y1));
+  if (x1 <= x0 || y1 <= y0) return;
+  if (!fieldDirty) fieldDirty = [x0, y0, x1, y1];
+  else fieldDirty = [Math.min(fieldDirty[0], x0), Math.min(fieldDirty[1], y0), Math.max(fieldDirty[2], x1), Math.max(fieldDirty[3], y1)];
+}
+
+/* пересчитать канал еды в прямоугольнике по списку городов */
+function paintFood(x0, y0, x1, y1) {
+  x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0));
+  x1 = Math.min(simW, Math.ceil(x1)); y1 = Math.min(simH, Math.ceil(y1));
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) field[(y * simW + x) * 2] = 0;
+  for (const c of cities) {
+    const [cx, cy] = toSim(c.u, c.v), r = cityRadius(c), a = cityAmount(c);
+    const bx0 = Math.max(x0, Math.floor(cx - r)), bx1 = Math.min(x1, Math.ceil(cx + r));
+    const by0 = Math.max(y0, Math.floor(cy - r)), by1 = Math.min(y1, Math.ceil(cy + r));
+    for (let y = by0; y < by1; y++) for (let x = bx0; x < bx1; x++) {
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / r;
+      if (d < 1) field[(y * simW + x) * 2] += a * (1 - d * d);
+    }
+  }
+  markDirty(x0, y0, x1, y1);
+}
+function repaintAllFood() { paintFood(0, 0, simW, simH); }
+
+function paintSalt(cx, cy, r, add) {
+  const x0 = Math.floor(cx - r), x1 = Math.ceil(cx + r), y0 = Math.floor(cy - r), y1 = Math.ceil(cy + r);
+  for (let y = Math.max(0, y0); y < Math.min(simH, y1); y++) for (let x = Math.max(0, x0); x < Math.min(simW, x1); x++) {
+    const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / r;
+    if (d >= 1) continue;
+    const i = (y * simW + x) * 2 + 1;
+    const k = Math.min(1, (1 - d) * 2.2);
+    field[i] = add ? Math.max(field[i], k) : Math.min(field[i], 1 - k);
+  }
+  markDirty(x0, y0, x1, y1);
+}
+function clearSalt() {
+  for (let i = 1; i < field.length; i += 2) field[i] = 0;
+  markDirty(0, 0, simW, simH);
+}
+
+function uploadField() {
+  if (!fieldDirty) return;
+  const [x0, y0, x1, y1] = fieldDirty;
+  gl.bindTexture(gl.TEXTURE_2D, fieldTex);
+  gl.pixelStorei(gl.UNPACK_ROW_LENGTH, simW);
+  gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, x0);
+  gl.pixelStorei(gl.UNPACK_SKIP_ROWS, y0);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, x0, y0, x1 - x0, y1 - y0, gl.RG, gl.FLOAT, field);
+  gl.pixelStorei(gl.UNPACK_ROW_LENGTH, 0);
+  gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, 0);
+  gl.pixelStorei(gl.UNPACK_SKIP_ROWS, 0);
+  fieldDirty = null;
+}
+
+/* ── пресеты ─────────────────────────────────────────────────── */
+// Города Подмосковья: широта, долгота (градусы). Москва — самая сильная кормушка.
+const MOSCOW_REGION = [
+  ['Москва', 55.756, 37.617, 1], ['Зеленоград', 55.991, 37.214], ['Подольск', 55.431, 37.545],
+  ['Сергиев Посад', 56.315, 38.136], ['Дмитров', 56.344, 37.52], ['Клин', 56.332, 36.729],
+  ['Истра', 55.915, 36.86], ['Наро-Фоминск', 55.386, 36.733], ['Серпухов', 54.914, 37.411],
+  ['Коломна', 55.103, 38.753], ['Воскресенск', 55.322, 38.673], ['Орехово-Зуево', 55.806, 38.962],
+  ['Ногинск', 55.854, 38.442], ['Егорьевск', 55.383, 39.036], ['Чехов', 55.143, 37.455],
+  ['Можайск', 55.507, 36.017], ['Волоколамск', 56.036, 35.959], ['Дубна', 56.744, 37.173],
+  ['Пушкино', 56.011, 37.847], ['Раменское', 55.567, 38.23], ['Солнечногорск', 56.183, 36.977],
+  ['Ступино', 54.886, 38.078], ['Павловский Посад', 55.782, 38.65], ['Руза', 55.702, 36.195],
+  ['Шатура', 55.575, 39.544], ['Талдом', 56.731, 37.527], ['Зарайск', 54.762, 38.884],
+];
+const CAPTIONS = {
+  moscow: '27 городов Подмосковья на своих местах. Москва кормит сильнее остальных.',
+  stars: '14 кормушек, разбросанных как звёзды. Какие дороги он выберет?',
+  ring: 'Кольцо из 12 городов и столица в центре.',
+  chaos: '40 кормушек — слизевик сам решит, кого с кем соединять.',
+  free: 'Без еды: чистые узоры следа, которые рисует толпа агентов.',
+  custom: 'Ваша карта. Клик по городу убирает его — сеть перестроится.',
+};
+
+/* «сцена» — часть экрана, свободная от заголовка и панели */
+function stageRect() {
+  const mobile = W <= 760;
+  if (mobile) return { x0: 22, y0: Math.min(H * 0.34, 250), x1: W - 22, y1: H - 150 };
+  return { x0: Math.max(W * 0.3, 470), y0: 70, x1: W - 360, y1: H - 80, alt: { x0: 60, y0: 330, x1: 470, y1: H - 90 } };
+}
+function mulberry(seedN) { let a = seedN >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+function layoutPreset(id) {
+  const S = stageRect();
+  const pts = [];
+  if (id === 'moscow') {
+    const lat0 = 55.75 * Math.PI / 180, kx = Math.cos(lat0);
+    const xs = MOSCOW_REGION.map((c) => c[2] * kx), ys = MOSCOW_REGION.map((c) => c[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const bw = S.x1 - S.x0, bh = S.y1 - S.y0;
+    const sc = Math.min(bw / (maxX - minX), bh / (maxY - minY)) * 0.92;
+    const ox = S.x0 + (bw - (maxX - minX) * sc) / 2, oy = S.y0 + (bh - (maxY - minY) * sc) / 2;
+    MOSCOW_REGION.forEach((c, i) => pts.push({ u: (ox + (xs[i] - minX) * sc) / W, v: (oy + (maxY - ys[i]) * sc) / H, name: c[0], big: !!c[3] }));
+    geo = { pxPerKm: sc / 111.2, ok: true };
+  } else {
+    geo = { ok: false };
+    const rnd = mulberry(id === 'stars' ? 20100122 : id === 'chaos' ? 777 : 1);
+    if (id === 'stars' || id === 'chaos') {
+      const n = id === 'stars' ? 14 : 40, minD = id === 'stars' ? Math.min(W, H) * 0.13 : Math.min(W, H) * 0.06;
+      const rects = [S, S.alt].filter(Boolean);
+      let tries = 0;
+      while (pts.length < n && tries++ < 6000) {
+        const R = rects[rnd() < 0.8 || rects.length === 1 ? 0 : 1];
+        const x = R.x0 + rnd() * (R.x1 - R.x0), y = R.y0 + rnd() * (R.y1 - R.y0);
+        if (pts.every((p) => Math.hypot(p.u * W - x, p.v * H - y) > minD)) pts.push({ u: x / W, v: y / H });
+      }
+    } else if (id === 'ring') {
+      const cx = (S.x0 + S.x1) / 2, cy = (S.y0 + S.y1) / 2, r = Math.min(S.x1 - S.x0, S.y1 - S.y0) * 0.42;
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2 - Math.PI / 2; pts.push({ u: (cx + Math.cos(a) * r) / W, v: (cy + Math.sin(a) * r) / H }); }
+      pts.push({ u: cx / W, v: cy / H, big: true });
+    }
+  }
+  return pts;
+}
+let geo = { ok: false };
+
+function applyPreset(id, reseed = true) {
+  presetId = id; layoutPristine = true;
+  cities = layoutPreset(id);
+  document.querySelectorAll('#presets button').forEach((b) => b.classList.toggle('on', b.dataset.p === id));
+  $('#caption').textContent = CAPTIONS[id];
+  clearSalt();
+  repaintAllFood();
+  updateCities();
+  if (reseed) seed(seedMode());
+}
+
+/* ── взаимодействие ──────────────────────────────────────────── */
+let tool = 'food';
+let drag = null;
+
+function cityAt(x, y) {
+  let best = -1, bd = 16;
+  cities.forEach((c, i) => { const d = Math.hypot(c.u * W - x, c.v * H - y); if (d < bd) { bd = d; best = i; } });
+  return best;
+}
+function markCustom() {
+  if (layoutPristine) { layoutPristine = false; }
+  presetId = 'custom';
+  document.querySelectorAll('#presets button').forEach((b) => b.classList.remove('on'));
+  $('#caption').textContent = CAPTIONS.custom;
+}
+function addCity(x, y) {
+  cities.push({ u: x / W, v: y / H });
+  const [sx, sy] = toSim(x / W, y / H), r = 12;
+  paintFood(sx - r, sy - r, sx + r, sy + r);
+  updateCities();
+  ripples.push({ x, y, t0: performance.now(), out: true });
+  markCustom();
+}
+function removeCity(i) {
+  const c = cities[i];
+  cities.splice(i, 1);
+  const [sx, sy] = toSim(c.u, c.v), r = 14;
+  paintFood(sx - r, sy - r, sx + r, sy + r);
+  updateCities();
+  ripples.push({ x: c.u * W, y: c.v * H, t0: performance.now(), out: false });
+  markCustom();
+}
+function saltAt(x, y, add = true) {
+  const [sx, sy] = toSim(x / W, y / H);
+  paintSalt(sx, sy, 26 * simK + 6, add);
+}
+function eraseAt(x, y) {
+  const i = cityAt(x, y);
+  if (i >= 0) removeCity(i);
+  saltAt(x, y, false);
+}
+
+ov.addEventListener('contextmenu', (e) => e.preventDefault());
+ov.addEventListener('pointerdown', (e) => {
+  ov.setPointerCapture(e.pointerId);
+  const mode = e.button === 2 || e.shiftKey ? 'salt' : e.altKey ? 'erase' : tool;
+  drag = { x: e.clientX, y: e.clientY, moved: false, mode };
+  if (mode === 'salt') saltAt(e.clientX, e.clientY);
+  if (mode === 'erase') eraseAt(e.clientX, e.clientY);
+});
+ov.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 5) drag.moved = true;
+  if (drag.mode === 'salt') saltAt(e.clientX, e.clientY);
+  else if (drag.mode === 'erase') eraseAt(e.clientX, e.clientY);
+});
+ov.addEventListener('pointerup', (e) => {
+  if (!drag) return;
+  if (drag.mode === 'food' && !drag.moved) {
+    const i = cityAt(e.clientX, e.clientY);
+    if (i >= 0) removeCity(i); else addCity(e.clientX, e.clientY);
+  }
+  if (drag.mode === 'salt' && !drag.moved) markCustom();
+  drag = null;
+});
+
+/* ── интерфейс ───────────────────────────────────────────────── */
+const slidersEl = $('#sliders');
+slidersEl.innerHTML = '<h2>Параметры агента</h2>' + PARAMS.map((p) =>
+  `<label class="row"><span>${p.label}</span><output id="o_${p.id}"></output>` +
+  `<input type="range" id="r_${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.val}"></label>`).join('');
+function syncSlider(p) {
+  const r = $('#r_' + p.id), v = parseFloat(r.value);
+  P[p.id] = v;
+  $('#o_' + p.id).textContent = p.fmt(v);
+  r.style.setProperty('--p', ((v - p.min) / (p.max - p.min)) * 100 + '%');
+}
+PARAMS.forEach((p) => { syncSlider(p); $('#r_' + p.id).addEventListener('input', () => syncSlider(p)); });
+
+$('#presets').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) applyPreset(b.dataset.p); });
+$('#tools').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  tool = b.dataset.t;
+  document.querySelectorAll('#tools button').forEach((x) => x.classList.toggle('on', x === b));
+  ov.style.cursor = tool === 'food' ? 'crosshair' : 'cell';
+});
+function setPaused(v) {
+  paused = v;
+  $('#bPause span').textContent = paused ? 'Дальше' : 'Пауза';
+  $('#icPause').innerHTML = paused ? '<path d="M3 1.5l7 4.5-7 4.5z"/>' : '<rect x="2" y="1.5" width="2.6" height="9"/><rect x="7.4" y="1.5" width="2.6" height="9"/>';
+}
+$('#bPause').onclick = () => setPaused(!paused);
+$('#bReseed').onclick = () => seed(seedMode());
+$('#bSeed').onclick = () => {
+  const c = cities.find((x) => x.big) || cities[0];
+  const [sx, sy] = c ? toSim(c.u, c.v) : [simW / 2, simH / 2];
+  seed('point', sx, sy);
+  toast(c && c.name ? `Посев в точке: ${c.name}` : 'Посев в точке');
+};
+$('#bClear').onclick = () => { cities = []; clearSalt(); repaintAllFood(); updateCities(); markCustom(); $('#caption').textContent = CAPTIONS.free; };
+$('#bSnap').onclick = snapshot;
+$('#bClean').onclick = () => document.body.classList.toggle('clean');
+const panel = $('#panel');
+$('#pToggle').onclick = () => {
+  panel.classList.toggle('collapsed');
+  $('#pToggle').setAttribute('aria-expanded', String(!panel.classList.contains('collapsed')));
+};
+if (window.innerWidth <= 760) panel.classList.add('collapsed');
+
+window.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' && e.key !== ' ') return;
+  const k = e.key.toLowerCase();
+  if (e.key === ' ') { e.preventDefault(); setPaused(!paused); }
+  else if (k === 'r' || k === 'к') seed(seedMode());
+  else if (k === 'c' || k === 'с') $('#bClear').click();
+  else if (k === 's' || k === 'ы') snapshot();
+  else if (k === 'h' || k === 'р') document.body.classList.toggle('clean');
+  else if ('12345'.includes(k)) applyPreset(['moscow', 'stars', 'ring', 'chaos', 'free'][+k - 1]);
+});
+
+let toastTimer = 0;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function snapshot() {
+  render(performance.now());
+  const c = document.createElement('canvas');
+  c.width = glCanvas.width; c.height = glCanvas.height;
+  const x = c.getContext('2d');
+  x.drawImage(glCanvas, 0, 0);
+  x.drawImage(ov, 0, 0);
+  c.toBlob((b) => {
+    if (!b) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = `slizevik-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast('Снимок сохранён');
+  }, 'image/png');
+}
+
+/* ── шаг симуляции ───────────────────────────────────────────── */
+function bindTex(unit, tex, loc) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(loc, unit); }
+
+function step() {
+  const deg = Math.PI / 180;
+  // 1. агенты чувствуют след и делают шаг
+  gl.bindFramebuffer(gl.FRAMEBUFFER, agentFB[1 - ai]);
+  gl.viewport(0, 0, AW, AH);
+  gl.useProgram(P_UPDATE.p);
+  bindTex(0, agentTex[ai], P_UPDATE.u.uAgents);
+  bindTex(1, trailTex[ti], P_UPDATE.u.uTrail);
+  bindTex(2, fieldTex, P_UPDATE.u.uField);
+  bindTex(3, attrTex, P_UPDATE.u.uAttr);
+  gl.uniform2f(P_UPDATE.u.uSim, simW, simH);
+  gl.uniform1f(P_UPDATE.u.uAttW, ATTR_W);
+  gl.uniform1f(P_UPDATE.u.uLost, LOST);
+  gl.uniform4fv(P_UPDATE.u.uC, cityU);
+  gl.uniform1i(P_UPDATE.u.uCN, cityN);
+  gl.uniform1f(P_UPDATE.u.uSA, P.sa * deg);
+  gl.uniform1f(P_UPDATE.u.uSO, P.so * Math.max(0.7, simK));
+  gl.uniform1f(P_UPDATE.u.uRA, P.ra * deg);
+  gl.uniform1f(P_UPDATE.u.uSS, P.ss);
+  gl.uniform1ui(P_UPDATE.u.uFrame, frame >>> 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  ai = 1 - ai;
+
+  // 2. каждый агент оставляет след
+  gl.bindFramebuffer(gl.FRAMEBUFFER, trailFB[ti]);
+  gl.viewport(0, 0, simW, simH);
+  gl.useProgram(P_DEPOSIT.p);
+  bindTex(0, agentTex[ai], P_DEPOSIT.u.uAgents);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, null);
+  gl.uniform2f(P_DEPOSIT.u.uSim, simW, simH);
+  gl.uniform1i(P_DEPOSIT.u.uAW, AW);
+  gl.uniform1f(P_DEPOSIT.u.uDep, DEPOSIT);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+  gl.drawArrays(gl.POINTS, 0, N);
+  gl.disable(gl.BLEND);
+
+  // 3. след расплывается, испаряется, еда подпитывает, соль гасит
+  gl.bindFramebuffer(gl.FRAMEBUFFER, trailFB[1 - ti]);
+  gl.useProgram(P_DIFFUSE.p);
+  bindTex(0, trailTex[ti], P_DIFFUSE.u.uTrail);
+  bindTex(1, fieldTex, P_DIFFUSE.u.uField);
+  gl.uniform1f(P_DIFFUSE.u.uDecay, 1 - P.ev / 100);
+  gl.uniform1f(P_DIFFUSE.u.uFood, FOOD);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  ti = 1 - ti;
+  frame++; steps++;
+}
+
+function render(now) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+  gl.useProgram(P_DISPLAY.p);
+  bindTex(0, trailTex[ti], P_DISPLAY.u.uTrail);
+  bindTex(1, fieldTex, P_DISPLAY.u.uField);
+  bindTex(2, attrTex, P_DISPLAY.u.uAttr);
+  gl.uniform2f(P_DISPLAY.u.uRes, glCanvas.width, glCanvas.height);
+  gl.uniform1f(P_DISPLAY.u.uTime, now / 1000);
+  gl.uniform1f(P_DISPLAY.u.uExp, EXPOSURE);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  drawOverlay(now);
+}
+
+/* ── раскладка подписей: жадно, без наложений ─────────────────── */
+let labelsDirty = true, placed = [];
+function layoutLabels() {
+  labelsDirty = false; placed = [];
+  const mobile = W <= 760;
+  const boxes = cities.map((c) => { const r = c.big ? 10 : 6.5; return [c.u * W - r, c.v * H - r, c.u * W + r, c.v * H + r]; });
+  const hit = (b) => boxes.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1]);
+  const order = cities.map((c, i) => i).sort((a, b) => (cities[b].big ? 1 : 0) - (cities[a].big ? 1 : 0));
+  for (const i of order) {
+    const c = cities[i];
+    if (!c.name) continue;
+    const size = c.big ? 13 : (mobile ? 11 : 11.5);
+    octx.font = `${c.big ? 500 : 400} ${size}px "IBM Plex Mono", monospace`;
+    if ('letterSpacing' in octx) octx.letterSpacing = '0.02em';
+    const text = c.name;
+    const w = octx.measureText(text).width, h = size + 2, x = c.u * W, y = c.v * H, g = c.big ? 14 : 9;
+    const cand = [[x + g, y - h / 2], [x - g - w, y - h / 2], [x - w / 2, y - g - h], [x - w / 2, y + g], [x + g - 2, y - g - h + 3], [x + g - 2, y + g - 3]];
+    for (const [lx, ly] of cand) {
+      const b = [lx - 2, ly - 1, lx + w + 2, ly + h + 1];
+      if (b[0] < 4 || b[2] > W - 4 || b[1] < 4 || b[3] > H - 4) continue;
+      if (hit(b)) continue;
+      boxes.push(b); placed.push({ text, x: lx, y: ly + h / 2, size, big: !!c.big });
+      break;
+    }
+  }
+  if ('letterSpacing' in octx) octx.letterSpacing = '0px';
+}
+document.fonts && document.fonts.ready.then(() => { labelsDirty = true; });
+
+/* ── слой подписей: кормушки, названия, круги, масштаб ────────── */
+function drawOverlay(now) {
+  octx.clearRect(0, 0, W, H);
+  const clean = document.body.classList.contains('clean');
+  const labels = presetId === 'moscow' || (!layoutPristine && cities.some((c) => c.name));
+  octx.textBaseline = 'middle';
+  for (const c of cities) {
+    const x = c.u * W, y = c.v * H;
+    octx.strokeStyle = 'rgba(255,238,205,.9)';
+    octx.lineWidth = 1;
+    octx.beginPath(); octx.arc(x, y, c.big ? 9 : 5.5, 0, Math.PI * 2); octx.stroke();
+    if (c.big) { octx.beginPath(); octx.arc(x, y, 4.5, 0, Math.PI * 2); octx.stroke(); }
+    octx.fillStyle = '#fff6e2';
+    octx.beginPath(); octx.arc(x, y, 1.7, 0, Math.PI * 2); octx.fill();
+  }
+  if (labels && !clean) {
+    if (labelsDirty) layoutLabels();
+    if ('letterSpacing' in octx) octx.letterSpacing = '0.02em';
+    for (const L of placed) {
+      octx.font = `${L.big ? 500 : 400} ${L.size}px "IBM Plex Mono", monospace`;
+      octx.lineWidth = 3.5; octx.strokeStyle = 'rgba(7,5,4,.85)';
+      octx.strokeText(L.text, L.x, L.y + 0.5);
+      octx.fillStyle = L.big ? '#ffe7b8' : 'rgba(255,230,190,.8)';
+      octx.fillText(L.text, L.x, L.y + 0.5);
+    }
+    if ('letterSpacing' in octx) octx.letterSpacing = '0px';
+  }
+  // круги от кликов
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i], k = (now - r.t0) / 750;
+    if (k >= 1) { ripples.splice(i, 1); continue; }
+    const e = 1 - Math.pow(1 - k, 3);
+    const rad = r.out ? 6 + e * 42 : 42 - e * 36;
+    octx.strokeStyle = `rgba(255,220,150,${(1 - k) * 0.8})`;
+    octx.lineWidth = 1.2;
+    octx.beginPath(); octx.arc(r.x, r.y, rad, 0, Math.PI * 2); octx.stroke();
+  }
+  // масштабная линейка и север — только для настоящей географии
+  if (geo.ok && presetId === 'moscow' && !clean) {
+    const km = 50, len = km * geo.pxPerKm;
+    const x1 = W <= 760 ? W - 24 : W - 360, x0 = x1 - len, y = W <= 760 ? H - 118 : H - 36;
+    octx.strokeStyle = 'rgba(255,226,180,.7)'; octx.lineWidth = 1;
+    octx.beginPath();
+    octx.moveTo(x0, y - 4); octx.lineTo(x0, y); octx.lineTo(x1, y); octx.lineTo(x1, y - 4);
+    octx.moveTo(x0 + len / 2, y - 2.5); octx.lineTo(x0 + len / 2, y);
+    octx.stroke();
+    octx.font = '11px "IBM Plex Mono", monospace';
+    octx.fillStyle = 'rgba(255,226,180,.8)';
+    octx.textAlign = 'right'; octx.fillText('50 км', x1, y - 13);
+    octx.textAlign = 'left'; octx.fillText('0', x0, y - 13);
+    // стрелка севера
+    const nx = x0 - 26, ny = y - 4;
+    octx.beginPath(); octx.moveTo(nx, ny - 12); octx.lineTo(nx + 4.5, ny + 3); octx.lineTo(nx, ny); octx.lineTo(nx - 4.5, ny + 3); octx.closePath();
+    octx.fillStyle = 'rgba(255,226,180,.8)'; octx.fill();
+    octx.textAlign = 'right'; octx.fillText('С', nx - 10, ny - 3);
+    octx.textAlign = 'left';
+  }
+}
+
+/* ── цикл ────────────────────────────────────────────────────── */
+let last = performance.now(), fps = 60, statTimer = 0;
+const statsEl = $('#stats');
+const fmtInt = (n) => n.toLocaleString('ru-RU');
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (document.hidden) { last = now; return; }
+  const dt = Math.min(100, now - last); last = now;
+  fps = fps * 0.92 + (1000 / Math.max(1, dt)) * 0.08;
+  uploadField();
+  if (!paused) {
+    // первые секунды — ускоренное созревание сети
+    const n = steps < 240 ? (SHOT ? 5 : 8) : Math.min(QUALITY[quality].spf, P.spf);
+    for (let i = 0; i < n; i++) step();
+  }
+  autoQuality(now, dt);
+  render(now);
+  if (SHOT) gl.finish();   // при съёмке не копим очередь команд программного рендера
+  if (now - statTimer > 250) {
+    statTimer = now;
+    statsEl.innerHTML = `<b>${fmtInt(N)}</b> агентов<span class="sep">/</span><b>${cities.length}</b> ${plural(cities.length, 'город', 'города', 'городов')}<span class="sep">/</span>шаг <b>${fmtInt(steps)}</b><span class="sep">/</span><b>${Math.round(fps)}</b> к/с`;
+  }
+}
+/* если кадры тяжелее ~45 мс, в первые секунды снижаем качество */
+const startT = performance.now();
+let qFrames = 0, qTime = 0;
+function autoQuality(now, dt) {
+  if (quality === 0 || SHOT || now - startT > 9000) return;
+  qFrames++; qTime += dt;
+  if (qFrames < 40) return;
+  const avg = qTime / qFrames; qFrames = 0; qTime = 0;
+  if (avg > 45) {
+    quality--;
+    allocate();
+    applyPreset(presetId === 'custom' ? 'moscow' : presetId);
+  }
+}
+function plural(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
+let resizeTimer = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const keep = presetId !== 'custom' ? null : cities;
+    allocate();
+    if (keep) { cities = keep; repaintAllFood(); updateCities(); seed(seedMode()); } else applyPreset(presetId);
+  }, 180);
+});
+
+allocate();
+applyPreset('moscow');
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Апериодическая мозаика</title>
+<meta name="description" content="Мозаика Пенроуза с бесконечным зумом, мультисетка де Брёйна и «шляпа» 2023 года — порядок без повторения.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prata&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0c0e14;
+    --panel: rgba(13, 15, 21, .9);
+    --gold: #d8b766;
+    --gold-soft: rgba(216, 183, 102, .38);
+    --gold-line: rgba(216, 183, 102, .22);
+    --text: #f1eadb;
+    --muted: #b9ae95;
+    --display: "Prata", "Playfair Display", Georgia, serif;
+    --ui: "Manrope", "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); color: var(--text); font-family: var(--ui); -webkit-font-smoothing: antialiased; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  canvas.drag { cursor: grabbing; }
+
+  .card { background: var(--panel); border: 1px solid var(--gold-line); border-radius: 2px; box-shadow: 0 18px 50px rgba(0, 0, 0, .45); }
+
+  .title { position: fixed; left: 28px; top: 28px; width: 380px; padding: 22px 24px 20px; }
+  .kicker { font: 600 12px/1 var(--ui); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+  h1 { margin: 12px 0 12px; font: 400 36px/1.08 var(--display); letter-spacing: -.005em; }
+  .lede { margin: 0; font: 400 15px/1.5 var(--ui); color: #d9d0bd; }
+  .lede b { color: var(--text); font-weight: 600; }
+
+  .modes { position: fixed; top: 28px; right: 28px; display: flex; padding: 5px; gap: 4px; }
+  .modes button { display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 0 14px 0 11px; border: 1px solid transparent; background: transparent; color: var(--muted); font: 600 14px/1 var(--ui); border-radius: 2px; cursor: pointer; transition: color .2s, background .2s, border-color .2s; }
+  .modes button svg { width: 20px; height: 20px; flex: none; }
+  .modes button:hover { color: var(--text); }
+  .modes button[aria-selected=true] { color: #17130b; background: var(--gold); }
+
+  .info { position: fixed; left: 28px; bottom: 28px; width: 380px; padding: 18px 24px 18px; }
+  .info h2 { margin: 0 0 10px; font: 400 21px/1.2 var(--display); }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; margin: 0; }
+  .stats div { border-top: 1px solid var(--gold-line); padding-top: 8px; }
+  .stats dt { font: 600 12px/1.2 var(--ui); color: var(--muted); letter-spacing: .02em; }
+  .stats dd { margin: 4px 0 0; font: 400 22px/1.1 var(--display); color: var(--text); font-variant-numeric: tabular-nums; }
+  .stats dd small { font: 500 12px/1 var(--ui); color: var(--muted); margin-left: 4px; }
+  .fact { margin: 14px 0 0; font: 400 13.5px/1.5 var(--ui); color: #d9d0bd; }
+
+  .controls { position: fixed; right: 28px; bottom: 28px; width: 300px; padding: 16px 18px 18px; }
+  .group + .group { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--gold-line); }
+  .glabel { font: 600 12px/1 var(--ui); color: var(--muted); margin-bottom: 10px; display: flex; justify-content: space-between; }
+  .glabel span:last-child { color: var(--text); font-weight: 500; }
+  .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .swatch { height: 44px; border: 1px solid var(--gold-line); border-radius: 2px; padding: 0; cursor: pointer; overflow: hidden; display: grid; grid-template-columns: repeat(4, 1fr); transition: border-color .2s, transform .2s cubic-bezier(.2, .8, .2, 1); }
+  .swatch i { display: block; }
+  .swatch:hover { transform: translateY(-2px); }
+  .swatch[aria-pressed=true] { border-color: var(--gold); outline: 1px solid var(--gold); outline-offset: 2px; }
+  .chips { display: flex; gap: 6px; }
+  .chip { flex: 1; min-height: 40px; border: 1px solid var(--gold-line); background: transparent; color: var(--text); font: 600 14px/1 var(--ui); border-radius: 2px; cursor: pointer; transition: background .2s, border-color .2s, color .2s; }
+  .chip:hover { border-color: var(--gold-soft); }
+  .chip[aria-pressed=true] { background: rgba(216, 183, 102, .14); border-color: var(--gold); color: #fff5dc; }
+  .row { display: flex; gap: 6px; }
+  .row .chip { flex: 1 1 auto; }
+  .zoom { flex: 0 0 44px !important; font-size: 20px; font-weight: 500; }
+  button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .hint { margin-top: 12px; font: 500 12px/1.45 var(--ui); color: var(--muted); }
+  .mg-only { display: none; }
+  body.mode-multigrid .mg-only { display: block; }
+
+  .toast { position: fixed; left: 50%; top: 28px; transform: translate(-50%, -8px); padding: 10px 16px; font: 600 13px/1 var(--ui); color: var(--text); opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 1100px) {
+    .title { width: 330px; }
+    h1 { font-size: 30px; }
+    .info { width: 330px; }
+    .fact { display: none; }
+  }
+  @media (max-width: 760px) {
+    .title { left: 12px; right: 12px; top: 12px; width: auto; padding: 14px 16px; }
+    h1 { font-size: 24px; margin: 8px 0 6px; }
+    .lede { font-size: 13.5px; line-height: 1.45; }
+    .modes { top: auto; bottom: 214px; left: 12px; right: 12px; justify-content: stretch; }
+    .modes button { flex: 1; justify-content: center; padding: 0 8px; font-size: 13px; }
+    .modes button svg { display: none; }
+    .info { left: 12px; right: auto; bottom: 12px; width: calc(50% - 16px); padding: 12px 14px; }
+    .info h2 { font-size: 17px; margin-bottom: 6px; }
+    .stats { grid-template-columns: 1fr; gap: 6px; }
+    .stats div:nth-child(n+3) { display: none; }
+    .stats dd { font-size: 18px; }
+    .controls { right: 12px; bottom: 12px; width: calc(50% - 16px); padding: 12px 12px; }
+    .swatches { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .swatch { height: 34px; }
+    .controls .group:not(:first-child), .hint { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .swatch, .toast { transition: none; } }
+</style>
+</head>
+<body class="mode-penrose">
+<canvas id="c" aria-label="Апериодическая мозаика"></canvas>
+
+<header class="title card">
+  <div class="kicker">Апериодические мозаики</div>
+  <h1 id="h1">Порядок без&nbsp;повторения</h1>
+  <p class="lede" id="lede"></p>
+</header>
+
+<nav class="modes card" role="tablist" aria-label="Мозаика">
+  <button role="tab" data-mode="penrose" aria-selected="true">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 2l3.1 8L10 18 6.9 10z"/><path d="M13.1 10L19 7.2M6.9 10L1 12.8"/></svg>Пенроуз</button>
+  <button role="tab" data-mode="multigrid" aria-selected="false">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 6h16M2 14h16M6 2l-2 16M14 2l2 16M3 3l14 14"/></svg>Мультисетка</button>
+  <button role="tab" data-mode="hat" aria-selected="false">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 12.6l-1.4-2.4 1.4-2.4h2.8l1.4-2.4h2.8l1.4 2.4 2.8 0 1.4 2.4-1.4 2.4h-2.8l-1.4 2.4-2.8 0v-2.4z"/></svg>Шляпа</button>
+</nav>
+
+<section class="info card" aria-live="polite">
+  <h2 id="infoTitle"></h2>
+  <dl class="stats" id="stats"></dl>
+  <p class="fact" id="fact"></p>
+</section>
+
+<aside class="controls card" aria-label="Настройки">
+  <div class="group">
+    <div class="glabel"><span>Глазурь</span><span id="palName"></span></div>
+    <div class="swatches" id="swatches"></div>
+  </div>
+  <div class="group mg-only">
+    <div class="glabel"><span>Симметрия</span><span id="symName"></span></div>
+    <div class="chips" id="sym"></div>
+  </div>
+  <div class="group">
+    <div class="row">
+      <button class="chip" id="tAuto" aria-pressed="true">Движение</button>
+      <button class="chip" id="tHier" aria-pressed="false">Иерархия</button>
+      <button class="chip zoom" id="zIn" aria-label="Приблизить">+</button>
+      <button class="chip zoom" id="zOut" aria-label="Отдалить">−</button>
+    </div>
+    <div class="hint" id="hint">Колесо или щипок — зум, перетаскивание — сдвиг.</div>
+  </div>
+</aside>
+<div class="toast card" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const PHI = (1 + Math.sqrt(5)) / 2;
+const $ = (id) => document.getElementById(id);
+const fmt = (x, d) => x.toFixed(d).replace('.', ',');
+const fmtInt = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+// ───────────────────────── Палитры глазури ─────────────────────────
+// cls: цвета классов плиток; seam: золото швов; deep: цвет за пределами мозаики
+const PALETTES = [
+  { name: 'Гжель', seam: '#d6b25e', deep: '#0b1530', cls: ['#f2efe6', '#2346a3', '#5d7fd1', '#aabfeb', '#142a6e', '#e7e0cf'] },
+  { name: 'Изник', seam: '#dcb865', deep: '#0e1d2b', cls: ['#f0e5cc', '#1d9a94', '#1c3f94', '#c63a2f', '#6f9c6c', '#123a5a'] },
+  { name: 'Изразец', seam: '#c9a14c', deep: '#1a140d', cls: ['#eadfc5', '#2f6b4a', '#c58a2b', '#7a3e24', '#3d5a80', '#e0c68c'] },
+  { name: 'Кинцуги', seam: '#ecc664', deep: '#0b0b0d', cls: ['#2b2c31', '#3a3d45', '#1f3c40', '#43332d', '#4c515d', '#26262c'] },
+];
+let pal = PALETTES[0];
+
+// Вариация тона плитки — «ручная» керамика
+function shade(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.max(0, Math.min(255, r * k)); g = Math.max(0, Math.min(255, g * k)); b = Math.max(0, Math.min(255, b * k));
+  return `rgb(${r | 0},${g | 0},${b | 0})`;
+}
+const hash2 = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
+
+// ───────────────────────── Пенроуз P3: треугольники Робинсона ─────────────────────────
+// c = 0 — острый (36°, половинка тонкого ромба), c = 1 — тупой (108°, половинка толстого)
+const WHEEL = [];
+for (let i = 0; i < 10; i++) {
+  let b = [Math.cos((2 * i - 1) * Math.PI / 10), Math.sin((2 * i - 1) * Math.PI / 10)];
+  let c = [Math.cos((2 * i + 1) * Math.PI / 10), Math.sin((2 * i + 1) * Math.PI / 10)];
+  if (i % 2 === 0) [b, c] = [c, b];
+  WHEEL.push([0, 0, 0, b[0], b[1], c[0], c[1]]);
+}
+function subdivide(t, out) {
+  const [c, ax, ay, bx, by, cx, cy] = t;
+  if (c === 0) {
+    const px = ax + (bx - ax) / PHI, py = ay + (by - ay) / PHI;
+    out.push([0, cx, cy, px, py, bx, by], [1, px, py, cx, cy, ax, ay]);
+  } else {
+    const qx = bx + (ax - bx) / PHI, qy = by + (ay - by) / PHI, rx = bx + (cx - bx) / PHI, ry = by + (cy - by) / PHI;
+    out.push([1, rx, ry, cx, cy, ax, ay], [1, qx, qy, rx, ry, bx, by], [0, rx, ry, qx, qy, ax, ay]);
+  }
+}
+const triHits = (t, R) => {
+  const x0 = Math.min(t[1], t[3], t[5]), x1 = Math.max(t[1], t[3], t[5]), y0 = Math.min(t[2], t[4], t[6]), y1 = Math.max(t[2], t[4], t[6]);
+  return x1 >= R[0] && x0 <= R[2] && y1 >= R[1] && y0 <= R[3];
+};
+function collectP3(level, R, superLevel) {
+  const tris = [], sup = [];
+  const tmp = [];
+  const rec = (t, k) => {
+    if (!triHits(t, R)) return;
+    if (k === superLevel) sup.push(t);
+    if (k === level) { tris.push(t); return; }
+    const kids = []; subdivide(t, kids);
+    for (const ch of kids) rec(ch, k + 1);
+  };
+  for (const t of WHEEL) rec(t, 0);
+  // склеиваем половинки через общее основание BC в целые ромбы
+  const leg = Math.pow(PHI, -level), inv = 1e4 / leg, map = new Map(), rhombs = [];
+  for (const t of tris) {
+    const key = Math.round((t[3] + t[5]) * inv) + ',' + Math.round((t[4] + t[6]) * inv);
+    const m = map.get(key);
+    if (m) { map.delete(key); rhombs.push({ c: t[0], p: [m[1], m[2], t[3], t[4], t[1], t[2], t[5], t[6]] }); }
+    else map.set(key, t);
+  }
+  for (const t of map.values()) rhombs.push({ c: t[0], p: [t[1], t[2], t[3], t[4], t[5], t[6]], half: true });
+  return { rhombs, sup };
+}
+
+// ───────────────────────── Мультисетка де Брёйна ─────────────────────────
+const SYMS = [
+  { n: 5, fold: 10, name: 'Пенроуз' },
+  { n: 7, fold: 14, name: 'семиугольная' },
+  { n: 4, fold: 8, name: 'Амман — Бенкер' },
+  { n: 6, fold: 12, name: 'двенадцатиугольная' },
+];
+function gridDirs(n) {
+  const d = [];
+  for (let j = 0; j < n; j++) { const a = (n % 2 ? 2 * Math.PI : Math.PI) * j / n; d.push([Math.cos(a), Math.sin(a)]); }
+  return d;
+}
+function collectMultigrid(n, gam, R) {
+  const E = gridDirs(n), f = 2 / n;
+  const gx0 = R[0] * f - 1.5, gy0 = R[1] * f - 1.5, gx1 = R[2] * f + 1.5, gy1 = R[3] * f + 1.5;
+  const tiles = [];
+  for (let r = 0; r < n; r++) for (let s = r + 1; s < n; s++) {
+    const er = E[r], es = E[s], det = er[0] * es[1] - er[1] * es[0];
+    if (Math.abs(det) < 1e-9) continue;
+    const rng = (e, g) => { const v = [gx0 * e[0] + gy0 * e[1], gx1 * e[0] + gy0 * e[1], gx0 * e[0] + gy1 * e[1], gx1 * e[0] + gy1 * e[1]]; return [Math.floor(Math.min(...v) + g), Math.ceil(Math.max(...v) + g)]; };
+    const [kr0, kr1] = rng(er, gam[r]), [ks0, ks1] = rng(es, gam[s]);
+    for (let kr = kr0; kr <= kr1; kr++) for (let ks = ks0; ks <= ks1; ks++) {
+      const a = kr - gam[r], b = ks - gam[s];
+      const x = (a * es[1] - b * er[1]) / det, y = (er[0] * b - es[0] * a) / det;
+      if (x < gx0 || x > gx1 || y < gy0 || y > gy1) continue;
+      let bx = 0, by = 0;
+      for (let j = 0; j < n; j++) {
+        const K = j === r ? kr - 1 : j === s ? ks - 1 : Math.floor(x * E[j][0] + y * E[j][1] + gam[j]);
+        bx += K * E[j][0]; by += K * E[j][1];
+      }
+      const p = [bx, by, bx + er[0], by + er[1], bx + er[0] + es[0], by + er[1] + es[1], bx + es[0], by + es[1]];
+      let d = s - r; if (n % 2 === 1) d = Math.min(d, n - d); else d = Math.min(d, n - d);
+      tiles.push({ c: d - 1, p, r, s, kr, ks, key: r + ':' + s + ':' + kr + ':' + ks });
+    }
+  }
+  return tiles;
+}
+
+// ───────────────────────── «Шляпа» (Смит, Майерс, Каплан, Гудман-Страусс, 2023) ─────────────────────────
+// Построение метатайлами H, T, P, F по схеме Крейга Каплана (hatviz).
+const hr3 = 0.8660254037844386;
+const pt = (x, y) => ({ x, y });
+const hexPt = (x, y) => pt(x + 0.5 * y, hr3 * y);
+const padd = (p, q) => pt(p.x + q.x, p.y + q.y), psub = (p, q) => pt(p.x - q.x, p.y - q.y);
+const IDENT = [1, 0, 0, 0, 1, 0];
+const mul = (A, B) => [A[0] * B[0] + A[1] * B[3], A[0] * B[1] + A[1] * B[4], A[0] * B[2] + A[1] * B[5] + A[2], A[3] * B[0] + A[4] * B[3], A[3] * B[1] + A[4] * B[4], A[3] * B[2] + A[4] * B[5] + A[5]];
+const inv = (T) => { const d = T[0] * T[4] - T[1] * T[3]; return [T[4] / d, -T[1] / d, (T[1] * T[5] - T[2] * T[4]) / d, -T[3] / d, T[0] / d, (T[2] * T[3] - T[0] * T[5]) / d]; };
+const trot = (a) => [Math.cos(a), -Math.sin(a), 0, Math.sin(a), Math.cos(a), 0];
+const ttrans = (x, y) => [1, 0, x, 0, 1, y];
+const rotAbout = (p, a) => mul(ttrans(p.x, p.y), mul(trot(a), ttrans(-p.x, -p.y)));
+const tp = (M, P) => pt(M[0] * P.x + M[1] * P.y + M[2], M[3] * P.x + M[4] * P.y + M[5]);
+const matchSeg = (p, q) => [q.x - p.x, p.y - q.y, p.x, q.y - p.y, q.x - p.x, p.y];
+const matchTwo = (p1, q1, p2, q2) => mul(matchSeg(p2, q2), inv(matchSeg(p1, q1)));
+function intersect(p1, q1, p2, q2) {
+  const d = (q2.y - p2.y) * (q1.x - p1.x) - (q2.x - p2.x) * (q1.y - p1.y);
+  const uA = ((q2.x - p2.x) * (p1.y - p2.y) - (q2.y - p2.y) * (p1.x - p2.x)) / d;
+  return pt(p1.x + uA * (q1.x - p1.x), p1.y + uA * (q1.y - p1.y));
+}
+const HAT = [hexPt(0, 0), hexPt(-1, -1), hexPt(0, -2), hexPt(2, -2), hexPt(2, -1), hexPt(4, -2), hexPt(5, -1), hexPt(4, 0), hexPt(3, 0), hexPt(2, 2), hexPt(0, 3), hexPt(0, 2), hexPt(-1, 2)];
+class HatTile { constructor(label) { this.label = label; this.shape = HAT; this.hat = true; } }
+class MetaTile {
+  constructor(shape, width) { this.shape = shape; this.width = width; this.children = []; }
+  addChild(T, geom) { this.children.push({ T, geom }); }
+  evalChild(n, i) { return tp(this.children[n].T, this.children[n].geom.shape[i]); }
+  recentre() {
+    let cx = 0, cy = 0; for (const p of this.shape) { cx += p.x; cy += p.y; }
+    cx /= this.shape.length; cy /= this.shape.length;
+    this.shape = this.shape.map((p) => padd(p, pt(-cx, -cy)));
+    const M = ttrans(-cx, -cy);
+    for (const ch of this.children) ch.T = mul(M, ch.T);
+  }
+}
+function initTiles() {
+  let o = [pt(0, 0), pt(4, 0), pt(4.5, hr3), pt(2.5, 5 * hr3), pt(1.5, 5 * hr3), pt(-0.5, hr3)];
+  const H = new MetaTile(o, 2);
+  H.addChild(matchTwo(HAT[5], HAT[7], o[5], o[0]), new HatTile('H'));
+  H.addChild(matchTwo(HAT[9], HAT[11], o[1], o[2]), new HatTile('H'));
+  H.addChild(matchTwo(HAT[5], HAT[7], o[3], o[4]), new HatTile('H'));
+  H.addChild(mul(ttrans(2.5, hr3), mul([-0.5, -hr3, 0, hr3, -0.5, 0], [0.5, 0, 0, 0, -0.5, 0])), new HatTile('H1'));
+  o = [pt(0, 0), pt(3, 0), pt(1.5, 3 * hr3)];
+  const T = new MetaTile(o, 2);
+  T.addChild([0.5, 0, 0.5, 0, 0.5, hr3], new HatTile('T'));
+  o = [pt(0, 0), pt(4, 0), pt(3, 2 * hr3), pt(-1, 2 * hr3)];
+  const P = new MetaTile(o, 2);
+  P.addChild([0.5, 0, 1.5, 0, 0.5, hr3], new HatTile('P'));
+  P.addChild(mul(ttrans(0, 2 * hr3), mul([0.5, hr3, 0, -hr3, 0.5, 0], [0.5, 0, 0, 0, 0.5, 0])), new HatTile('P'));
+  o = [pt(0, 0), pt(3, 0), pt(3.5, hr3), pt(3, 2 * hr3), pt(-1, 2 * hr3)];
+  const F = new MetaTile(o, 2);
+  F.addChild([0.5, 0, 1.5, 0, 0.5, hr3], new HatTile('F'));
+  F.addChild(mul(ttrans(0, 2 * hr3), mul([0.5, hr3, 0, -hr3, 0.5, 0], [0.5, 0, 0, 0, 0.5, 0])), new HatTile('F'));
+  return [H, T, P, F];
+}
+const RULES = [['H'], [0, 0, 'P', 2], [1, 0, 'H', 2], [2, 0, 'P', 2], [3, 0, 'H', 2], [4, 4, 'P', 2], [0, 4, 'F', 3], [2, 4, 'F', 3], [4, 1, 3, 2, 'F', 0], [8, 3, 'H', 0], [9, 2, 'P', 0], [10, 2, 'H', 0], [11, 4, 'P', 2], [12, 0, 'H', 2], [13, 0, 'F', 3], [14, 2, 'F', 1], [15, 3, 'H', 4], [8, 2, 'F', 1], [17, 3, 'H', 0], [18, 2, 'P', 0], [19, 2, 'H', 2], [20, 4, 'F', 3], [20, 0, 'P', 2], [22, 0, 'H', 2], [23, 4, 'F', 3], [23, 0, 'F', 3], [16, 0, 'P', 2], [9, 4, 0, 2, 'T', 2], [4, 0, 'F', 3]];
+function constructPatch(H, T, P, F) {
+  const ret = new MetaTile([], H.width), shapes = { H, T, P, F };
+  for (const r of RULES) {
+    if (r.length === 1) ret.addChild(IDENT, shapes[r[0]]);
+    else if (r.length === 4) {
+      const poly = ret.children[r[0]].geom.shape, M = ret.children[r[0]].T;
+      const A = tp(M, poly[(r[1] + 1) % poly.length]), B = tp(M, poly[r[1]]);
+      const g = shapes[r[2]], np = g.shape;
+      ret.addChild(matchTwo(np[r[3]], np[(r[3] + 1) % np.length], A, B), g);
+    } else {
+      const cP = ret.children[r[0]], cQ = ret.children[r[2]];
+      const A = tp(cQ.T, cQ.geom.shape[r[3]]), B = tp(cP.T, cP.geom.shape[r[1]]);
+      const g = shapes[r[4]], np = g.shape;
+      ret.addChild(matchTwo(np[r[5]], np[(r[5] + 1) % np.length], A, B), g);
+    }
+  }
+  return ret;
+}
+function constructMetatiles(patch) {
+  const bps1 = patch.evalChild(8, 2), bps2 = patch.evalChild(21, 2);
+  const rbps = tp(rotAbout(bps1, -2 * Math.PI / 3), bps2);
+  const p72 = patch.evalChild(7, 2), p252 = patch.evalChild(25, 2);
+  const llc = intersect(bps1, rbps, patch.evalChild(6, 2), p72);
+  let w = psub(patch.evalChild(6, 2), llc);
+  const Ho = [llc, bps1];
+  w = tp(trot(-Math.PI / 3), w); Ho.push(padd(Ho[1], w));
+  Ho.push(patch.evalChild(14, 2));
+  w = tp(trot(-Math.PI / 3), w); Ho.push(psub(Ho[3], w));
+  Ho.push(patch.evalChild(6, 2));
+  const nH = new MetaTile(Ho, patch.width * 2);
+  for (const ch of [0, 9, 16, 27, 26, 6, 1, 8, 10, 15]) nH.addChild(patch.children[ch].T, patch.children[ch].geom);
+  const nP = new MetaTile([p72, padd(p72, psub(bps1, llc)), bps1, llc], patch.width * 2);
+  for (const ch of [7, 2, 3, 4, 28]) nP.addChild(patch.children[ch].T, patch.children[ch].geom);
+  const nF = new MetaTile([bps2, patch.evalChild(24, 2), patch.evalChild(25, 0), p252, padd(p252, psub(llc, bps1))], patch.width * 2);
+  for (const ch of [21, 20, 22, 23, 24, 25]) nF.addChild(patch.children[ch].T, patch.children[ch].geom);
+  const AAA = Ho[2], BBB = padd(Ho[1], psub(Ho[4], Ho[5])), CCC = tp(rotAbout(BBB, -Math.PI / 3), AAA);
+  const nT = new MetaTile([BBB, CCC, AAA], patch.width * 2);
+  nT.addChild(patch.children[11].T, patch.children[11].geom);
+  nH.recentre(); nP.recentre(); nF.recentre(); nT.recentre();
+  return [nH, nT, nP, nF];
+}
+const HAT_LEVELS = 6;
+const hatLevels = [initTiles()];
+for (let i = 0; i < HAT_LEVELS; i++) hatLevels.push(constructMetatiles(constructPatch(...hatLevels[i])));
+// Радиус описанной окружности каждого узла — для отсечения невидимого
+const detScale = (T) => Math.sqrt(Math.abs(T[0] * T[4] - T[1] * T[3]));
+const HAT_R = Math.max(...HAT.map((p) => Math.hypot(p.x, p.y)));
+function radiusOf(g) {
+  if (g.hat) return HAT_R;
+  if (g.rad !== undefined) return g.rad;
+  let r = 0;
+  for (const ch of g.children) { const c = tp(ch.T, pt(0, 0)); r = Math.max(r, Math.hypot(c.x, c.y) + radiusOf(ch.geom) * detScale(ch.T)); }
+  return (g.rad = r);
+}
+hatLevels.forEach((lv, k) => lv.forEach((m) => { radiusOf(m); m.level = k; }));
+const HAT_ROOT = hatLevels[HAT_LEVELS][0];
+
+// ───────────────────────── Холст и вид ─────────────────────────
+const cv = $('c'), g = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+const view = { x: 0, y: 0, s: 400, rot: 0 };      // мировая точка в центре экрана, пикселей на единицу, поворот
+const target = { x: 0, y: 0, s: 400 };
+let mode = 'penrose', symIdx = 0, auto = true, hier = false, lastUser = -1e9, t0 = performance.now();
+const gam = [0.1, 0.2, -0.1, -0.35, 0.15, 0.27, -0.12];
+
+function resize() {
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+}
+addEventListener('resize', resize);
+resize();
+
+const toScreen = (x, y) => {
+  const dx = x - view.x, dy = y - view.y, c = Math.cos(view.rot), s = Math.sin(view.rot);
+  return [W / 2 + (dx * c - dy * s) * view.s, H / 2 + (dx * s + dy * c) * view.s];
+};
+const toWorld = (sx, sy) => {
+  const dx = (sx - W / 2) / view.s, dy = (sy - H / 2) / view.s, c = Math.cos(-view.rot), s = Math.sin(-view.rot);
+  return [view.x + dx * c - dy * s, view.y + dx * s + dy * c];
+};
+function worldRect(margin) {
+  const pts = [[-margin, -margin], [W + margin, -margin], [-margin, H + margin], [W + margin, H + margin]].map(([a, b]) => toWorld(a, b));
+  return [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))];
+}
+const viewAffine = () => { const c = Math.cos(view.rot) * view.s, s = Math.sin(view.rot) * view.s; return [c, -s, W / 2 - (c * view.x - s * view.y), s, c, H / 2 - (s * view.x + c * view.y)]; };
+
+// ───────────────────────── Отрисовка ─────────────────────────
+const glossCache = new Map();
+function tilePath(p) { g.beginPath(); for (let i = 0; i < p.length; i += 2) { const q = toScreen(p[i], p[i + 1]); i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); } g.closePath(); }
+function drawTiles(list, colorOf, alpha, seamW, hl) {
+  if (!list.length) return;
+  g.globalAlpha = alpha;
+  const seams = new Path2D();
+  const gloss = list.length < 2600;
+  for (const t of list) {
+    const pts = [];
+    for (let i = 0; i < t.p.length; i += 2) pts.push(toScreen(t.p[i], t.p[i + 1]));
+    const path = new Path2D();
+    pts.forEach((q, i) => (i ? path.lineTo(q[0], q[1]) : path.moveTo(q[0], q[1])));
+    path.closePath();
+    const cx = pts.reduce((a, q) => a + q[0], 0) / pts.length, cy = pts.reduce((a, q) => a + q[1], 0) / pts.length;
+    const wv = t.wv !== undefined ? t.wv : (t.wv = 0.93 + 0.12 * hash2(t.p[0] * 3.1 + t.p[2], t.p[1] * 2.7 + t.p[3]));
+    g.fillStyle = shade(colorOf(t), wv);
+    g.fill(path);
+    if (gloss) {
+      // глазурь: мягкий блик от верхнего левого угла плитки
+      let x0 = Infinity, y0 = Infinity; for (const q of pts) { if (q[0] + q[1] < x0 + y0) { x0 = q[0]; y0 = q[1]; } }
+      const gr = g.createLinearGradient(x0, y0, cx + (cx - x0) * 0.4, cy + (cy - y0) * 0.4);
+      gr.addColorStop(0, 'rgba(255,255,255,0.22)'); gr.addColorStop(0.55, 'rgba(255,255,255,0.03)'); gr.addColorStop(1, 'rgba(0,0,0,0.10)');
+      g.fillStyle = gr; g.fill(path);
+    }
+    if (hl && hl(t)) { g.fillStyle = 'rgba(255,244,214,0.34)'; g.fill(path); }
+    if (t.half) continue;
+    seams.addPath(path);
+  }
+  // Золотые швы: тёмная подложка, золото, тонкий блик
+  g.lineJoin = 'round';
+  g.strokeStyle = 'rgba(8,6,3,0.55)'; g.lineWidth = seamW * 2.1; g.stroke(seams);
+  g.strokeStyle = pal.seam; g.lineWidth = seamW; g.stroke(seams);
+  g.strokeStyle = 'rgba(255,246,214,0.55)'; g.lineWidth = Math.max(0.5, seamW * 0.32); g.stroke(seams);
+  g.globalAlpha = 1;
+}
+
+let stats = {};
+let lastGridTiles = [], ghosts = [], seen = new Map(), hoverPt = null;
+
+function renderPenrose(now) {
+  const targetPx = W < 760 ? 58 : 76;               // длина ребра плитки на экране
+  const depth = Math.log(view.s / targetPx) / Math.log(PHI);
+  const L = Math.max(1, Math.floor(depth)), frac = depth - Math.floor(depth);
+  const R = worldRect(40);
+  const coarse = collectP3(L, R, hier ? L - 3 : -1);
+  const colorOf = (t) => (t.c === 1 ? pal.cls[1] : pal.cls[0]);
+  const colorFine = (t) => (t.c === 1 ? pal.cls[1] : pal.cls[0]);
+  const edgePx = view.s * Math.pow(PHI, -L);
+  drawTiles(coarse.rhombs, colorOf, 1, Math.max(1.1, Math.min(2.6, edgePx * 0.03)));
+  const a = smooth((frac - 0.45) / 0.55);
+  let fine = null;
+  if (a > 0.004) {
+    fine = collectP3(L + 1, R, -1);
+    drawTiles(fine.rhombs, colorFine, a, Math.max(1, Math.min(2.4, edgePx / PHI * 0.03)));
+  }
+  if (hier && coarse.sup.length) {
+    g.strokeStyle = pal.seam; g.globalAlpha = 0.9; g.lineWidth = 3.2; g.beginPath();
+    for (const t of coarse.sup) { const A = toScreen(t[1], t[2]), B = toScreen(t[3], t[4]), C = toScreen(t[5], t[6]); g.moveTo(B[0], B[1]); g.lineTo(A[0], A[1]); g.lineTo(C[0], C[1]); }
+    g.stroke(); g.globalAlpha = 1;
+  }
+  const list = a > 0.5 && fine ? fine.rhombs : coarse.rhombs;
+  let thick = 0, thin = 0; for (const t of list) { if (t.half) continue; t.c ? thick++ : thin++; }
+  stats = { level: a > 0.5 ? L + 1 : L, thick, thin, tiles: thick + thin };
+}
+
+function renderMultigrid(now) {
+  const sym = SYMS[symIdx];
+  const R = worldRect(30);
+  const tiles = collectMultigrid(sym.n, gam, R);
+  // Появившиеся плитки проявляются, исчезнувшие — гаснут (перещёлкивания фазона)
+  const cur = new Map();
+  for (const t of tiles) { cur.set(t.key, t); if (!seen.has(t.key)) seen.set(t.key, lastGridTiles.length ? now : now - 1e4); t.born = seen.get(t.key); }
+  for (const t of lastGridTiles) if (!cur.has(t.key)) { t.died = now; ghosts.push(t); seen.delete(t.key); }
+  ghosts = ghosts.filter((t) => now - t.died < 520);
+  if (seen.size > 20000) seen = new Map([...seen].slice(-8000));
+  lastGridTiles = tiles;
+  const nCls = Math.floor(sym.n / 2);
+  const colorOf = (t) => pal.cls[[0, 1, 2, 4, 3, 5][t.c % 6] ?? 0] || pal.cls[0];
+  let hl = null;
+  if (hoverPt) {
+    const w = toWorld(hoverPt[0], hoverPt[1]);
+    const hit = tiles.find((t) => pointInQuad(w[0], w[1], t.p));
+    if (hit) hl = (t) => (t.r === hit.r && t.kr === hit.kr) || (t.s === hit.r && t.ks === hit.kr) || (t.r === hit.s && t.kr === hit.ks) || (t.s === hit.s && t.ks === hit.ks);
+    stats.ribbon = !!hit;
+  }
+  const seam = Math.max(1, Math.min(2.4, view.s * 0.03));
+  const stable = tiles.filter((t) => now - t.born > 420);
+  const fresh = tiles.filter((t) => now - t.born <= 420);
+  drawTiles(stable, colorOf, 1, seam, hl);
+  for (const t of ghosts) drawTiles([t], colorOf, 1 - (now - t.died) / 520, seam, null);
+  for (const t of fresh) drawTiles([t], colorOf, smooth((now - t.born) / 420), seam, hl);
+  const counts = new Array(nCls).fill(0); for (const t of tiles) counts[t.c]++;
+  stats = { tiles: tiles.length, counts, sym };
+}
+function pointInQuad(x, y, p) {
+  let inside = false;
+  for (let i = 0, j = p.length - 2; i < p.length; j = i, i += 2) {
+    const xi = p[i], yi = p[i + 1], xj = p[j], yj = p[j + 1];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function renderHat(now) {
+  const V = viewAffine(), vs = view.s;
+  const M = 60, hats = [], supers = [];
+  // уровень метатайлов для «иерархии»: самые мелкие, что крупнее ~170 px
+  let supLevel = 1; while (supLevel < HAT_LEVELS && hatLevels[supLevel][0].rad * vs < 170) supLevel++;
+  const rec = (geom, T) => {
+    const c = tp(T, pt(0, 0)), r = radiusOf(geom) * detScale(T);
+    if (c.x + r < -M || c.x - r > W + M || c.y + r < -M || c.y - r > H + M) return;
+    if (geom.hat) { hats.push({ label: geom.label, T }); return; }
+    if (hier && geom.level === supLevel) supers.push({ shape: geom.shape, T, kind: 'HTPF'[hatLevels[geom.level].indexOf(geom)] });
+    for (const ch of geom.children) rec(ch.geom, mul(T, ch.T));
+  };
+  rec(HAT_ROOT, V);
+  const col = { H: pal.cls[0], H1: pal.cls[4], T: pal.cls[3], P: pal.cls[2], F: pal.cls[1] };
+  const seams = new Path2D();
+  const gloss = hats.length < 2600;
+  for (const h of hats) {
+    const pts = HAT.map((p) => tp(h.T, p));
+    const path = new Path2D(); pts.forEach((q, i) => (i ? path.lineTo(q.x, q.y) : path.moveTo(q.x, q.y))); path.closePath();
+    const wv = 0.93 + 0.12 * hash2(Math.round(pts[0].x / vs * 7), Math.round(pts[0].y / vs * 7));
+    g.fillStyle = shade(col[h.label], wv); g.fill(path);
+    if (gloss) {
+      const c = tp(h.T, pt(1.4, 0.2));
+      const gr = g.createRadialGradient(c.x - 0.8 * vs, c.y - 0.8 * vs, 0, c.x, c.y, 3.2 * vs);
+      gr.addColorStop(0, 'rgba(255,255,255,0.20)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.02)'); gr.addColorStop(1, 'rgba(0,0,0,0.12)');
+      g.fillStyle = gr; g.fill(path);
+    }
+    seams.addPath(path);
+  }
+  const sw = Math.max(0.9, Math.min(2.4, vs * 0.06));
+  g.lineJoin = 'round';
+  g.strokeStyle = 'rgba(8,6,3,0.55)'; g.lineWidth = sw * 2.1; g.stroke(seams);
+  g.strokeStyle = pal.seam; g.lineWidth = sw; g.stroke(seams);
+  g.strokeStyle = 'rgba(255,246,214,0.5)'; g.lineWidth = Math.max(0.5, sw * 0.3); g.stroke(seams);
+  if (hier && supers.length) {
+    g.lineWidth = 3; g.strokeStyle = 'rgba(255,248,226,0.95)'; g.fillStyle = 'rgba(255,248,226,0.95)';
+    g.font = `600 ${Math.max(12, Math.min(22, hatLevels[supLevel][0].rad * vs * 0.1))}px Manrope, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const s of supers) {
+      g.beginPath(); s.shape.forEach((p, i) => { const q = tp(s.T, p); i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y); }); g.closePath();
+      g.save(); g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 6; g.stroke(); g.restore();
+      const c = tp(s.T, pt(0, 0)); g.fillText(s.kind, c.x, c.y);
+    }
+  }
+  const counts = { H: 0, H1: 0, T: 0, P: 0, F: 0 }; for (const h of hats) counts[h.label]++;
+  stats = { tiles: hats.length, counts, supLevel };
+}
+
+const smooth = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+
+// Керамическая фактура поверх всего: мелкое зерно, обычное смешивание
+const grain = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 160; const x = c.getContext('2d');
+  const d = x.createImageData(160, 160);
+  for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 14; }
+  x.putImageData(d, 0, 0); return g.createPattern(c, 'repeat');
+})();
+
+// ───────────────────────── Автодвижение ─────────────────────────
+function autopilot(now, dt) {
+  const t = (now - t0) / 1000;
+  if (mode === 'penrose') {
+    // «дыхание»: медленный зум в центр пятиугольной симметрии и обратно, с вращением
+    const base = Math.min(W, H) * 0.95;
+    const period = 110, ph = (t % period) / period;
+    const depth = 1.2 + 22 * (0.5 - 0.5 * Math.cos(ph * Math.PI * 2));
+    target.s = base * Math.pow(PHI, depth); target.x = 0; target.y = 0;
+    view.rot += dt * 0.035;
+  } else if (mode === 'multigrid') {
+    target.s = Math.min(W, H) / (W < 760 ? 9 : 13);
+    target.x = Math.sin(t * 0.05) * 3; target.y = Math.cos(t * 0.043) * 3;
+  } else {
+    target.s = Math.min(W, H) / (W < 760 ? 20 : 34);
+    target.x = Math.sin(t * 0.04) * 22; target.y = Math.cos(t * 0.031) * 16;
+    view.rot += dt * 0.01;
+  }
+}
+function driftPhason(now) {
+  if (mode !== 'multigrid' || !auto) return;
+  const t = (now - t0) / 1000, n = SYMS[symIdx].n;
+  for (let j = 0; j < n; j++) gam[j] = 0.23 * Math.sin(t * (0.09 + 0.021 * j) + j * 1.7) + 0.13 * j / n;
+  if (n === 5) { const m = gam.slice(0, 5).reduce((a, b) => a + b, 0) / 5; for (let j = 0; j < 5; j++) gam[j] -= m; } // Σγ = 0 — настоящий Пенроуз
+}
+
+// ───────────────────────── Кадр ─────────────────────────
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (document.hidden) return;
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (auto && now - lastUser > 6000) autopilot(now, dt);
+  driftPhason(now);
+  // плавное следование к цели (в логарифме для масштаба)
+  const k = 1 - Math.pow(0.02, dt);
+  view.x += (target.x - view.x) * k; view.y += (target.y - view.y) * k;
+  view.s = Math.exp(Math.log(view.s) + (Math.log(target.s) - Math.log(view.s)) * k);
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.fillStyle = pal.deep; g.fillRect(0, 0, W, H);
+  if (mode === 'penrose') renderPenrose(now);
+  else if (mode === 'multigrid') renderMultigrid(now);
+  else renderHat(now);
+  g.fillStyle = grain; g.fillRect(0, 0, W, H);
+  // лёгкая виньетка
+  const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.hypot(W, H) * 0.62);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.38)');
+  g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  if (now - lastStats > 250) { updateInfo(); lastStats = now; }
+}
+let lastStats = 0;
+
+// ───────────────────────── Текст и статистика ─────────────────────────
+const TEXT = {
+  penrose: {
+    lede: 'Два ромба — <b>толстый и тонкий</b> — покрывают плоскость без щелей и ни разу не повторяются периодически. При приближении каждая плитка делится на меньшие в пропорции золотого сечения.',
+    title: 'Ромбы Пенроуза',
+    fact: 'Роджер Пенроуз, 1970-е. Доля толстых ромбов к тонким на большом участке стремится к φ = 1,618…: это отношение нельзя записать дробью, поэтому узор и не может повториться.',
+  },
+  multigrid: {
+    lede: 'Метод де Брёйна (1981): несколько семейств параллельных прямых, и каждой точке пересечения соответствует ромб. Сетки медленно сдвигаются — плитки <b>перещёлкиваются</b>, но порядок остаётся.',
+    title: 'Мультисетка де Брёйна',
+    fact: 'Наведите на плитку: подсветятся две «ленты», к которым она принадлежит. Каждая лента — одна прямая сетки, и любая плитка лежит ровно на двух.',
+  },
+  hat: {
+    lede: '«Шляпа» — первая найденная плитка-одиночка, которой плоскость покрывается <b>только непериодически</b>. Её открыли в 2023 году Дэвид Смит, Джозеф Майерс, Крейг Каплан и Хаим Гудман-Страусс.',
+    title: 'Монотайл «шляпа»',
+    fact: 'Зеркальные шляпы выделены отдельным цветом. Их доля в бесконечной мозаике — ровно 1 / (1 + φ⁴) ≈ 12,73 %. Включите «Иерархию», чтобы увидеть метатайлы H, T, P, F, из которых складывается узор.',
+  },
+};
+function updateInfo() {
+  const s = stats;
+  let html = '';
+  const cell = (dt, dd) => `<div><dt>${dt}</dt><dd>${dd}</dd></div>`;
+  if (mode === 'penrose') {
+    const ratio = s.thin ? s.thick / s.thin : 0;
+    // во всей мозаике уровня n число половинок подчиняется рекурренции (a, o) → (a + o, a + 2o)
+    let a = 10, o = 0; for (let k = 0; k < (s.level || 1); k++) [a, o] = [a + o, a + 2 * o];
+    html = cell('Толстых : тонких в кадре', fmt(ratio, 3)) + cell('Во всей мозаике', fmt(o / a, 4) + '<small>→ φ</small>') + cell('Уровень деления', s.level ?? '—') + cell('Увеличение', '×' + fmtShort(view.s / (Math.min(W, H) * 0.95)));
+  } else if (mode === 'multigrid') {
+    const sym = s.sym || SYMS[symIdx];
+    html = cell('Симметрия', `${sym.fold}-го порядка`) + cell('Ромбов на экране', fmtInt(s.tiles || 0)) + cell('Типов ромбов', Math.floor(sym.n / 2)) + cell('Сетки', sym.n + ' семейств');
+  } else {
+    const c = s.counts || {}, tot = s.tiles || 1;
+    html = cell('Шляп на экране', fmtInt(s.tiles || 0)) + cell('Зеркальных', fmt((c.H1 || 0) / tot * 100, 1) + ' %<small>теория 12,73</small>') + cell('Метатайлов H', fmtInt(c.H ? (c.H + c.H1) / 4 : 0)) + cell('Уровней иерархии', HAT_LEVELS);
+  }
+  $('stats').innerHTML = html;
+}
+function fmtShort(x) {
+  if (x < 1000) return fmt(x, x < 10 ? 1 : 0);
+  const e = Math.floor(Math.log10(x)); return fmt(x / Math.pow(10, e), 1) + '·10' + String(e).split('').map((d) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]).join('');
+}
+function setMode(m) {
+  mode = m; document.body.className = 'mode-' + m;
+  document.querySelectorAll('.modes button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === m)));
+  const T = TEXT[m]; $('lede').innerHTML = T.lede; $('infoTitle').textContent = T.title; $('fact').textContent = T.fact;
+  view.rot = 0; lastGridTiles = []; ghosts = []; seen = new Map(); stats = {};
+  if (m === 'penrose') { view.s = target.s = Math.min(W, H) * 0.95 * Math.pow(PHI, 3); }
+  else if (m === 'multigrid') { view.s = target.s = Math.min(W, H) / 13; }
+  else { view.s = target.s = Math.min(W, H) / 34; }
+  view.x = target.x = 0; view.y = target.y = 0;
+  t0 = performance.now(); lastUser = -1e9;
+  $('hint').textContent = m === 'multigrid' ? 'Наведите на плитку — подсветятся её ленты. Колесо — зум, перетаскивание — сдвиг.' : 'Колесо или щипок — зум, перетаскивание — сдвиг.';
+  updateInfo();
+}
+document.querySelectorAll('.modes button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+// Палитры
+PALETTES.forEach((p, i) => {
+  const b = document.createElement('button'); b.className = 'swatch'; b.type = 'button'; b.title = p.name; b.setAttribute('aria-label', 'Глазурь «' + p.name + '»');
+  b.innerHTML = [p.cls[0], p.cls[1], p.cls[2], p.cls[4]].map((c) => `<i style="background:${c}"></i>`).join('');
+  b.addEventListener('click', () => { pal = p; syncPal(); });
+  $('swatches').appendChild(b);
+});
+function syncPal() { [...$('swatches').children].forEach((b, i) => b.setAttribute('aria-pressed', String(PALETTES[i] === pal))); $('palName').textContent = pal.name; }
+syncPal();
+// Симметрии мультисетки
+SYMS.forEach((s, i) => {
+  const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = s.fold; b.title = s.name;
+  b.addEventListener('click', () => { symIdx = i; lastGridTiles = []; ghosts = []; seen = new Map(); syncSym(); });
+  $('sym').appendChild(b);
+});
+function syncSym() { [...$('sym').children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === symIdx))); $('symName').textContent = SYMS[symIdx].name; }
+syncSym();
+
+$('tAuto').addEventListener('click', (e) => { auto = !auto; e.currentTarget.setAttribute('aria-pressed', String(auto)); if (auto) lastUser = -1e9; });
+$('tHier').addEventListener('click', (e) => { hier = !hier; e.currentTarget.setAttribute('aria-pressed', String(hier)); });
+const zoomBy = (f, sx = W / 2, sy = H / 2) => {
+  lastUser = performance.now();
+  const before = toWorld(sx, sy);
+  target.s = clampScale(target.s * f);
+  // точка под курсором остаётся на месте
+  const s0 = view.s; view.s = target.s; const after = toWorld(sx, sy); view.s = s0;
+  target.x += before[0] - after[0]; target.y += before[1] - after[1];
+};
+function clampScale(s) {
+  if (mode === 'penrose') return Math.max(Math.min(W, H) * 0.6, Math.min(s, Math.min(W, H) * Math.pow(PHI, 50)));
+  if (mode === 'multigrid') return Math.max(Math.min(W, H) / 40, Math.min(s, Math.min(W, H) / 1.5));
+  return Math.max(Math.min(W, H) / 70, Math.min(s, Math.min(W, H) / 3));
+}
+$('zIn').addEventListener('click', () => zoomBy(1.6));
+$('zOut').addEventListener('click', () => zoomBy(1 / 1.6));
+
+// ───────────────────────── Мышь, тач, колесо ─────────────────────────
+const pointers = new Map();
+let pinch = null;
+cv.addEventListener('wheel', (e) => { e.preventDefault(); zoomBy(Math.exp(-e.deltaY * 0.0016), e.clientX, e.clientY); }, { passive: false });
+cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); cv.classList.add('drag'); lastUser = performance.now(); if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) }; } });
+cv.addEventListener('pointermove', (e) => {
+  hoverPt = [e.clientX, e.clientY];
+  if (!pointers.has(e.pointerId)) return;
+  const prev = pointers.get(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  lastUser = performance.now();
+  if (pointers.size === 2 && pinch) {
+    const [a, b] = [...pointers.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    zoomBy(d / pinch.d, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); pinch.d = d; return;
+  }
+  const w0 = toWorld(prev[0], prev[1]), w1 = toWorld(e.clientX, e.clientY);
+  view.x -= w1[0] - w0[0]; view.y -= w1[1] - w0[1]; target.x = view.x; target.y = view.y;
+});
+const up = (e) => { pointers.delete(e.pointerId); if (pointers.size < 2) pinch = null; if (!pointers.size) cv.classList.remove('drag'); };
+cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+cv.addEventListener('pointerleave', () => { hoverPt = null; });
+addEventListener('keydown', (e) => { if (e.key === '+' || e.key === '=') zoomBy(1.4); else if (e.key === '-') zoomBy(1 / 1.4); });
+
+setMode('penrose');
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Океан на закате</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #f6ead6;
+    --ink-dim: rgba(246, 234, 214, .64);
+    --hair: rgba(246, 234, 214, .34);
+    --serif: "Cormorant Garamond", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0d0f16; overflow: hidden; color: var(--ink); font-family: var(--serif); }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  canvas.dragging { cursor: grabbing; }
+
+  /* Заголовок-титр: появляется при открытии и растворяется */
+  .title {
+    position: fixed; left: clamp(20px, 4vw, 56px); top: clamp(18px, 4.5vh, 48px);
+    pointer-events: none; transition: opacity 2.4s ease, transform 2.4s ease;
+    text-shadow: 0 1px 18px rgba(20, 10, 6, .35);
+  }
+  .title h1 { margin: 0; font-weight: 400; font-style: italic; font-size: clamp(34px, 4.4vw, 60px); letter-spacing: .005em; line-height: 1; }
+  .title p { margin: .55em 0 0; font-size: clamp(16px, 1.3vw, 19px); letter-spacing: .01em; font-style: italic; color: var(--ink-dim); font-weight: 500; }
+  .title.gone { opacity: 0; transform: translateY(-6px); }
+  .title p .f { font-size: 1.04em; }
+  .title p .ov { text-decoration: overline; text-decoration-thickness: 1px; }
+
+  /* Единственная строка интерфейса */
+  .bar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    padding: 48px clamp(16px, 3vw, 44px) calc(18px + env(safe-area-inset-bottom));
+    display: flex; align-items: center; justify-content: center; gap: clamp(18px, 2.6vw, 40px);
+    background: linear-gradient(to top, rgba(6, 8, 14, .52), rgba(6, 8, 14, 0));
+    font-size: 18px; line-height: 1.2;
+    transition: opacity .6s ease, transform .6s ease;
+  }
+  .bar.hidden { opacity: 0; transform: translateY(12px); pointer-events: none; }
+  .group { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+  .label { color: var(--ink); min-width: 0; }
+  .label em { font-style: italic; color: var(--ink); }
+  .label .num { font-variant-numeric: tabular-nums lining-nums; color: var(--ink-dim); }
+  .sep { width: 1px; height: 18px; background: var(--hair); }
+
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: clamp(120px, 12vw, 190px); height: 28px; background: transparent; margin: 0; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track { height: 1px; background: linear-gradient(to right, var(--ink) var(--p, 50%), var(--hair) var(--p, 50%)); }
+  input[type=range]::-moz-range-track { height: 1px; background: var(--hair); }
+  input[type=range]::-moz-range-progress { height: 1px; background: var(--ink); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 11px; height: 11px; margin-top: -5px; border-radius: 50%;
+    background: var(--ink); box-shadow: 0 0 0 4px rgba(246, 234, 214, .12); transition: box-shadow .25s ease, transform .25s ease;
+  }
+  input[type=range]::-moz-range-thumb { width: 11px; height: 11px; border: 0; border-radius: 50%; background: var(--ink); }
+  input[type=range]:hover::-webkit-slider-thumb { box-shadow: 0 0 0 7px rgba(246, 234, 214, .16); }
+  input[type=range]:active::-webkit-slider-thumb { transform: scale(1.25); }
+  input[type=range]:focus-visible { outline: none; }
+  input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(246, 234, 214, .9); }
+
+  .btn {
+    appearance: none; border: 0; background: none; color: var(--ink-dim); font: inherit; font-style: italic; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px; padding: 8px 2px; min-height: 40px; transition: color .25s ease;
+  }
+  .btn:hover, .btn[aria-pressed=true] { color: var(--ink); }
+  .btn:focus-visible { outline: 1px solid var(--hair); outline-offset: 4px; border-radius: 2px; }
+  .btn svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+
+  .hint {
+    position: fixed; right: clamp(20px, 4vw, 56px); top: clamp(22px, 4.8vh, 52px); text-align: right;
+    font-style: italic; font-size: 16px; color: var(--ink-dim); pointer-events: none; transition: opacity 2s ease; line-height: 1.5;
+    text-shadow: 0 1px 12px rgba(20, 10, 6, .4);
+  }
+  .hint.gone { opacity: 0; }
+  .flash { color: #b9ffc8; font-style: italic; transition: opacity .4s ease; }
+
+  .fallback { position: fixed; inset: 0; display: none; place-items: center; text-align: center; padding: 32px; font-size: 22px; font-style: italic;
+    background: radial-gradient(ellipse at 50% 80%, #6b3a2a, #1a1420 60%, #0b0c12); }
+
+  @media (max-width: 760px) {
+    .bar { flex-direction: column; align-items: stretch; gap: 6px; padding-top: 56px; font-size: 16px; }
+    .group { justify-content: space-between; gap: 12px; }
+    .group .label { overflow: hidden; text-overflow: ellipsis; }
+    .sep { display: none; }
+    input[type=range] { width: 42vw; max-width: 200px; flex: none; }
+    .hint { display: none; }
+    #waveInfo { display: none; }
+    .title h1 { font-size: 38px; }
+    .title p { font-size: 15px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .title, .hint, .bar { transition-duration: .01s; }
+  }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Открытый океан: волны, небо и солнце в реальном времени"></canvas>
+
+<div class="title" id="title">
+  <h1>Океан на закате</h1>
+  <p>волны по&nbsp;дисперсии <span class="f">ω&nbsp;=&nbsp;√<span class="ov">gk</span></span> · небо по&nbsp;Рэлею и&nbsp;Ми</p>
+</div>
+
+<div class="hint" id="hint">тяните — осмотреться<br>двойной клик — взгляд к&nbsp;солнцу<br>H — спрятать интерфейс</div>
+
+<div class="bar" id="bar">
+  <div class="group">
+    <span class="label"><em id="phase">Золотой час</em> <span class="num" id="clock">19:06</span></span>
+    <input id="time" type="range" min="4" max="24" step="0.01" value="19.1" aria-label="Время суток">
+  </div>
+  <span class="sep"></span>
+  <div class="group">
+    <span class="label">Ветер <span class="num" id="windNum">4</span> — <em id="windName">умеренный</em><span class="num" id="waveInfo"></span></span>
+    <input id="wind" type="range" min="0" max="9" step="1" value="4" aria-label="Сила ветра по шкале Бофорта">
+  </div>
+  <span class="sep"></span>
+  <div class="group">
+    <button class="btn" id="play" aria-pressed="false" title="Смена суток (пробел)">
+      <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.2"/><path d="M10 5.6v4.6l3 1.8"/></svg><span>сутки</span>
+    </button>
+    <button class="btn" id="sound" aria-pressed="false" title="Шум моря">
+      <svg viewBox="0 0 20 20"><path d="M3.5 7.8h3l4-3.3v11l-4-3.3h-3z"/><path id="waveA" d="M13.4 7.4c1.2 1.4 1.2 3.8 0 5.2"/><path id="waveB" d="M15.6 5.4c2.2 2.6 2.2 6.6 0 9.2"/></svg><span>море</span>
+    </button>
+  </div>
+</div>
+
+<div class="fallback" id="fallback">Этому океану нужен WebGL2.<br>Откройте страницу в&nbsp;свежем Chrome, Safari или Firefox.</div>
+
+<script>
+(() => {
+'use strict';
+
+// ─────────────────────────────────────────────────────────────
+// Константы сцены
+// ─────────────────────────────────────────────────────────────
+const D2R = Math.PI / 180;
+const LAT = 44 * D2R;          // широта наблюдателя (открытое море)
+const DEC = 18 * D2R;          // склонение Солнца — конец июля
+const SUN_I = 22;              // яркость Солнца в условных единицах
+const MOON_I = SUN_I * 0.0045; // Луна: художественно ярче реальной, экспозиция ночью подтягивается
+const OCT = 32;                // октав волн
+
+// Шкала Бофорта: название, вероятная высота волны (м), скорость ветра (м/с)
+const BEAUFORT = [
+  ['штиль', 0.04, 0.3], ['тихий', 0.1, 1.0], ['лёгкий', 0.2, 2.5], ['слабый', 0.6, 4.4], ['умеренный', 1.0, 6.7],
+  ['свежий', 2.0, 9.3], ['сильный', 3.0, 12.3], ['крепкий', 4.0, 15.5], ['очень крепкий', 5.5, 18.9], ['шторм', 7.0, 22.6],
+];
+
+const $ = (id) => document.getElementById(id);
+const canvas = $('c');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance' });
+if (!gl) { $('fallback').style.display = 'grid'; $('bar').style.display = 'none'; return; }
+const floatRT = !!gl.getExtension('EXT_color_buffer_float');
+
+// ─────────────────────────────────────────────────────────────
+// Шейдеры
+// ─────────────────────────────────────────────────────────────
+const VERT = `#version 300 es
+void main(){ vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
+
+// Однократное рассеяние в атмосфере (Рэлей, Ми, озон) — модель Ниситы
+const ATMOS = `
+const float PI = 3.14159265;
+const float R0 = 6360e3;
+const float RA = 6420e3;
+const vec3 BR = vec3(5.802e-6, 13.558e-6, 33.1e-6);
+const vec3 BM = vec3(3.996e-6);
+const vec3 BME = vec3(4.44e-6);
+const vec3 BO = vec3(0.650e-6, 1.881e-6, 0.085e-6);
+vec2 raySphere(vec3 ro, vec3 rd, float r){
+  float b = dot(ro, rd); float c = dot(ro, ro) - r * r; float d = b * b - c;
+  if (d < 0.0) return vec2(-1.0); d = sqrt(d); return vec2(-b - d, -b + d);
+}
+vec3 dens(float h){ return vec3(exp(-h / 8000.0), exp(-h / 1200.0), max(0.0, 1.0 - abs(h - 25000.0) / 15000.0)); }
+vec3 scatter(vec3 rd, vec3 L, float I){
+  vec3 ro = vec3(0.0, R0 + 4.0, 0.0);
+  float tmax = raySphere(ro, rd, RA).y;
+  vec2 tg = raySphere(ro, rd, R0);
+  if (tg.x > 0.0) tmax = tg.x;
+  const int N = 20;
+  float ds = tmax / float(N);
+  vec3 sR = vec3(0.0), sM = vec3(0.0), od = vec3(0.0);
+  float mu = dot(rd, L);
+  float phR = 3.0 / (16.0 * PI) * (1.0 + mu * mu);
+  float g = 0.76;
+  float phM = 3.0 / (8.0 * PI) * ((1.0 - g * g) * (1.0 + mu * mu)) / ((2.0 + g * g) * pow(1.0 + g * g - 2.0 * g * mu, 1.5));
+  for (int i = 0; i < N; i++){
+    vec3 p = ro + rd * (ds * (float(i) + 0.5));
+    vec3 d = dens(length(p) - R0) * ds;
+    od += d;
+    if (raySphere(p, L, R0).x > 0.0) continue;         // точка в тени Земли
+    float tl = raySphere(p, L, RA).y;
+    const int M = 8; float dl = tl / float(M); vec3 odl = vec3(0.0);
+    for (int j = 0; j < M; j++){ vec3 q = p + L * (dl * (float(j) + 0.5)); odl += dens(length(q) - R0) * dl; }
+    vec3 att = exp(-(BR * (od.x + odl.x) + BME * (od.y + odl.y) + BO * (od.z + odl.z)));
+    sR += d.x * att; sM += d.y * att;
+  }
+  return I * (sR * BR * phR + sM * BM * phM);
+}`;
+
+// Проход 1: небо в маленькую текстуру (по азимуту и корню из высоты — больше точек у горизонта)
+const SKY_FRAG = `#version 300 es
+precision highp float;
+out vec4 o;
+uniform vec2 uSize;
+uniform vec3 uSun, uMoon;
+uniform float uSunI, uMoonI;
+${ATMOS}
+void main(){
+  vec2 uv = gl_FragCoord.xy / uSize;
+  float az = (uv.x - 0.5) * 2.0 * PI;
+  float el = uv.y * uv.y * PI * 0.5;
+  vec3 d = vec3(sin(az) * cos(el), sin(el), cos(az) * cos(el));
+  vec3 c = scatter(d, uSun, uSunI) + scatter(d, uMoon, uMoonI);
+  c += vec3(0.00045, 0.0007, 0.0013) * (1.0 - 0.5 * uv.y); // собственное свечение ночного неба
+  o = vec4(c, 1.0);
+}`;
+
+// Проход 2: вода, небо, светила
+const MAIN_FRAG = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform vec2 uRes;
+uniform float uTime;
+uniform vec3 uSun, uMoon, uSunCol, uMoonCol;
+uniform float uH, uL, uDrag, uFoam, uWind, uStreak, uCloud, uOver;
+uniform vec2 uWindDir;
+uniform vec4 uOct[${OCT}];
+uniform vec3 uCamPos;
+uniform mat3 uCam;
+uniform vec2 uTan;
+uniform float uPixAng;
+uniform int uOctCap;
+uniform float uExposure, uNight, uFlash, uSunVis;
+uniform sampler2D uSky;
+#define PI 3.14159265
+#define WS_FULL 4.9961
+
+float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+float hash13(vec3 p3){ p3 = fract(p3 * .1031); p3 += dot(p3, p3.zyx + 31.32); return fract((p3.x + p3.y) * p3.z); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash12(i), hash12(i + vec2(1, 0)), u.x), mix(hash12(i + vec2(0, 1)), hash12(i + vec2(1, 1)), u.x), u.y); }
+float fbm(vec2 p, int oct){
+  float s = 0.0, a = 0.5;
+  for (int i = 0; i < 6; i++){ if (i >= oct) break; s += a * noise(p); p = mat2(1.6, 1.2, -1.2, 1.6) * p + 11.7; a *= 0.5; }
+  return s;
+}
+
+// Волны: сумма заострённых волн exp(sin x − 1) — профиль как у трохоиды Герстнера.
+// Направления разбросаны вокруг ветра, частоты — по дисперсии глубокой воды ω = √(gk).
+// Отброшенные мелкие октавы заменяются их средним — нет «ступенек» между уровнями детализации.
+float waves(vec2 p, int iters){
+  vec2 q = p / uL;
+  float w = 1.0, s = 0.0, ws = 0.0;
+  for (int i = 0; i < ${OCT}; i++){
+    if (i >= iters) break;
+    vec4 o = uOct[i];
+    float x = dot(o.xy, q) * o.z - o.w * uTime + float(i) * 7.13;
+    float e = exp(sin(x) - 1.0);
+    q -= o.xy * (e * cos(x) * w * uDrag);
+    s += e * w; ws += w; w *= 0.8;
+  }
+  return (s + 0.466 * (WS_FULL - ws)) / WS_FULL;
+}
+float heightAt(vec2 p, int it){ return uH * (waves(p, it) - 0.466) * 1.9; }
+
+// сколько октав различимо на таком расстоянии: длина волны октавы > 2,5 пикселя
+int lod(float t, int cap){
+  float fp = max(t * uPixAng, 1e-4);
+  float n = log(6.2832 * uL / (3.5 * fp)) / log(1.19);
+  return int(clamp(n, 3.0, float(cap)));
+}
+
+vec3 skyRaw(vec3 d){
+  float el = asin(clamp(d.y, 0.0, 1.0));
+  return texture(uSky, vec2(atan(d.x, d.z) / (2.0 * PI) + 0.5, sqrt(el / (PI * 0.5)))).rgb;
+}
+// в шторм небо затянуто: цвет гаснет и сереет
+vec3 skyTex(vec3 d){
+  vec3 c = skyRaw(d);
+  return mix(c, vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))) * vec3(0.78, 0.85, 0.95) * 0.55, uOver * 0.8);
+}
+
+float ggx(vec3 n, vec3 v, vec3 l, float a){
+  vec3 h = normalize(v + l);
+  float ndh = max(dot(n, h), 0.0), ndl = max(dot(n, l), 0.0), ndv = max(dot(n, v), 1e-3);
+  float a2 = a * a; float d = ndh * ndh * (a2 - 1.0) + 1.0;
+  float D = a2 / (PI * d * d);
+  float k = a * 0.5;
+  float G = ndl / (ndl * (1.0 - k) + k) * ndv / (ndv * (1.0 - k) + k);
+  float F = 0.02 + 0.98 * pow(1.0 - max(dot(h, v), 0.0), 5.0);
+  return D * G * F / (4.0 * ndv + 1e-4);
+}
+
+// Облака: слой на высоте ~2 км, подсвечены солнцем снизу на закате
+vec4 clouds(vec3 rd, int oct){
+  if (rd.y <= 0.0 || uCloud <= 0.0) return vec4(0.0);
+  float t = 2100.0 / (rd.y + 0.028);
+  vec2 q = (rd.xz * t + uWindDir * uTime * 7.0) * 0.00029;
+  float d = fbm(q, oct);
+  float cov = mix(0.66, 0.36, uCloud);
+  float den = smoothstep(cov, cov + 0.26, d);
+  if (den <= 0.002) return vec4(0.0);
+  vec2 ls = normalize(uSun.xz + 1e-5) * 0.22;
+  float dl = fbm(q + ls, max(oct - 2, 2));
+  float shade = exp(-max(dl - cov, 0.0) * 6.0);                     // самозатенение к солнцу
+  float mu = dot(rd, uSun);
+  float g = 0.6;
+  float hg = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * mu, 1.5) / (4.0 * PI);
+  float edge = 1.0 - smoothstep(0.0, 0.55, den);                     // тонкие края светятся
+  vec3 sunL = uSunCol * uSunVis * (1.0 - 0.7 * uOver) * (0.25 + 0.75 * shade) * (0.8 + 7.5 * hg * (0.4 + edge));
+  // после захода облака ещё горят: их освещает солнце из-под горизонта
+  float after = smoothstep(0.02, -0.1, uSun.y) * smoothstep(-0.2, -0.04, uSun.y);
+  vec3 glow = skyTex(normalize(vec3(uSun.x, 0.03, uSun.z))) * after * 2.2 * (0.3 + 0.7 * shade);
+  vec3 amb = skyTex(vec3(0.0, 1.0, 0.0)) * 1.1 + skyTex(normalize(vec3(-rd.x, 0.2, -rd.z))) * 0.5;
+  vec3 c = sunL + glow + amb * (0.45 + 0.4 * edge) + uMoonCol * (0.8 + 1.2 * shade) * 1.3;
+  c *= mix(1.0, 0.45, uCloud * smoothstep(0.4, 1.0, den)) * mix(1.0, 0.42, uOver);  // тяжёлые штормовые тучи темнее
+  float fade = 1.0 - exp(-t / 22000.0);
+  c = mix(c, skyTex(normalize(vec3(rd.x, max(rd.y, 0.004), rd.z))), fade * 0.9);
+  return vec4(c, den * (1.0 - fade * 0.55));
+}
+
+// Пересечение луча с водой: шаг по липшицевой оценке + уточнение делением пополам
+float trace(vec3 ro, vec3 rd, out bool hit){
+  hit = false;
+  float top = uH * 1.02 + 0.02, bot = -uH * 0.64 - 0.02;
+  if (ro.y > top && rd.y >= -1e-5) return 1e9;
+  float t = ro.y > top ? (top - ro.y) / rd.y : 0.0;
+  float tEnd = rd.y < 0.0 ? min((bot - ro.y) / rd.y, 14000.0) : 2500.0;
+  float tPrev = t;
+  for (int i = 0; i < 120; i++){
+    vec3 p = ro + rd * t;
+    int it = min(lod(t, 9), 9);
+    float g = p.y - heightAt(p.xz, it);
+    if (g < 0.0015 + t * 0.00025){
+      float a = tPrev, b = t;
+      for (int j = 0; j < 6; j++){ float m = 0.5 * (a + b); vec3 pm = ro + rd * m; if (pm.y - heightAt(pm.xz, it) < 0.0) b = m; else a = m; }
+      hit = true; return 0.5 * (a + b);
+    }
+    tPrev = t;
+    t += max(g / max(0.62 - rd.y, 0.06), 0.015 + t * 0.0016);
+    if (t > tEnd) break;
+  }
+  if (rd.y < 0.0){ hit = true; return min(tEnd, -ro.y / rd.y); }
+  return 1e9;
+}
+
+vec3 normalAt(vec2 p, float t){
+  float e = max(0.012, t * uPixAng * 0.9);
+  int it = min(lod(t, 30), uOctCap);
+  float h = heightAt(p, it);
+  return normalize(vec3(h - heightAt(p + vec2(e, 0.0), it), e, h - heightAt(p + vec2(0.0, e), it)));
+}
+
+// Солнце: диск сплющен у горизонта рефракцией; зелёный луч — на верхнем крае в момент захода
+vec3 sunDisk(vec3 rd){
+  float el = asin(clamp(rd.y, -1.0, 1.0));
+  float els = asin(clamp(uSun.y, -1.0, 1.0));
+  float daz = atan(rd.x, rd.z) - atan(uSun.x, uSun.z);
+  daz = mod(daz + PI, 2.0 * PI) - PI;
+  float squash = mix(0.8, 1.0, smoothstep(-0.005, 0.06, els));
+  vec2 dv = vec2(daz * cos(el), (el - els) / squash);
+  float r = length(dv);
+  float R = 0.0092;
+  float disk = smoothstep(R, R * 0.9, r);
+  float limb = 1.0 - 0.35 * pow(r / R, 2.0);                          // потемнение к краю
+  vec3 c = uSunCol * 42.0 * disk * limb * uSunVis;
+  c += uSunCol * uSunVis * (exp(-r * 115.0) * 3.2 + exp(-r * 26.0) * 0.42 + exp(-r * 7.0) * 0.08);  // ореол
+  float rim = smoothstep(R * 0.15, R * 0.95, dv.y) * disk;
+  c = mix(c, vec3(0.3, 1.5, 0.6) * 9.0, rim * uFlash);
+  return c;
+}
+
+vec3 moonDisk(vec3 rd){
+  float md = acos(clamp(dot(rd, uMoon), -1.0, 1.0));
+  float R = 0.0078;
+  vec3 c = uMoonCol * (exp(-md * 60.0) * 1.2 + exp(-md * 12.0) * 0.25);
+  if (md < R * 1.1){
+    vec3 rt = normalize(cross(vec3(0.0, 1.0, 0.0), uMoon));
+    vec3 up = cross(uMoon, rt);
+    vec2 l = vec2(dot(rd, rt), dot(rd, up)) / R;
+    float m = 0.62 + 0.24 * noise(l * 2.1 + 3.0) + 0.14 * noise(l * 6.0 - 1.0);
+    m -= 0.2 * smoothstep(0.35, 0.8, noise(l * 1.3 + 7.0));          // «моря»
+    c += uMoonCol * 300.0 * m * smoothstep(R, R * 0.9, md);
+  }
+  return c;
+}
+
+vec3 stars(vec3 d){
+  vec3 p = d * 260.0;
+  vec3 i = floor(p); vec3 f = fract(p) - 0.5;
+  float h = hash13(i);
+  if (h < 0.962) return vec3(0.0);
+  vec3 off = (vec3(hash13(i + 1.3), hash13(i + 2.7), hash13(i + 5.1)) - 0.5) * 0.55;
+  float r = length(f - off);
+  float b = smoothstep(0.11, 0.0, r) * pow(hash13(i + 9.1), 2.5) * 3.0 * (1.0 - uOver);
+  b *= 0.72 + 0.28 * sin(uTime * (2.0 + 5.0 * hash13(i + 4.4)) + h * 60.0);
+  vec3 col = mix(vec3(1.0, 0.78, 0.6), vec3(0.72, 0.84, 1.0), hash13(i + 3.3));
+  return col * b * smoothstep(0.0, 0.2, d.y);
+}
+float milky(vec3 d){
+  vec3 n = normalize(vec3(0.35, 0.55, -0.76));
+  float b = exp(-pow(dot(d, n), 2.0) * 22.0);
+  vec2 q = vec2(atan(d.x, d.z), d.y) * 7.0;
+  return b * (0.4 + 0.6 * noise(q) * noise(q * 2.3 + 1.7)) * smoothstep(0.0, 0.3, d.y);
+}
+
+vec3 aces(vec3 x){ return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
+
+void main(){
+  vec2 frag = gl_FragCoord.xy;
+  vec2 uv = (frag / uRes) * 2.0 - 1.0;
+  vec3 rd = normalize(uCam * vec3(uv.x * uTan.x, uv.y * uTan.y, 1.0));
+  vec3 ro = uCamPos;
+
+  bool hit;
+  float t = trace(ro, rd, hit);
+  vec3 col;
+  vec3 zen = skyTex(vec3(0.0, 1.0, 0.0));
+
+  if (hit){
+    vec3 p = ro + rd * t;
+    vec3 n = normalAt(p.xz, t);
+    float fade = smoothstep(200.0, 9000.0, t);
+    n = normalize(mix(n, vec3(0.0, 1.0, 0.0), fade * 0.35));
+    vec3 v = -rd;
+    float ndv = max(dot(n, v), 0.0);
+    float F = 0.02 + 0.98 * pow(1.0 - ndv, 5.0);
+    vec3 r = reflect(rd, n); r.y = abs(r.y) + 0.003; r = normalize(r);
+    vec3 refl = skyTex(r);
+    vec4 cl = clouds(r, 3);
+    refl = mix(refl, cl.rgb, cl.a);
+    float rough = mix(0.04, 0.2, clamp(uWind / 9.0, 0.0, 1.0)) + min(0.22, t * uPixAng * 0.5);
+    vec3 spec = ggx(n, v, uSun, rough) * uSunCol * uSunVis * (1.0 - 0.8 * cl.a) * (1.0 - 0.85 * uOver) + ggx(n, v, uMoon, rough * 0.9) * uMoonCol * 5.0;
+
+    float crest = clamp((p.y + uH * 0.64) / (uH * 1.66 + 1e-3), 0.0, 1.0);
+    vec3 body = vec3(0.0035, 0.014, 0.024) * (zen * 5.5 + uSunCol * max(uSun.y, 0.0) * 0.6 + uMoonCol * 0.6);
+    vec2 sh = normalize(uSun.xz + 1e-5), vh = normalize(rd.xz + 1e-5);
+    float back = pow(max(dot(vh, sh), 0.0), 3.0);
+    vec3 sss = vec3(0.04, 0.3, 0.22) * uSunCol * uSunVis * back * crest * crest * (1.0 - fade) * 1.5 * (1.0 - 0.7 * uOver);
+    col = (1.0 - F) * (body + sss) + F * refl + spec;
+
+    // пена на гребнях и тонкие прерывистые полосы пены вдоль ветра (барашки вдали сливаются в общее посветление)
+    float fn = noise(p.xz * 0.55 + uWindDir * uTime * 0.6) * 0.6 + noise(p.xz * 2.1 - uTime * 0.2) * 0.4;
+    float hm = p.y / max(uH, 0.05);
+    float mask = smoothstep(0.3, 0.75, fn);
+    float foam = smoothstep(0.18, 0.55, hm) * mask + smoothstep(0.25, 0.5, 1.0 - n.y) * smoothstep(0.05, 0.3, hm) * mask * 0.6;
+    foam = clamp(foam * uFoam, 0.0, 1.0);
+    vec2 wd = uWindDir, wp = vec2(-wd.y, wd.x);
+    float sLine = noise(vec2(dot(p.xz, wd) * 0.04, dot(p.xz, wp) * 1.6));
+    float sBreak = noise(vec2(dot(p.xz, wd) * 0.15, dot(p.xz, wp) * 0.3));
+    foam = max(foam, smoothstep(0.62, 0.8, sLine) * smoothstep(0.4, 0.7, sBreak) * uStreak * 0.35);
+    vec3 skyIrr = zen * 3.2 + skyTex(normalize(vec3(rd.x, 0.25, rd.z))) * 2.4;          // освещённость от всего неба
+    vec3 foamCol = (uSunCol * uSunVis * (1.0 - 0.6 * uOver) * max(dot(n, uSun), 0.0) * 1.3 + skyIrr + uMoonCol * 2.5) * 0.85;
+    float near = 1.0 - smoothstep(60.0, 450.0, t);
+    col = mix(col, foamCol, foam * near);
+    col = mix(col, foamCol, uFoam * 0.1 * (1.0 - near) * (1.0 - fade));
+
+    // дымка к горизонту
+    vec3 hz = skyTex(normalize(vec3(rd.x, 0.012, rd.z)));
+    float fog = 1.0 - exp(-t * (0.00006 + uWind * 0.00004));
+    col = mix(col, hz, fog);
+  } else {
+    col = skyTex(rd) + (sunDisk(rd) + moonDisk(rd)) * (1.0 - 0.97 * uOver);
+    col += (stars(rd) * 0.9 + milky(rd) * vec3(0.55, 0.62, 0.8) * 0.14) * uNight / uExposure;
+    vec4 cl = clouds(rd, 6);
+    col = mix(col, cl.rgb, cl.a);
+  }
+
+  col *= uExposure;
+  col = aces(col);
+  float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  col = max(mix(vec3(l), col, 1.1), 0.0);                          // чуть больше цвета, как на плёнке
+  col = pow(col, vec3(1.0 / 2.2));
+  vec2 q = frag / uRes - 0.5;
+  col *= 1.0 - 0.3 * dot(q, q) * 1.6;
+  col += (hash12(frag + fract(uTime) * 91.7) - 0.5) / 170.0;         // зерно против полос
+  fragColor = vec4(col, 1.0);
+}`;
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {};
+  const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) {
+    const info = gl.getActiveUniform(p, i);
+    const name = info.name.replace(/\[0\]$/, '');
+    u[name] = gl.getUniformLocation(p, info.name);
+  }
+  return { p, u };
+}
+
+let skyProg, mainProg;
+try {
+  skyProg = program(SKY_FRAG);
+  mainProg = program(MAIN_FRAG);
+} catch (e) {
+  $('fallback').style.display = 'grid';
+  $('fallback').textContent = 'Не удалось собрать шейдер океана: ' + e.message.slice(0, 200);
+  return;
+}
+const vao = gl.createVertexArray();
+
+// Текстура неба
+const SKY_W = 256, SKY_H = 96;
+const skyTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, skyTex);
+if (floatRT) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, SKY_W, SKY_H, 0, gl.RGBA, gl.HALF_FLOAT, null);
+else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SKY_W, SKY_H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+const skyFbo = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, skyFbo);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, skyTex, 0);
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+// ─────────────────────────────────────────────────────────────
+// Астрономия и свет
+// ─────────────────────────────────────────────────────────────
+function sunPos(hour) {
+  const H = (hour - 12) * 15 * D2R;
+  const sinEl = Math.sin(LAT) * Math.sin(DEC) + Math.cos(LAT) * Math.cos(DEC) * Math.cos(H);
+  const el = Math.asin(sinEl);
+  let az = Math.acos(Math.max(-1, Math.min(1, (Math.sin(DEC) - sinEl * Math.sin(LAT)) / (Math.cos(el) * Math.cos(LAT)))));
+  if (Math.sin(H) > 0) az = 2 * Math.PI - az;
+  return { el, az };
+}
+const dirOf = (el, az) => [Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)];
+
+// Пропускание атмосферы вдоль луча (на CPU — та же модель, что и в шейдере)
+function transmittance(d) {
+  const R0 = 6360e3, RA = 6420e3;
+  const ro = [0, R0 + 4, 0];
+  const hit = (r) => { const b = ro[1] * d[1]; const c = ro[1] * ro[1] - r * r; const q = b * b - c; return q < 0 ? -1 : -b + Math.sqrt(q); };
+  const b0 = ro[1] * d[1], c0 = ro[1] * ro[1] - R0 * R0, q0 = b0 * b0 - c0;
+  if (q0 > 0 && -b0 - Math.sqrt(q0) > 0) return [0, 0, 0];
+  const t = hit(RA), N = 48, ds = t / N;
+  let r = 0, m = 0, o = 0;
+  for (let i = 0; i < N; i++) {
+    const s = ds * (i + 0.5);
+    const p = [d[0] * s, ro[1] + d[1] * s, d[2] * s];
+    const h = Math.hypot(p[0], p[1], p[2]) - R0;
+    r += Math.exp(-h / 8000) * ds; m += Math.exp(-h / 1200) * ds; o += Math.max(0, 1 - Math.abs(h - 25000) / 15000) * ds;
+  }
+  const BR = [5.802e-6, 13.558e-6, 33.1e-6], BO = [0.65e-6, 1.881e-6, 0.085e-6];
+  return BR.map((b, k) => Math.exp(-(b * r + 4.44e-6 * m + BO[k] * o)));
+}
+
+const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+// ─────────────────────────────────────────────────────────────
+// Волны: октавы (направление, волновое число, частота) и то же поле на CPU для «лодки»
+// ─────────────────────────────────────────────────────────────
+const octData = new Float32Array(OCT * 4);
+const sea = { H: 1, L: 3.4, spread: 2.0, drag: 0.34, foam: 0.3, streak: 0, cloud: 0.6, over: 0, wind: 4 };
+const windAngle = 205 * D2R; // ветер дует примерно от солнца на закате
+const windDir = [Math.cos(windAngle), Math.sin(windAngle)];
+
+function rand(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+function buildOctaves() {
+  let k = 1;
+  for (let i = 0; i < OCT; i++) {
+    // крупные волны идут по ветру, мелкая рябь — во все стороны
+    const spread = sea.spread + (i / OCT) * 2.2;
+    const a = windAngle + (rand(i) - 0.5) * spread;
+    octData[i * 4] = Math.cos(a);
+    octData[i * 4 + 1] = Math.sin(a);
+    octData[i * 4 + 2] = k;
+    octData[i * 4 + 3] = Math.sqrt(9.81 * k / sea.L);
+    k *= 1.19;
+  }
+}
+function wavesCPU(x, z, iters, time) {
+  let qx = x / sea.L, qz = z / sea.L, w = 1, s = 0, ws = 0;
+  for (let i = 0; i < iters; i++) {
+    const dx = octData[i * 4], dz = octData[i * 4 + 1], k = octData[i * 4 + 2], om = octData[i * 4 + 3];
+    const ph = (dx * qx + dz * qz) * k - om * time + i * 7.13;
+    const e = Math.exp(Math.sin(ph) - 1);
+    const c = e * Math.cos(ph) * w * sea.drag;
+    qx -= dx * c; qz -= dz * c;
+    s += e * w; ws += w; w *= 0.8;
+  }
+  return (s + 0.466 * (4.9961 - ws)) / 4.9961;   // как в шейдере: отброшенные октавы — их средним
+}
+const heightCPU = (x, z, t) => sea.H * (wavesCPU(x, z, 6, t) - 0.466) * 1.9;
+
+// Параметры моря из силы ветра (с плавным переходом)
+function seaTarget(b) {
+  const [, h, u] = BEAUFORT[b];
+  const lambda = Math.max(2.2, 0.83 * u * u * 0.32 + 3); // длина волны пика, м (Пирсон — Московиц для неразвитого моря)
+  return {
+    H: h, L: lambda / (2 * Math.PI),
+    spread: b < 2 ? 3.4 : 2.4 - b * 0.12 + Math.max(0, b - 6) * 0.38,   // в шторм — толчея с разных сторон
+    drag: 0.22 + b * 0.034,
+    foam: smooth(2.5, 7, b) * 0.95,
+    streak: smooth(5.5, 9, b),
+    cloud: 0.42 + b * 0.055,
+    over: smooth(5.5, 9, b),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Состояние
+// ─────────────────────────────────────────────────────────────
+const state = {
+  hour: 19.1, hourTarget: 19.1,
+  wind: 4,
+  playing: false,
+  yaw: 0, pitch: 3.2 * D2R, roll: 0,
+  userYaw: null, userPitch: null,
+  follow: true,
+  boatY: 2.8, boatPitch: 0,
+  scale: 0.72,
+  ui: true,
+};
+Object.assign(sea, seaTarget(state.wind));
+buildOctaves();
+
+const isSwift = (() => {
+  const ext = gl.getExtension('WEBGL_debug_renderer_info');
+  const r = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '';
+  return /swiftshader|llvmpipe|software/i.test(r);
+})();
+// Съёмка обложки (_tools/shot ставит window.__SHOT__): полное качество, скорость не важна
+const SHOT = !!window.__SHOT__;
+if (SHOT) state.scale = 0.76;
+else if (isSwift) state.scale = 0.42;
+
+// ─────────────────────────────────────────────────────────────
+// Интерфейс
+// ─────────────────────────────────────────────────────────────
+const timeEl = $('time'), windEl = $('wind');
+const fmtClock = (h) => { const hh = Math.floor(h) % 24, mm = Math.floor((h - Math.floor(h)) * 60); return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`; };
+function phaseName(el, hour) {
+  const e = el / D2R, evening = hour > 12;
+  if (e > 10) return hour < 11 ? 'Утро' : hour < 16 ? 'День' : 'Вечереет';
+  if (e > 2.5) return 'Золотой час';
+  if (e > -1) return evening ? 'Закат' : 'Восход';
+  if (e > -4) return evening ? 'Вечерняя заря' : 'Утренняя заря';
+  if (e > -8) return 'Синий час';
+  if (e > -13) return evening ? 'Поздние сумерки' : 'Перед рассветом';
+  return 'Лунная ночь';
+}
+function setRangeFill(el) { const p = (el.value - el.min) / (el.max - el.min) * 100; el.style.setProperty('--p', p + '%'); }
+function syncWindLabel() {
+  const b = state.wind;
+  $('windNum').textContent = b;
+  $('windName').textContent = BEAUFORT[b][0];
+  const T = 2 * Math.PI / Math.sqrt(9.81 / seaTarget(b).L);
+  $('waveInfo').textContent = b === 0 ? ' · гладь' : ` · волна ~${String(BEAUFORT[b][1]).replace('.', ',')} м, период ${T.toFixed(1).replace('.', ',')} с`;
+  setRangeFill(windEl);
+}
+timeEl.addEventListener('input', () => { state.hourTarget = +timeEl.value; state.playing = false; $('play').setAttribute('aria-pressed', 'false'); setRangeFill(timeEl); dismissIntro(); });
+windEl.addEventListener('input', () => { state.wind = +windEl.value; syncWindLabel(); dismissIntro(); });
+syncWindLabel(); setRangeFill(timeEl);
+
+$('play').addEventListener('click', () => {
+  state.playing = !state.playing;
+  $('play').setAttribute('aria-pressed', String(state.playing));
+  dismissIntro();
+});
+
+// Интро: титр и подсказка растворяются
+let introGone = false;
+function dismissIntro() {
+  if (introGone) return;
+  introGone = true;
+  $('title').classList.add('gone');
+  $('hint').classList.add('gone');
+}
+setTimeout(dismissIntro, 9000);
+
+// Взгляд мышью/пальцем
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => {
+  drag = { x: e.clientX, y: e.clientY, yaw: state.yaw, pitch: state.pitch };
+  canvas.setPointerCapture(e.pointerId);
+  canvas.classList.add('dragging');
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  const k = 1.6 / Math.max(innerHeight, 400);
+  state.follow = false;
+  state.userYaw = drag.yaw - (e.clientX - drag.x) * k;
+  state.userPitch = Math.max(-35 * D2R, Math.min(55 * D2R, drag.pitch + (e.clientY - drag.y) * k));
+  dismissIntro();
+});
+const endDrag = () => { drag = null; canvas.classList.remove('dragging'); };
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('dblclick', () => { state.follow = true; state.userPitch = null; });
+
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) return;
+  if (e.key === 'h' || e.key === 'H' || e.key === 'р' || e.key === 'Р') {
+    state.ui = !state.ui; $('bar').classList.toggle('hidden', !state.ui); dismissIntro();
+  } else if (e.key === ' ') {
+    e.preventDefault(); $('play').click();
+  } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    state.hourTarget = Math.max(4, Math.min(24, state.hourTarget + (e.key === 'ArrowRight' ? 0.25 : -0.25)));
+    timeEl.value = state.hourTarget; setRangeFill(timeEl);
+  } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    state.wind = Math.max(0, Math.min(9, state.wind + (e.key === 'ArrowUp' ? 1 : -1)));
+    windEl.value = state.wind; syncWindLabel();
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// Звук: шум моря и ветра (синтез, без сэмплов)
+// ─────────────────────────────────────────────────────────────
+let audio = null;
+function startAudio() {
+  const ac = new (window.AudioContext || window.webkitAudioContext)();
+  const len = ac.sampleRate * 4;
+  const buf = ac.createBuffer(2, len, ac.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    let last = 0;
+    for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; } // коричневый шум
+  }
+  const white = ac.createBuffer(1, len, ac.sampleRate);
+  const wd = white.getChannelData(0);
+  for (let i = 0; i < len; i++) wd[i] = Math.random() * 2 - 1;
+
+  const surf = ac.createBufferSource(); surf.buffer = buf; surf.loop = true;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700; lp.Q.value = 0.4;
+  const surfGain = ac.createGain(); surfGain.gain.value = 0;
+  surf.connect(lp).connect(surfGain);
+
+  const wind = ac.createBufferSource(); wind.buffer = white; wind.loop = true;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.8;
+  const windGain = ac.createGain(); windGain.gain.value = 0;
+  wind.connect(bp).connect(windGain);
+
+  const master = ac.createGain(); master.gain.value = 0;
+  surfGain.connect(master); windGain.connect(master);
+  master.connect(ac.destination);
+  surf.start(); wind.start();
+  master.gain.setTargetAtTime(0.55, ac.currentTime, 1.2);
+  return { ac, lp, surfGain, bp, windGain, master, on: true };
+}
+$('sound').addEventListener('click', () => {
+  dismissIntro();
+  if (!audio) { audio = startAudio(); }
+  else if (audio.on) { audio.master.gain.setTargetAtTime(0, audio.ac.currentTime, 0.4); audio.on = false; }
+  else { audio.ac.resume(); audio.master.gain.setTargetAtTime(0.55, audio.ac.currentTime, 0.8); audio.on = true; }
+  $('sound').setAttribute('aria-pressed', String(audio.on));
+});
+
+// ─────────────────────────────────────────────────────────────
+// Размер холста и адаптивное разрешение
+// ─────────────────────────────────────────────────────────────
+let W = 0, H = 0;
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(2, Math.round(innerWidth * dpr * state.scale));
+  const h = Math.max(2, Math.round(innerHeight * dpr * state.scale));
+  if (w !== W || h !== H) { W = w; H = h; canvas.width = w; canvas.height = h; }
+}
+addEventListener('resize', resize);
+resize();
+
+// ─────────────────────────────────────────────────────────────
+// Кадр
+// ─────────────────────────────────────────────────────────────
+let last = performance.now(), simTime = 0, frameAvg = 16, lastScaleChange = 0, lastSky = '';
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function angleLerp(a, b, k) { let d = ((b - a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; return a + d * k; }
+
+let lastShotFrame = -1e9;
+function frame(now) {
+  // при съёмке программным рендером — не чаще кадра в 2 с, чтобы очередь GPU не забивалась
+  if (SHOT && now - lastShotFrame < 2000) { requestAnimationFrame(frame); return; }
+  lastShotFrame = now;
+  const dt = Math.min(0.1, (now - last) / 1000);
+  last = now;
+  if (document.hidden) { requestAnimationFrame(frame); return; }
+  simTime += dt * (reduced ? 0.5 : 1);
+
+  // адаптация разрешения под время кадра
+  frameAvg = frameAvg * 0.92 + dt * 1000 * 0.08;
+  if (now - lastScaleChange > 900 && !isSwift && !SHOT) {
+    if (frameAvg > 21 && state.scale > 0.38) { state.scale = Math.max(0.38, state.scale * 0.88); resize(); lastScaleChange = now; }
+    else if (frameAvg < 13.5 && state.scale < 1) { state.scale = Math.min(1, state.scale * 1.08); resize(); lastScaleChange = now; }
+  }
+
+  // время суток
+  if (state.playing) {
+    state.hourTarget += dt * 0.22;
+    if (state.hourTarget > 24) state.hourTarget = 4;
+    timeEl.value = state.hourTarget; setRangeFill(timeEl);
+  }
+  const jump = Math.abs(state.hourTarget - state.hour) > 3;
+  state.hour = jump || SHOT ? state.hourTarget : state.hour + (state.hourTarget - state.hour) * Math.min(1, dt * 4);
+
+  // море плавно следует за ветром
+  const tgt = seaTarget(state.wind);
+  const k = SHOT ? 1 : Math.min(1, dt * 0.55);     // при съёмке — сразу, иначе плавно
+  let changed = false;
+  for (const key of ['H', 'L', 'spread', 'drag', 'foam', 'streak', 'cloud', 'over']) {
+    const nv = sea[key] + (tgt[key] - sea[key]) * k;
+    if (Math.abs(nv - sea[key]) > 1e-5) changed = true;
+    sea[key] = nv;
+  }
+  if (changed) buildOctaves();
+
+  // Солнце, Луна (полнолуние — напротив Солнца), свет
+  const sp = sunPos(state.hour);
+  const sun = dirOf(sp.el, sp.az);
+  const moon = [-sun[0], -sun[1], -sun[2]];
+  const sunT = transmittance(sun), moonT = transmittance(moon);
+  const sunVis = smooth(-0.012, 0.004, sun[1]);
+  const sunCol = sunT.map((v) => v * SUN_I * 0.05);
+  const moonCol = moonT.map((v) => v * MOON_I * 0.05 * smooth(-0.02, 0.03, moon[1]));
+  const elDeg = sp.el / D2R;
+  // экспозиция: днём мало, в сумерках и ночью — много
+  // экспозиция по высоте Солнца (как у фотографа): днём меньше, в сумерках и ночью — больше
+  const EXP = [[20, 0.42], [8, 0.47], [3, 0.5], [0, 0.6], [-3, 1.5], [-7, 4.5], [-12, 9], [-18, 13]];
+  let logE = Math.log(EXP[EXP.length - 1][1]);
+  for (let i = 0; i < EXP.length - 1; i++) {
+    const [e0, v0] = EXP[i], [e1, v1] = EXP[i + 1];
+    if (elDeg >= e1) { const k2 = elDeg >= e0 ? 0 : (e0 - elDeg) / (e0 - e1); logE = Math.log(v0) + (Math.log(v1) - Math.log(v0)) * k2; break; }
+  }
+  const exposure = Math.exp(logE);
+  const night = smooth(-5, -13, elDeg);
+  // зелёный луч: верхний край диска касается горизонта
+  const flash = Math.exp(-Math.pow((elDeg + 0.22) / 0.22, 2));
+
+  // камера сама смотрит на солнце (или луну), пока её не тронули
+  const tgtAz = elDeg > -9 ? sp.az : Math.atan2(moon[0], moon[2]);
+  const followYaw = tgtAz - 11 * D2R;
+  const moonEl = Math.asin(moon[1]);
+  const followPitch = elDeg > -9 ? 3.2 * D2R : Math.max(3.2 * D2R, Math.min(15 * D2R, moonEl * 0.52));
+  if (state.follow) {
+    state.yaw = angleLerp(state.yaw, followYaw, simTime < 0.3 ? 1 : Math.min(1, dt * 1.2));
+    state.pitch += ((state.userPitch ?? followPitch) - state.pitch) * Math.min(1, simTime < 0.3 ? 1 : dt * 2);
+  } else {
+    state.yaw = angleLerp(state.yaw, state.userYaw, Math.min(1, dt * 14));
+    state.pitch += (state.userPitch - state.pitch) * Math.min(1, dt * 14);
+  }
+
+  // лодка: высота глаза над местной волной, качка по уклону
+  const t = simTime;
+  const bx = 0, bz = 0, e = 1.6 + sea.H * 0.8;
+  const h0 = heightCPU(bx, bz, t);
+  const hx = heightCPU(bx + e, bz, t), hz = heightCPU(bx, bz + e, t);
+  const eye = 2.6 + sea.H * 0.35;
+  state.boatY += (h0 + eye - state.boatY) * Math.min(1, dt * 2.6);
+  const cy = Math.cos(state.yaw), sy = Math.sin(state.yaw);
+  const slopeF = ((hx - h0) * sy + (hz - h0) * cy) / e;   // уклон вдоль взгляда
+  const slopeR = ((hx - h0) * cy - (hz - h0) * sy) / e;   // поперёк
+  state.boatPitch += (Math.atan(slopeF) * 0.45 - state.boatPitch) * Math.min(1, dt * 2.2);
+  state.roll += (Math.atan(slopeR) * 0.35 - state.roll) * Math.min(1, dt * 2.2);
+
+  const pitch = state.pitch + state.boatPitch;
+  const f = [Math.sin(state.yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(state.yaw) * Math.cos(pitch)];
+  let r = [f[2], 0, -f[0]]; const rl = Math.hypot(r[0], r[2]); r = [r[0] / rl, 0, r[2] / rl];
+  let u = [f[1] * r[2] - f[2] * r[1], f[2] * r[0] - f[0] * r[2], f[0] * r[1] - f[1] * r[0]];
+  const cr = Math.cos(state.roll), sr = Math.sin(state.roll);
+  const r2 = r.map((v, i) => v * cr + u[i] * sr), u2 = u.map((v, i) => u[i] * cr - r[i] * sr);
+  const aspect = innerWidth / innerHeight;
+  const vfov = (aspect < 0.8 ? 68 : 50) * D2R;
+  const tanY = Math.tan(vfov / 2), tanX = tanY * aspect;
+
+  // Проход 1: небо (только когда сдвинулось солнце)
+  const key = sun.map((v) => v.toFixed(4)).join(',');
+  if (key !== lastSky) {
+    lastSky = key;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, skyFbo);
+    gl.viewport(0, 0, SKY_W, SKY_H);
+    gl.useProgram(skyProg.p);
+    gl.uniform2f(skyProg.u.uSize, SKY_W, SKY_H);
+    gl.uniform3fv(skyProg.u.uSun, sun);
+    gl.uniform3fv(skyProg.u.uMoon, moon);
+    gl.uniform1f(skyProg.u.uSunI, SUN_I);
+    gl.uniform1f(skyProg.u.uMoonI, MOON_I);
+    gl.bindVertexArray(vao);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  // Проход 2: сцена
+  gl.viewport(0, 0, W, H);
+  const m = mainProg.u;
+  gl.useProgram(mainProg.p);
+  gl.uniform2f(m.uRes, W, H);
+  gl.uniform1f(m.uTime, t);
+  gl.uniform3fv(m.uSun, sun);
+  gl.uniform3fv(m.uMoon, moon);
+  gl.uniform3fv(m.uSunCol, sunCol);
+  gl.uniform3fv(m.uMoonCol, moonCol);
+  gl.uniform1f(m.uH, sea.H);
+  gl.uniform1f(m.uL, sea.L);
+  gl.uniform1f(m.uDrag, sea.drag);
+  gl.uniform1f(m.uFoam, sea.foam);
+  gl.uniform1f(m.uStreak, sea.streak);
+  gl.uniform1f(m.uWind, state.wind);
+  gl.uniform1f(m.uCloud, sea.cloud);
+  gl.uniform1f(m.uOver, sea.over);
+  gl.uniform1f(m.uPixAng, 2 * tanY / H);
+  gl.uniform1i(m.uOctCap, SHOT ? 20 : 30);
+  gl.uniform2fv(m.uWindDir, windDir);
+  gl.uniform4fv(m.uOct, octData);
+  gl.uniform3f(m.uCamPos, 0, state.boatY, 0);
+  gl.uniformMatrix3fv(m.uCam, false, new Float32Array([...r2, ...u2, ...f]));
+  gl.uniform2f(m.uTan, tanX, tanY);
+  gl.uniform1f(m.uExposure, exposure);
+  gl.uniform1f(m.uNight, night);
+  gl.uniform1f(m.uFlash, flash);
+  gl.uniform1f(m.uSunVis, sunVis);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, skyTex);
+  gl.uniform1i(m.uSky, 0);
+  gl.bindVertexArray(vao);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  // подписи
+  $('phase').textContent = flash > 0.35 && state.hour > 12 ? 'Зелёный луч!' : phaseName(sp.el, state.hour);
+  $('phase').classList.toggle('flash', flash > 0.35);
+  $('clock').textContent = fmtClock(state.hour);
+
+  // звук следует за морем
+  if (audio && audio.on) {
+    const swell = 0.5 + 0.5 * Math.sin(t * Math.sqrt(9.81 / sea.L) * 0.9);
+    const now2 = audio.ac.currentTime;
+    audio.surfGain.gain.setTargetAtTime((0.16 + sea.H * 0.05) * (0.55 + 0.45 * swell), now2, 0.3);
+    audio.lp.frequency.setTargetAtTime(380 + 900 * swell * Math.min(1, 0.3 + sea.H / 4), now2, 0.3);
+    audio.windGain.gain.setTargetAtTime(0.012 + Math.pow(state.wind / 9, 2) * 0.22, now2, 0.8);
+    audio.bp.frequency.setTargetAtTime(700 + state.wind * 110 + 200 * Math.sin(t * 0.37), now2, 0.5);
+  }
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

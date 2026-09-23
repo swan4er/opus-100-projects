@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Путь пакета</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea;
+    --card: #fffdf8;
+    --ink: #1d1c1a;
+    --ink-2: #55524b;
+    --ink-3: #6f6b62;
+    --rule: #e3ddd0;
+    --red: #d8443a;      /* домашняя линия */
+    --purple: #7b4bb7;   /* DNS */
+    --ring: #8a5a2b;     /* магистральное кольцо */
+    --green: #2c9a58;    /* дата-центр */
+    --tcp: #2f6fd1;
+    --tls: #c99316;
+    --http: #2c9a58;
+    --ack: #8c877c;
+    --drop: #d8443a;
+    --sans: "Onest", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+  body { overflow: hidden; }
+  .app { height: 100vh; display: grid; grid-template-columns: 420px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+
+  /* Левая колонка: рассказ */
+  .story { grid-row: 1 / 3; background: var(--card); border-right: 1px solid var(--rule); display: flex; flex-direction: column; min-height: 0; }
+  .brand { padding: 22px 28px 0; display: flex; align-items: center; gap: 12px; }
+  .brand .m { width: 30px; height: 30px; border-radius: 50%; background: var(--red); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 15px; flex: none; }
+  .brand b { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  .brand span { display: block; font-size: 13px; color: var(--ink-3); }
+  .chapter { padding: 20px 28px 0; overflow-y: auto; flex: 1; min-height: 0; }
+  .num { font-size: 13px; font-weight: 600; color: var(--ink-3); letter-spacing: .08em; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+  .num i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .chapter h1 { font-size: 34px; line-height: 1.08; letter-spacing: -.025em; margin: 10px 0 14px; font-weight: 800; }
+  .chapter p { font-size: 15.5px; line-height: 1.55; color: var(--ink-2); margin: 0 0 12px; }
+  .chapter p b { color: var(--ink); font-weight: 600; }
+  .widget { margin: 16px 0 6px; }
+
+  .url { font-family: var(--mono); font-size: 15px; background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; line-height: 1.6; word-break: break-all; }
+  .url .s { color: #2a63bd; } .url .h { color: var(--purple); font-weight: 500; } .url .p { color: #1f7a45; } .url .q { color: #8f6400; }
+  .parts { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13.5px; margin-top: 10px; }
+  .parts dt { color: var(--ink-3); } .parts dd { margin: 0; font-family: var(--mono); font-size: 13px; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+  .field label { font-size: 13px; color: var(--ink-3); }
+  .field input { font: 500 16px var(--sans); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--rule); background: #fff; color: var(--ink); outline: none; transition: border-color .2s; }
+  .field input:focus { border-color: var(--purple); }
+  .puny { font-family: var(--mono); font-size: 14px; color: var(--purple); padding: 2px 2px; word-break: break-all; }
+
+  .row { display: grid; grid-template-columns: 92px 1fr 64px; align-items: center; gap: 10px; min-height: 36px; font-size: 13.5px; color: var(--ink-2); }
+  .row output { font-family: var(--mono); font-size: 13px; text-align: right; color: var(--ink); }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin: 0; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--ink) var(--p, 50%), var(--rule) var(--p, 50%)); }
+  input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: var(--rule); }
+  input[type=range]::-moz-range-progress { height: 4px; background: var(--ink); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); }
+  input[type=range]:focus-visible { outline: 2px solid var(--tcp); outline-offset: 2px; border-radius: 4px; }
+
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .btn { appearance: none; border: 1px solid var(--rule); background: #fff; color: var(--ink); font: 600 14px var(--sans); padding: 10px 14px; min-height: 40px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background .2s, border-color .2s, transform .15s; }
+  .btn:hover { border-color: #cfc7b6; background: #fbf8f1; }
+  .btn:active { transform: translateY(1px); }
+  .btn.dark { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn.dark:hover { background: #33312d; }
+  .btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .btn:focus-visible, .stop:focus-visible { outline: 2px solid var(--tcp); outline-offset: 2px; }
+
+  /* Журнал */
+  .log { border-top: 1px solid var(--rule); padding: 12px 28px 16px; background: #fbf9f3; }
+  .log h2 { margin: 0 0 8px; font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); display: flex; justify-content: space-between; }
+  .log h2 span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .log ol { list-style: none; margin: 0; padding: 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; height: 150px; overflow: hidden; display: flex; flex-direction: column-reverse; }
+  .log li { display: grid; grid-template-columns: 70px 1fr; gap: 8px; color: var(--ink-2); animation: in .35s ease both; }
+  .log li time { color: var(--ink-3); text-align: right; }
+  .log li i { font-style: normal; font-weight: 500; }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } }
+
+  /* Карта */
+  .mapbox { position: relative; min-width: 0; min-height: 0; }
+  svg#map { width: 100%; height: 100%; display: block; }
+  .station-label { font: 600 15px var(--sans); fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 5px; stroke-linejoin: round; }
+  .station-sub { font: 400 12px var(--mono); fill: var(--ink-3); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; }
+  .line-name { font: 700 13px var(--sans); fill: #fff; }
+  .chart { position: absolute; right: 22px; bottom: 18px; width: min(520px, calc(100% - 44px)); background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 14px 16px 10px; box-shadow: 0 12px 30px rgba(40, 30, 10, .08); display: none; }
+  .chart.on { display: block; }
+  .chart h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); display: flex; justify-content: space-between; gap: 12px; }
+  .chart h3 b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+  .chart canvas { width: 100%; height: 170px; display: block; }
+
+  /* Нижняя навигация — ветка метро */
+  .route { grid-column: 2; border-top: 1px solid var(--rule); background: var(--card); padding: 12px 26px 14px; display: flex; align-items: center; gap: 16px; }
+  .stops { position: relative; flex: 1; display: flex; justify-content: space-between; align-items: flex-start; }
+  .stops::before { content: ""; position: absolute; left: 14px; right: 14px; top: 11px; height: 6px; border-radius: 6px; background: var(--rule); }
+  .stops .fill { position: absolute; left: 14px; top: 11px; height: 6px; border-radius: 6px; background: var(--ink); transition: width .5s cubic-bezier(.3, .7, .3, 1); }
+  .stop { appearance: none; border: 0; background: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 1; min-width: 56px; font: 500 12.5px var(--sans); color: var(--ink-3); }
+  .stop i { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 5px solid var(--rule); transition: border-color .3s, transform .3s; }
+  .stop.done i { border-color: var(--ink); }
+  .stop[aria-current=true] { color: var(--ink); font-weight: 700; }
+  .stop[aria-current=true] i { border-color: var(--ink); transform: scale(1.18); }
+  .navbtns { display: flex; gap: 8px; }
+  .round { width: 42px; height: 42px; padding: 0; justify-content: center; }
+
+  @media (max-width: 1000px) {
+    body { overflow: auto; }
+    .app { height: auto; grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+    .story { grid-row: 3; border-right: 0; border-top: 1px solid var(--rule); }
+    .mapbox { grid-row: 1; height: 58vh; min-height: 330px; }
+    .route { grid-column: 1; grid-row: 2; padding: 10px 12px; }
+    .stop { min-width: 0; font-size: 0; }
+    .stop[aria-current=true] { font-size: 12px; }
+    .stop i { width: 22px; height: 22px; border-width: 4px; }
+    .stops::before, .stops .fill { top: 8px; height: 5px; }
+    .chart { position: static; width: auto; margin: 0 12px 12px; }
+    .chapter { padding: 18px 18px 0; }
+    .brand, .log { padding-left: 18px; padding-right: 18px; }
+    .chapter h1 { font-size: 28px; }
+    .log ol { height: 120px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration: .01s !important; animation-duration: .01s !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="story">
+    <div class="brand"><div class="m" aria-hidden="true">П</div><div><b>Путь пакета</b><span>что происходит после Enter</span></div></div>
+    <div class="chapter" id="chapter" aria-live="polite"></div>
+    <div class="log">
+      <h2>Журнал <span>модельные задержки</span></h2>
+      <ol id="log"></ol>
+    </div>
+  </section>
+  <div class="mapbox">
+    <svg id="map" viewBox="0 0 1200 780" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Схема сети в стиле карты метро"></svg>
+    <div class="chart" id="chart">
+      <h3><span>Окно перегрузки TCP, сегментов</span><span>скорость ≈ <b id="thr">—</b></span></h3>
+      <canvas id="cw" width="1040" height="340"></canvas>
+    </div>
+  </div>
+  <nav class="route">
+    <div class="navbtns">
+      <button class="btn round" id="prev" aria-label="Предыдущая глава"><svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg></button>
+    </div>
+    <div class="stops" id="stops"><div class="fill" id="fill"></div></div>
+    <div class="navbtns">
+      <button class="btn round dark" id="next" aria-label="Следующая глава"><svg viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg></button>
+    </div>
+  </nav>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ─────────────────────────────────────────────────────────────
+// Punycode (RFC 3492): кириллические домены в DNS путешествуют латиницей
+// ─────────────────────────────────────────────────────────────
+function punyLabel(input) {
+  const base = 36, tMin = 1, tMax = 26, skew = 38, damp = 700;
+  const cps = Array.from(input).map((c) => c.codePointAt(0));
+  let n = 128, delta = 0, bias = 72;
+  const out = cps.filter((c) => c < 0x80).map((c) => String.fromCharCode(c));
+  let h = out.length; const b = h;
+  if (b > 0) out.push('-');
+  const adapt = (d, num, first) => { d = first ? Math.floor(d / damp) : d >> 1; d += Math.floor(d / num); let k = 0; while (d > ((base - tMin) * tMax) >> 1) { d = Math.floor(d / (base - tMin)); k += base; } return k + Math.floor(((base - tMin + 1) * d) / (d + skew)); };
+  const digit = (d) => String.fromCharCode(d + 22 + 75 * (d < 26));
+  while (h < cps.length) {
+    let m = Infinity; for (const c of cps) if (c >= n && c < m) m = c;
+    delta += (m - n) * (h + 1); n = m;
+    for (const c of cps) {
+      if (c < n) delta++;
+      if (c === n) {
+        let q = delta;
+        for (let k = base; ; k += base) { const t = k <= bias ? tMin : k >= bias + tMax ? tMax : k - bias; if (q < t) break; out.push(digit(t + ((q - t) % (base - t)))); q = Math.floor((q - t) / (base - t)); }
+        out.push(digit(q)); bias = adapt(delta, h + 1, h === b); delta = 0; h++;
+      }
+    }
+    delta++; n++;
+  }
+  return out.join('');
+}
+const toAscii = (dom) => dom.trim().toLowerCase().split('.').map((l) => (!l || /^[\x00-\x7f]*$/.test(l) ? l : 'xn--' + punyLabel(l))).join('.');
+
+// ─────────────────────────────────────────────────────────────
+// Схема «метро»
+// ─────────────────────────────────────────────────────────────
+const RC = { x: 790, y: 500, r: 215 };               // магистральное кольцо
+const ring = (deg) => [RC.x + RC.r * Math.cos(deg * Math.PI / 180), RC.y - RC.r * Math.sin(deg * Math.PI / 180)];
+const ST = {
+  laptop: { p: [90, 620], name: 'Ноутбук', sub: '192.168.1.23', side: 'below' },
+  wifi: { p: [225, 620], name: 'Роутер Wi‑Fi', sub: '192.168.1.1', side: 'below' },
+  isp: { p: [360, 620], name: 'Провайдер', sub: 'шлюз 100.64.0.1', side: 'below', hub: true },
+  resolver: { p: [360, 470], name: 'Резолвер DNS', sub: 'у провайдера', side: 'left' },
+  root: { p: [360, 310], name: 'Корневые «.»', sub: 'anycast', side: 'left' },
+  tld: { p: [440, 230], name: 'Зона .рф', sub: 'xn--p1ai', side: 'above' },
+  auth: { p: [640, 230], name: 'DNS пример.рф', sub: 'ns1.пример.рф', side: 'above' },
+  ix: { p: ring(180), name: 'Точка обмена', sub: 'Москва', side: 'left', hub: true },
+  spb: { p: ring(135), name: 'Санкт-Петербург', sub: '', side: 'left' },
+  sto: { p: ring(90), name: 'Стокгольм', sub: '', side: 'above' },
+  ams: { p: ring(45), name: 'Амстердам', sub: '', side: 'right' },
+  fra: { p: ring(0), name: 'Франкфурт', sub: 'дата-центр', side: 'left', hub: true },
+  waw: { p: ring(270), name: 'Варшава', sub: 'магистраль', side: 'below' },
+  lb: { p: [1105, 500], name: 'Балансировщик', sub: '', side: 'above' },
+  web: { p: [1150, 640], name: 'Веб-сервер', sub: '203.0.113.42', side: 'leftlow' },
+};
+// Маршруты — ломаные по линиям схемы
+const arc = (a0, a1, step) => { const pts = []; const s = a1 > a0 ? step : -step; for (let a = a0; s > 0 ? a <= a1 + 1e-6 : a >= a1 - 1e-6; a += s) pts.push(ring(a)); return pts; };
+const P = (k) => ST[k].p;
+const ROUTES = {
+  toIsp: [P('laptop'), P('wifi'), P('isp')],
+  ispToResolver: [P('isp'), P('resolver')],
+  resolverToRoot: [P('resolver'), P('root')],
+  resolverToTld: [P('resolver'), P('root'), [360, 310], P('tld')],
+  resolverToAuth: [P('resolver'), P('root'), P('tld'), P('auth')],
+  main: [P('laptop'), P('wifi'), P('isp'), [455, 620], P('ix'), ...arc(180, 270, 5).slice(1), ...arc(270, 360, 5).slice(1), P('lb'), [1150, 545], P('web')],
+};
+ROUTES.clientToResolver = [...ROUTES.toIsp, P('resolver')];
+
+const svg = $('map');
+function el(name, attrs, parent = svg) { const e = document.createElementNS(NS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+const dPath = (pts) => pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+
+function drawMap() {
+  // бумага и сетка
+  const defs = el('defs', {});
+  const pat = el('pattern', { id: 'grid', width: 40, height: 40, patternUnits: 'userSpaceOnUse' }, defs);
+  el('path', { d: 'M40 0H0V40', fill: 'none', stroke: '#e9e3d6', 'stroke-width': 1 }, pat);
+  el('rect', { x: 0, y: 0, width: 1200, height: 780, fill: 'url(#grid)' });
+  // линии
+  const L = (pts, color, w = 11) => el('path', { d: dPath(pts), fill: 'none', stroke: color, 'stroke-width': w, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
+  el('circle', { cx: RC.x, cy: RC.y, r: RC.r, fill: 'none', stroke: 'var(--ring)', 'stroke-width': 11 });
+  L([P('laptop'), P('wifi'), P('isp'), [455, 620], P('ix')], 'var(--red)');
+  L([P('isp'), P('resolver'), P('root'), [360, 310], P('tld'), P('auth')], 'var(--purple)');
+  L([P('fra'), P('lb'), [1150, 545], P('web')], 'var(--green)');
+  // значки линий
+  const badge = (x, y, color, t) => { el('circle', { cx: x, cy: y, r: 13, fill: color }); const tx = el('text', { x, y: y + 4.5, 'text-anchor': 'middle', class: 'line-name' }); tx.textContent = t; };
+  badge(50, 620, '#c2362d', '1'); badge(684, 230, 'var(--purple)', '2'); badge(RC.x, RC.y, 'var(--ring)', '5'); badge(1150, 700, '#1f7a45', '7');
+  const cap = el('text', { x: RC.x, y: RC.y + 32, 'text-anchor': 'middle', class: 'station-sub' }); cap.textContent = 'магистральное кольцо';
+  // станции
+  for (const [key, s] of Object.entries(ST)) {
+    const [x, y] = s.p;
+    const g = el('g', { id: 'st-' + key });
+    if (s.hub) el('circle', { cx: x, cy: y, r: 14, fill: '#fff', stroke: 'var(--ink)', 'stroke-width': 4 }, g);
+    else el('circle', { cx: x, cy: y, r: 9, fill: '#fff', stroke: 'var(--ink)', 'stroke-width': 3.5 }, g);
+    const pos = { below: [0, 36, 'middle'], above: [0, -26, 'middle'], left: [-24, 5, 'end'], right: [24, 5, 'start'], rightup: [22, -22, 'start'], leftlow: [-22, 30, 'end'] }[s.side];
+    // у подписей над станцией вторая строка идёт выше названия, чтобы не наезжать на кружок
+    const up = s.side === 'above' && s.sub;
+    const t = el('text', { x: x + pos[0], y: y + pos[1] - (up ? 17 : 0), 'text-anchor': pos[2], class: 'station-label' }, g);
+    t.textContent = s.name;
+    if (s.sub) { const u = el('text', { x: x + pos[0], y: y + pos[1] + (up ? 0 : 17), 'text-anchor': pos[2], class: 'station-sub' }, g); u.textContent = s.sub; }
+  }
+  // очередь маршрутизатора (для главы о потерях)
+  const q = el('g', { id: 'queue', opacity: 0 });
+  const [qx, qy] = P('waw');
+  el('rect', { x: qx + 26, y: qy - 46, width: 84, height: 18, rx: 4, fill: '#fff', stroke: 'var(--ink)', 'stroke-width': 1.5 }, q);
+  el('rect', { id: 'qfill', x: qx + 28, y: qy - 44, width: 0, height: 14, rx: 3, fill: 'var(--drop)' }, q);
+  const ql = el('text', { x: qx + 26, y: qy - 54, class: 'station-sub' }, q); ql.textContent = 'очередь маршрутизатора';
+  svg.appendChild(trainLayer);
+}
+const trainLayer = document.createElementNS(NS, 'g');
+
+// ─────────────────────────────────────────────────────────────
+// Поезда-пакеты
+// ─────────────────────────────────────────────────────────────
+// цвета «поездов» темнее линий: белая подпись должна читаться (контраст ≥ 4,5)
+const KIND = { dns: '#7b4bb7', tcp: '#2a63bd', tls: '#8f6400', http: '#1f7a45', ack: '#6d685f', drop: '#b8322a', icmp: '#9a3f73' };
+let trains = [];
+function polyLen(pts) { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
+function pointAt(pts, d) {
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], L = Math.hypot(x1 - x0, y1 - y0);
+    if (d <= L || i === pts.length - 1) { const u = L ? Math.min(1, d / L) : 0; return [x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, Math.atan2(y1 - y0, x1 - x0)]; }
+    d -= L;
+  }
+  return pts[pts.length - 1];
+}
+// Запустить поезд. Возвращает промис, который выполнится по прибытии.
+function train(route, { label = '', kind = 'tcp', dir = 1, dur = 1800, stopAt = 1, onArrive, drop = false } = {}) {
+  const pts = dir > 0 ? route : route.slice().reverse();
+  const g = document.createElementNS(NS, 'g');
+  const w = Math.max(34, label.length * 7.4 + 16);
+  const rect = document.createElementNS(NS, 'rect');
+  Object.entries({ x: -w / 2, y: -11, width: w, height: 22, rx: 11, fill: KIND[kind], stroke: '#fff', 'stroke-width': 2.5 }).forEach(([k, v]) => rect.setAttribute(k, v));
+  const tx = document.createElementNS(NS, 'text');
+  Object.entries({ x: 0, y: 4.3, 'text-anchor': 'middle', fill: '#fff', 'font-family': 'JetBrains Mono, monospace', 'font-size': 11.5, 'font-weight': 500 }).forEach(([k, v]) => tx.setAttribute(k, v));
+  tx.textContent = label;
+  g.append(rect, tx);
+  g.setAttribute('transform', `translate(${pts[0][0]} ${pts[0][1]})`);   // сразу на старте, а не в углу схемы
+  trainLayer.appendChild(g);
+  return new Promise((resolve) => {
+    trains.push({ g, pts, L: polyLen(pts) * stopAt, t0: performance.now(), dur: reduced ? dur * 0.3 : dur, resolve, onArrive, drop });
+  });
+}
+function tickTrains(now) {
+  trains = trains.filter((t) => {
+    const u = Math.min(1, (now - t.t0) / t.dur);
+    const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+    const [x, y] = pointAt(t.pts, e * t.L);
+    t.g.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+    if (u >= 1) {
+      if (t.drop) { poof(x, y); t.g.remove(); }
+      else { t.g.style.transition = 'opacity .35s'; t.g.style.opacity = '0'; setTimeout(() => t.g.remove(), 380); }
+      t.onArrive && t.onArrive(); t.resolve();
+      return false;
+    }
+    return true;
+  });
+}
+function poof(x, y) {
+  const g = document.createElementNS(NS, 'g');
+  for (let i = 0; i < 9; i++) {
+    const c = document.createElementNS(NS, 'circle');
+    const a = (i / 9) * Math.PI * 2;
+    c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 4); c.setAttribute('fill', 'var(--drop)');
+    c.animate([{ transform: 'translate(0,0)', opacity: 1 }, { transform: `translate(${Math.cos(a) * 34}px, ${Math.sin(a) * 34}px)`, opacity: 0 }], { duration: 700, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' });
+    g.appendChild(c);
+  }
+  trainLayer.appendChild(g);
+  setTimeout(() => g.remove(), 800);
+}
+function pulse(key, color = 'var(--ink)') {
+  const [x, y] = P(key);
+  const c = el('circle', { cx: x, cy: y, r: 16, fill: 'none', stroke: color, 'stroke-width': 3 }, trainLayer);
+  c.animate([{ r: 16, opacity: 0.9 }, { r: 46, opacity: 0 }], { duration: 1100, easing: 'ease-out' });
+  setTimeout(() => c.remove(), 1150);
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, reduced ? ms * 0.3 : ms));
+
+// ─────────────────────────────────────────────────────────────
+// Журнал
+// ─────────────────────────────────────────────────────────────
+let clockMs = 0;
+function log(ms, html, kind) {
+  const li = document.createElement('li');
+  li.innerHTML = `<time>${ms.toFixed(1).replace('.', ',')} мс</time><span>${kind ? `<i style="color:${KIND[kind]}">` : '<i>'}${html}</i></span>`;
+  const ol = $('log');
+  ol.prepend(li);
+  while (ol.children.length > 14) ol.lastChild.remove();
+}
+const rnd32 = () => (Math.random() * 4294967296) >>> 0;
+const fmt = (n) => n.toLocaleString('ru-RU');
+
+// ─────────────────────────────────────────────────────────────
+// Главы
+// ─────────────────────────────────────────────────────────────
+let run = 0;        // номер текущего прогона: старые сценарии молча завершаются
+const alive = (id) => id === run;
+const net = { rtt: 42 };   // модель: ноутбук ↔ Франкфурт
+
+const CHAPTERS = [
+  {
+    key: 'url', title: 'Enter', color: 'var(--red)', stop: 'Адрес',
+    html: `<p>Вы набрали адрес и нажали <b>Enter</b>. Сначала браузер разбирает строку на части: протокол, имя сайта, путь и параметры.</p>
+      <div class="widget"><div class="url"><span class="s">https://</span><span class="h">пример.рф</span><span class="p">/новости</span><span class="q">?page=2</span></div>
+      <dl class="parts"><dt>Протокол</dt><dd>https — значит, будет шифрование TLS</dd><dt>Имя</dt><dd>пример.рф</dd><dt>Путь</dt><dd>/новости</dd><dt>Параметры</dt><dd>page=2</dd></dl></div>
+      <p>DNS понимает только латиницу, поэтому кириллическое имя переводится в <b>Punycode</b>. Попробуйте своё:</p>
+      <div class="field"><label for="dom">Домен</label><input id="dom" value="пример.рф" autocomplete="off" spellcheck="false"><div class="puny" id="puny"></div></div>`,
+    async play(id) {
+      const upd = () => { $('puny').textContent = '→ ' + toAscii($('dom').value || ''); };
+      $('dom').addEventListener('input', upd); upd();
+      pulse('laptop', 'var(--red)');
+      log(0, 'Enter: https://пример.рф/новости?page=2');
+      await sleep(900); if (!alive(id)) return;
+      log(0.1, `имя для DNS: ${toAscii('пример.рф')}`);
+      await sleep(1600); if (!alive(id)) return;
+      pulse('laptop', 'var(--red)');
+    },
+  },
+  {
+    key: 'dns', title: 'Кто такой пример.рф?', color: 'var(--purple)', stop: 'DNS',
+    html: `<p>Браузер не знает, где живёт сайт. Если в кэше браузера и системы пусто, он спрашивает <b>резолвер</b> провайдера.</p>
+      <p>Резолвер идёт по цепочке: <b>корневые серверы</b> знают, кто отвечает за зону .рф, серверы <b>зоны .рф</b> — кто отвечает за пример.рф, а <b>авторитетный сервер</b> наконец называет IP-адрес.</p>
+      <p>Ответ живёт в кэше столько, сколько велит TTL, — следующий визит обойдётся без этой прогулки.</p>`,
+    async play(id) {
+      clockMs = 0;
+      log(0, 'кэш браузера и ОС: промах', 'dns');
+      await train(ROUTES.clientToResolver, { label: 'A пример.рф?', kind: 'dns', dur: 1700 }); if (!alive(id)) return;
+      clockMs += 6; log(clockMs, 'резолвер: в кэше нет, начинаю с корня', 'dns');
+      await train(ROUTES.resolverToRoot, { label: 'где .рф?', kind: 'dns', dur: 1000 }); if (!alive(id)) return;
+      pulse('root', 'var(--purple)');
+      await train(ROUTES.resolverToRoot, { label: 'спроси xn--p1ai', kind: 'dns', dir: -1, dur: 1000 }); if (!alive(id)) return;
+      clockMs += 14; log(clockMs, 'корень: зону .рф обслуживают её серверы', 'dns');
+      await train(ROUTES.resolverToTld, { label: 'где пример.рф?', kind: 'dns', dur: 1200 }); if (!alive(id)) return;
+      pulse('tld', 'var(--purple)');
+      await train(ROUTES.resolverToTld, { label: 'NS ns1.пример.рф', kind: 'dns', dir: -1, dur: 1200 }); if (!alive(id)) return;
+      clockMs += 18; log(clockMs, 'зона .рф: спросите ns1.пример.рф', 'dns');
+      await train(ROUTES.resolverToAuth, { label: 'A?', kind: 'dns', dur: 1400 }); if (!alive(id)) return;
+      pulse('auth', 'var(--purple)');
+      await train(ROUTES.resolverToAuth, { label: '203.0.113.42', kind: 'dns', dir: -1, dur: 1400 }); if (!alive(id)) return;
+      clockMs += 23; log(clockMs, 'A 203.0.113.42, TTL 3600 с', 'dns');
+      await train(ROUTES.clientToResolver, { label: '203.0.113.42', kind: 'dns', dir: -1, dur: 1700 }); if (!alive(id)) return;
+      clockMs += 6; log(clockMs, `адрес получен за ${clockMs} мс и сохранён в кэш`, 'dns');
+      pulse('laptop', 'var(--purple)');
+    },
+  },
+  {
+    key: 'tcp', title: 'Рукопожатие TCP', color: 'var(--tcp)', stop: 'TCP',
+    html: `<p>Теперь браузер знает адрес и открывает соединение TCP — надёжный канал поверх ненадёжной сети.</p>
+      <p>Три сообщения: <b>SYN</b> («давай поговорим, мой счётчик начинается с x»), <b>SYN-ACK</b> («давай, мой — с y, твой x+1 принят»), <b>ACK</b>. Номера последовательности случайны: так чужой не подделает пакет в середине разговора.</p>
+      <p>Цена — один полный круг туда и обратно, <b>RTT</b>.</p>`,
+    async play(id) {
+      const x = rnd32(), y = rnd32(); clockMs = 0;
+      log(0, `→ SYN seq=${fmt(x)}`, 'tcp');
+      await train(ROUTES.main, { label: 'SYN', kind: 'tcp', dur: 2600 }); if (!alive(id)) return;
+      pulse('web', 'var(--tcp)'); clockMs += net.rtt / 2;
+      log(clockMs, `← SYN-ACK seq=${fmt(y)} ack=${fmt((x + 1) >>> 0)}`, 'tcp');
+      await train(ROUTES.main, { label: 'SYN-ACK', kind: 'tcp', dir: -1, dur: 2600 }); if (!alive(id)) return;
+      clockMs += net.rtt / 2; pulse('laptop', 'var(--tcp)');
+      log(clockMs, `→ ACK ack=${fmt((y + 1) >>> 0)} · соединение открыто`, 'tcp');
+      train(ROUTES.main, { label: 'ACK', kind: 'ack', dur: 2600 });
+      log(clockMs, `ушёл один RTT ≈ ${net.rtt} мс`, 'tcp');
+    },
+  },
+  {
+    key: 'tls', title: 'Шифрование TLS 1.3', color: 'var(--tls)', stop: 'TLS',
+    html: `<p>Буква «s» в https — это TLS. В версии 1.3 договориться о ключах можно за <b>один круг</b>.</p>
+      <p>В <b>ClientHello</b> браузер сразу присылает свою половину обмена ключами (X25519, вариант Диффи — Хеллмана). Сервер отвечает своей половиной, <b>сертификатом</b> и подписью. Браузер проверяет цепочку сертификата до доверенного корня, имя сайта и срок действия.</p>
+      <p>Тонкость: имя сайта (SNI) в ClientHello пока видно в сети — его прячет расширение ECH, но оно поддерживается не везде.</p>`,
+    async play(id) {
+      clockMs = net.rtt;
+      log(clockMs, '→ ClientHello: key_share X25519, SNI пример.рф', 'tls');
+      await train(ROUTES.main, { label: 'ClientHello', kind: 'tls', dur: 2600 }); if (!alive(id)) return;
+      pulse('web', 'var(--tls)'); clockMs += net.rtt / 2;
+      log(clockMs, '← ServerHello + сертификат + подпись + Finished', 'tls');
+      const back = [train(ROUTES.main, { label: 'ServerHello', kind: 'tls', dir: -1, dur: 2600 })];
+      await sleep(260); back.push(train(ROUTES.main, { label: 'сертификат', kind: 'tls', dir: -1, dur: 2600 }));
+      await sleep(260); back.push(train(ROUTES.main, { label: 'Finished', kind: 'tls', dir: -1, dur: 2600 }));
+      await Promise.all(back); if (!alive(id)) return;
+      clockMs += net.rtt / 2; pulse('laptop', 'var(--tls)');
+      log(clockMs, 'цепочка сертификата проверена, общий ключ вычислен', 'tls');
+      train(ROUTES.main, { label: 'Finished', kind: 'tls', dur: 2600 });
+      log(clockMs, 'канал зашифрован: +1 RTT', 'tls');
+    },
+  },
+  {
+    key: 'http', title: 'Запрос и ответ', color: 'var(--http)', stop: 'HTTP',
+    html: `<p>По зашифрованному каналу уходит <b>GET /новости?page=2</b>. Сервер отвечает <b>200 OK</b> и страницей в 58 КБ.</p>
+      <p>Страница не летит одним куском: TCP режет её на <b>сегменты</b> по 1460 байт — 41 штука. Получатель подтверждает их пачками, а отправитель не шлёт больше, чем позволяет окно.</p>`,
+    async play(id) {
+      clockMs = net.rtt * 2;
+      log(clockMs, '→ GET /новости?page=2', 'http');
+      await train(ROUTES.main, { label: 'GET', kind: 'http', dur: 2600 }); if (!alive(id)) return;
+      pulse('web', 'var(--http)'); clockMs += net.rtt / 2 + 8;
+      log(clockMs, '← 200 OK · 58 КБ · 41 сегмент', 'http');
+      const segs = [];
+      for (let i = 1; i <= 10; i++) {
+        segs.push(train(ROUTES.main, { label: i < 10 ? `сегм. ${i}` : '… 41', kind: 'http', dir: -1, dur: 2600 }));
+        if (i % 3 === 0) setTimeout(() => alive(id) && train(ROUTES.main, { label: `ACK ${i}`, kind: 'ack', dur: 2600 }), 2700);
+        await sleep(190); if (!alive(id)) return;
+      }
+      await Promise.all(segs); if (!alive(id)) return;
+      clockMs += net.rtt / 2 + 20; pulse('laptop', 'var(--http)');
+      log(clockMs, `первые байты страницы через ≈ ${Math.round(clockMs)} мс после Enter`, 'http');
+    },
+  },
+  {
+    key: 'route', title: 'Маршрут: хоп за хопом', color: 'var(--ring)', stop: 'Маршрут',
+    html: `<p>Пакет идёт через цепочку маршрутизаторов. Каждый уменьшает поле <b>TTL</b> на единицу; когда оно доходит до нуля, маршрутизатор выбрасывает пакет и сообщает об этом отправителю.</p>
+      <p>На этом построен <b>traceroute</b>: пакеты с TTL = 1, 2, 3… «умирают» на каждом следующем узле и выдают его.</p>
+      <p>Скорость света в оптоволокне — около <b>200 000 км/с</b>. Москва — Франкфурт по прямой около 2000 км: минимум 10 мс в одну сторону. Реальный путь длиннее, а очереди добавляют ещё.</p>`,
+    async play(id) {
+      const hops = [['wifi', 2.1], ['isp', 6.4], ['ix', 9.8], ['waw', 24.6], ['fra', 38.9], ['lb', 41.2], ['web', 42.0]];
+      const main = ROUTES.main;
+      const idxOf = (k) => { const [x, y] = P(k); let best = 0, bd = Infinity; main.forEach((p, i) => { const d = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (d < bd) { bd = d; best = i; } }); return best; };
+      for (let h = 0; h < hops.length; h++) {
+        const [k, ms] = hops[h];
+        const part = main.slice(0, idxOf(k) + 1);
+        await train(part, { label: `TTL=${h + 1}`, kind: 'tcp', dur: 700 + h * 180 }); if (!alive(id)) return;
+        pulse(k, 'var(--ring)');
+        const last = h === hops.length - 1;
+        train(part, { label: last ? 'ответ' : 'ICMP', kind: 'icmp', dir: -1, dur: 700 + h * 180 });
+        log(ms, `${h + 1}  ${ST[k].name}${last ? ' — цель' : ': TTL истёк'} · ${ms.toFixed(1).replace('.', ',')} мс`, 'icmp');
+        await sleep(260); if (!alive(id)) return;
+      }
+    },
+  },
+  {
+    key: 'loss', title: 'Пакет потерян', color: 'var(--drop)', stop: 'Потери',
+    html: `<p>Маршрутизатор в Варшаве перегружен: входящих пакетов больше, чем он успевает отправить, и <b>очередь</b> переполняется. Лишний пакет просто выбрасывается.</p>
+      <p>Получатель замечает дыру: пришёл шестой сегмент, а пятого не было. Он снова и снова подтверждает «жду пятый» — <b>дублирующие ACK</b>. После трёх дублей отправитель повторяет пятый сегмент, не дожидаясь таймаута: это <b>быстрый повтор</b>.</p>
+      <div class="btns"><button class="btn dark" id="again"><svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.6 2.2v2.4h-2.4"/></svg>Уронить ещё раз</button></div>`,
+    async play(id) {
+      $('again').onclick = () => startChapter(cur);
+      const q = $('queue'); q.style.transition = 'opacity .4s'; q.setAttribute('opacity', 1);
+      const qf = $('qfill');
+      const main = ROUTES.main.slice().reverse();          // данные идут от сервера
+      const wIdx = main.findIndex((p) => Math.abs(p[0] - P('waw')[0]) < 1 && Math.abs(p[1] - P('waw')[1]) < 1);
+      const toWaw = main.slice(0, wIdx + 1);
+      clockMs = 0;
+      const sent = [];
+      for (let i = 3; i <= 8; i++) {
+        const drop = i === 5;
+        qf.setAttribute('width', Math.min(80, (i - 2) * 14));
+        if (drop) {
+          sent.push(train(toWaw, { label: `сегм. ${i}`, kind: 'drop', dur: 1500, drop: true, onArrive: () => alive(id) && log(clockMs + 12, 'Варшава: очередь полна — сегмент 5 выброшен', 'drop') }));
+        } else {
+          sent.push(train(main, { label: `сегм. ${i}`, kind: 'http', dur: 2800 }));
+        }
+        await sleep(260); if (!alive(id)) return;
+      }
+      await Promise.all(sent); if (!alive(id)) return;
+      qf.setAttribute('width', 20);
+      clockMs = 30;
+      for (let k = 1; k <= 3; k++) {
+        log(clockMs + k * 2, `→ ACK 5 (дубль №${k}): «жду пятый»`, 'ack');
+        train(ROUTES.main, { label: 'ACK 5', kind: 'ack', dur: 2600 });
+        await sleep(330); if (!alive(id)) return;
+      }
+      await sleep(2300); if (!alive(id)) return;
+      log(clockMs + 50, '← три дубля: быстрый повтор сегмента 5', 'tls');
+      await train(main, { label: 'сегм. 5 ↻', kind: 'tls', dur: 2800 }); if (!alive(id)) return;
+      pulse('laptop', 'var(--tls)');
+      log(clockMs + 72, '→ ACK 9: дыра закрыта, данные целы', 'ack');
+      train(ROUTES.main, { label: 'ACK 9', kind: 'ack', dur: 2600 });
+    },
+    leave() { $('queue').setAttribute('opacity', 0); },
+  },
+  {
+    key: 'cwnd', title: 'Окно перегрузки', color: 'var(--ink)', stop: 'Окно',
+    html: `<p>Сколько данных можно держать «в полёте» без подтверждения? Это <b>окно перегрузки</b>. TCP нащупывает его вслепую.</p>
+      <p><b>Медленный старт</b>: окно удваивается каждый RTT. После порога — растёт на один сегмент за RTT. Потеря — сигнал перегрузки: окно <b>делится пополам</b>. Отсюда пила на графике.</p>
+      <div class="widget">
+        <div class="row"><label for="rtt">RTT</label><input id="rtt" type="range" min="10" max="200" step="1" value="42"><output id="rttv"></output></div>
+        <div class="row"><label for="loss">Потери</label><input id="loss" type="range" min="0" max="3" step="0.05" value="0.3"><output id="lossv"></output></div>
+      </div>
+      <p>По формуле Матиса скорость ≈ <b>MSS / RTT × 1,22 / √p</b>: вдвое больше RTT — вдвое медленнее, вчетверо больше потерь — тоже вдвое.</p>`,
+    async play(id) {
+      $('chart').classList.add('on');
+      const R = $('rtt'), Lo = $('loss');
+      const sync = () => {
+        net.rtt = +R.value;
+        $('rttv').textContent = `${R.value} мс`; $('lossv').textContent = `${(+Lo.value).toFixed(2).replace('.', ',')} %`;
+        [R, Lo].forEach((i) => i.style.setProperty('--p', ((i.value - i.min) / (i.max - i.min)) * 100 + '%'));
+      };
+      R.oninput = sync; Lo.oninput = sync; sync();
+      cw.reset();
+      let lastTrain = 0;
+      const loop = (now) => {
+        if (!alive(id)) return;
+        cw.step(+Lo.value / 100);
+        cw.draw();
+        // частота поездов растёт с окном
+        if (now - lastTrain > Math.max(120, 1400 / Math.max(1, cw.w))) { lastTrain = now; train(ROUTES.main, { label: '▪', kind: 'http', dir: -1, dur: 2200 }); }
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    },
+    leave() { $('chart').classList.remove('on'); },
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Модель окна перегрузки (Reno): медленный старт, AIMD, деление пополам при потере
+// ─────────────────────────────────────────────────────────────
+const cw = {
+  hist: [], w: 1, ss: 32, acc: 0, frames: 0,
+  reset() { this.hist = []; this.w = 1; this.ss = 32; this.acc = 0; this.frames = 0; },
+  step(p) {
+    // один шаг анимации = один RTT
+    if (++this.frames % 3) return;
+    let lost = false;
+    for (let i = 0; i < Math.round(this.w); i++) if (Math.random() < p) { lost = true; break; }
+    if (lost) { this.ss = Math.max(2, this.w / 2); this.w = this.ss; }
+    else if (this.w < this.ss) this.w = Math.min(this.w * 2, this.ss + 0.001);
+    else this.w += 1;
+    this.w = Math.min(this.w, 400);
+    this.hist.push({ w: this.w, lost });
+    if (this.hist.length > 160) this.hist.shift();
+    const mss = 1460 * 8;
+    const bps = (this.w * mss) / (net.rtt / 1000);
+    $('thr').textContent = bps > 1e6 ? `${(bps / 1e6).toFixed(1).replace('.', ',')} Мбит/с` : `${Math.round(bps / 1e3)} кбит/с`;
+  },
+  draw() {
+    const c = $('cw'), g = c.getContext('2d');
+    const W = c.width, H = c.height;
+    g.clearRect(0, 0, W, H);
+    const max = Math.max(40, ...this.hist.map((h) => h.w)) * 1.1;
+    g.strokeStyle = '#e3ddd0'; g.lineWidth = 1; g.font = '20px JetBrains Mono, monospace'; g.fillStyle = '#6f6b62';
+    for (let v = 0; v <= max; v += max > 200 ? 100 : max > 80 ? 40 : 20) { const y = H - 20 - (v / max) * (H - 40); g.beginPath(); g.moveTo(50, y); g.lineTo(W, y); g.stroke(); g.fillText(String(v), 0, y + 7); }
+    g.beginPath(); g.lineWidth = 4; g.strokeStyle = '#1d1c1a'; g.lineJoin = 'round';
+    this.hist.forEach((h, i) => { const x = 50 + (i / 159) * (W - 60), y = H - 20 - (h.w / max) * (H - 40); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.stroke();
+    g.fillStyle = '#d8443a';
+    this.hist.forEach((h, i) => { if (!h.lost) return; const x = 50 + (i / 159) * (W - 60), y = H - 20 - (h.w / max) * (H - 40); g.beginPath(); g.arc(x, y, 6, 0, Math.PI * 2); g.fill(); });
+    const ssY = H - 20 - (this.ss / max) * (H - 40);
+    g.setLineDash([8, 8]); g.strokeStyle = '#c99316'; g.lineWidth = 2; g.beginPath(); g.moveTo(50, ssY); g.lineTo(W, ssY); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#c99316'; g.fillText('порог', W - 80, ssY - 8);
+  },
+};
+
+// ─────────────────────────────────────────────────────────────
+// Навигация
+// ─────────────────────────────────────────────────────────────
+let cur = 0;
+const stops = $('stops');
+CHAPTERS.forEach((c, i) => {
+  const b = document.createElement('button');
+  b.className = 'stop'; b.innerHTML = `<i></i>${c.stop}`;
+  b.setAttribute('aria-label', `Глава ${i + 1}: ${c.stop}`);
+  b.addEventListener('click', () => startChapter(i));
+  stops.appendChild(b);
+});
+function startChapter(i) {
+  if (CHAPTERS[cur] && CHAPTERS[cur].leave) CHAPTERS[cur].leave();
+  cur = Math.max(0, Math.min(CHAPTERS.length - 1, i));
+  const id = ++run;
+  trains.forEach((t) => { t.g.remove(); t.resolve(); });
+  trains = [];
+  const c = CHAPTERS[cur];
+  $('chapter').innerHTML = `<div class="num"><i style="background:${c.color}"></i>Глава ${cur + 1} из ${CHAPTERS.length}</div><h1>${c.title}</h1>${c.html}`;
+  [...stops.querySelectorAll('.stop')].forEach((b, j) => { b.setAttribute('aria-current', String(j === cur)); b.classList.toggle('done', j < cur); });
+  updateFill();
+  $('prev').disabled = cur === 0; $('next').disabled = cur === CHAPTERS.length - 1;
+  $('log').innerHTML = '';
+  c.play(id);
+}
+$('prev').addEventListener('click', () => startChapter(cur - 1));
+$('next').addEventListener('click', () => startChapter(cur + 1));
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight') startChapter(cur + 1);
+  if (e.key === 'ArrowLeft') startChapter(cur - 1);
+});
+function updateFill() {
+  const all = stops.querySelectorAll('.stop');
+  const span = all[all.length - 1].offsetLeft - all[0].offsetLeft;
+  $('fill').style.width = (span * cur) / (CHAPTERS.length - 1) + 'px';
+}
+addEventListener('resize', updateFill);
+
+function frame(now) { tickTrains(now); requestAnimationFrame(frame); }
+drawMap();
+requestAnimationFrame(frame);
+// с первого кадра — живая глава про DNS: по схеме уже бегут поезда
+startChapter(1);
+})();
+</script>
+</body>
+</html>

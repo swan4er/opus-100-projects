@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Карэсансуй — сад камней</title>
+<meta name="description" content="Японский сад камней и песка: грабли оставляют на песке настоящие борозды, камни отбрасывают тени, падают листья, стучит бамбук.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Tenor+Sans&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="garden" id="garden">
+  <canvas id="gl" aria-label="Сад камней: песок, камни, мох"></canvas>
+  <canvas id="fx" aria-hidden="true"></canvas>
+
+  <header class="title">
+    <h1>Карэсансуй</h1>
+    <p>сад камней и&nbsp;песка<span class="more"> · расстановка по&nbsp;мотивам Рёандзи</span></p>
+  </header>
+
+  <div class="sky" role="group" aria-label="Время и сезон">
+    <div class="seasons" role="radiogroup" aria-label="Время года">
+      <button data-season="spring" role="radio" aria-checked="false">Весна</button>
+      <button data-season="summer" role="radio" aria-checked="false">Лето</button>
+      <button data-season="autumn" role="radio" aria-checked="true" class="is-on">Осень</button>
+      <button data-season="winter" role="radio" aria-checked="false">Зима</button>
+    </div>
+    <label class="sun"><span>Солнце</span><input type="range" id="sun" min="0" max="1" step="0.005" value="0.2" aria-label="Время дня"></label>
+  </div>
+
+  <nav class="dock" role="toolbar" aria-label="Инструменты">
+    <button class="tool is-on" data-tool="rake" aria-label="Грабли">
+      <svg viewBox="0 0 28 28"><path d="M5 9h18M8 9v6M12 9v6M16 9v6M20 9v6M14 9V3"/></svg><span>Грабли</span>
+    </button>
+    <button class="tool" data-tool="rings" aria-label="Круги">
+      <svg viewBox="0 0 28 28"><circle cx="14" cy="14" r="3"/><circle cx="14" cy="14" r="7.5"/><circle cx="14" cy="14" r="12"/></svg><span>Круги</span>
+    </button>
+    <button class="tool" data-tool="stone" aria-label="Камень">
+      <svg viewBox="0 0 28 28"><path d="M5 19c0-5 4-10 9.5-10S24 13 23 18c-.6 3-4 4-9 4s-9-.3-9-3z"/></svg><span>Камень</span>
+    </button>
+    <button class="tool" data-tool="moss" aria-label="Мох">
+      <svg viewBox="0 0 28 28"><path d="M6 20c1-3 3-4 5-3 0-3 3-5 6-3 2-2 6 0 5 3 2 1 1 4-1 4H7c-2 0-2-1-1-1z"/></svg><span>Мох</span>
+    </button>
+    <button class="tool" data-tool="smooth" aria-label="Разровнять">
+      <svg viewBox="0 0 28 28"><path d="M4 17c3-1 6-1 10 0s7 1 10 0M8 11h12"/></svg><span>Ладонь</span>
+    </button>
+    <span class="sep" aria-hidden="true"></span>
+    <button class="tool" id="reset" aria-label="Вернуть сад">
+      <svg viewBox="0 0 28 28"><path d="M6 14a8 8 0 1 0 2.4-5.7"/><path d="M6 5v4h4"/></svg><span>Заново</span>
+    </button>
+    <button class="tool" id="sound" aria-pressed="false" aria-label="Звук">
+      <svg viewBox="0 0 28 28" class="snd-off"><path d="M5 11h4l5-4v14l-5-4H5z"/><path d="M19 11l5 6M24 11l-5 6"/></svg>
+      <svg viewBox="0 0 28 28" class="snd-on"><path d="M5 11h4l5-4v14l-5-4H5z"/><path d="M18 10.5a5 5 0 0 1 0 7M21 8a9 9 0 0 1 0 12"/></svg>
+      <span>Звук</span>
+    </button>
+  </nav>
+
+  <p class="hint" id="hint">Ведите граблями по&nbsp;песку. Кругами обведите камень.</p>
+  <div class="fail" id="fail" hidden><p>Саду нужен WebGL2. Откройте страницу в&nbsp;свежем Chrome, Safari или Firefox.</p></div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

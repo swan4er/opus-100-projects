@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ночной музей — 037</title>
+<meta name="description" content="Рейкастер: ночной музей с фонариком, семь украденных картин и живопись, написанная кодом.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bona+Nova:ital,wght@0,400;0,700;1,400&family=Bona+Nova+SC:wght@400;700&family=Ysabeau+Office:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="view" aria-label="Залы музея"></canvas>
+
+<!-- интерфейс игры -->
+<div id="hud" class="hud" aria-live="polite">
+  <section class="inventory" aria-label="Опись похищенного">
+    <div class="inv-head"><span class="smallcaps">Опись похищенного</span><span class="inv-count" id="invCount">0 / 7</span></div>
+    <ol class="slots" id="slots"></ol>
+  </section>
+
+  <div class="clockbox">
+    <div class="clock" id="clock">02:14</div>
+    <div class="clock-sub" id="clockSub">до рассвета 3 ч 46 мин</div>
+  </div>
+
+  <div class="topbtns">
+    <button class="ibtn" id="btnUV" type="button" aria-pressed="false" title="Ультрафиолет (F)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6h-4z" /><path d="M10 9v11a2 2 0 0 0 4 0V9" /><path d="M4 5l2 1.5M20 5l-2 1.5M3.5 11h2.5M18 11h2.5" /></svg>
+      <span class="uvbar"><i id="uvFill"></i></span>
+    </button>
+    <button class="ibtn" id="btnMap" type="button" title="План музея (M)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" /><path d="M9 4v14M15 6v14" /></svg>
+    </button>
+    <button class="ibtn" id="btnSound" type="button" aria-pressed="true" title="Звук">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path class="w1" d="M16.5 8.5a5 5 0 0 1 0 7" /><path class="w2" d="M19 6a8.5 8.5 0 0 1 0 12" /><path class="x" d="M16 9l5 6M21 9l-5 6" /></svg>
+    </button>
+    <button class="ibtn" id="btnMenu" type="button" title="Пауза (Esc)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
+    </button>
+  </div>
+
+  <div class="mapcard" id="mapCard">
+    <canvas id="minimap" aria-label="План музея"></canvas>
+  </div>
+
+  <div class="reticle" aria-hidden="true"></div>
+  <div class="prompt" id="prompt" hidden><kbd id="promptKey">E</kbd><span id="promptText"></span></div>
+
+  <article class="label" id="label" hidden>
+    <div class="stamp" id="stamp">Похищено</div>
+    <div class="l-author" id="lAuthor"></div>
+    <div class="l-life" id="lLife"></div>
+    <div class="l-title" id="lTitle"></div>
+    <div class="l-meta" id="lMeta"></div>
+    <div class="l-note" id="lNote"></div>
+  </article>
+
+  <div class="toast" id="toast" aria-live="polite">
+    <div class="t-kick smallcaps" id="tKick"></div>
+    <div class="t-title" id="tTitle"></div>
+    <div class="t-sub" id="tSub"></div>
+  </div>
+
+  <div class="hint" id="hint"></div>
+</div>
+
+<!-- большой план -->
+<div class="bigmap" id="bigMap" hidden>
+  <div class="bigmap-card">
+    <div class="bigmap-head"><span class="smallcaps">План первого этажа</span><button class="close" id="mapClose" type="button" aria-label="Закрыть план">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button></div>
+    <canvas id="bigmapCanvas"></canvas>
+    <div class="legend">
+      <span><i class="lg-you"></i>вы</span><span><i class="lg-empty"></i>пустая рама</span><span><i class="lg-back"></i>картина на месте</span><span><i class="lg-win"></i>окно</span>
+    </div>
+  </div>
+</div>
+
+<!-- заставка -->
+<section class="intro" id="intro">
+  <div class="intro-col">
+    <div class="kicker smallcaps">Одна ночь · семь полотен</div>
+    <h1 class="title">Ночной музей</h1>
+    <p class="lead">В&nbsp;02:14 сработала сигнализация. Вор вырезал из&nbsp;рам семь картин, но&nbsp;вынести не&nbsp;успел: полотна спрятаны где-то в&nbsp;залах. Возьмите фонарик и&nbsp;верните их&nbsp;на&nbsp;место до&nbsp;рассвета.</p>
+    <div class="lost">
+      <div class="lost-head smallcaps">Опись похищенного</div>
+      <ol class="lost-row" id="lostRow"></ol>
+    </div>
+    <div class="cta">
+      <button class="btn primary" id="btnStart" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6h-4z" /><path d="M10 9v11a2 2 0 0 0 4 0V9" /><path d="M4 5l2 1.5M20 5l-2 1.5" /></svg>
+        <span>Взять фонарик</span>
+      </button>
+      <ul class="keys" aria-label="Управление">
+        <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>идти</span></li>
+        <li><kbd class="wide">мышь</kbd><span>смотреть</span></li>
+        <li><kbd>E</kbd><span>взять</span></li>
+        <li><kbd>F</kbd><span>ультрафиолет</span></li>
+        <li><kbd>M</kbd><span>план</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="intro-foot" id="introFoot">Картины и&nbsp;художники вымышлены, вся живопись написана кодом прямо в&nbsp;браузере</div>
+</section>
+
+<!-- пауза -->
+<section class="overlay" id="pause" hidden>
+  <div class="card">
+    <div class="kicker smallcaps" id="pauseKick">Пауза</div>
+    <h2 class="card-title">Музей ждёт</h2>
+    <dl class="stats" id="pauseStats"></dl>
+    <div class="card-btns">
+      <button class="btn primary" id="btnResume" type="button"><span>Продолжить</span></button>
+      <button class="btn ghost" id="btnNewNight" type="button"><span>Новая ночь</span></button>
+    </div>
+    <ul class="keys compact">
+      <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>идти, Shift — быстрее</span></li>
+      <li><kbd>←</kbd><kbd>→</kbd><span>повернуться</span></li>
+      <li><kbd>E</kbd><span>взять или вернуть</span></li>
+      <li><kbd>F</kbd><span>ультрафиолет: следы вора</span></li>
+      <li><kbd>M</kbd><span>план музея</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- финал -->
+<section class="overlay final" id="final" hidden>
+  <div class="card wide">
+    <div class="kicker smallcaps">Рассвет</div>
+    <h2 class="card-title">Коллекция цела</h2>
+    <p class="card-lead" id="finalLead"></p>
+    <ol class="final-row" id="finalRow"></ol>
+    <dl class="stats" id="finalStats"></dl>
+    <div class="card-btns">
+      <button class="btn primary" id="btnStay" type="button"><span>Остаться в&nbsp;залах</span></button>
+      <button class="btn ghost" id="btnNewNight2" type="button"><span>Новая ночь</span></button>
+    </div>
+  </div>
+</section>
+
+<!-- сенсорное управление -->
+<div class="touch" id="touch" aria-hidden="true">
+  <div class="stick" id="stick"><i id="knob"></i></div>
+  <button class="tbtn take" id="tTake" type="button">Взять</button>
+  <button class="tbtn uv" id="tUV" type="button">УФ</button>
+</div>
+
+<div class="fatal" id="fatal" hidden>
+  <div class="card">
+    <div class="kicker smallcaps">Двери закрыты</div>
+    <h2 class="card-title">Нужен WebGL&nbsp;2</h2>
+    <p class="card-lead">Этот браузер не&nbsp;умеет рисовать залы музея. Откройте страницу в&nbsp;свежем Chrome, Firefox, Safari или Edge.</p>
+  </div>
+</div>
+
+<script src="world.js"></script>
+<script src="paint.js"></script>
+<script src="sprites.js"></script>
+<script src="render.js"></script>
+<script src="audio.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

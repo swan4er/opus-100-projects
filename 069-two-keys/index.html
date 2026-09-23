@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Два ключа — криптография с открытым ключом на пальцах</title>
+<meta name="description" content="Как договориться о секрете на глазах у всех: краски Диффи — Хеллмана, модульные часы, игрушечный RSA и эллиптические кривые — интерактивно.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #fbf7f0;
+    --paper-2: #f2ebdf;
+    --ink: #1b1a1f;
+    --ink-2: #45424d;
+    --ink-3: #6b6773;
+    --alice: #e5533d;
+    --bob: #2f55d4;
+    --eve: #6d3fc9;
+    --common: #f2c230;
+    --ok: #1f8a5b;
+    --display: "Unbounded", "Golos Text", system-ui, sans-serif;
+    --body: "Golos Text", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 18px; line-height: 1.62; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--common); }
+  a { color: inherit; }
+  .who { font-weight: 600; white-space: nowrap; }
+  .who.a { color: var(--alice); } .who.b { color: var(--bob); } .who.e { color: var(--eve); }
+  .num { font-family: var(--mono); font-size: 0.92em; }
+
+  /* ——— первый экран ——— */
+  .hero { position: relative; min-height: 100vh; min-height: 100svh; display: grid; align-items: center; overflow: hidden; border-bottom: 1.5px solid var(--ink); }
+  #heroCv { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero .inner { position: relative; padding: 0 7vw; max-width: 900px; }
+  .kicker { font-family: var(--display); font-weight: 500; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); }
+  .hero h1 { font-family: var(--display); font-weight: 800; font-size: clamp(64px, 11vw, 156px); line-height: .92; letter-spacing: -.035em; margin: 18px 0 22px; }
+  .hero h1 span { display: block; }
+  .hero p { font-size: clamp(18px, 1.6vw, 22px); line-height: 1.5; max-width: 520px; margin: 0 0 28px; color: var(--ink-2); }
+  .cast { display: flex; gap: 22px; flex-wrap: wrap; font-size: 16px; color: var(--ink-2); }
+  .cast span { display: inline-flex; align-items: center; gap: 8px; }
+  .cast i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .scroll-cue { position: absolute; left: 7vw; bottom: 28px; font-size: 15px; color: var(--ink-3); display: flex; align-items: center; gap: 10px; }
+  .scroll-cue svg { width: 18px; height: 18px; animation: cue 1.8s var(--ease) infinite; }
+  @keyframes cue { 50% { transform: translateY(5px); } }
+
+  /* ——— оглавление ——— */
+  .toc { position: fixed; left: 22px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 5; opacity: 0; pointer-events: none; transition: opacity .4s var(--ease); }
+  .toc.on { opacity: 1; pointer-events: auto; }
+  .toc a { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink-3); font-size: 14px; }
+  .toc a b { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--ink-3); display: grid; place-items: center; font: 600 13px var(--mono); transition: all .25s var(--ease); background: var(--paper); }
+  .toc a span { opacity: 0; transform: translateX(-6px); transition: all .25s var(--ease); white-space: nowrap; background: var(--paper); padding: 2px 6px; border-radius: 4px; }
+  .toc a:hover span { opacity: 1; transform: none; }
+  .toc a.on b { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .toc a.on { color: var(--ink); }
+  .bar { position: fixed; left: 0; top: 0; height: 4px; background: var(--ink); transform-origin: left; transform: scaleX(0); z-index: 6; }
+
+  /* ——— главы ——— */
+  main { padding: 0 24px 60px; }
+  section.ch { max-width: 760px; margin: 0 auto; padding: 96px 0 24px; }
+  .ch .no { font: 600 14px var(--mono); color: var(--ink-3); letter-spacing: .08em; }
+  .ch h2 { font-family: var(--display); font-weight: 700; font-size: clamp(34px, 4.6vw, 54px); line-height: 1.02; letter-spacing: -.02em; margin: 10px 0 24px; }
+  .ch p { margin: 0 0 18px; color: var(--ink-2); }
+  .ch p strong { color: var(--ink); font-weight: 600; }
+  .fig { margin: 34px -120px 18px; background: var(--paper-2); border: 1.5px solid var(--ink); border-radius: 18px; padding: 22px; position: relative; }
+  .fig.narrow { margin-left: -40px; margin-right: -40px; }
+  .figcap { font-size: 15px; color: var(--ink-3); margin: 12px 4px 0; line-height: 1.5; }
+  .note { border-left: 0; background: #fff; border: 1.5px dashed var(--ink-3); border-radius: 12px; padding: 14px 18px; font-size: 16px; color: var(--ink-2); margin: 20px 0; }
+
+  /* ——— кнопки и выбор ——— */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 22px;
+    background: var(--ink); color: var(--paper); border: 1.5px solid var(--ink); font: 600 16px var(--body); cursor: pointer;
+    transition: transform .15s var(--ease), background .2s;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:active { transform: translateY(1px); }
+  .btn.ghost { background: transparent; color: var(--ink); }
+  .btn.ghost:hover { background: rgba(27, 26, 31, 0.06); }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; transform: none; }
+  .btn svg { width: 16px; height: 16px; }
+  :focus-visible { outline: 3px solid var(--common); outline-offset: 2px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .swatches { display: flex; gap: 8px; }
+  .sw { width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--ink); cursor: pointer; padding: 0; transition: transform .2s var(--ease); position: relative; }
+  .sw:hover { transform: scale(1.08); }
+  .sw[aria-pressed="true"]::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--ink); }
+  .lbl { font-size: 14px; font-weight: 600; letter-spacing: .02em; color: var(--ink-2); }
+
+  /* ——— краски ——— */
+  .paint-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 30px; margin-bottom: 16px; }
+  .paint-grid .pick { display: flex; flex-direction: column; gap: 8px; }
+  #paintCv { width: 100%; height: 420px; display: block; border-radius: 12px; background: #fffdf8; border: 1.5px solid var(--ink); }
+  .stepbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+  .stepcap { font-size: 17px; color: var(--ink); min-height: 54px; flex: 1; min-width: 260px; }
+  .dots { display: flex; gap: 6px; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--ink); }
+  .dots i.on { background: var(--ink); }
+
+  /* ——— часы ——— */
+  .clock-wrap { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 28px; align-items: center; }
+  #clock { width: 100%; height: auto; display: block; }
+  .range { width: 100%; -webkit-appearance: none; appearance: none; height: 30px; background: transparent; cursor: pointer; }
+  .range::-webkit-slider-runnable-track { height: 4px; background: var(--ink); border-radius: 2px; }
+  .range::-moz-range-track { height: 4px; background: var(--ink); border-radius: 2px; }
+  .range::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--alice); border: 2px solid var(--ink); margin-top: -11px; }
+  .range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--alice); border: 2px solid var(--ink); }
+  .big-eq { font-family: var(--mono); font-size: 26px; font-weight: 600; margin: 10px 0 14px; }
+  .big-eq .x { color: var(--alice); }
+  .seq { font-family: var(--mono); font-size: 15px; color: var(--ink-2); line-height: 1.9; word-spacing: 4px; }
+  .seq b { color: var(--alice); }
+  .game { margin-top: 20px; padding-top: 18px; border-top: 1.5px dashed var(--ink-3); }
+  .guess { display: grid; grid-template-columns: repeat(11, 1fr); gap: 6px; margin: 12px 0; }
+  .guess button { height: 40px; border-radius: 10px; border: 1.5px solid var(--ink); background: #fff; font: 600 15px var(--mono); cursor: pointer; transition: background .15s, transform .15s; }
+  .guess button:hover { transform: translateY(-1px); }
+  .guess button.no { background: var(--paper-2); color: var(--ink-3); border-color: var(--ink-3); text-decoration: line-through; }
+  .guess button.yes { background: var(--ok); color: #fff; }
+
+  /* ——— числа ——— */
+  .dh { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .card { background: #fff; border: 1.5px solid var(--ink); border-radius: 14px; padding: 14px 16px; min-width: 0; }
+  .card h3 { margin: 0 0 8px; font: 700 15px var(--display); letter-spacing: .01em; display: flex; align-items: center; gap: 8px; }
+  .card h3 i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .kv { font-size: 14px; color: var(--ink-3); margin-top: 8px; }
+  .kv .v { display: block; font-family: var(--mono); font-size: 15px; color: var(--ink); word-break: break-all; line-height: 1.45; }
+  .kv .v.secret { color: var(--alice); }
+  .kv .v.secret.b { color: var(--bob); }
+  .chip { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--ink); vertical-align: -2px; margin-right: 6px; }
+  .same { margin-top: 14px; display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--ok); }
+  .same svg { width: 20px; height: 20px; }
+
+  /* ——— RSA ——— */
+  .primes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .primes button { min-width: 44px; height: 40px; border-radius: 10px; border: 1.5px solid var(--ink); background: #fff; font: 600 15px var(--mono); cursor: pointer; }
+  .primes button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .rsa-top { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+  .keys .card { padding: 10px 12px; }
+  .keys .card .t { font-size: 13px; color: var(--ink-3); }
+  .keys .card .v { font: 600 18px var(--mono); }
+  .keys .pub { border-color: var(--bob); }
+  .keys .prv { border-color: var(--alice); }
+  .msg-in { width: 100%; height: 48px; border-radius: 12px; border: 1.5px solid var(--ink); background: #fff; padding: 0 14px; font: 500 19px var(--body); color: var(--ink); text-transform: uppercase; }
+  .letters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .lt { width: 76px; height: 96px; perspective: 600px; }
+  .lt .in { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .7s var(--ease); }
+  .lt.flip .in { transform: rotateY(180deg); }
+  .lt .fa, .lt .fb { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 12px; border: 1.5px solid var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .lt .fa { background: #fff; }
+  .lt .fa b { font: 700 28px var(--display); }
+  .lt .fa span, .lt .fb span { font: 400 12px var(--mono); color: var(--ink-3); }
+  .lt .fb { background: var(--ink); color: var(--paper); transform: rotateY(180deg); }
+  .lt .fb b { font: 600 17px var(--mono); }
+  .lt .fb span { color: #b9b4c4; }
+  .big-key { margin-top: 18px; }
+  .digits { font: 400 13px/1.55 var(--mono); color: var(--ink-2); word-break: break-all; background: #fff; border: 1.5px solid var(--ink); border-radius: 12px; padding: 12px 14px; max-height: 190px; overflow: auto; margin-top: 10px; }
+  .digits b { color: var(--bob); font-weight: 600; }
+
+  /* ——— кривые ——— */
+  .ec2 { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  canvas.plot { width: 100%; display: block; border-radius: 12px; background: #fffdf8; border: 1.5px solid var(--ink); touch-action: none; cursor: crosshair; }
+  .ec-read { font-family: var(--mono); font-size: 15px; color: var(--ink-2); margin-top: 10px; min-height: 24px; }
+  .ec-read b { color: var(--ink); }
+
+  footer { max-width: 760px; margin: 60px auto 0; padding: 26px 24px 60px; border-top: 1.5px solid var(--ink); font-size: 15px; color: var(--ink-3); }
+
+  @media (max-width: 1100px) {
+    .fig { margin-left: -12px; margin-right: -12px; }
+    .fig.narrow { margin-left: -12px; margin-right: -12px; }
+    .toc { display: none; }
+  }
+  @media (max-width: 720px) {
+    body { font-size: 17px; }
+    section.ch { padding-top: 70px; }
+    .fig { padding: 14px; border-radius: 14px; }
+    .paint-grid, .rsa-top, .clock-wrap { grid-template-columns: 1fr; }
+    #paintCv { height: 360px; }
+    .dh { grid-template-columns: 1fr; }
+    .keys { grid-template-columns: 1fr 1fr; }
+    .guess { grid-template-columns: repeat(6, 1fr); }
+    .lt { width: 64px; height: 84px; }
+    .hero .inner { padding: 0 22px; }
+    .scroll-cue { left: 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .scroll-cue svg { animation: none; } .lt .in { transition: none; } }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<header class="hero">
+  <canvas id="heroCv" aria-hidden="true"></canvas>
+  <div class="inner">
+    <div class="kicker">Объяснение в&nbsp;семи шагах</div>
+    <h1><span>Два</span><span>ключа</span></h1>
+    <p>Как договориться о&nbsp;секрете, когда вас слышат все. Краски, часы и&nbsp;кривые вместо формул&nbsp;— и&nbsp;всё можно потрогать.</p>
+    <div class="cast">
+      <span><i style="background:var(--alice)"></i>Алиса</span>
+      <span><i style="background:var(--bob)"></i>Боб</span>
+      <span><i style="background:var(--eve)"></i>Ева подслушивает</span>
+    </div>
+  </div>
+  <div class="scroll-cue"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3v12M4 10l5 5 5-5"/></svg>Листайте вниз</div>
+</header>
+
+<nav class="toc" id="toc" aria-label="Главы"></nav>
+
+<main>
+  <!-- 1 -->
+  <section class="ch" id="c1" data-title="Задача">
+    <div class="no">01</div>
+    <h2>Секрет на&nbsp;виду у&nbsp;всех</h2>
+    <p><span class="who a">Алиса</span> хочет передать <span class="who b">Бобу</span> секрет. Между ними только открытый канал: всё, что по&nbsp;нему идёт, видит <span class="who e">Ева</span>. Встретиться и&nbsp;заранее договориться о&nbsp;пароле нельзя.</p>
+    <p>Кажется, выхода нет: любой ключ, который Алиса отправит Бобу, получит и&nbsp;Ева. В&nbsp;1976 году Уитфилд Диффи и&nbsp;Мартин Хеллман показали, что выход есть. Ему не&nbsp;нужна ни&nbsp;одна тайная встреча&nbsp;— только немного математики, которую проще всего понять на&nbsp;красках.</p>
+    <div class="fig narrow">
+      <svg id="channel" viewBox="0 0 700 220" width="100%" role="img" aria-label="Алиса и Боб говорят через открытый канал, Ева слушает"></svg>
+      <div class="figcap">Каждое письмо по&nbsp;каналу видно Еве. Она не&nbsp;мешает, только слушает&nbsp;— и&nbsp;этого достаточно, чтобы украсть любой пароль.</div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="ch" id="c2" data-title="Краски">
+    <div class="no">02</div>
+    <h2>Смешать легко, разделить нельзя</h2>
+    <p>Пусть секреты&nbsp;— это краски. Смешать две краски легко, а&nbsp;разделить смесь обратно практически невозможно. Оказывается, этого свойства хватает, чтобы договориться о&nbsp;секрете прилюдно.</p>
+    <div class="fig">
+      <div class="paint-grid">
+        <div class="pick"><span class="lbl">Тайная краска <span class="who a">Алисы</span></span><div class="swatches" id="swA"></div></div>
+        <div class="pick"><span class="lbl">Тайная краска <span class="who b">Боба</span></span><div class="swatches" id="swB"></div></div>
+      </div>
+      <canvas id="paintCv" aria-label="Смешивание красок по шагам"></canvas>
+      <div class="stepbar">
+        <div class="stepcap" id="paintCap"></div>
+        <div class="row">
+          <div class="dots" id="paintDots"></div>
+          <button class="btn ghost" id="paintPrev" aria-label="Предыдущий шаг"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 3L5 8l5 5"/></svg></button>
+          <button class="btn" id="paintNext">Дальше <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3l5 5-5 5"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <p>Итоговая краска у&nbsp;Алисы и&nbsp;Боба одна и&nbsp;та&nbsp;же: в&nbsp;ней ровно по&nbsp;одной части общей, алисиной и&nbsp;бобовой краски. У&nbsp;Евы есть обе смеси, но&nbsp;если слить их вместе, общей краски окажется вдвое больше&nbsp;— и&nbsp;цвет выйдет другим.</p>
+  </section>
+
+  <!-- 3 -->
+  <section class="ch" id="c3" data-title="Часы">
+    <div class="no">03</div>
+    <h2>Часы вместо красок</h2>
+    <p>Компьютер не&nbsp;смешивает краски, он считает. Ему нужна операция, которую легко выполнить и&nbsp;трудно отменить. Возьмём циферблат с&nbsp;23 делениями и&nbsp;будем много раз умножать на&nbsp;5, каждый раз отсчитывая по&nbsp;кругу. Это возведение в&nbsp;степень по&nbsp;модулю.</p>
+    <div class="fig">
+      <div class="clock-wrap">
+        <svg id="clock" viewBox="0 0 400 400" role="img" aria-label="Циферблат по модулю 23"></svg>
+        <div>
+          <div class="lbl">Показатель степени x</div>
+          <input class="range" id="xRange" type="range" min="1" max="22" value="6" aria-label="Показатель степени">
+          <div class="big-eq" id="eq">5<sup class="x">6</sup> mod 23 = 8</div>
+          <div class="seq" id="seq"></div>
+        </div>
+      </div>
+      <div class="game">
+        <div class="lbl">Теперь наоборот</div>
+        <p style="margin:6px 0 0" id="gameQ">Стрелка остановилась на&nbsp;19. Сколько раз умножали на&nbsp;5?</p>
+        <div class="guess" id="guess"></div>
+        <div class="row"><span id="gameMsg" style="font-size:16px;color:var(--ink-2)">Жмите на&nbsp;варианты&nbsp;— подсказок не&nbsp;будет, как и&nbsp;у&nbsp;Евы.</span><button class="btn ghost" id="gameNew">Новая загадка</button></div>
+      </div>
+    </div>
+    <p>Вперёд&nbsp;— мгновенно: даже для чисел в&nbsp;сотни цифр компьютер возводит в&nbsp;степень за&nbsp;доли миллисекунды, повторно возводя в&nbsp;квадрат. Назад&nbsp;— это <strong>задача дискретного логарифма</strong>, и&nbsp;для больших простых чисел её не&nbsp;умеют решать быстро. Здесь 23 деления, и&nbsp;вы угадали перебором. При 600-значном модуле перебор не&nbsp;закончится до&nbsp;конца Вселенной.</p>
+  </section>
+
+  <!-- 4 -->
+  <section class="ch" id="c4" data-title="Диффи — Хеллман">
+    <div class="no">04</div>
+    <h2>Краски, ставшие числами</h2>
+    <p>Общие числа p и&nbsp;g знают все&nbsp;— это «общая краска». Алиса берёт тайное число a и&nbsp;публикует A = g<sup>a</sup> mod p. Боб берёт b и&nbsp;публикует B = g<sup>b</sup> mod p. Дальше каждый возводит чужое число в&nbsp;свою тайную степень.</p>
+    <div class="fig">
+      <div class="dh" id="dh"></div>
+      <div class="row" style="margin-top:14px"><button class="btn" id="dhRoll"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13.5 6.5A5.5 5.5 0 1 0 14 9M14 2.5V6.5H10"/></svg>Новые тайные числа</button><span id="dhSame" class="same"></span></div>
+      <div class="figcap">Здесь p = 2<sup>61</sup> − 1, простое число из&nbsp;19 цифр. Цветные квадратики&nbsp;— просто «отпечатки» чисел, чтобы глазом видеть совпадения.</div>
+    </div>
+    <p>У&nbsp;обоих получилось одно и&nbsp;то&nbsp;же число g<sup>ab</sup> mod p: неважно, в&nbsp;каком порядке «подмешивать» степени. Еве известны p, g, A и&nbsp;B, но&nbsp;чтобы узнать секрет, ей нужно вытащить a из&nbsp;A&nbsp;— решить ту&nbsp;самую обратную задачу с&nbsp;часов.</p>
+  </section>
+
+  <!-- 5 -->
+  <section class="ch" id="c5" data-title="RSA">
+    <div class="no">05</div>
+    <h2>Замок, который защёлкнет каждый</h2>
+    <p>Через год, в&nbsp;1977-м, Рон Ривест, Ади Шамир и&nbsp;Леонард Адлеман придумали другой трюк. Боб раздаёт всем открытый замок&nbsp;— пару чисел (n, e). Защёлкнуть его может любой, а&nbsp;открыть&nbsp;— только тот, кто знает, из&nbsp;каких двух простых чисел собрано n.</p>
+    <div class="fig">
+      <div class="rsa-top">
+        <div><div class="lbl" style="margin-bottom:8px">Простое p</div><div class="primes" id="pP"></div></div>
+        <div><div class="lbl" style="margin-bottom:8px">Простое q</div><div class="primes" id="pQ"></div></div>
+      </div>
+      <div class="keys" id="keys"></div>
+      <div class="lbl" style="margin-bottom:8px">Сообщение Бобу (русские буквы и&nbsp;пробелы)</div>
+      <input class="msg-in" id="msg" value="ВСТРЕЧА В ПОЛДЕНЬ" maxlength="24" aria-label="Сообщение">
+      <div class="letters" id="letters"></div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn" id="enc">Зашифровать</button>
+        <button class="btn ghost" id="dec" disabled>Расшифровать ключом Боба</button>
+      </div>
+      <div class="figcap">Каждая буква&nbsp;— число от&nbsp;1 до&nbsp;33 (пробел&nbsp;— 34). Шифр: c = m<sup>e</sup> mod n, расшифровка: m = c<sup>d</sup> mod n.</div>
+    </div>
+    <div class="note">Так, буква за&nbsp;буквой, шифровать нельзя: одинаковые буквы дают одинаковые числа, и&nbsp;шифр ломается частотным анализом&nbsp;— это видно выше. В&nbsp;жизни сообщение шифруют целиком и&nbsp;добавляют случайное дополнение.</div>
+    <div class="fig narrow big-key">
+      <div class="row" style="justify-content:space-between">
+        <div><div class="lbl">Настоящий размер</div><div style="font-size:16px;color:var(--ink-2)">Два простых по&nbsp;1024 бита, модуль&nbsp;— 2048 бит.</div></div>
+        <button class="btn" id="bigGen">Создать ключ</button>
+      </div>
+      <div id="bigOut" class="digits" hidden></div>
+      <div class="figcap" id="bigCap">Ключ создаётся прямо в&nbsp;браузере: случайные нечётные числа проверяются тестом Миллера&nbsp;— Рабина, пока не&nbsp;найдутся простые.</div>
+    </div>
+    <p>Еве нужно разложить n на&nbsp;множители. Для n = 3233 это делается в&nbsp;уме: 61 × 53. Рекорд для «честного» ключа&nbsp;— RSA-250, число из&nbsp;829 бит: его разложили в&nbsp;2020 году, потратив около 2700 ядро-лет вычислений. До&nbsp;2048 бит ещё очень далеко.</p>
+  </section>
+
+  <!-- 6 -->
+  <section class="ch" id="c6" data-title="Кривые">
+    <div class="no">06</div>
+    <h2>Сложение на&nbsp;кривой</h2>
+    <p>Сегодня чаще всего используют эллиптические кривые y² = x³ + ax + b. На&nbsp;них есть своё сложение точек. Проведите прямую через P и&nbsp;Q: она пересечёт кривую в&nbsp;третьей точке. Отразите её относительно оси&nbsp;— это и&nbsp;есть P + Q.</p>
+    <div class="fig">
+      <canvas class="plot" id="ecReal" height="460" aria-label="Эллиптическая кривая над вещественными числами"></canvas>
+      <div class="ec-read" id="ecReadR">Тяните точки P и Q вдоль кривой.</div>
+    </div>
+    <p>Теперь та&nbsp;же кривая, но&nbsp;все вычисления&nbsp;— по&nbsp;модулю 97. Гладкая линия рассыпается на&nbsp;точки, прямая «заворачивается» на&nbsp;краях квадрата, и&nbsp;всё&nbsp;же сложение по-прежнему работает: прямая через P и&nbsp;Q проходит ровно через третью точку.</p>
+    <div class="fig">
+      <canvas class="plot" id="ecMod" height="560" aria-label="Эллиптическая кривая по модулю 97"></canvas>
+      <div class="row" style="margin-top:12px;justify-content:space-between">
+        <div style="flex:1;min-width:240px"><div class="lbl">Умножение k · P: прыжки по&nbsp;россыпи</div><input class="range" id="kRange" type="range" min="1" max="20" value="1" aria-label="Множитель k"></div>
+        <div class="ec-read" id="ecReadM" style="flex:1;min-width:240px"></div>
+      </div>
+      <div class="figcap">Нажмите на&nbsp;точку&nbsp;— она станет P, следующая&nbsp;— Q. Множитель k показывает, как P складывается сама с&nbsp;собой: точки kP прыгают по&nbsp;россыпи так&nbsp;же непредсказуемо, как стрелка на&nbsp;часах.</div>
+    </div>
+    <p>Узнать k по&nbsp;точкам P и&nbsp;kP&nbsp;— снова трудная обратная задача, только на&nbsp;кривой она ещё труднее. Поэтому ключ на&nbsp;кривой в&nbsp;256 бит защищает не&nbsp;хуже ключа RSA примерно в&nbsp;3000 бит.</p>
+  </section>
+
+  <!-- 7 -->
+  <section class="ch" id="c7" data-title="Что дальше">
+    <div class="no">07</div>
+    <h2>Что держит этот замок</h2>
+    <p>Все три идеи держатся на&nbsp;одном: есть действие, которое легко выполнить и&nbsp;трудно отменить. Смешать краски. Возвести в&nbsp;степень по&nbsp;модулю. Перемножить два простых числа. Сложить точку на&nbsp;кривой саму с&nbsp;собой k раз.</p>
+    <p>Квантовый компьютер с&nbsp;алгоритмом Шора умел&nbsp;бы быстро решать и&nbsp;разложение на&nbsp;множители, и&nbsp;дискретный логарифм&nbsp;— это сломало&nbsp;бы и&nbsp;RSA, и&nbsp;кривые. Поэтому в&nbsp;2024 году американский институт стандартов NIST утвердил первые постквантовые стандарты. Например, ML-KEM основан на&nbsp;задачах о&nbsp;решётках, против которых алгоритм Шора бессилен.</p>
+    <p>А&nbsp;пока каждый раз, когда в&nbsp;адресной строке горит замок, браузер и&nbsp;сервер проделывают тот самый трюк с&nbsp;красками&nbsp;— на&nbsp;эллиптической кривой, за&nbsp;миллисекунды, на&nbsp;глазах у&nbsp;всех Ев интернета.</p>
+  </section>
+</main>
+<footer>Числа в&nbsp;примерах учебные. Настоящая криптография использует длинные ключи, проверенные библиотеки и&nbsp;случайное дополнение сообщений&nbsp;— не&nbsp;пишите её сами для реальных данных.</footer>
+
+<script>
+(() => {
+'use strict';
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const INK = '#1b1a1f', ALICE = '#e5533d', BOB = '#2f55d4', EVE = '#6d3fc9', COMMON = '#f2c230';
+
+/* ================================================================
+   Цвет и краски
+   ================================================================ */
+const hex2 = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+const toLin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const toSrgb = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+const css = (rgb) => `rgb(${rgb.map((v) => Math.round(clamp(v, 0, 1) * 255)).join(',')})`;
+// смешивание «как краски»: среднее геометрическое отражений (субтрактивно)
+function mixPaint(list) {
+  const lin = list.map((h) => hex2(h).map(toLin));
+  const out = [0, 1, 2].map((k) => Math.exp(lin.reduce((s, c) => s + Math.log(Math.max(c[k], 0.002)), 0) / lin.length));
+  return out.map(toSrgb);
+}
+const PAINTS = ['#e5533d', '#c93a8a', '#6b48c8', '#2f55d4', '#1f9d8b', '#d9772b'];
+const NAMES = ['коралл', 'фуксия', 'фиалка', 'ультрамарин', 'бирюза', 'охра'];
+
+/* ================================================================
+   Первый экран: живые пятна краски (метаболы с бликом)
+   ================================================================ */
+(function hero() {
+  const cv = $('#heroCv'), ctx = cv.getContext('2d');
+  let w = 0, h = 0, gw = 0, gh = 0, img, buf;
+  // капли краски: позиция, радиус, дрейф
+  const blobs = [
+    { c: COMMON, r: 0.15, x: 0.68, y: 0.34, sx: 0.07, sy: 0.06, ph: 0 },
+    { c: ALICE, r: 0.115, x: 0.84, y: 0.6, sx: 0.08, sy: 0.07, ph: 2 },
+    { c: BOB, r: 0.125, x: 0.6, y: 0.7, sx: 0.07, sy: 0.07, ph: 4 },
+    { c: '#1f9d8b', r: 0.07, x: 0.9, y: 0.24, sx: 0.04, sy: 0.05, ph: 1 },
+    { c: '#c93a8a', r: 0.06, x: 0.52, y: 0.22, sx: 0.05, sy: 0.04, ph: 3 },
+    { c: EVE, r: 0.05, x: 0.76, y: 0.86, sx: 0.05, sy: 0.03, ph: 5 },
+  ].map((b) => ({ ...b, lc: hex2(b.c).map((v) => Math.log(Math.max(toLin(v), 0.003))) }));
+  const paper = hex2('#fbf7f0');
+  function resize() {
+    w = cv.clientWidth; h = cv.clientHeight;
+    const k = 3;
+    gw = Math.ceil(w / k); gh = Math.ceil(h / k);
+    cv.width = gw; cv.height = gh;
+    img = ctx.createImageData(gw, gh); buf = img.data;
+  }
+  window.addEventListener('resize', resize); resize();
+  let visible = true;
+  new IntersectionObserver((e) => { visible = e[0].isIntersecting; }).observe(cv);
+  function frame(t) {
+    requestAnimationFrame(frame);
+    if (!visible || document.hidden) return;
+    const tt = reduceMotion ? 0 : t / 1000;
+    const mobile = w < 700;
+    const R = Math.min(gw, gh * 1.5);
+    const P = blobs.map((b) => {
+      const x = (mobile ? 0.5 + (b.x - 0.7) * 1.9 : b.x) + Math.sin(tt * 0.28 + b.ph) * b.sx;
+      const y = (mobile ? 0.03 + b.y * 0.3 : b.y) + Math.cos(tt * 0.23 + b.ph * 1.3) * b.sy;
+      const r = b.r * R * (mobile ? 1.35 : 1);
+      return [x * gw, y * gh, r * r, b.lc, r];
+    });
+    const n = P.length;
+    let p = 0;
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++, p += 4) {
+      let f = 0, lr = 0, lg = 0, lb = 0, ws = 0, sh = 0, hl = 0;
+      for (let i = 0; i < n; i++) {
+        const q = P[i];
+        const dx = x - q[0], dy = y - q[1];
+        const v = q[2] / (dx * dx + dy * dy + 1);
+        f += v;
+        const wgt = v * v * v;
+        ws += wgt; lr += q[3][0] * wgt; lg += q[3][1] * wgt; lb += q[3][2] * wgt;
+        const sdx = dx - q[4] * 0.1, sdy = dy - q[4] * 0.16;         // тень на бумаге
+        sh += q[2] / (sdx * sdx + sdy * sdy + 1);
+        const hdx = dx + q[4] * 0.36, hdy = dy + q[4] * 0.4, s2 = q[2] * 0.02; // блик
+        const hv = s2 / (hdx * hdx + hdy * hdy + s2);
+        hl += hv * hv;
+      }
+      const edge = clamp((f - 1) * 7, 0, 1);
+      let r = paper[0], g = paper[1], b = paper[2];
+      const shadow = clamp((sh - 0.75) * 1.4, 0, 1) * (1 - edge) * 0.1;
+      r -= shadow; g -= shadow * 1.05; b -= shadow * 1.1;
+      if (edge > 0) {
+        const vol = 0.8 + 0.2 * clamp((f - 1) / 2.2, 0, 1);            // объём: край темнее
+        const cr = toSrgb(Math.exp(lr / ws)) * vol, cg = toSrgb(Math.exp(lg / ws)) * vol, cb = toSrgb(Math.exp(lb / ws)) * vol;
+        const hk = Math.min(1, hl) * 0.7;
+        r = lerp(r, cr + (1 - cr) * hk, edge); g = lerp(g, cg + (1 - cg) * hk, edge); b = lerp(b, cb + (1 - cb) * hk, edge);
+      }
+      buf[p] = r * 255; buf[p + 1] = g * 255; buf[p + 2] = b * 255; buf[p + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ================================================================
+   Глава 1: канал
+   ================================================================ */
+(function channel() {
+  const svg = $('#channel');
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (t, a, p = svg) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+  const person = (x, y, color, name) => {
+    const g = el('g', { transform: `translate(${x},${y})` });
+    el('circle', { cx: 0, cy: -34, r: 16, fill: color, stroke: INK, 'stroke-width': 2 }, g);
+    el('path', { d: 'M-26 20 Q-26 -12 0 -12 Q26 -12 26 20 Z', fill: color, stroke: INK, 'stroke-width': 2 }, g);
+    const t = el('text', { x: 0, y: 48, 'text-anchor': 'middle', 'font-family': 'Golos Text, sans-serif', 'font-size': 17, 'font-weight': 600, fill: INK }, g);
+    t.textContent = name;
+    return g;
+  };
+  el('path', { d: 'M110 150 L590 150', stroke: INK, 'stroke-width': 2, 'stroke-dasharray': '2 7', 'stroke-linecap': 'round', fill: 'none' });
+  person(70, 150, ALICE, 'Алиса');
+  person(630, 150, BOB, 'Боб');
+  const eve = person(350, 62, EVE, 'Ева');
+  const pupil = el('circle', { cx: 350, cy: 26, r: 3.2, fill: '#fff' });
+  el('path', { d: 'M350 118 L350 138', stroke: EVE, 'stroke-width': 2, 'stroke-dasharray': '3 4' });
+  const env = el('g', {});
+  el('rect', { x: -18, y: -12, width: 36, height: 24, rx: 3, fill: '#fff', stroke: INK, 'stroke-width': 2 }, env);
+  el('path', { d: 'M-18 -12 L0 3 L18 -12', fill: 'none', stroke: INK, 'stroke-width': 2 }, env);
+  const lab = el('text', { x: 0, y: 34, 'text-anchor': 'middle', 'font-family': 'JetBrains Mono, monospace', 'font-size': 13, fill: INK }, env);
+  function tick(t) {
+    requestAnimationFrame(tick);
+    const k = reduceMotion ? 0.5 : (t / 3400) % 1;
+    const dir = Math.floor(t / 3400) % 2;
+    const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    const x = dir ? lerp(560, 140, e) : lerp(140, 560, e);
+    env.setAttribute('transform', `translate(${x},150)`);
+    lab.textContent = dir ? 'ответ' : 'пароль?';
+    pupil.setAttribute('cx', 350 + clamp((x - 350) / 40, -5, 5));
+  }
+  requestAnimationFrame(tick);
+})();
+
+/* ================================================================
+   Глава 2: краски по шагам
+   ================================================================ */
+const paint = { a: 0, b: 3, step: 0, t0: 0 };
+const CAPS = [
+  'Общую жёлтую краску знают все, включая Еву. У&nbsp;Алисы и&nbsp;Боба по&nbsp;банке этой краски.',
+  'Каждый тайно подмешивает свою краску. Эти тайные краски никто, кроме владельца, не&nbsp;видит.',
+  'Смеси отправляются по&nbsp;открытому каналу. Ева видит обе&nbsp;— но&nbsp;разделить смесь на&nbsp;составляющие не&nbsp;может.',
+  'Каждый добавляет свою тайную краску к&nbsp;чужой смеси. Получается один и&nbsp;тот&nbsp;же цвет&nbsp;— общий секрет.',
+  'Ева пробует смешать то, что видела. Но&nbsp;общей краски в&nbsp;её банке вдвое больше, и&nbsp;цвет не&nbsp;совпадает.',
+];
+function swatchRow(id, key) {
+  const row = $(id);
+  PAINTS.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'sw'; b.style.background = c; b.title = NAMES[i];
+    b.setAttribute('aria-label', `Краска: ${NAMES[i]}`);
+    b.addEventListener('click', () => { paint[key] = i; syncSw(); paint.t0 = performance.now(); });
+    row.appendChild(b);
+  });
+}
+function syncSw() {
+  [...$('#swA').children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === paint.a)));
+  [...$('#swB').children].forEach((b, i) => b.setAttribute('aria-pressed', String(i === paint.b)));
+}
+swatchRow('#swA', 'a'); swatchRow('#swB', 'b'); syncSw();
+const dotsEl = $('#paintDots');
+for (let i = 0; i < 5; i++) dotsEl.appendChild(document.createElement('i'));
+function setStep(s) {
+  paint.step = clamp(s, 0, 4); paint.t0 = performance.now();
+  $('#paintCap').innerHTML = CAPS[paint.step];
+  [...dotsEl.children].forEach((d, i) => d.classList.toggle('on', i === paint.step));
+  $('#paintPrev').disabled = paint.step === 0;
+  $('#paintNext').innerHTML = paint.step === 4 ? 'Сначала <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13.5 6.5A5.5 5.5 0 1 0 14 9M14 2.5V6.5H10"/></svg>' : 'Дальше <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3l5 5-5 5"/></svg>';
+}
+$('#paintNext').addEventListener('click', () => setStep(paint.step === 4 ? 0 : paint.step + 1));
+$('#paintPrev').addEventListener('click', () => setStep(paint.step - 1));
+setStep(0);
+
+(function paintFigure() {
+  const cv = $('#paintCv'), ctx = cv.getContext('2d');
+  let w = 0, h = 0, dpr = 1;
+  function resize() { dpr = Math.min(2, window.devicePixelRatio || 1); w = cv.clientWidth; h = cv.clientHeight; cv.width = w * dpr; cv.height = h * dpr; }
+  window.addEventListener('resize', resize); resize();
+  function blob(x, y, r, color, t, seed, label, labelColor) {
+    ctx.save();
+    ctx.beginPath();
+    const n = 40;
+    for (let i = 0; i <= n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const rr = r * (1 + 0.045 * Math.sin(a * 3 + t * 1.3 + seed) + 0.03 * Math.sin(a * 5 - t * 0.9 + seed * 2));
+      const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr;
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = color; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.clip();
+    const g = ctx.createRadialGradient(x - r * 0.4, y - r * 0.45, 0, x - r * 0.4, y - r * 0.45, r * 0.8);
+    g.addColorStop(0, 'rgba(255,255,255,0.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
+    ctx.restore();
+    if (label) {
+      ctx.font = '600 14px "Golos Text", sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = labelColor || INK;
+      ctx.fillText(label, x, y + r + 22);
+    }
+  }
+  function jar(x, y, r, color, t, seed, label, labelColor, recipe) {
+    blob(x, y, r, color, t, seed, label, labelColor);
+    if (recipe) { // «рецепт» смеси: маленькие точки-доли
+      const n = recipe.length, gap = 14;
+      recipe.forEach((c, i) => {
+        ctx.beginPath(); ctx.arc(x - ((n - 1) * gap) / 2 + i * gap, y + r + 40, 5, 0, Math.PI * 2);
+        ctx.fillStyle = c; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = INK; ctx.stroke();
+      });
+    }
+  }
+  const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const t = now / 1000;
+    const k = reduceMotion ? 1 : ease(clamp((now - paint.t0) / 1100, 0, 1));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const A = PAINTS[paint.a], B = PAINTS[paint.b];
+    const r = Math.min(w, h) * 0.105;
+    const xa = w * 0.16, xb = w * 0.84, xm = w * 0.5, yRow = h * 0.52;
+    // канал и Ева
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.setLineDash([2, 7]); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(xa + r * 1.6, h * 0.2); ctx.lineTo(xb - r * 1.6, h * 0.2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = '600 13px "Golos Text", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = EVE; ctx.fillText('открытый канал — всё видит Ева', xm, h * 0.2 - 12);
+    ctx.fillStyle = ALICE; ctx.font = '700 17px Unbounded, sans-serif'; ctx.fillText('Алиса', xa, 34);
+    ctx.fillStyle = BOB; ctx.fillText('Боб', xb, 34);
+    const mixA = css(mixPaint([COMMON, A])), mixB = css(mixPaint([COMMON, B]));
+    const fin = css(mixPaint([COMMON, A, B])), evec = css(mixPaint([COMMON, A, COMMON, B]));
+    const s = paint.step;
+    if (s === 0) {
+      jar(xa, yRow, r, COMMON, t, 1, 'общая', INK, [COMMON]);
+      jar(xb, yRow, r, COMMON, t, 2, 'общая', INK, [COMMON]);
+      jar(xm, h * 0.2 + r * 0.2 + 30, r * 0.7 * k, COMMON, t, 3, k > 0.9 ? 'её видят все' : '', EVE);
+    } else if (s === 1) {
+      // тайная краска вливается в банку
+      const dA = lerp(-r * 2.2, 0, k);
+      jar(xa, yRow, r, k > 0.75 ? mixA : COMMON, t, 1, k > 0.75 ? 'смесь Алисы' : 'общая', INK, k > 0.75 ? [COMMON, A] : [COMMON]);
+      if (k < 0.95) blob(xa + dA * 0.2, yRow - r * 1.6 + (1 - k) * -10 + k * r * 1.2, r * 0.45 * (1 - k * 0.6), A, t, 4, '', INK);
+      jar(xb, yRow, r, k > 0.75 ? mixB : COMMON, t, 2, k > 0.75 ? 'смесь Боба' : 'общая', INK, k > 0.75 ? [COMMON, B] : [COMMON]);
+      if (k < 0.95) blob(xb, yRow - r * 1.6 + k * r * 1.2, r * 0.45 * (1 - k * 0.6), B, t, 5, '', INK);
+      ctx.font = '600 13px "Golos Text", sans-serif'; ctx.fillStyle = ALICE; ctx.fillText('тайная', xa + r * 1.35, yRow - r * 1.2);
+      ctx.fillStyle = BOB; ctx.fillText('тайная', xb - r * 1.35, yRow - r * 1.2);
+    } else if (s === 2) {
+      // смеси летят через канал
+      const xA = lerp(xa, xb, k), xB = lerp(xb, xa, k);
+      const arc = Math.sin(k * Math.PI) * h * 0.28;
+      jar(xA, yRow - arc, r * 0.8, mixA, t, 1, k > 0.9 ? 'от Алисы' : '', ALICE, k > 0.9 ? [COMMON, A] : null);
+      jar(xB, yRow - arc, r * 0.8, mixB, t, 2, k > 0.9 ? 'от Боба' : '', BOB, k > 0.9 ? [COMMON, B] : null);
+      ctx.globalAlpha = k; ctx.font = '600 13px "Golos Text", sans-serif'; ctx.fillStyle = EVE; ctx.textAlign = 'center';
+      ctx.fillText('Ева записала обе смеси', xm, h * 0.9); ctx.globalAlpha = 1;
+    } else if (s === 3) {
+      jar(xa, yRow, r, k > 0.7 ? fin : mixB, t, 1, k > 0.7 ? 'секрет Алисы' : 'смесь Боба', INK, k > 0.7 ? [COMMON, B, A] : [COMMON, B]);
+      if (k < 0.95) blob(xa, yRow - r * 1.6 + k * r * 1.2, r * 0.45 * (1 - k * 0.6), A, t, 4);
+      jar(xb, yRow, r, k > 0.7 ? fin : mixA, t, 2, k > 0.7 ? 'секрет Боба' : 'смесь Алисы', INK, k > 0.7 ? [COMMON, A, B] : [COMMON, A]);
+      if (k < 0.95) blob(xb, yRow - r * 1.6 + k * r * 1.2, r * 0.45 * (1 - k * 0.6), B, t, 5);
+      if (k > 0.8) {
+        ctx.fillStyle = '#1f8a5b'; ctx.font = '700 18px Unbounded, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('=', xm, yRow + 6);
+        ctx.font = '600 14px "Golos Text", sans-serif'; ctx.fillText('один и тот же цвет', xm, yRow + 32);
+      }
+    } else {
+      jar(xa, yRow, r, fin, t, 1, 'у Алисы', INK, [COMMON, A, B]);
+      jar(xb, yRow, r, fin, t, 2, 'у Боба', INK, [COMMON, A, B]);
+      const ey = lerp(h * 0.2, yRow + r * 0.1, k);
+      jar(xm, ey, r * 0.85, evec, t, 3, k > 0.8 ? 'у Евы' : '', EVE, k > 0.8 ? [COMMON, A, COMMON, B] : null);
+      if (k > 0.85) {
+        ctx.strokeStyle = ALICE; ctx.lineWidth = 3; const cx = xm + r * 0.85, cy = ey - r * 0.85;
+        ctx.beginPath(); ctx.moveTo(cx - 9, cy - 9); ctx.lineTo(cx + 9, cy + 9); ctx.moveTo(cx + 9, cy - 9); ctx.lineTo(cx - 9, cy + 9); ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ================================================================
+   Глава 3: часы по модулю 23
+   ================================================================ */
+const MODP = 23, G = 5;
+const powmod = (b, e, m) => { let r = 1; b %= m; while (e > 0) { if (e & 1) r = (r * b) % m; b = (b * b) % m; e >>= 1; } return r; };
+(function clock() {
+  const svg = $('#clock'), NS = 'http://www.w3.org/2000/svg';
+  const el = (t, a, p = svg) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+  const C = 200, R = 160;
+  const pos = (i, rr = R) => { const a = (i / MODP) * Math.PI * 2 - Math.PI / 2; return [C + Math.cos(a) * rr, C + Math.sin(a) * rr]; };
+  el('circle', { cx: C, cy: C, r: R + 22, fill: '#fff', stroke: INK, 'stroke-width': 2 });
+  for (let i = 0; i < MODP; i++) {
+    const [x1, y1] = pos(i, R + 10), [x2, y2] = pos(i, R + 20);
+    el('line', { x1, y1, x2, y2, stroke: INK, 'stroke-width': 2 });
+    const [tx, ty] = pos(i, R - 12);
+    const t = el('text', { x: tx, y: ty + 5, 'text-anchor': 'middle', 'font-family': 'JetBrains Mono, monospace', 'font-size': 14, fill: INK, 'data-i': i });
+    t.textContent = i;
+  }
+  const chords = el('g', {});
+  const hand = el('line', { x1: C, y1: C, x2: C, y2: C - R + 30, stroke: ALICE, 'stroke-width': 5, 'stroke-linecap': 'round' });
+  el('circle', { cx: C, cy: C, r: 8, fill: INK });
+  const mark = el('circle', { r: 15, fill: 'none', stroke: ALICE, 'stroke-width': 3 });
+  const range = $('#xRange');
+  let shown = 0, target = +range.value, ang = 0;
+  function draw(x) {
+    chords.innerHTML = '';
+    let prev = 1;
+    const seq = [];
+    for (let k = 1; k <= x; k++) {
+      const v = powmod(G, k, MODP);
+      const [x1, y1] = pos(prev, R - 32), [x2, y2] = pos(v, R - 32);
+      el('line', { x1, y1, x2, y2, stroke: ALICE, 'stroke-width': 1.6, 'stroke-opacity': 0.25 + 0.75 * (k / x) }, chords);
+      prev = v; seq.push(v);
+    }
+    const v = powmod(G, x, MODP);
+    $('#eq').innerHTML = `5<sup class="x">${x}</sup> mod 23 = ${v}`;
+    $('#seq').innerHTML = seq.map((s, i) => (i === seq.length - 1 ? `<b>${s}</b>` : s)).join(' → ');
+    const [mx, my] = pos(v, R - 12);
+    mark.setAttribute('cx', mx); mark.setAttribute('cy', my - 5 + 5);
+    return v;
+  }
+  function anim() {
+    requestAnimationFrame(anim);
+    const v = powmod(G, target, MODP);
+    const goal = (v / MODP) * 360;
+    let d = ((goal - ang + 540) % 360) - 180;
+    ang += d * (reduceMotion ? 1 : 0.14);
+    hand.setAttribute('transform', `rotate(${ang} ${C} ${C})`);
+  }
+  range.addEventListener('input', () => { target = +range.value; draw(target); });
+  draw(target); requestAnimationFrame(anim);
+
+  // игра: найти x
+  const guess = $('#guess');
+  let secret = 0;
+  function newGame() {
+    secret = 2 + Math.floor(Math.random() * 20);
+    const v = powmod(G, secret, MODP);
+    $('#gameQ').innerHTML = `Стрелка остановилась на&nbsp;<b>${v}</b>. Сколько раз умножали на&nbsp;5?`;
+    $('#gameMsg').innerHTML = 'Жмите на&nbsp;варианты&nbsp;— подсказок не&nbsp;будет, как и&nbsp;у&nbsp;Евы.';
+    guess.innerHTML = '';
+    let tries = 0;
+    for (let x = 1; x <= 22; x++) {
+      const b = document.createElement('button'); b.textContent = x;
+      b.addEventListener('click', () => {
+        if (b.classList.contains('no') || guess.dataset.done) return;
+        tries++;
+        if (x === secret) { b.classList.add('yes'); guess.dataset.done = '1'; $('#gameMsg').innerHTML = `Верно, x = ${secret}. Попыток: ${tries}. С&nbsp;600-значным модулем их было&nbsp;бы больше, чем атомов во&nbsp;Вселенной.`; }
+        else { b.classList.add('no'); $('#gameMsg').textContent = `Нет: 5^${x} mod 23 = ${powmod(G, x, MODP)}.`; }
+      });
+      guess.appendChild(b);
+    }
+    delete guess.dataset.done;
+  }
+  $('#gameNew').addEventListener('click', newGame);
+  newGame();
+})();
+
+/* ================================================================
+   Глава 4: Диффи — Хеллман на BigInt
+   ================================================================ */
+function modPow(b, e, m) { let r = 1n; b %= m; while (e > 0n) { if (e & 1n) r = (r * b) % m; b = (b * b) % m; e >>= 1n; } return r; }
+function randBig(bits) {
+  const bytes = new Uint8Array(Math.ceil(bits / 8));
+  crypto.getRandomValues(bytes);
+  let x = 0n; for (const v of bytes) x = (x << 8n) | BigInt(v);
+  return x & ((1n << BigInt(bits)) - 1n);
+}
+const fmtBig = (x) => x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+function printColor(x) { const s = Number(x % 360n); const l = 45 + Number((x / 360n) % 20n); return `hsl(${s} 70% ${l}%)`; }
+(function dh() {
+  const p = (1n << 61n) - 1n, g = 3n;
+  const box = $('#dh');
+  function roll() {
+    const a = 2n + randBig(58), b = 2n + randBig(58);
+    const A = modPow(g, a, p), B = modPow(g, b, p);
+    const sA = modPow(B, a, p), sB = modPow(A, b, p);
+    const chip = (x) => `<span class="chip" style="background:${printColor(x)}"></span>`;
+    box.innerHTML = `
+      <div class="card"><h3><i style="background:var(--alice)"></i>Алиса</h3>
+        <div class="kv">тайное a<span class="v secret">${fmtBig(a)}</span></div>
+        <div class="kv">публикует A = g<sup>a</sup> mod p<span class="v">${chip(A)}${fmtBig(A)}</span></div>
+        <div class="kv">секрет B<sup>a</sup> mod p<span class="v">${chip(sA)}${fmtBig(sA)}</span></div></div>
+      <div class="card" style="border-color:var(--eve)"><h3><i style="background:var(--eve)"></i>Ева видит</h3>
+        <div class="kv">p<span class="v">${fmtBig(p)}</span></div>
+        <div class="kv">g<span class="v">${g}</span></div>
+        <div class="kv">A и B<span class="v">${chip(A)}${fmtBig(A)}<br>${chip(B)}${fmtBig(B)}</span></div></div>
+      <div class="card"><h3><i style="background:var(--bob)"></i>Боб</h3>
+        <div class="kv">тайное b<span class="v secret b">${fmtBig(b)}</span></div>
+        <div class="kv">публикует B = g<sup>b</sup> mod p<span class="v">${chip(B)}${fmtBig(B)}</span></div>
+        <div class="kv">секрет A<sup>b</sup> mod p<span class="v">${chip(sB)}${fmtBig(sB)}</span></div></div>`;
+    $('#dhSame').innerHTML = sA === sB ? '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 10.5l4 4 8-9"/></svg>Секреты совпали' : '';
+  }
+  $('#dhRoll').addEventListener('click', roll);
+  roll();
+})();
+
+/* ================================================================
+   Глава 5: RSA
+   ================================================================ */
+const SMALL = [11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89];
+const ABC = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+const rsa = { p: 61, q: 53, e: 17, d: 0, n: 0, enc: false };
+function gcd(a, b) { while (b) [a, b] = [b, a % b]; return a; }
+function inv(a, m) { let [or, r] = [a, m], [os, s] = [1, 0]; while (r) { const q = Math.floor(or / r); [or, r] = [r, or - q * r]; [os, s] = [s, os - q * s]; } return ((os % m) + m) % m; }
+function pickRow(id, key) {
+  const row = $(id);
+  SMALL.forEach((v) => {
+    const b = document.createElement('button'); b.textContent = v;
+    b.addEventListener('click', () => { if (v === rsa[key === 'p' ? 'q' : 'p']) return; rsa[key] = v; updRSA(); });
+    row.appendChild(b);
+  });
+}
+pickRow('#pP', 'p'); pickRow('#pQ', 'q');
+function updRSA() {
+  [...$('#pP').children].forEach((b) => b.setAttribute('aria-pressed', String(+b.textContent === rsa.p)));
+  [...$('#pQ').children].forEach((b) => b.setAttribute('aria-pressed', String(+b.textContent === rsa.q)));
+  rsa.n = rsa.p * rsa.q;
+  const phi = (rsa.p - 1) * (rsa.q - 1);
+  rsa.e = [17, 5, 7, 11, 13, 19, 23, 3].find((e) => gcd(e, phi) === 1 && e < phi) || 3;
+  rsa.d = inv(rsa.e, phi);
+  $('#keys').innerHTML = `
+    <div class="card"><div class="t">n = p · q</div><div class="v">${rsa.n}</div></div>
+    <div class="card"><div class="t">φ = (p−1)(q−1)</div><div class="v">${phi}</div></div>
+    <div class="card pub"><div class="t">открытый e</div><div class="v" style="color:var(--bob)">${rsa.e}</div></div>
+    <div class="card prv"><div class="t">тайный d</div><div class="v" style="color:var(--alice)">${rsa.d}</div></div>`;
+  rsa.enc = false; renderLetters();
+}
+function codes() {
+  return [...$('#msg').value.toUpperCase()].filter((ch) => ABC.includes(ch) || ch === ' ').slice(0, 24).map((ch) => ({ ch, m: ch === ' ' ? 34 : ABC.indexOf(ch) + 1 }));
+}
+function renderLetters() {
+  const box = $('#letters');
+  const list = codes();
+  box.innerHTML = list.map(({ ch, m }, i) => {
+    const c = Number(modPow(BigInt(m), BigInt(rsa.e), BigInt(rsa.n)));
+    return `<div class="lt${rsa.enc ? ' flip' : ''}" style="transition-delay:${i * 40}ms"><div class="in" style="transition-delay:${i * 40}ms">
+      <div class="fa"><b>${ch === ' ' ? '␣' : ch}</b><span>m = ${m}</span></div>
+      <div class="fb"><b>${c}</b><span>c</span></div></div></div>`;
+  }).join('');
+  $('#dec').disabled = !rsa.enc;
+}
+$('#msg').addEventListener('input', () => { rsa.enc = false; renderLetters(); });
+$('#enc').addEventListener('click', () => { rsa.enc = true; renderLetters(); });
+$('#dec').addEventListener('click', () => { rsa.enc = false; renderLetters(); });
+updRSA();
+
+// ключ настоящего размера — в воркере
+const RSA_WORKER = `
+function modPow(b, e, m) { let r = 1n; b %= m; while (e > 0n) { if (e & 1n) r = (r * b) % m; b = (b * b) % m; e >>= 1n; } return r; }
+const SMALLP = []; for (let i = 3; i < 2000; i += 2) { let ok = true; for (let j = 3; j * j <= i; j += 2) if (i % j === 0) { ok = false; break; } if (ok) SMALLP.push(BigInt(i)); }
+function rnd(bits) { const b = new Uint8Array(bits / 8); crypto.getRandomValues(b); let x = 0n; for (const v of b) x = (x << 8n) | BigInt(v); return x; }
+function isProbablePrime(n) {
+  for (const p of SMALLP) { if (n === p) return true; if (n % p === 0n) return false; }
+  let d = n - 1n, s = 0; while ((d & 1n) === 0n) { d >>= 1n; s++; }
+  for (let k = 0; k < 24; k++) {
+    const a = 2n + (rnd(64) % (n - 4n));
+    let x = modPow(a, d, n);
+    if (x === 1n || x === n - 1n) continue;
+    let comp = true;
+    for (let r = 1; r < s; r++) { x = (x * x) % n; if (x === n - 1n) { comp = false; break; } }
+    if (comp) return false;
+  }
+  return true;
+}
+function prime(bits) { let tries = 0; for (;;) { tries++; let n = rnd(bits) | (1n << BigInt(bits - 1)) | (1n << BigInt(bits - 2)) | 1n; if (isProbablePrime(n)) return [n, tries]; } }
+function inv(a, m) { let [or, r] = [a, m], [os, s] = [1n, 0n]; while (r) { const q = or / r; [or, r] = [r, or - q * r]; [os, s] = [s, os - q * s]; } return ((os % m) + m) % m; }
+self.onmessage = (e) => {
+  const t0 = performance.now();
+  const [p, tp] = prime(1024); self.postMessage({ progress: 1 });
+  let q, tq; do { [q, tq] = prime(1024); } while (q === p);
+  const n = p * q, phi = (p - 1n) * (q - 1n), E = 65537n, d = inv(E, phi);
+  const bytes = new TextEncoder().encode(e.data.msg);
+  let m = 0n; for (const v of bytes) m = (m << 8n) | BigInt(v);
+  const c = modPow(m, E, n), back = modPow(c, d, n);
+  let out = []; let x = back; while (x > 0n) { out.unshift(Number(x & 255n)); x >>= 8n; }
+  self.postMessage({ n: n.toString(), c: c.toString(), plain: new TextDecoder().decode(new Uint8Array(out)), ms: performance.now() - t0, tries: tp + tq });
+};`;
+$('#bigGen').addEventListener('click', () => {
+  const btn = $('#bigGen'); btn.disabled = true; btn.textContent = 'Ищем простые…';
+  const out = $('#bigOut');
+  let w;
+  try { w = new Worker(URL.createObjectURL(new Blob([RSA_WORKER], { type: 'text/javascript' }))); } catch (err) { btn.textContent = 'Воркер недоступен'; return; }
+  w.onmessage = (e) => {
+    if (e.data.progress) { btn.textContent = 'Первое простое найдено…'; return; }
+    const { n, c, plain, ms, tries } = e.data;
+    out.hidden = false;
+    out.innerHTML = `<b>n (${n.length} цифр):</b> ${n}<br><br><b>шифр сообщения «${plain}»:</b> ${c}`;
+    $('#bigCap').innerHTML = `Готово за&nbsp;${(ms / 1000).toFixed(1).replace('.', ',')}&nbsp;с: проверено ${tries} случайных кандидатов, e = 65&nbsp;537. Расшифровка тайным ключом вернула: «${plain}».`;
+    btn.disabled = false; btn.textContent = 'Создать ещё';
+    w.terminate();
+  };
+  const msg = $('#msg').value.trim() || 'ВСТРЕЧА В ПОЛДЕНЬ';
+  w.postMessage({ msg });
+});
+
+/* ================================================================
+   Глава 6: эллиптические кривые
+   ================================================================ */
+const EA = -1, EB = 1; // y² = x³ − x + 1
+function setupCanvas(cv) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = cv.clientWidth, h = cv.clientHeight || +cv.getAttribute('height');
+  cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+(function ecReal() {
+  const cv = $('#ecReal');
+  cv.style.height = cv.getAttribute('height') + 'px';
+  let S = setupCanvas(cv);
+  window.addEventListener('resize', () => { S = setupCanvas(cv); draw(); });
+  const X0 = -2.2, X1 = 3.2;
+  const f = (x) => x * x * x + EA * x + EB;
+  const pts = { P: { x: -1.1, s: 1 }, Q: { x: 0.6, s: -1 } };
+  const yOf = (p) => p.s * Math.sqrt(Math.max(0, f(p.x)));
+  const view = () => { const { w, h } = S; const sx = w / (X1 - X0); const Y1 = h / 2 / sx; return { sx, toX: (x) => (x - X0) * sx, toY: (y) => h / 2 - y * sx, fromX: (px) => X0 + px / sx, fromY: (py) => (h / 2 - py) / sx, Y1 }; };
+  function add(P, Q) {
+    const x1 = P.x, y1 = yOf(P), x2 = Q.x, y2 = yOf(Q);
+    let l;
+    if (Math.abs(x1 - x2) < 1e-6) { if (Math.abs(y1 + y2) < 1e-6) return null; l = (3 * x1 * x1 + EA) / (2 * y1); }
+    else l = (y2 - y1) / (x2 - x1);
+    const x3 = l * l - x1 - x2; const y3 = l * (x1 - x3) - y1;
+    return { x: x3, y: y3, l, x1, y1 };
+  }
+  function draw() {
+    const { ctx, w, h } = S; const V = view();
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(27,26,31,0.12)'; ctx.lineWidth = 1;
+    for (let x = Math.ceil(X0); x <= X1; x++) { ctx.beginPath(); ctx.moveTo(V.toX(x), 0); ctx.lineTo(V.toX(x), h); ctx.stroke(); }
+    for (let y = -Math.floor(V.Y1); y <= V.Y1; y++) { ctx.beginPath(); ctx.moveTo(0, V.toY(y)); ctx.lineTo(w, V.toY(y)); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(27,26,31,0.45)';
+    ctx.beginPath(); ctx.moveTo(0, V.toY(0)); ctx.lineTo(w, V.toY(0)); ctx.moveTo(V.toX(0), 0); ctx.lineTo(V.toX(0), h); ctx.stroke();
+    // кривая
+    ctx.strokeStyle = INK; ctx.lineWidth = 3;
+    for (const s of [1, -1]) {
+      ctx.beginPath(); let started = false;
+      for (let px = 0; px <= w; px += 1) { const x = V.fromX(px), v = f(x); if (v < 0) { started = false; continue; } const y = s * Math.sqrt(v); started ? ctx.lineTo(px, V.toY(y)) : ctx.moveTo(px, V.toY(y)); started = true; }
+      ctx.stroke();
+    }
+    // закрываем «нос» кривой
+    const root = -1.3247179572; ctx.beginPath(); ctx.arc(V.toX(root), V.toY(0), 1.5, 0, 7); ctx.fillStyle = INK; ctx.fill();
+    const R = add(pts.P, pts.Q);
+    const P = { x: pts.P.x, y: yOf(pts.P) }, Q = { x: pts.Q.x, y: yOf(pts.Q) };
+    if (R) {
+      ctx.strokeStyle = EVE; ctx.lineWidth = 2;
+      const xa = X0, xb = X1; ctx.beginPath(); ctx.moveTo(V.toX(xa), V.toY(R.y1 + R.l * (xa - R.x1))); ctx.lineTo(V.toX(xb), V.toY(R.y1 + R.l * (xb - R.x1))); ctx.stroke();
+      ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(V.toX(R.x), V.toY(-R.y)); ctx.lineTo(V.toX(R.x), V.toY(R.y)); ctx.stroke(); ctx.setLineDash([]);
+      dot(ctx, V.toX(R.x), V.toY(-R.y), '#fff', 7, EVE);
+      dot(ctx, V.toX(R.x), V.toY(R.y), '#1f8a5b', 9);
+      label(ctx, V.toX(R.x) + 12, V.toY(R.y) + 5, 'P + Q', '#1f8a5b');
+      label(ctx, V.toX(R.x) + 12, V.toY(-R.y) + 5, '−(P + Q)', EVE);
+      $('#ecReadR').innerHTML = `P = (${P.x.toFixed(2)}; ${P.y.toFixed(2)}) · Q = (${Q.x.toFixed(2)}; ${Q.y.toFixed(2)}) · <b>P + Q = (${R.x.toFixed(2)}; ${R.y.toFixed(2)})</b>`.replace(/\./g, ',');
+    } else {
+      $('#ecReadR').innerHTML = 'Прямая вертикальна: P + Q — «бесконечно удалённая точка», ноль этого сложения.';
+    }
+    dot(ctx, V.toX(P.x), V.toY(P.y), ALICE, 11); label(ctx, V.toX(P.x) - 26, V.toY(P.y) - 14, 'P', ALICE);
+    dot(ctx, V.toX(Q.x), V.toY(Q.y), BOB, 11); label(ctx, V.toX(Q.x) + 14, V.toY(Q.y) - 14, 'Q', BOB);
+  }
+  let drag = null;
+  cv.addEventListener('pointerdown', (e) => {
+    const r = cv.getBoundingClientRect(); const V = view(); const px = e.clientX - r.left, py = e.clientY - r.top;
+    const d = (p) => Math.hypot(V.toX(p.x) - px, V.toY(yOf(p)) - py);
+    drag = d(pts.P) < d(pts.Q) ? 'P' : 'Q';
+    cv.setPointerCapture(e.pointerId); move(e);
+  });
+  cv.addEventListener('pointermove', (e) => { if (drag) move(e); });
+  cv.addEventListener('pointerup', () => { drag = null; });
+  function move(e) {
+    const r = cv.getBoundingClientRect(); const V = view();
+    const x = clamp(V.fromX(e.clientX - r.left), -1.3247, X1 - 0.05), y = V.fromY(e.clientY - r.top);
+    pts[drag] = { x, s: y >= 0 ? 1 : -1 };
+    draw();
+  }
+  draw();
+})();
+function dot(ctx, x, y, fill, r = 9, stroke = INK) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = stroke; ctx.stroke(); }
+function label(ctx, x, y, t, color) { ctx.font = '700 16px Unbounded, sans-serif'; ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.fillText(t, x, y); }
+
+(function ecMod() {
+  const p = 97, a = ((EA % p) + p) % p, b = EB;
+  const pts = [];
+  const sq = new Map(); for (let y = 0; y < p; y++) { const v = (y * y) % p; if (!sq.has(v)) sq.set(v, []); sq.get(v).push(y); }
+  for (let x = 0; x < p; x++) { const v = (x * x * x + a * x + b) % p; for (const y of sq.get(v) || []) pts.push([x, y]); }
+  const md = (x) => ((x % p) + p) % p;
+  const invm = (x) => { let r = 1, e = p - 2, bb = md(x); while (e) { if (e & 1) r = (r * bb) % p; bb = (bb * bb) % p; e >>= 1; } return r; };
+  function add(P, Q) {
+    if (!P) return Q; if (!Q) return P;
+    if (P[0] === Q[0] && md(P[1] + Q[1]) === 0) return null;
+    const l = P[0] === Q[0] ? md((3 * P[0] * P[0] + a) * invm(2 * P[1])) : md((Q[1] - P[1]) * invm(Q[0] - P[0]));
+    const x3 = md(l * l - P[0] - Q[0]), y3 = md(l * (P[0] - x3) - P[1]);
+    return [x3, y3, l];
+  }
+  const cv = $('#ecMod');
+  cv.style.height = cv.getAttribute('height') + 'px';
+  let S = setupCanvas(cv);
+  let P = pts[17], Q = pts[60], pick = 0;
+  const kRange = $('#kRange');
+  function order(Pt) { let R = Pt, k = 1; while (R) { R = add(R, Pt); k++; if (k > 200) break; } return k; }
+  function geom() { const { w, h } = S; const pad = 34, side = Math.min(w - pad * 2, h - pad * 2); const ox = (w - side) / 2, oy = (h - side) / 2; const u = side / p; return { ox, oy, side, u, X: (x) => ox + (x + 0.5) * u, Y: (y) => oy + side - (y + 0.5) * u }; }
+  function draw() {
+    const { ctx, w, h } = S; const g = geom();
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(27,26,31,0.35)'; ctx.lineWidth = 1.5; ctx.strokeRect(g.ox, g.oy, g.side, g.side);
+    ctx.font = '12px "JetBrains Mono", monospace'; ctx.fillStyle = 'rgba(27,26,31,0.6)'; ctx.textAlign = 'center';
+    for (const v of [0, 24, 48, 72, 96]) { ctx.fillText(v, g.X(v), g.oy + g.side + 18); ctx.textAlign = 'right'; ctx.fillText(v, g.ox - 8, g.Y(v) + 4); ctx.textAlign = 'center'; }
+    const R = add(P, Q);
+    if (R) {
+      // «заворачивающаяся» прямая y ≡ λ(x − xP) + yP (mod p)
+      const l = R[2];
+      ctx.save(); ctx.beginPath(); ctx.rect(g.ox, g.oy, g.side, g.side); ctx.clip();
+      ctx.strokeStyle = 'rgba(109,63,201,0.55)'; ctx.lineWidth = 1.4;
+      const x0 = -0.5, x1 = p - 0.5;
+      const yAt = (x) => l * (x - P[0]) + P[1];
+      const kMin = Math.floor(Math.min(yAt(x0), yAt(x1)) / p) - 1, kMax = Math.ceil(Math.max(yAt(x0), yAt(x1)) / p) + 1;
+      if (kMax - kMin < 120) for (let k = kMin; k <= kMax; k++) { ctx.beginPath(); ctx.moveTo(g.X(x0), g.Y(yAt(x0) - k * p)); ctx.lineTo(g.X(x1), g.Y(yAt(x1) - k * p)); ctx.stroke(); }
+      ctx.restore();
+    }
+    // точки кривой
+    for (const [x, y] of pts) { ctx.beginPath(); ctx.arc(g.X(x), g.Y(y), Math.max(2.4, g.u * 0.32), 0, Math.PI * 2); ctx.fillStyle = INK; ctx.fill(); }
+    // прыжки kP
+    const k = +kRange.value;
+    let acc = null; const path = [];
+    for (let i = 1; i <= k; i++) { acc = add(acc, P); if (!acc) break; path.push(acc); }
+    ctx.strokeStyle = ALICE; ctx.lineWidth = 2;
+    for (let i = 1; i < path.length; i++) { ctx.globalAlpha = 0.25 + 0.75 * (i / path.length); ctx.beginPath(); ctx.moveTo(g.X(path[i - 1][0]), g.Y(path[i - 1][1])); ctx.lineTo(g.X(path[i][0]), g.Y(path[i][1])); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    if (k > 1 && path.length) { const L = path[path.length - 1]; dot(ctx, g.X(L[0]), g.Y(L[1]), '#fff', 9, ALICE); label(ctx, g.X(L[0]) + 12, g.Y(L[1]) - 10, `${k}P`, ALICE); }
+    if (R) {
+      dot(ctx, g.X(R[0]), g.Y(md(-R[1])), '#fff', 7, EVE);
+      dot(ctx, g.X(R[0]), g.Y(R[1]), '#1f8a5b', 9); label(ctx, g.X(R[0]) + 12, g.Y(R[1]) + 5, 'P + Q', '#1f8a5b');
+    }
+    dot(ctx, g.X(P[0]), g.Y(P[1]), ALICE, 9); label(ctx, g.X(P[0]) - 24, g.Y(P[1]) - 10, 'P', ALICE);
+    dot(ctx, g.X(Q[0]), g.Y(Q[1]), BOB, 9); label(ctx, g.X(Q[0]) + 12, g.Y(Q[1]) - 10, 'Q', BOB);
+    const kp = path.length ? path[path.length - 1] : null;
+    $('#ecReadM').innerHTML = `${pts.length + 1} точек вместе с&nbsp;бесконечно удалённой · P = (${P[0]}; ${P[1]}), Q = (${Q[0]}; ${Q[1]})<br><b>P + Q = ${R ? `(${R[0]}; ${R[1]})` : 'O'}</b>${k > 1 ? ` · ${k}P = ${kp && path.length === k ? `(${kp[0]}; ${kp[1]})` : 'O'}` : ''}`;
+  }
+  kRange.max = String(Math.min(40, order(P) - 1));
+  kRange.addEventListener('input', draw);
+  cv.addEventListener('pointerdown', (e) => {
+    const r = cv.getBoundingClientRect(); const g = geom();
+    const px = e.clientX - r.left, py = e.clientY - r.top;
+    let best = null, bd = 1e9;
+    for (const q of pts) { const d = Math.hypot(g.X(q[0]) - px, g.Y(q[1]) - py); if (d < bd) { bd = d; best = q; } }
+    if (!best || bd > 22) return;
+    if (pick === 0) { P = best; kRange.max = String(Math.min(40, order(P) - 1)); } else Q = best;
+    pick = 1 - pick; draw();
+  });
+  window.addEventListener('resize', () => { S = setupCanvas(cv); draw(); });
+  draw();
+})();
+
+/* ================================================================
+   Оглавление и прогресс
+   ================================================================ */
+const toc = $('#toc');
+const chs = [...document.querySelectorAll('section.ch')];
+chs.forEach((s, i) => {
+  const a = document.createElement('a'); a.href = '#' + s.id;
+  a.innerHTML = `<b>${i + 1}</b><span>${s.dataset.title}</span>`;
+  toc.appendChild(a);
+});
+function onScroll() {
+  const y = window.scrollY, H = document.documentElement.scrollHeight - innerHeight;
+  $('#bar').style.transform = `scaleX(${H > 0 ? y / H : 0})`;
+  toc.classList.toggle('on', y > innerHeight * 0.6);
+  let cur = 0; chs.forEach((s, i) => { if (s.getBoundingClientRect().top < innerHeight * 0.45) cur = i; });
+  [...toc.children].forEach((a, i) => a.classList.toggle('on', i === cur));
+}
+window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+})();
+</script>
+</body>
+</html>

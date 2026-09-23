@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Горизонт событий — чёрная дыра в реальном времени</title>
+<meta name="description" content="Трассировка лучей вокруг чёрной дыры Шварцшильда: гравитационная линза, фотонное кольцо, доплеровское усиление диска.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;600;800&family=Martian+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #030304;
+    --ink: #efe7da;
+    --muted: #948c80;
+    --faint: #756d63;
+    --line: rgba(239, 231, 218, 0.13);
+    --hot: #ff8a3d;
+    --hot-2: #ffc98a;
+    --cold: #b9d3ff;
+    --panel: rgba(9, 8, 7, 0.78);
+    --mono: 'Martian Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --sans: 'Geologica', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --ease: cubic-bezier(.2, .7, .1, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; }
+  body { font-family: var(--sans); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+
+  #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  #view.dragging { cursor: grabbing; }
+
+  .ui { transition: opacity .5s var(--ease), transform .5s var(--ease); }
+  body.hide-ui .ui { opacity: 0; pointer-events: none; }
+
+  /* ── Заголовок ─────────────────────────────── */
+  .title { position: fixed; left: clamp(18px, 3vw, 44px); top: clamp(18px, 3.2vw, 40px); pointer-events: none; max-width: 520px; text-shadow: 0 1px 3px rgba(0, 0, 0, .85); }
+  .kicker { font: 400 11px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); display: flex; gap: 14px; align-items: center; }
+  .kicker b { color: var(--hot); font-weight: 500; }
+  .kicker i { display: inline-block; width: 26px; height: 1px; background: var(--faint); }
+  h1 { margin: 14px 0 0; font-weight: 800; font-size: clamp(38px, 5.6vw, 84px); line-height: .9; letter-spacing: -.035em; }
+  h1 span { display: block; color: transparent; -webkit-text-stroke: 1px rgba(239, 231, 218, .55); }
+  .sub { margin: 16px 0 0; font-weight: 300; font-size: 15px; line-height: 1.45; color: #c9c0b3; max-width: 330px; }
+
+  /* ── HUD ───────────────────────────────────── */
+  .hud { position: fixed; left: clamp(14px, 2.4vw, 32px); bottom: clamp(14px, 2.4vw, 32px); width: 392px; font: 400 12px/1.2 var(--mono); background: rgba(6, 5, 5, .72); border: 1px solid var(--line); border-radius: 4px; padding: 16px 16px 14px; }
+  .hud .rows { display: grid; grid-template-columns: auto 1fr; gap: 7px 18px; }
+  .hud .k { color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-size: 12px; padding-top: 1px; white-space: nowrap; }
+  .hud .v { color: var(--ink); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .hud .v em { font-style: normal; color: var(--muted); }
+  .hud sub { font-size: .75em; vertical-align: -.25em; line-height: 0; }
+  .ruler { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .ruler svg { display: block; width: 100%; height: 46px; overflow: visible; }
+  .ruler .cap { margin-top: 8px; color: #9b9387; font-size: 12px; line-height: 1.55; letter-spacing: .01em; }
+  .ruler .cap { display: flex; flex-wrap: wrap; gap: 5px 12px; }
+  .lg { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .lg i { display: inline-block; width: 8px; height: 8px; }
+  .m-h { background: #000; border: 1px solid rgba(239,231,218,.6); }
+  .m-p { width: 2px !important; height: 10px !important; background: var(--cold); }
+  .m-s { width: 2px !important; height: 10px !important; background: var(--muted); }
+  .m-i { width: 2px !important; height: 10px !important; background: var(--hot); }
+  .m-d { width: 14px !important; height: 4px !important; background: linear-gradient(90deg, #ffd9a8, rgba(255,138,61,.25)); }
+  .scrim { position: fixed; inset: 0; pointer-events: none; background:
+      radial-gradient(ellipse 48% 52% at 0% 0%, rgba(3,3,4,.78), rgba(3,3,4,0) 72%),
+      radial-gradient(ellipse 44% 48% at 0% 100%, rgba(3,3,4,.8), rgba(3,3,4,0) 72%); }
+  @media (max-width: 760px) {
+    .scrim { background: linear-gradient(180deg, rgba(3,3,4,.82) 0, rgba(3,3,4,0) 30%, rgba(3,3,4,0) 68%, rgba(3,3,4,.85) 100%); }
+  }
+
+  /* ── Панель ────────────────────────────────── */
+  .panel { position: fixed; right: clamp(14px, 2.4vw, 32px); top: clamp(14px, 2.4vw, 32px); width: 300px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 18px 18px 16px; max-height: calc(100% - 28px); overflow: auto; scrollbar-width: thin; }
+  .panel h2 { margin: 0 0 14px; font: 500 11px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+  .panel h2 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hot); }
+  .group { padding: 12px 0; border-top: 1px solid var(--line); }
+  .group:first-of-type { border-top: 0; padding-top: 2px; }
+  .label { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: #d6cdc0; margin-bottom: 10px; }
+  .label output { font: 400 12px/1 var(--mono); color: var(--hot-2); font-variant-numeric: tabular-nums; }
+
+  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  .seg button { appearance: none; border: 0; background: transparent; color: #cfc6b9; font: 400 12px/1 var(--sans); padding: 10px 6px; min-height: 36px; cursor: pointer; transition: background .25s var(--ease), color .25s var(--ease); border-left: 1px solid var(--line); }
+  .seg button:first-child { border-left: 0; }
+  .seg button:hover { background: rgba(255, 138, 61, .08); color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--hot); color: #1a0d04; font-weight: 600; }
+  .seg button:focus-visible { outline: 1px solid var(--hot-2); outline-offset: -3px; }
+  .note { margin: 9px 0 0; font-size: 13px; line-height: 1.5; color: #a39a8e; }
+
+  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; margin: 0; cursor: pointer; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: linear-gradient(90deg, var(--hot) var(--p, 50%), rgba(239,231,218,.16) var(--p, 50%)); border-radius: 2px; }
+  input[type="range"]::-moz-range-track { height: 2px; background: rgba(239,231,218,.16); border-radius: 2px; }
+  input[type="range"]::-moz-range-progress { height: 2px; background: var(--hot); }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -6px; border-radius: 50%; background: var(--bg); border: 2px solid var(--hot); transition: transform .2s var(--ease); }
+  input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--hot); }
+  input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.25); }
+  input[type="range"]:focus-visible { outline: none; }
+  input[type="range"]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .toggles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .tog { appearance: none; border: 1px solid var(--line); background: transparent; border-radius: 3px; color: #cfc6b9; font: 400 12.5px/1 var(--sans); padding: 10px 4px; min-height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; transition: border-color .25s, color .25s; }
+  .tog::before { content: ''; width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--muted); transition: background .25s, border-color .25s, box-shadow .25s; }
+  .tog[aria-pressed="true"] { color: var(--ink); border-color: rgba(255,138,61,.45); }
+  .tog[aria-pressed="true"]::before { background: var(--hot); border-color: var(--hot); }
+  .tog:focus-visible, .btn:focus-visible { outline: 1px solid var(--hot-2); outline-offset: 2px; }
+
+  .row-btns { display: flex; gap: 6px; margin-top: 12px; }
+  .btn { appearance: none; flex: 1; border: 1px solid var(--line); background: transparent; color: #cfc6b9; border-radius: 3px; font: 400 12.5px/1 var(--sans); padding: 10px 8px; min-height: 36px; cursor: pointer; transition: background .25s, color .25s; }
+  .btn:hover { background: rgba(239,231,218,.06); color: var(--ink); }
+
+  details.explain { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 2px; }
+  details.explain summary { list-style: none; cursor: pointer; font-size: 13px; color: #d6cdc0; display: flex; justify-content: space-between; align-items: center; min-height: 28px; }
+  details.explain summary::-webkit-details-marker { display: none; }
+  details.explain summary svg { transition: transform .3s var(--ease); }
+  details.explain[open] summary svg { transform: rotate(45deg); }
+  details.explain ol { margin: 10px 0 2px; padding: 0; list-style: none; counter-reset: n; }
+  details.explain li { counter-increment: n; position: relative; padding-left: 28px; margin: 0 0 10px; font-size: 14px; line-height: 1.5; color: #bdb4a7; }
+  details.explain li::before { content: counter(n, decimal-leading-zero); position: absolute; left: 0; top: 1px; font: 400 11px/1.6 var(--mono); color: var(--hot); }
+  details.explain li b { color: var(--ink); font-weight: 600; }
+
+  /* ── Подсказка, загрузка ─────────────────── */
+  .hint { position: fixed; right: clamp(14px, 2.4vw, 32px); bottom: clamp(16px, 2.4vw, 30px); font: 400 11.5px/1 var(--mono); letter-spacing: .08em; color: var(--muted); white-space: nowrap; pointer-events: none; transition: opacity 1.2s var(--ease); }
+  .hint kbd { font: inherit; color: var(--ink); border: 1px solid var(--line); border-radius: 3px; padding: 3px 6px; margin: 0 3px; }
+  .hint.gone { opacity: 0; }
+  @media (max-height: 860px), (max-width: 1180px) { .hint { display: none; } }
+
+  .loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 5; transition: opacity 1s var(--ease); }
+  .loading.done { opacity: 0; pointer-events: none; }
+  .loading div { font: 400 12px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); text-align: center; }
+  .loading div::after { content: ''; display: block; width: 140px; height: 1px; margin: 16px auto 0; background: linear-gradient(90deg, transparent, var(--hot), transparent); background-size: 200% 100%; animation: sweep 1.4s linear infinite; }
+  @keyframes sweep { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+  .fallback { position: fixed; inset: 0; display: none; place-items: center; padding: 24px; text-align: center; background: radial-gradient(circle at 50% 45%, #1a0f07 0, var(--bg) 60%); z-index: 6; }
+  .fallback.on { display: grid; }
+  .fallback h2 { font-weight: 800; font-size: 28px; margin: 0 0 12px; }
+  .fallback p { color: var(--muted); max-width: 420px; line-height: 1.5; margin: 0 auto; }
+
+  .menu-btn { display: none; }
+
+  /* ── Мобильная раскладка ─────────────────── */
+  @media (max-width: 760px) {
+    .title { top: 16px; left: 18px; right: 18px; }
+    h1 { font-size: 40px; margin-top: 10px; }
+    .sub { font-size: 13px; margin-top: 10px; max-width: 280px; }
+    .hud { left: 14px; right: 14px; width: auto; bottom: 78px; padding: 12px 14px; }
+    .hud .rows { grid-template-columns: auto 1fr; gap: 7px 12px; font-size: 11.5px; }
+    .hud .k { font-size: 12px; letter-spacing: .03em; }
+    .hud .rows .opt { display: none; }
+    .ruler { display: none; }
+    .hint { display: none; }
+    .panel { top: auto; bottom: 0; left: 0; right: 0; width: auto; max-height: 72%; border-radius: 14px 14px 0 0; border-bottom: 0; padding: 20px 18px calc(18px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform .45s var(--ease); background: rgba(9, 8, 7, .94); z-index: 3; }
+    body.sheet .panel { transform: translateY(0); }
+    .menu-btn { display: flex; position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 4; appearance: none; border: 1px solid rgba(255,138,61,.5); background: rgba(9,8,7,.8); color: var(--ink); border-radius: 999px; font: 500 12px/1 var(--sans); padding: 0 18px; height: 46px; align-items: center; gap: 10px; cursor: pointer; }
+    .menu-btn .ico { width: 14px; height: 14px; }
+    .mode-mini { display: flex; position: fixed; left: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 4; }
+  }
+  @media (min-width: 761px) { .mode-mini { display: none; } }
+  .mode-mini .seg { background: rgba(9,8,7,.8); border-radius: 999px; border-color: rgba(239,231,218,.2); }
+  .mode-mini .seg button { padding: 0 16px; height: 46px; font-size: 12px; }
+  .mode-mini .seg button[aria-pressed="true"] { border-radius: 999px; }
+  @media (prefers-reduced-motion: reduce) { .loading div::after { animation: none; } }
+</style>
+</head>
+<body>
+<canvas id="view" aria-label="Чёрная дыра: изображение считается трассировкой лучей"></canvas>
+<div class="scrim ui" aria-hidden="true"></div>
+
+<header class="title ui">
+  <div class="kicker"><b>080</b><i></i><span>Чёрная дыра Шварцшильда</span></div>
+  <h1>Горизонт<span>событий</span></h1>
+  <p class="sub">Каждый пиксель — луч света, выпущенный назад во&nbsp;времени и&nbsp;проведённый по&nbsp;искривлённому пространству.</p>
+</header>
+
+<section class="hud ui" aria-label="Параметры объекта">
+  <div class="rows">
+    <span class="k">Объект</span><span class="v" id="hName">Стрелец A*</span>
+    <span class="k">r<sub>s</sub></span><span class="v" id="hRs">—</span>
+    <span class="k opt">Свет проходит r<sub>s</sub></span><span class="v opt" id="hLight">—</span>
+    <span class="k opt">Оборот на ISCO</span><span class="v opt" id="hIsco">—</span>
+    <span class="k">Камера</span><span class="v" id="hCam">—</span>
+    <span class="k">Ваши часы</span><span class="v" id="hTime">—</span>
+    <span class="k opt">Час у вас</span><span class="v opt" id="hHour">—</span>
+  </div>
+  <div class="ruler">
+    <svg id="ruler" viewBox="0 0 340 46" preserveAspectRatio="none" aria-hidden="true"></svg>
+    <div class="cap"><span class="lg"><i class="m-h"></i>горизонт&nbsp;1</span><span class="lg"><i class="m-p"></i>фотонная сфера&nbsp;1,5</span><span class="lg"><i class="m-s"></i>тень&nbsp;2,6</span><span class="lg"><i class="m-i"></i>ISCO&nbsp;3</span><span class="lg"><i class="m-d"></i>диск&nbsp;3–14</span></div>
+  </div>
+</section>
+
+<aside class="panel ui" id="panel" aria-label="Управление">
+  <h2>Пульт наблюдателя <span class="dot"></span></h2>
+
+  <div class="group">
+    <div class="label">Изображение</div>
+    <div class="seg" id="modeSeg">
+      <button type="button" data-mode="1" aria-pressed="true">Физика</button>
+      <button type="button" data-mode="0" aria-pressed="false">Как в&nbsp;кино</button>
+    </div>
+    <p class="note" id="modeNote">Доплер и&nbsp;гравитационное красное смещение включены: сторона диска, летящая к&nbsp;вам, ярче и&nbsp;голубее.</p>
+  </div>
+
+  <div class="group">
+    <div class="label">Объект</div>
+    <div class="seg" id="massSeg">
+      <button type="button" data-mass="stellar" aria-pressed="false">10&nbsp;M☉</button>
+      <button type="button" data-mass="sgra" aria-pressed="true">Стрелец A*</button>
+      <button type="button" data-mass="m87" aria-pressed="false">M87*</button>
+    </div>
+    <p class="note" id="massNote"></p>
+  </div>
+
+  <div class="group">
+    <div class="label"><span>Высота над диском</span><output id="elOut">6°</output></div>
+    <input type="range" id="el" min="-70" max="70" step="0.5" value="6" aria-label="Высота камеры над плоскостью диска">
+  </div>
+  <div class="group">
+    <div class="label"><span>Расстояние</span><output id="distOut">22 r<sub>s</sub></output></div>
+    <input type="range" id="dist" min="6" max="40" step="0.1" value="22" aria-label="Расстояние до чёрной дыры">
+  </div>
+  <div class="group">
+    <div class="label"><span>Яркость диска</span><output id="brOut">1,0</output></div>
+    <input type="range" id="bright" min="0.25" max="2.5" step="0.05" value="1" aria-label="Яркость аккреционного диска">
+  </div>
+
+  <div class="group">
+    <div class="toggles">
+      <button type="button" class="tog" id="tDisk" aria-pressed="true">Диск</button>
+      <button type="button" class="tog" id="tStars" aria-pressed="true">Звёзды</button>
+      <button type="button" class="tog" id="tOrbit" aria-pressed="true">Облёт</button>
+    </div>
+    <div class="row-btns">
+      <button type="button" class="btn" id="reset">Сбросить вид</button>
+      <button type="button" class="btn" id="hideUi">Чистый кадр</button>
+    </div>
+  </div>
+
+  <details class="explain" id="explain">
+    <summary>Что на&nbsp;экране <svg class="ico" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.2"/></svg></summary>
+    <ol>
+      <li><b>Тень</b> — не&nbsp;сам горизонт, а&nbsp;область, откуда к&nbsp;вам не&nbsp;приходит свет. Её&nbsp;радиус ≈&nbsp;2,6&nbsp;r<sub>s</sub> — в&nbsp;2,6 раза больше горизонта.</li>
+      <li><b>Тонкое кольцо</b> у&nbsp;края тени — свет, который успел обернуться вокруг дыры у&nbsp;фотонной сферы (1,5&nbsp;r<sub>s</sub>).</li>
+      <li><b>Арка над тенью</b> — дальняя сторона диска. Её&nbsp;свет загнут гравитацией и&nbsp;приходит к&nbsp;вам поверх дыры; снизу видно второе, тонкое изображение.</li>
+      <li><b>Одна сторона ярче</b>: у&nbsp;внутреннего края вещество летит почти со&nbsp;скоростью 0,5&nbsp;c. В&nbsp;режиме «Как в&nbsp;кино» эффект выключен — так поступили авторы «Интерстеллара», чтобы не&nbsp;путать зрителя.</li>
+      <li><b>Звёзды у&nbsp;края тени</b> раздваиваются и&nbsp;вытягиваются в&nbsp;дуги — это гравитационная линза.</li>
+    </ol>
+  </details>
+</aside>
+
+<div class="mode-mini ui" aria-hidden="false">
+  <div class="seg" id="modeSegMini">
+    <button type="button" data-mode="1" aria-pressed="true">Физика</button>
+    <button type="button" data-mode="0" aria-pressed="false">Кино</button>
+  </div>
+</div>
+<button type="button" class="menu-btn ui" id="menuBtn" aria-controls="panel" aria-expanded="false">
+  <svg class="ico" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 3.5h12M1 10.5h12" stroke="currentColor" stroke-width="1.3"/><circle cx="4.5" cy="3.5" r="1.8" fill="#090807" stroke="currentColor" stroke-width="1.2"/><circle cx="9.5" cy="10.5" r="1.8" fill="#090807" stroke="currentColor" stroke-width="1.2"/></svg>
+  Параметры
+</button>
+
+<div class="hint ui" id="hint">тяните — облёт <kbd>колесо</kbd> ближе / дальше <kbd>H</kbd> скрыть интерфейс <kbd>2×клик</kbd> сброс</div>
+<div class="loading" id="loading"><div>Считаем геодезические</div></div>
+<div class="fallback" id="fallback"><div><h2>Нужен WebGL&nbsp;2</h2><p>Этот браузер не&nbsp;дал доступ к&nbsp;видеокарте. Откройте страницу в&nbsp;свежем Chrome, Safari или Firefox — и&nbsp;чёрная дыра появится.</p></div></div>
+
+<script>
+(() => {
+'use strict';
+// Режим съёмки обложки (_tools/shot): полное качество, кадр перерисовывается только при изменении вида
+const SHOT = !!window.__SHOT__;
+
+/* ════════════════════════════════════════════════════════════════
+   Шейдеры
+   Единицы: r_s = 1 (радиус Шварцшильда), c = 1, M = 0,5.
+   Фотон движется по уравнению d²x/dλ² = −(3/2)·h²·x / r⁵, где h = |x × v|
+   сохраняется — это точная форма нулевых геодезических Шварцшильда
+   в «плоских» координатах (уравнение Бине для света).
+   ════════════════════════════════════════════════════════════════ */
+
+const VERT = `#version 300 es
+void main() {
+  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`;
+
+const SCENE = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+
+uniform vec2  uRes;
+uniform vec3  uCamPos;
+uniform mat3  uCamBasis;
+uniform float uTanHalf;
+uniform float uTime;
+uniform float uPhysics;
+uniform float uTpeak;
+uniform float uDisk;
+uniform float uStars;
+uniform float uPix;
+uniform float uBright;
+
+const float RIN  = 3.0;   // ISCO
+const float ROUT = 14.0;
+
+float hash31(vec3 p) {
+  p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+  p += dot(p, p.yxz + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+vec3 hash33(vec3 p) {
+  p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+  p += dot(p, p.yxz + 33.33);
+  return fract((p.xxy + p.yxx) * p.zyx);
+}
+float vnoise(vec3 x) {
+  vec3 i = floor(x), f = fract(x);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = hash31(i), b = hash31(i + vec3(1,0,0)), c = hash31(i + vec3(0,1,0)), d = hash31(i + vec3(1,1,0));
+  float e = hash31(i + vec3(0,0,1)), g = hash31(i + vec3(1,0,1)), h = hash31(i + vec3(0,1,1)), k = hash31(i + vec3(1,1,1));
+  return mix(mix(mix(a, b, f.x), mix(c, d, f.x), f.y), mix(mix(e, g, f.x), mix(h, k, f.x), f.y), f.z);
+}
+float fbm(vec3 p) {
+  float s = 0.0, a = 0.5;
+  for (int i = 0; i < 4; i++) { s += a * vnoise(p); p = p * 2.07 + 17.3; a *= 0.5; }
+  return s;
+}
+
+// Цвет абсолютно чёрного тела: локус Планка (аппроксимация Кристека) → XYZ → линейный sRGB
+vec3 blackbody(float t) {
+  t = clamp(t, 1000.0, 40000.0);
+  float u = (0.860117757 + 1.54118254e-4 * t + 1.28641212e-7 * t * t) / (1.0 + 8.42420235e-4 * t + 7.08145163e-7 * t * t);
+  float v = (0.317398726 + 4.22806245e-5 * t + 4.20481691e-8 * t * t) / (1.0 - 2.89741816e-5 * t + 1.61456053e-7 * t * t);
+  float x = 3.0 * u / (2.0 * u - 8.0 * v + 4.0);
+  float y = 2.0 * v / (2.0 * u - 8.0 * v + 4.0);
+  vec3 XYZ = vec3(x / y, 1.0, (1.0 - x - y) / y);
+  vec3 rgb = mat3(3.2404542, -0.9692660, 0.0556434,
+                 -1.5371385,  1.8760108, -0.2040259,
+                 -0.4985314,  0.0415560,  1.0572252) * XYZ;
+  rgb = max(rgb, 0.0);
+  return rgb / max(max(rgb.r, rgb.g), max(rgb.b, 1e-4));
+}
+
+// Излучение тонкого диска: T⁴ ∝ r⁻³ (1 − √(r_in / r)), нормировано на максимум при r = 49/36 · r_in
+float diskProfile(float r) {
+  return pow(r, -3.0) * (1.0 - sqrt(RIN / r)) / 0.0020983;
+}
+
+float diskNoise(float r, float a) {
+  vec3 q = vec3(cos(a) * 1.7, sin(a) * 1.7, r * 2.4);
+  float n = fbm(q);
+  n += 0.28 * vnoise(vec3(cos(a) * 7.0, sin(a) * 7.0, r * 9.0));
+  return n;
+}
+
+vec4 diskSample(vec3 p, float Lz) {
+  float r = length(p.xz);
+  if (r < RIN || r > ROUT) return vec4(0.0);
+  float prof = diskProfile(r);
+  float phi = atan(p.x, p.z);
+  float Om = sqrt(0.5 / (r * r * r));          // кеплерова угловая скорость (M = 0,5)
+
+  // Дифференциальное вращение: два слоя со сдвигом полпериода, чтобы узор не закручивался бесконечно
+  const float P = 70.0;
+  float t  = uTime * 5.8;
+  float t1 = mod(t, P), t2 = mod(t + 0.5 * P, P);
+  float w  = 1.0 - abs(2.0 * t1 / P - 1.0);
+  float n  = mix(diskNoise(r, phi - Om * t2 + 1.7), diskNoise(r, phi - Om * t1), w);
+
+  float edge = smoothstep(RIN, RIN + 0.55, r) * (1.0 - smoothstep(ROUT - 5.0, ROUT, r));
+  float dens = clamp((n - 0.28) * 1.9, 0.0, 1.0);
+  float alpha = clamp(0.12 + 0.95 * dens, 0.0, 0.97) * edge;
+
+  // Частотный сдвиг g = ν_набл / ν_изл = √(1 − 3M/r) / (1 − Ω·L_z) — гравитация плюс Доплер
+  float g = sqrt(max(1.0 - 1.5 / r, 1e-4)) / (1.0 - Om * Lz);
+  g = mix(1.0, g, uPhysics);
+
+  float Temit = uTpeak * pow(max(prof, 1e-4), 0.25);
+  vec3 col = blackbody(Temit * g);
+  float I = prof * (0.35 + 1.45 * dens * dens) * pow(g, 4.0) * uBright * 2.2;
+  return vec4(col * I, alpha);
+}
+
+vec3 starLayer(vec3 d, float scale, float density, float seed, float size) {
+  vec3 a = abs(d);
+  vec2 uv; float face;
+  if (a.x >= a.y && a.x >= a.z) { uv = d.yz / a.x; face = d.x > 0.0 ? 0.0 : 1.0; }
+  else if (a.y >= a.z)          { uv = d.xz / a.y; face = d.y > 0.0 ? 2.0 : 3.0; }
+  else                          { uv = d.xy / a.z; face = d.z > 0.0 ? 4.0 : 5.0; }
+  vec2 g = uv * scale;
+  vec2 cell = floor(g);
+  vec3 h = hash33(vec3(cell, face * 7.0 + seed));
+  if (h.z > density) return vec3(0.0);
+  vec2 c = 0.18 + 0.64 * h.xy;
+  vec2 dv = (fract(g) - c) / scale;
+  float s = uPix * size;
+  float br = pow(hash31(vec3(cell.yx, face + seed * 3.1)), 6.0) * 4.5 + 0.035;
+  float temp = mix(3000.0, 12000.0, pow(hash31(vec3(cell, seed + 11.0)), 1.6));
+  return blackbody(temp) * br * exp(-dot(dv, dv) / (s * s));
+}
+
+vec3 sky(vec3 d) {
+  const vec3 N = vec3(0.5, 0.8660254, 0.0);                 // полюс «Млечного Пути»
+  vec3 core = normalize(vec3(-0.30, 0.1732, -0.938));      // направление на ядро (лежит в полосе)
+  float s = dot(d, N);
+  float band = exp(-s * s * 16.0);
+  vec3 col = vec3(0.0);
+  if (band > 0.015) {                                        // шум считаем только внутри полосы
+    float coreGlow = pow(max(dot(d, core), 0.0), 5.0);
+    float n = fbm(d * 4.2);
+    float dust = fbm(d * 9.5 + 3.0);
+    vec3 mw = mix(vec3(0.50, 0.58, 0.85), vec3(1.0, 0.80, 0.58), clamp(coreGlow * 1.4, 0.0, 1.0));
+    float lanes = smoothstep(0.40, 0.66, dust) * band;
+    col = mw * band * (0.003 + 0.030 * n * n + 0.11 * coreGlow) * (1.0 - 0.85 * lanes);
+  }
+  float neb = fbm(d * 2.1 + 11.0);
+  col += mix(vec3(0.06, 0.12, 0.22), vec3(0.30, 0.10, 0.22), smoothstep(0.35, 0.65, neb)) * pow(neb, 4.0) * 0.05;
+  if (uStars > 0.5) {
+    col += starLayer(d, 13.0, 0.55, 1.0, 1.1);
+    col += starLayer(d, 32.0, 0.42, 2.0, 0.9) * 0.34;
+    col += starLayer(d, 68.0, 0.22 + 0.35 * band, 3.0, 0.8) * 0.16;
+  }
+  return col;
+}
+
+void main() {
+  vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / min(uRes.x, uRes.y) * 2.0;
+  vec3 dir = normalize(uCamBasis * vec3(uv * uTanHalf, 1.0));
+
+  vec3 pos = uCamPos;
+  vec3 vel = dir;
+  vec3 hv  = cross(pos, vel);
+  float h2 = dot(hv, hv);
+  float Lz = -hv.y;        // момент фотона вокруг оси диска: фотон летит против трассируемого луча
+
+  vec3 col = vec3(0.0);
+  float trans = 1.0;
+  bool escaped = false;
+
+  for (int i = 0; i < 320; i++) {
+    float r = length(pos);
+    float dt = min(0.02 * r * r + 0.012, 0.3 * r);
+    vec3 prev = pos;
+    vel += (-1.5 * h2 * pos / pow(r, 5.0)) * dt;
+    pos += vel * dt;
+
+    if (uDisk > 0.5 && prev.y * pos.y < 0.0) {
+      vec3 p = mix(prev, pos, prev.y / (prev.y - pos.y));
+      vec4 d = diskSample(p, Lz);
+      col += trans * d.rgb * d.a;
+      trans *= 1.0 - d.a;
+      if (trans < 0.02) break;
+    }
+    float r2 = length(pos);
+    if (r2 < 1.0) break;
+    if (r2 > 90.0 && dot(pos, vel) > 0.0) { escaped = true; break; }
+  }
+  if (escaped) col += trans * sky(normalize(vel));
+  fragColor = vec4(col, 1.0);
+}`;
+
+const BRIGHT = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform sampler2D uTex;
+uniform vec2 uRes;
+uniform vec2 uTexel;
+void main() {
+  vec2 uv = gl_FragCoord.xy / uRes;
+  vec3 c = texture(uTex, uv + uTexel * vec2(-0.5, -0.5)).rgb + texture(uTex, uv + uTexel * vec2(0.5, -0.5)).rgb
+         + texture(uTex, uv + uTexel * vec2(-0.5, 0.5)).rgb + texture(uTex, uv + uTexel * vec2(0.5, 0.5)).rgb;
+  c *= 0.25;
+  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  fragColor = vec4(c * smoothstep(0.55, 1.8, l), 1.0);
+}`;
+
+const BLUR = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform sampler2D uTex;
+uniform vec2 uRes;
+uniform vec2 uDir;
+void main() {
+  vec2 uv = gl_FragCoord.xy / uRes;
+  vec3 s = texture(uTex, uv).rgb * 0.2270270270;
+  s += (texture(uTex, uv + uDir * 1.3846153846).rgb + texture(uTex, uv - uDir * 1.3846153846).rgb) * 0.3162162162;
+  s += (texture(uTex, uv + uDir * 3.2307692308).rgb + texture(uTex, uv - uDir * 3.2307692308).rgb) * 0.0702702703;
+  fragColor = vec4(s, 1.0);
+}`;
+
+const COMPOSITE = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform sampler2D uScene;
+uniform sampler2D uBloom;
+uniform vec2 uRes;
+uniform float uTime;
+uniform float uExposure;
+vec3 aces(vec3 x) {
+  const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
+  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+void main() {
+  vec2 uv = gl_FragCoord.xy / uRes;
+  vec3 c = texture(uScene, uv).rgb;
+  c += texture(uBloom, uv).rgb * 0.85;
+  c = aces(c * uExposure);
+  vec2 q = uv - 0.5;
+  c *= 1.0 - 0.55 * dot(q, q);
+  c = pow(c, vec3(1.0 / 2.2));
+  float g = fract(sin(dot(gl_FragCoord.xy + fract(uTime) * 91.7, vec2(12.9898, 78.233))) * 43758.5453);
+  c += (g - 0.5) * 0.014;
+  fragColor = vec4(c, 1.0);
+}`;
+
+/* ════════════════════════════════════════════════════════════════
+   WebGL
+   ════════════════════════════════════════════════════════════════ */
+
+const canvas = document.getElementById('view');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance' });
+const $ = (id) => document.getElementById(id);
+
+if (!gl) {
+  $('fallback').classList.add('on');
+  $('loading').classList.add('done');
+  return;
+}
+
+const floatOK = !!gl.getExtension('EXT_color_buffer_float');
+const FMT = floatOK
+  ? { internal: gl.RGBA16F, type: gl.HALF_FLOAT }
+  : { internal: gl.RGBA8, type: gl.UNSIGNED_BYTE };
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(fsSrc) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSrc));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {};
+  const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) {
+    const info = gl.getActiveUniform(p, i);
+    u[info.name] = gl.getUniformLocation(p, info.name);
+  }
+  return { p, u };
+}
+
+let P;
+try {
+  P = { scene: program(SCENE), bright: program(BRIGHT), blur: program(BLUR), comp: program(COMPOSITE) };
+} catch (err) {
+  $('fallback').classList.add('on');
+  $('fallback').querySelector('p').textContent = 'Шейдер не собрался на этой видеокарте. Попробуйте другой браузер.';
+  $('loading').classList.add('done');
+  return;
+}
+
+gl.bindVertexArray(gl.createVertexArray());
+
+function target(w, h) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, FMT.internal, w, h, 0, gl.RGBA, FMT.type, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  return { tex, fb, w, h };
+}
+function free(t) { if (t) { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fb); } }
+
+/* ════════════════════════════════════════════════════════════════
+   Состояние
+   ════════════════════════════════════════════════════════════════ */
+
+const MASSES = {
+  stellar: { name: 'Звёздная, 10 M☉', msun: 10, tpeak: 9800,
+    note: 'Остаток массивной звезды. Настоящий диск светит в рентгене — цвета здесь сдвинуты в видимый диапазон.' },
+  sgra: { name: 'Стрелец A*', msun: 4.3e6, tpeak: 5600,
+    note: 'Сверхмассивная дыра в центре Млечного Пути, 27 тыс. световых лет от нас. Снята телескопом EHT в 2022 году.' },
+  m87: { name: 'M87*', msun: 6.5e9, tpeak: 3900,
+    note: 'Ядро галактики M87 — первая чёрная дыра, чью тень сфотографировали (EHT, 2019).' },
+};
+
+const portrait = () => innerHeight > innerWidth * 1.1;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const state = {
+  physics: 1,
+  mass: 'sgra',
+  el: 6 * Math.PI / 180,
+  az: 0.42,
+  dist: portrait() ? 25 : 22,
+  bright: 1,
+  disk: true,
+  stars: true,
+  orbit: !reduceMotion,
+};
+const DEFAULT = { el: state.el, az: state.az };
+
+let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+let scale = 0.62;                       // доля разрешения для трассировки; подстраивается под FPS
+let minScale = 0.3;
+try {
+  const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+  const renderer = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+  // Программный рендер (нет видеокарты): кадров всё равно мало, поэтому бережём чёткость
+  if (/SwiftShader|llvmpipe|softpipe|Software/i.test(renderer)) { minScale = 0.55; scale = 0.6; }
+} catch (e) { /* расширение недоступно — не страшно */ }
+if (SHOT) { scale = 0.8; minScale = 0.8; }
+let W = 0, H = 0, sw = 0, sh = 0;
+let sceneT = null, bloomA = null, bloomB = null;
+
+function resize() {
+  dpr = SHOT ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
+  W = Math.max(1, Math.floor(innerWidth * dpr));
+  H = Math.max(1, Math.floor(innerHeight * dpr));
+  canvas.width = W; canvas.height = H;
+  allocTargets();
+}
+function allocTargets() {
+  const nw = Math.max(64, Math.round(W * scale)), nh = Math.max(64, Math.round(H * scale));
+  if (sceneT && nw === sw && nh === sh) return;
+  sw = nw; sh = nh;
+  free(sceneT); free(bloomA); free(bloomB);
+  sceneT = target(sw, sh);
+  const bw = Math.max(32, sw >> 1), bh = Math.max(32, sh >> 1);
+  bloomA = target(bw, bh);
+  bloomB = target(bw, bh);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Камера
+   ════════════════════════════════════════════════════════════════ */
+
+function camera() {
+  const ce = Math.cos(state.el), se = Math.sin(state.el);
+  const pos = [state.dist * ce * Math.sin(state.az), state.dist * se, state.dist * ce * Math.cos(state.az)];
+  const len = Math.hypot(...pos);
+  const f = [-pos[0] / len, -pos[1] / len, -pos[2] / len];
+  let r = [f[1] * 0 - f[2] * 1, f[2] * 0 - f[0] * 0, f[0] * 1 - f[1] * 0];   // f × (0,1,0)
+  const rl = Math.hypot(...r) || 1;
+  r = r.map((x) => x / rl);
+  const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+  return { pos, basis: [...r, ...u, ...f] };
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Рендер
+   ════════════════════════════════════════════════════════════════ */
+
+const t0 = performance.now();
+let frames = 0;
+
+function pass(prog, tgt, w, h) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, tgt ? tgt.fb : null);
+  gl.viewport(0, 0, w, h);
+  gl.useProgram(prog.p);
+}
+
+function render(now) {
+  const time = (now - t0) / 1000;
+  const cam = camera();
+  const tanHalf = Math.tan((portrait() ? 30 : 27) * Math.PI / 180);
+
+  // 1. Трассировка
+  pass(P.scene, sceneT, sw, sh);
+  const u = P.scene.u;
+  gl.uniform2f(u.uRes, sw, sh);
+  gl.uniform3fv(u.uCamPos, cam.pos);
+  gl.uniformMatrix3fv(u.uCamBasis, false, cam.basis);
+  gl.uniform1f(u.uTanHalf, tanHalf);
+  gl.uniform1f(u.uTime, reduceMotion ? time * 0.3 : time);
+  gl.uniform1f(u.uPhysics, state.physics);
+  gl.uniform1f(u.uTpeak, MASSES[state.mass].tpeak);
+  gl.uniform1f(u.uDisk, state.disk ? 1 : 0);
+  gl.uniform1f(u.uStars, state.stars ? 1 : 0);
+  gl.uniform1f(u.uPix, (2 * tanHalf) / Math.min(sw, sh));
+  gl.uniform1f(u.uBright, state.bright);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  // 2. Свечение: яркие места → половинное разрешение → размытие
+  pass(P.bright, bloomA, bloomA.w, bloomA.h);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, sceneT.tex);
+  gl.uniform1i(P.bright.u.uTex, 0);
+  gl.uniform2f(P.bright.u.uRes, bloomA.w, bloomA.h);
+  gl.uniform2f(P.bright.u.uTexel, 1 / sw, 1 / sh);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  const radii = [1, 2.2, 4];
+  for (const k of radii) {
+    pass(P.blur, bloomB, bloomB.w, bloomB.h);
+    gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
+    gl.uniform1i(P.blur.u.uTex, 0);
+    gl.uniform2f(P.blur.u.uRes, bloomB.w, bloomB.h);
+    gl.uniform2f(P.blur.u.uDir, k / bloomB.w, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    pass(P.blur, bloomA, bloomA.w, bloomA.h);
+    gl.bindTexture(gl.TEXTURE_2D, bloomB.tex);
+    gl.uniform2f(P.blur.u.uRes, bloomA.w, bloomA.h);
+    gl.uniform2f(P.blur.u.uDir, 0, k / bloomA.h);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  // 3. Сведение на экран
+  pass(P.comp, null, W, H);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, sceneT.tex);
+  gl.uniform1i(P.comp.u.uScene, 0);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
+  gl.uniform1i(P.comp.u.uBloom, 1);
+  gl.uniform2f(P.comp.u.uRes, W, H);
+  gl.uniform1f(P.comp.u.uTime, time);
+  gl.uniform1f(P.comp.u.uExposure, floatOK ? 1.05 : 0.9);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.activeTexture(gl.TEXTURE0);
+}
+
+/* ── Адаптивное разрешение ───────────────────────────── */
+let lastT = 0, acc = 0, accN = 0;
+function adapt(dt) {
+  acc += dt; accN++;
+  const need = frames < 12 ? 3 : 24;
+  if (accN < need) return;
+  const avg = acc / accN;
+  acc = 0; accN = 0;
+  let next = scale;
+  if (avg > 40) next = scale * 0.72;
+  else if (avg > 24) next = scale * 0.88;
+  else if (avg < 15 && scale < 1) next = scale * 1.1;
+  next = Math.min(1, Math.max(minScale, next));
+  if (Math.abs(next - scale) > 0.01) { scale = next; allocTargets(); }
+}
+
+/* ── Цикл ─────────────────────────────────────────────── */
+let raf = 0, idle = 0, velAz = 0, velEl = 0, lastKey = '';
+function loop(now) {
+  raf = requestAnimationFrame(loop);
+  const dt = lastT ? Math.min(now - lastT, 250) : 16;
+  lastT = now;
+  if (SHOT) {
+    velAz = velEl = 0;
+    const key = [state.physics, state.mass, state.el.toFixed(4), state.az.toFixed(4), state.dist.toFixed(3), state.bright, state.disk, state.stars, W, H].join('|');
+    if (frames >= 1 && key === lastKey) return;
+    lastKey = key;
+  } else if (frames > 2) adapt(dt);
+
+  const s = dt / 1000;
+  idle += s;
+  if (!drag.active) {
+    state.az += velAz; state.el = clampEl(state.el + velEl);
+    velAz *= 0.92; velEl *= 0.92;
+    if (state.orbit && !SHOT && idle > 2.5) state.az += 0.022 * s;
+  }
+  render(now);
+  frames++;
+  if (frames === (SHOT ? 1 : 2)) setTimeout(() => $('loading').classList.add('done'), 60);
+  if (frames % 12 === 0) updateHud();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { cancelAnimationFrame(raf); raf = 0; }
+  else if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); }
+});
+
+/* ════════════════════════════════════════════════════════════════
+   Интерфейс
+   ════════════════════════════════════════════════════════════════ */
+
+const NB = ' ';
+const nf = (x, d = 1) => x.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d });
+function fmtLen(km) {
+  if (km < 1e3) return nf(km, 1) + NB + 'км';
+  if (km < 1e6) return nf(km / 1e3, 1) + NB + 'тыс.' + NB + 'км';
+  if (km < 1e9) return nf(km / 1e6, 1) + NB + 'млн' + NB + 'км';
+  return nf(km / 1e9, 1) + NB + 'млрд' + NB + 'км';
+}
+function fmtTime(s) {
+  if (s < 1e-3) return nf(s * 1e6, 0) + NB + 'мкс';
+  if (s < 1) return nf(s * 1e3, 1) + NB + 'мс';
+  if (s < 120) return nf(s, 0) + NB + 'с';
+  if (s < 7200) return nf(s / 60, 0) + NB + 'мин';
+  if (s < 172800) return nf(s / 3600, 1) + NB + 'ч';
+  return nf(s / 86400, 0) + NB + 'сут';
+}
+
+function updateHud() {
+  const m = MASSES[state.mass];
+  const rsKm = 2.9532 * m.msun;                 // r_s = 2GM/c²
+  const lightS = rsKm / 299792.458;
+  const iscoPeriod = 2 * Math.PI / Math.sqrt(0.5 / 27) * lightS;   // по часам далёкого наблюдателя
+  const au = rsKm / 1.495978707e8;
+  $('hName').textContent = m.name;
+  $('hRs').innerHTML = fmtLen(rsKm) + (au > 1 ? ` <em>(${nf(au, 0)}${NB}а.${NB}е.)</em>` : '');
+  $('hLight').textContent = 'за' + NB + fmtTime(lightS);
+  $('hIsco').textContent = fmtTime(iscoPeriod);
+  $('hCam').innerHTML = nf(state.dist, 1) + NB + 'r<sub>s</sub>';
+  const k = Math.sqrt(1 - 1 / state.dist);
+  $('hTime').innerHTML = 'идут ×' + nf(k, 3);
+  $('hHour').innerHTML = `= ${nf(1 / k, 3)}${NB}ч <em>вдали</em>`;
+  drawRuler();
+}
+
+const LOG0 = Math.log(0.85), LOG1 = Math.log(44);
+const rx = (r, w) => 6 + ((Math.log(r) - LOG0) / (LOG1 - LOG0)) * (w - 12);
+function drawRuler() {
+  const svg = $('ruler');
+  const w = 340, y = 30;
+  let s = `<defs><linearGradient id="dg" x1="0" x2="1"><stop offset="0" stop-color="#ffd9a8"/><stop offset="1" stop-color="#ff8a3d" stop-opacity=".2"/></linearGradient></defs>`;
+  s += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="rgba(239,231,218,.2)" stroke-width="1"/>`;
+  for (const r of [1, 2, 5, 10, 20, 40]) s += `<line x1="${rx(r, w)}" y1="${y + 3}" x2="${rx(r, w)}" y2="${y + 6}" stroke="rgba(239,231,218,.25)"/>`;
+  s += `<rect x="${rx(3, w)}" y="${y - 2}" width="${rx(14, w) - rx(3, w)}" height="4" fill="url(#dg)"/>`;
+  s += `<rect x="${rx(1, w) - 4}" y="${y - 4}" width="8" height="8" fill="#000" stroke="rgba(239,231,218,.6)"/>`;
+  s += `<line x1="${rx(1.5, w)}" y1="${y - 6}" x2="${rx(1.5, w)}" y2="${y + 6}" stroke="#b9d3ff" stroke-width="2"/>`;
+  s += `<line x1="${rx(2.598, w)}" y1="${y - 6}" x2="${rx(2.598, w)}" y2="${y + 6}" stroke="#8a8277" stroke-width="2"/>`;
+  s += `<line x1="${rx(3, w)}" y1="${y - 6}" x2="${rx(3, w)}" y2="${y + 6}" stroke="#ff8a3d" stroke-width="2"/>`;
+  const cx = rx(state.dist, w);
+  s += `<g transform="translate(${cx} ${y})"><path d="M0 -8 L5 -15 L-5 -15 Z" fill="#ff8a3d"/><line y1="-8" y2="6" stroke="#ff8a3d"/></g>`;
+  const label = 'вы · ' + nf(state.dist, 1);
+  const anchor = cx > w - 60 ? 'end' : 'middle';
+  s += `<text x="${anchor === 'end' ? cx + 5 : cx}" y="${y - 20}" fill="#ffc98a" font-family="Martian Mono, monospace" font-size="11" text-anchor="${anchor}">${label}</text>`;
+  svg.innerHTML = s;
+}
+
+function setPressed(seg, attr, val) {
+  seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset[attr] === String(val))));
+}
+function setMode(v) {
+  state.physics = v;
+  setPressed($('modeSeg'), 'mode', v);
+  setPressed($('modeSegMini'), 'mode', v);
+  $('modeNote').innerHTML = v
+    ? 'Доплер и&nbsp;гравитационное красное смещение включены: сторона диска, летящая к&nbsp;вам, ярче и&nbsp;голубее.'
+    : 'Только линза, без Доплера — как в&nbsp;«Интерстелларе». Диск симметричный и&nbsp;тёплый.';
+}
+$('modeSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setMode(+b.dataset.mode); });
+$('modeSegMini').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setMode(+b.dataset.mode); });
+
+function setMass(k) {
+  state.mass = k;
+  setPressed($('massSeg'), 'mass', k);
+  $('massNote').textContent = MASSES[k].note;
+  updateHud();
+}
+$('massSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setMass(b.dataset.mass); });
+
+function paintRange(el) {
+  const p = ((el.value - el.min) / (el.max - el.min)) * 100;
+  el.style.setProperty('--p', p + '%');
+}
+function syncControls() {
+  $('el').value = (state.el * 180 / Math.PI).toFixed(1);
+  $('elOut').textContent = Math.round(state.el * 180 / Math.PI) + '°';
+  $('dist').value = state.dist.toFixed(1);
+  $('distOut').innerHTML = nf(state.dist, 1) + NB + 'r<sub>s</sub>';
+  $('bright').value = state.bright;
+  $('brOut').textContent = nf(state.bright, 2);
+  ['el', 'dist', 'bright'].forEach((id) => paintRange($(id)));
+}
+const clampEl = (v) => {
+  const lim = 70 * Math.PI / 180, min = 0.4 * Math.PI / 180;
+  v = Math.max(-lim, Math.min(lim, v));
+  if (Math.abs(v) < min) v = v < 0 ? -min : min;
+  return v;
+};
+$('el').addEventListener('input', (e) => { state.el = clampEl(+e.target.value * Math.PI / 180); idle = 0; syncControls(); });
+$('dist').addEventListener('input', (e) => { state.dist = +e.target.value; syncControls(); updateHud(); });
+$('bright').addEventListener('input', (e) => { state.bright = +e.target.value; syncControls(); });
+
+function toggle(id, key) {
+  $(id).addEventListener('click', () => {
+    state[key] = !state[key];
+    $(id).setAttribute('aria-pressed', String(state[key]));
+  });
+  $(id).setAttribute('aria-pressed', String(state[key]));
+}
+toggle('tDisk', 'disk'); toggle('tStars', 'stars'); toggle('tOrbit', 'orbit');
+
+function resetView() {
+  state.el = DEFAULT.el; state.az = DEFAULT.az; state.dist = portrait() ? 25 : 22;
+  velAz = velEl = 0; idle = 3;
+  syncControls(); updateHud();
+}
+$('reset').addEventListener('click', resetView);
+canvas.addEventListener('dblclick', resetView);
+
+function setUiHidden(v) { document.body.classList.toggle('hide-ui', v); }
+$('hideUi').addEventListener('click', () => setUiHidden(true));
+
+$('menuBtn').addEventListener('click', () => {
+  const open = !document.body.classList.contains('sheet');
+  document.body.classList.toggle('sheet', open);
+  $('menuBtn').setAttribute('aria-expanded', String(open));
+});
+
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' && e.key !== 'h' && e.key !== 'H') return;
+  if (e.key === 'h' || e.key === 'H' || e.key === 'р' || e.key === 'Р') setUiHidden(!document.body.classList.contains('hide-ui'));
+  else if (e.key === 'Escape') setUiHidden(false);
+  else if (e.key === 'ArrowLeft') { velAz -= 0.02; idle = 0; }
+  else if (e.key === 'ArrowRight') { velAz += 0.02; idle = 0; }
+  else if (e.key === 'ArrowUp') { velEl += 0.012; idle = 0; }
+  else if (e.key === 'ArrowDown') { velEl -= 0.012; idle = 0; }
+  else if (e.key === '+' || e.key === '=') { state.dist = Math.max(6, state.dist / 1.08); syncControls(); updateHud(); }
+  else if (e.key === '-' || e.key === '_') { state.dist = Math.min(40, state.dist * 1.08); syncControls(); updateHud(); }
+});
+
+/* ── Жесты: облёт, зум, щипок ────────────────────────── */
+const drag = { active: false, x: 0, y: 0, pts: new Map(), pinch: 0 };
+canvas.addEventListener('pointerdown', (e) => {
+  canvas.setPointerCapture(e.pointerId);
+  drag.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  drag.active = true; drag.x = e.clientX; drag.y = e.clientY;
+  velAz = velEl = 0; idle = 0;
+  canvas.classList.add('dragging');
+  $('hint').classList.add('gone');
+  if (document.body.classList.contains('sheet')) { document.body.classList.remove('sheet'); $('menuBtn').setAttribute('aria-expanded', 'false'); }
+  if (drag.pts.size === 2) {
+    const [a, b] = [...drag.pts.values()];
+    drag.pinch = Math.hypot(a.x - b.x, a.y - b.y);
+  }
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag.pts.has(e.pointerId)) return;
+  drag.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (drag.pts.size === 2) {
+    const [a, b] = [...drag.pts.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (drag.pinch > 0) { state.dist = Math.min(40, Math.max(6, state.dist * drag.pinch / d)); syncControls(); updateHud(); }
+    drag.pinch = d;
+    return;
+  }
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  drag.x = e.clientX; drag.y = e.clientY;
+  const k = 3.2 / Math.max(innerWidth, 600);
+  velAz = -dx * k; velEl = dy * k * 0.8;
+  state.az += velAz; state.el = clampEl(state.el + velEl);
+  idle = 0;
+  syncControls();
+});
+function endDrag(e) {
+  drag.pts.delete(e.pointerId);
+  if (drag.pts.size < 2) drag.pinch = 0;
+  if (drag.pts.size === 0) { drag.active = false; canvas.classList.remove('dragging'); }
+}
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  state.dist = Math.min(40, Math.max(6, state.dist * Math.exp(e.deltaY * 0.0012)));
+  idle = 0;
+  syncControls(); updateHud();
+}, { passive: false });
+
+addEventListener('resize', () => { resize(); });
+
+/* ── Старт ────────────────────────────────────────────── */
+if (innerWidth < 761) $('explain').open = false; else $('explain').open = false;
+setMode(1);
+setMass('sgra');
+syncControls();
+resize();
+updateHud();
+raf = requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

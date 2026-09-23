@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вавилонская библиотека</title>
+<meta name="description" content="Бесконечные шестигранные галереи по мотивам рассказа Борхеса. Каждая книга задана своим адресом, а поиск находит страницу, где уже написана любая фраза.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="scene" aria-label="Шестигранные галереи библиотеки"></canvas>
+<div class="shade" aria-hidden="true"></div>
+
+<header class="title">
+  <div class="kicker">по мотивам Хорхе Луиса Борхеса · 1941</div>
+  <h1>Вавилонская библиотека</h1>
+  <p>Бесконечные шестигранные галереи. В книгах — все сочетания 35&nbsp;знаков: 32&nbsp;букв, пробела, запятой и точки. Где-то здесь уже написана любая фраза.</p>
+</header>
+
+<div class="where" id="where">
+  <span class="lbl">Шестигранник</span>
+  <code id="hexShort">…</code>
+  <button class="link" id="hexMore">весь номер</button>
+</div>
+
+<div class="dock">
+  <form id="search" class="search" autocomplete="off">
+    <input id="q" maxlength="400" placeholder="Напишите любую фразу — она уже есть в библиотеке" aria-label="Фраза для поиска">
+    <button type="submit" class="go">Найти</button>
+  </form>
+  <div class="row">
+    <label class="mode"><input type="checkbox" id="quiet"> <span>в тишине пробелов</span></label>
+    <span class="sep"></span>
+    <button class="ghost" id="down">Этажом ниже</button>
+    <button class="ghost" id="up">Этажом выше</button>
+    <button class="ghost" id="random">Случайная книга</button>
+  </div>
+</div>
+
+<div class="tip" id="tip" hidden></div>
+<div class="toast" id="toast" hidden></div>
+<div class="fade" id="fade" aria-hidden="true"></div>
+
+<section class="book" id="book" hidden role="dialog" aria-modal="true" aria-labelledby="bAddr">
+  <div class="book-inner">
+    <header class="bhead">
+      <div>
+        <h2 id="bAddr">Стена 1 · полка 1 · том 1</h2>
+        <div class="hexline" id="bHex"></div>
+      </div>
+      <button class="close" id="bClose" aria-label="Закрыть книгу">Закрыть</button>
+    </header>
+    <div class="spread" id="spread">
+      <article class="page" id="pageL"></article>
+      <article class="page" id="pageR"></article>
+    </div>
+    <footer class="bfoot">
+      <button class="pg" id="prevP" aria-label="Предыдущие страницы">‹</button>
+      <input type="range" id="pSlider" min="1" max="410" value="1" aria-label="Страница">
+      <span id="pNum">стр. 1–2 из 410</span>
+      <button class="pg" id="nextP" aria-label="Следующие страницы">›</button>
+    </footer>
+  </div>
+</section>
+
+<div class="full" id="full" hidden role="dialog" aria-modal="true" aria-label="Полный номер шестигранника">
+  <div class="full-inner">
+    <header><h2>Полный номер шестигранника</h2><button class="close" id="fullClose">Закрыть</button></header>
+    <p>Номер записан в системе счисления по основанию 36. В нём <b id="fullLen">—</b> знаков — столько нужно, чтобы различить все шестигранники.</p>
+    <pre id="fullHex"></pre>
+  </div>
+</div>
+
+<script src="babel.js"></script>
+<script src="ui.js"></script>
+<script src="scene.js"></script>
+</body>
+</html>

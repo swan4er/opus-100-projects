@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Как работает GPS</title>
+<meta name="description" content="Интерактивная объяснялка: время полёта сигнала, трилатерация, ошибка часов, геометрия и поправка теории относительности.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;600;700&family=Martian+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a1626;
+  --bg2:#0f1e33;
+  --panel:#12243c;
+  --text:#ebe6dc;
+  --soft:#9fb0c3;
+  --dim:#8497ad;
+  --sig:#ff7a2f;
+  --sig2:#ffb27a;
+  --rcv:#7fd6ff;
+  --err:#ff5d6c;
+  --grid:rgba(127,214,255,.06);
+  --line:rgba(159,176,195,.18);
+  --sans:'Geologica','Helvetica Neue',Arial,sans-serif;
+  --mono:'Martian Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-weight:300;-webkit-font-smoothing:antialiased;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:88px 88px}
+canvas{display:block;width:100%;height:100%}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--sig);outline-offset:3px}
+b,strong{font-weight:600}
+
+/* ── первый экран ── */
+.hero{position:relative;height:100vh;min-height:640px;overflow:hidden}
+.hero canvas{position:absolute;inset:0}
+.hero-text{position:relative;z-index:2;max-width:560px;padding:0 0 0 max(40px,7vw);height:100%;display:flex;flex-direction:column;justify-content:center}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--sig)}
+h1{font-weight:700;font-size:clamp(52px,7vw,104px);line-height:.92;letter-spacing:-.035em;margin:18px 0 26px}
+h1 span{color:var(--sig)}
+.lede{font-size:20px;line-height:1.55;color:#cfd7e1;max-width:30em}
+.coords{margin-top:30px;font-family:var(--mono);font-size:12px;color:var(--soft);line-height:1.9}
+.coords b{color:var(--rcv);font-weight:500}
+.scroll{position:absolute;left:max(40px,7vw);bottom:34px;z-index:2;font-family:var(--mono);font-size:12px;letter-spacing:.1em;color:var(--soft);display:flex;align-items:center;gap:12px}
+.scroll i{width:1px;height:38px;background:linear-gradient(var(--sig),transparent);display:block;animation:drop 1.8s ease-in-out infinite}
+@keyframes drop{0%{transform:scaleY(0);transform-origin:top}45%{transform:scaleY(1);transform-origin:top}55%{transform:scaleY(1);transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+
+/* ── главы ── */
+.chapter{max-width:1180px;margin:0 auto;padding:110px 40px 40px;display:grid;grid-template-columns:minmax(300px,400px) 1fr;gap:56px;align-items:start}
+.chapter .txt{position:sticky;top:90px}
+.num{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--sig);margin-bottom:14px}
+h2{font-weight:600;font-size:36px;line-height:1.08;letter-spacing:-.02em;margin-bottom:18px}
+.txt p{font-size:17px;line-height:1.65;color:#d3dae3;margin-bottom:14px}
+.callout{margin-top:18px;padding:14px 16px;background:var(--panel);font-size:15px;line-height:1.5;color:var(--text)}
+.callout b{color:var(--sig2);font-family:var(--mono);font-weight:500}
+.fig{background:linear-gradient(180deg,rgba(18,36,60,.85),rgba(12,26,44,.85));border:1px solid var(--line);position:relative}
+.fig .cv{height:440px;touch-action:none}
+.fig.tall .cv{height:520px}
+.controls{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center;padding:14px 18px 16px;border-top:1px solid var(--line)}
+.ctl{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--soft)}
+.ctl output{font-family:var(--mono);font-size:13px;color:var(--text);min-width:92px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:170px;height:24px;background:transparent;cursor:pointer;--p:0%}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:linear-gradient(to right,var(--sig) var(--p),rgba(159,176,195,.25) var(--p))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--text);margin-top:-6.5px;border:3px solid var(--sig)}
+input[type=range]::-moz-range-track{height:3px;background:rgba(159,176,195,.25)}
+input[type=range]::-moz-range-progress{height:3px;background:var(--sig)}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--text);border:3px solid var(--sig)}
+.seg{display:flex;border:1px solid var(--line)}
+.seg button{font-size:14px;padding:8px 13px;color:var(--soft);transition:background .2s,color .2s}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--sig);color:#1b0d03}
+.btn{font-size:14px;padding:8px 13px;border:1px solid var(--line);color:var(--text);transition:border-color .2s,background .2s}
+.btn:hover{border-color:var(--sig)}
+.btn.on{background:rgba(255,122,47,.16);border-color:var(--sig)}
+.readout{position:absolute;left:18px;top:14px;font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--soft);pointer-events:none}
+.readout b{color:var(--text);font-weight:500}
+.readout .o{color:var(--sig2)}
+.readout .c{color:var(--rcv)}
+.readout .r{color:var(--err)}
+.hint{position:absolute;right:16px;top:14px;font-size:13px;color:var(--dim);pointer-events:none}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--soft)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:-1px}
+.bars{display:grid;gap:9px;margin-top:6px}
+.bar{display:grid;grid-template-columns:150px 1fr 90px;align-items:center;gap:12px;font-size:14px;color:var(--soft)}
+.bar span.v{font-family:var(--mono);font-size:13px;color:var(--text);text-align:right}
+.bar .t{height:10px;background:rgba(159,176,195,.12);position:relative}
+.bar .t i{position:absolute;top:0;bottom:0}
+
+.outro{max-width:1180px;margin:0 auto;padding:110px 40px 90px}
+.outro h2{max-width:14em}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:28px}
+.card{background:var(--panel);padding:22px 22px 24px;border-top:2px solid var(--sig)}
+.card h3{font-weight:600;font-size:19px;margin-bottom:10px}
+.card p{font-size:15px;line-height:1.6;color:#c9d2dd}
+.foot{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);font-size:13px;line-height:1.7;color:var(--dim);max-width:62em}
+
+@media (max-width:900px){
+  .hero{height:auto;min-height:100vh}
+  .hero-text{padding:36vh 22px 90px;justify-content:flex-start}
+  h1{font-size:54px}
+  .lede{font-size:17px}
+  .scroll{left:22px}
+  .chapter{grid-template-columns:1fr;gap:22px;padding:80px 16px 20px}
+  .chapter .txt{position:static}
+  h2{font-size:28px}
+  .fig .cv{height:360px}
+  .fig.tall .cv{height:420px}
+  .controls{padding:12px}
+  input[type=range]{width:130px}
+  .bar{grid-template-columns:110px 1fr 76px;font-size:13px}
+  .outro{padding:80px 16px 60px}
+  .cards{grid-template-columns:1fr}
+  .hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} .scroll i{animation:none} }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <canvas id="hero"></canvas>
+  <div class="hero-text">
+    <div class="kicker">Объяснялка · спутниковая навигация</div>
+    <h1>Как работает <span>GPS</span></h1>
+    <p class="lede">Над Землёй летают три десятка спутников с&nbsp;атомными часами. Телефон не&nbsp;отправляет им&nbsp;ни&nbsp;байта&nbsp;— он&nbsp;только слушает. Разберём по&nbsp;шагам, как из&nbsp;одного лишь времени получаются координаты с&nbsp;точностью до&nbsp;метров.</p>
+    <div class="coords" id="heroCoords">приёмник: <b>55,756° с.&nbsp;ш., 37,617° в.&nbsp;д.</b> — Москва<br>видно спутников: <b id="heroVis">—</b></div>
+  </div>
+  <div class="scroll"><i></i>листайте вниз</div>
+</header>
+
+<!-- 1 -->
+<section class="chapter">
+  <div class="txt">
+    <div class="num">01 — расстояние</div>
+    <h2>Расстояние — это время</h2>
+    <p>Каждый спутник непрерывно передаёт, кто он, где находится и&nbsp;который час по&nbsp;его атомным часам. Сигнал летит со&nbsp;скоростью света и&nbsp;доходит до&nbsp;Земли примерно за&nbsp;67&nbsp;миллисекунд.</p>
+    <p>Приёмник сравнивает время отправки со&nbsp;временем приёма и&nbsp;умножает разницу на&nbsp;скорость света. Всё, расстояние известно.</p>
+    <div class="callout">Цена ошибки огромна: <b>1&nbsp;мкс</b> неточности часов&nbsp;— это <b>300&nbsp;м</b> ошибки расстояния.</div>
+  </div>
+  <div class="fig">
+    <div class="cv"><canvas id="f1"></canvas></div>
+    <div class="readout" id="r1"></div>
+    <div class="controls">
+      <label class="ctl">Высота спутника <input type="range" id="alt" min="19000" max="26000" step="100" value="20200"><output id="altO"></output></label>
+      <label class="ctl">Ошибка часов <input type="range" id="clk" min="0" max="3" step="0.05" value="0"><output id="clkO"></output></label>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="chapter">
+  <div class="txt">
+    <div class="num">02 — трилатерация</div>
+    <h2>Один спутник даёт окружность</h2>
+    <p>Известно расстояние до&nbsp;одного спутника&nbsp;— значит, вы&nbsp;где-то на&nbsp;окружности вокруг него (в&nbsp;пространстве&nbsp;— на&nbsp;сфере). Второй спутник оставляет две точки пересечения, третий&nbsp;— одну.</p>
+    <p>Двигайте спутники мышью: пересечение всегда остаётся там, где приёмник.</p>
+  </div>
+  <div class="fig">
+    <div class="cv"><canvas id="f2"></canvas></div>
+    <div class="hint">спутники можно тащить</div>
+    <div class="controls">
+      <div class="seg" id="f2n"><button data-n="1">1 спутник</button><button data-n="2">2 спутника</button><button data-n="3" class="on">3 спутника</button></div>
+      <div class="legend"><span><i style="background:var(--sig)"></i>спутник</span><span><i style="background:var(--rcv)"></i>приёмник</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="chapter">
+  <div class="txt">
+    <div class="num">03 — часы приёмника</div>
+    <h2>Часы телефона врут</h2>
+    <p>На&nbsp;спутниках атомные часы, в&nbsp;телефоне&nbsp;— дешёвый кварц, который уходит на&nbsp;микросекунды. Ошибка одинакова для всех расстояний, поэтому окружности дружно расползаются и&nbsp;перестают сходиться в&nbsp;точку.</p>
+    <p>Выход изящный: считать ошибку часов ещё одной неизвестной. На&nbsp;плоскости для этого хватает трёх спутников, в&nbsp;пространстве нужно четыре&nbsp;— три координаты плюс время.</p>
+    <div class="callout">Поэтому GPS-приёмник заодно знает <b>точное время</b>&nbsp;— лучше, чем любые кварцевые часы.</div>
+  </div>
+  <div class="fig">
+    <div class="cv"><canvas id="f3"></canvas></div>
+    <div class="readout" id="r3"></div>
+    <div class="controls">
+      <label class="ctl">Ошибка часов приёмника <input type="range" id="bias" min="0" max="25" step="0.5" value="12"><output id="biasO"></output></label>
+      <button class="btn on" id="solve">Решить с поправкой на&nbsp;часы</button>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="chapter">
+  <div class="txt">
+    <div class="num">04 — геометрия</div>
+    <h2>Геометрия решает всё</h2>
+    <p>Измерения всегда немного шумят: вместо тонкой окружности&nbsp;— кольцо. Если спутники столпились в&nbsp;одной части неба, кольца пересекаются под острым углом, и&nbsp;область, где может быть приёмник, вытягивается.</p>
+    <p>Разбросайте спутники по&nbsp;небу&nbsp;— и&nbsp;эллипс ошибки сожмётся. Эту зависимость меряют геометрическим фактором точности&nbsp;— DOP.</p>
+  </div>
+  <div class="fig">
+    <div class="cv"><canvas id="f4"></canvas></div>
+    <div class="readout" id="r4"></div>
+    <div class="hint">спутники можно тащить</div>
+    <div class="controls">
+      <label class="ctl">Шум измерений <input type="range" id="noise" min="0.3" max="3" step="0.1" value="1.4"><output id="noiseO"></output></label>
+      <button class="btn" id="bunch">Столпить</button>
+      <button class="btn" id="spread">Разбросать</button>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="chapter">
+  <div class="txt">
+    <div class="num">05 — относительность</div>
+    <h2>Эйнштейн в&nbsp;каждом кармане</h2>
+    <p>Спутник летит со&nbsp;скоростью 3,9&nbsp;км/с, и&nbsp;по&nbsp;специальной теории относительности его часы отстают примерно на&nbsp;7&nbsp;микросекунд в&nbsp;сутки. Но&nbsp;он&nbsp;в&nbsp;20&nbsp;000&nbsp;км над Землёй, где гравитация слабее, и&nbsp;по&nbsp;общей теории относительности часы спешат на&nbsp;46&nbsp;микросекунд.</p>
+    <p>Итог&nbsp;— около +38&nbsp;микросекунд в&nbsp;сутки. Без поправки координаты уплывали&nbsp;бы примерно на&nbsp;11&nbsp;километров за&nbsp;день.</p>
+    <div class="callout">Поэтому опорные генераторы спутников ещё на&nbsp;Земле настраивают не&nbsp;на&nbsp;10,23&nbsp;МГц, а&nbsp;на&nbsp;<b>10,22999999543&nbsp;МГц</b>.</div>
+  </div>
+  <div class="fig tall">
+    <div class="cv"><canvas id="f5"></canvas></div>
+    <div class="readout" id="r5"></div>
+    <div class="controls" style="flex-direction:column;align-items:stretch">
+      <label class="ctl">Дней без поправки <input type="range" id="days" min="0" max="7" step="0.05" value="1"><output id="daysO"></output></label>
+      <div class="bars">
+        <div class="bar">Гравитация (ОТО)<div class="t"><i style="left:50%;width:32%;background:var(--sig)"></i></div><span class="v">+45,9&nbsp;мкс</span></div>
+        <div class="bar">Скорость (СТО)<div class="t"><i style="right:50%;width:5.1%;background:var(--rcv)"></i></div><span class="v">−7,2&nbsp;мкс</span></div>
+        <div class="bar"><b style="color:var(--text)">Итого за&nbsp;сутки</b><div class="t"><i style="left:50%;width:26.9%;background:var(--sig2)"></i></div><span class="v">+38,7&nbsp;мкс</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="chapter">
+  <div class="txt">
+    <div class="num">06 — всё вместе</div>
+    <h2>Небо над Москвой</h2>
+    <p>Так небо видит приёмник: центр&nbsp;— зенит, край&nbsp;— горизонт. Спутники идут по&nbsp;своим орбитам, одни восходят, другие заходят. Над горизонтом почти всегда 8–12&nbsp;спутников&nbsp;— с&nbsp;запасом больше нужных четырёх.</p>
+    <p>Чем шире они разбросаны по&nbsp;небу, тем меньше PDOP и&nbsp;точнее координаты.</p>
+    <div class="callout">Модель созвездия: 6&nbsp;плоскостей, наклон 55°, радиус орбиты 26&nbsp;560&nbsp;км, период <b>11&nbsp;ч&nbsp;58&nbsp;мин</b>. Время ускорено в&nbsp;600&nbsp;раз.</div>
+  </div>
+  <div class="fig tall">
+    <div class="cv"><canvas id="f6"></canvas></div>
+    <div class="readout" id="r6"></div>
+    <div class="controls">
+      <div class="seg" id="speed"><button data-s="0">Пауза</button><button data-s="600" class="on">×600</button><button data-s="3000">×3000</button></div>
+      <div class="legend"><span><i style="background:var(--sig)"></i>над горизонтом</span><span><i style="background:#44576d"></i>маска 10°</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="outro">
+  <div class="num">07 — что ещё мешает</div>
+  <h2>Метры, которые приходится отвоёвывать</h2>
+  <div class="cards">
+    <div class="card"><h3>Ионосфера</h3><p>Заряженный слой атмосферы задерживает сигнал на&nbsp;метры&nbsp;— а&nbsp;в&nbsp;бурю и&nbsp;на&nbsp;десятки метров. Задержка зависит от&nbsp;частоты, поэтому двухчастотные приёмники вычисляют её&nbsp;и&nbsp;вычитают.</p></div>
+    <div class="card"><h3>Многолучёвость</h3><p>В&nbsp;городе сигнал отражается от&nbsp;стеклянных фасадов и&nbsp;приходит по&nbsp;длинному пути. Отсюда точка, которая «прыгает» через улицу у&nbsp;высоток.</p></div>
+    <div class="card"><h3>Холодный старт</h3><p>Чтобы найти спутники с&nbsp;нуля, нужны минуты. Телефоны берут подсказки из&nbsp;сети (A-GPS): какие спутники сейчас над вами и&nbsp;где их&nbsp;искать.</p></div>
+  </div>
+  <p class="foot">Числа округлены. Созвездие в&nbsp;последней главе&nbsp;— модель с&nbsp;круговыми орбитами, а&nbsp;не&nbsp;реальные эфемериды. Схемы во&nbsp;второй–четвёртой главах плоские и&nbsp;не&nbsp;в&nbsp;масштабе: настоящие спутники в&nbsp;20&nbsp;000&nbsp;км, а&nbsp;здесь они ближе, чтобы окружности помещались на&nbsp;экран.</p>
+</section>
+
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const C = 299792.458; // км/с
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const COL = { sig: '#ff7a2f', sig2: '#ffb27a', rcv: '#7fd6ff', err: '#ff5d6c', text: '#ebe6dc', soft: '#9fb0c3', dim: '#8497ad', line: 'rgba(159,176,195,.18)' };
+const nf = (x, d = 0) => x.toFixed(d).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+function syncRange(el) { el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min)) * 100 + '%'); }
+document.querySelectorAll('input[type=range]').forEach((r) => { syncRange(r); r.addEventListener('input', () => syncRange(r)); });
+
+/* холст с учётом DPR; рисуем только когда виден */
+function figure(canvas, draw, opts = {}) {
+  const ctx = canvas.getContext('2d');
+  const st = { w: 0, h: 0, visible: false, t: 0, last: 0, dirty: true };
+  const resize = () => {
+    const r = canvas.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    st.w = r.width; st.h = r.height;
+    canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    st.dirty = true;
+  };
+  new ResizeObserver(resize).observe(canvas);
+  new IntersectionObserver((es) => { st.visible = es[0].isIntersecting; }, { rootMargin: '120px' }).observe(canvas);
+  resize();
+  const frame = (now) => {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - (st.last || now)) / 1000); st.last = now;
+    if (!st.visible || document.hidden) return;
+    if (!opts.animated && !st.dirty) return;
+    st.t += reduceMotion ? 0 : dt;
+    st.dirty = false;
+    ctx.clearRect(0, 0, st.w, st.h);
+    draw(ctx, st.w, st.h, st.t, dt);
+  };
+  requestAnimationFrame(frame);
+  return st;
+}
+/* перетаскиваемые точки */
+function draggable(canvas, getPoints, onMove) {
+  let drag = null;
+  const at = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  canvas.addEventListener('pointerdown', (e) => {
+    const [x, y] = at(e);
+    const pts = getPoints();
+    let best = -1, bd = 26;
+    pts.forEach((p, i) => { const d = Math.hypot(p[0] - x, p[1] - y); if (d < bd) { bd = d; best = i; } });
+    if (best >= 0) { drag = best; canvas.setPointerCapture(e.pointerId); canvas.style.cursor = 'grabbing'; }
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    const [x, y] = at(e);
+    if (drag !== null) { onMove(drag, x, y); return; }
+    const near = getPoints().some((p) => Math.hypot(p[0] - x, p[1] - y) < 26);
+    canvas.style.cursor = near ? 'grab' : 'default';
+  });
+  canvas.addEventListener('pointerup', () => { drag = null; canvas.style.cursor = 'default'; });
+}
+
+/* рисунок спутника: корпус и панели */
+function drawSat(ctx, x, y, s, color, label, angle = 0) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+  ctx.fillStyle = color;
+  ctx.fillRect(-s * 0.35, -s * 0.35, s * 0.7, s * 0.7);
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = '#2d5d8a';
+  ctx.fillRect(-s * 1.55, -s * 0.28, s * 1.0, s * 0.56);
+  ctx.fillRect(s * 0.55, -s * 0.28, s * 1.0, s * 0.56);
+  ctx.strokeStyle = 'rgba(127,214,255,.6)'; ctx.lineWidth = 1;
+  for (const sx of [-1.55, 0.55]) for (let k = 1; k < 3; k++) { ctx.beginPath(); ctx.moveTo((sx + k / 3) * s, -s * 0.28); ctx.lineTo((sx + k / 3) * s, s * 0.28); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  if (label) {
+    ctx.font = '500 12px "Martian Mono", monospace';
+    ctx.fillStyle = color; ctx.textAlign = 'center';
+    ctx.fillText(label, x, y - s * 1.1);
+  }
+}
+function drawReceiver(ctx, x, y, color = COL.rcv, r = 6) {
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = color; ctx.globalAlpha = 0.35; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x, y, r + 6, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+/* ════ 0. Первый экран: Земля и созвездие в честном масштабе ════ */
+const R_E = 6371, R_ORB = 26560, T_ORB = 11 * 3600 + 58 * 60, OMEGA_E = 7.2921159e-5;
+const PLANES = 6, PER_PLANE = 5, INC = 55 * Math.PI / 180;
+const MOSCOW = { lat: 55.756 * Math.PI / 180, lon: 37.617 * Math.PI / 180 };
+function satECI(i, tSec) {
+  const plane = Math.floor(i / PER_PLANE), k = i % PER_PLANE;
+  const raan = plane * (Math.PI * 2 / PLANES);
+  const u = (k / PER_PLANE) * Math.PI * 2 + plane * 0.52 + (tSec / T_ORB) * Math.PI * 2;
+  const cu = Math.cos(u), su = Math.sin(u), cO = Math.cos(raan), sO = Math.sin(raan), ci = Math.cos(INC), si = Math.sin(INC);
+  return [R_ORB * (cO * cu - sO * su * ci), R_ORB * (sO * cu + cO * su * ci), R_ORB * su * si];
+}
+function rcvECI(lat, lon, tSec) {
+  const th = lon + OMEGA_E * tSec + 1.2;
+  return [R_E * Math.cos(lat) * Math.cos(th), R_E * Math.cos(lat) * Math.sin(th), R_E * Math.sin(lat)];
+}
+const stars = Array.from({ length: 220 }, () => [Math.random(), Math.random(), Math.random() * 0.8 + 0.2]);
+const heroSt = figure($('#hero'), (ctx, w, h, t) => {
+  const mobile = w < 900;
+  const cx = mobile ? w * 0.5 : w * 0.7, cy = mobile ? h * 0.2 : h * 0.5;
+  const scale = (mobile ? Math.min(w * 0.46, h * 0.19) : Math.min(w * 0.27, h * 0.44)) / R_ORB;
+  for (const [sx, sy, a] of stars) { ctx.fillStyle = `rgba(235,230,220,${a * 0.35})`; ctx.fillRect(sx * w, sy * h, 1.2, 1.2); }
+  const tSec = t * 2400;
+  // вид: наклон камеры и медленное вращение
+  const yaw = t * 0.05 + 0.6, pitch = -0.38;
+  const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const proj = (p) => {
+    const x1 = p[0] * cyw - p[1] * syw, y1 = p[0] * syw + p[1] * cyw, z1 = p[2];
+    const y2 = y1 * cp - z1 * sp, z2 = y1 * sp + z1 * cp;
+    return [cx + x1 * scale, cy - z2 * scale, y2];  // y2 — глубина (к зрителю отрицательная)
+  };
+  const Re = R_E * scale;
+  // задние половины орбит
+  const drawOrbits = (front) => {
+    for (let pl = 0; pl < PLANES; pl++) {
+      ctx.beginPath();
+      let started = false;
+      for (let k = 0; k <= 120; k++) {
+        const u = (k / 120) * Math.PI * 2, raan = pl * (Math.PI * 2 / PLANES);
+        const p = [R_ORB * (Math.cos(raan) * Math.cos(u) - Math.sin(raan) * Math.sin(u) * Math.cos(INC)), R_ORB * (Math.sin(raan) * Math.cos(u) + Math.cos(raan) * Math.sin(u) * Math.cos(INC)), R_ORB * Math.sin(u) * Math.sin(INC)];
+        const q = proj(p);
+        const isFront = q[2] < 0;
+        if (isFront === front) { if (!started) { ctx.moveTo(q[0], q[1]); started = true; } else ctx.lineTo(q[0], q[1]); }
+        else started = false;
+      }
+      ctx.strokeStyle = front ? 'rgba(255,178,122,.28)' : 'rgba(159,176,195,.1)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  };
+  drawOrbits(false);
+  // Земля: градиентный шар и сетка
+  const g = ctx.createRadialGradient(cx - Re * 0.35, cy - Re * 0.35, Re * 0.1, cx, cy, Re);
+  g.addColorStop(0, '#1d4a73'); g.addColorStop(1, '#0b223b');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, Re, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(127,214,255,.22)'; ctx.lineWidth = 0.8;
+  const earthRot = OMEGA_E * tSec + 1.2;
+  for (let lat = -60; lat <= 60; lat += 30) {
+    ctx.beginPath(); let st2 = false;
+    for (let k = 0; k <= 72; k++) {
+      const lon = (k / 72) * Math.PI * 2, la = lat * Math.PI / 180;
+      const q = proj([R_E * Math.cos(la) * Math.cos(lon), R_E * Math.cos(la) * Math.sin(lon), R_E * Math.sin(la)]);
+      if (q[2] < 0) { if (!st2) { ctx.moveTo(q[0], q[1]); st2 = true; } else ctx.lineTo(q[0], q[1]); } else st2 = false;
+    }
+    ctx.stroke();
+  }
+  for (let m = 0; m < 12; m++) {
+    ctx.beginPath(); let st2 = false;
+    for (let k = 0; k <= 48; k++) {
+      const la = -Math.PI / 2 + (k / 48) * Math.PI, lon = (m / 12) * Math.PI * 2 + earthRot;
+      const q = proj([R_E * Math.cos(la) * Math.cos(lon), R_E * Math.cos(la) * Math.sin(lon), R_E * Math.sin(la)]);
+      if (q[2] < 0) { if (!st2) { ctx.moveTo(q[0], q[1]); st2 = true; } else ctx.lineTo(q[0], q[1]); } else st2 = false;
+    }
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(127,214,255,.45)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(cx, cy, Re, 0, Math.PI * 2); ctx.stroke();
+  // приёмник и видимые спутники
+  const rc = rcvECI(MOSCOW.lat, MOSCOW.lon, tSec), rq = proj(rc);
+  const up = rc.map((v) => v / R_E);
+  let vis = 0;
+  const sats = [];
+  for (let i = 0; i < PLANES * PER_PLANE; i++) {
+    const s = satECI(i, tSec), d = [s[0] - rc[0], s[1] - rc[1], s[2] - rc[2]], L = Math.hypot(...d);
+    const el = Math.asin((d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) / L);
+    const q = proj(s);
+    sats.push({ q, el, visible: el > 10 * Math.PI / 180, i });
+  }
+  // сигналы: пунктир с бегущими импульсами
+  for (const s of sats) if (s.visible) {
+    vis++;
+    ctx.strokeStyle = 'rgba(255,122,47,.35)'; ctx.lineWidth = 1;
+    ctx.setLineDash([2, 6]); ctx.lineDashOffset = -t * 30;
+    ctx.beginPath(); ctx.moveTo(s.q[0], s.q[1]); ctx.lineTo(rq[0], rq[1]); ctx.stroke();
+    ctx.setLineDash([]);
+    const ph = (t * 0.6 + s.i * 0.137) % 1;
+    const px = s.q[0] + (rq[0] - s.q[0]) * ph, py = s.q[1] + (rq[1] - s.q[1]) * ph;
+    ctx.fillStyle = COL.sig2; ctx.beginPath(); ctx.arc(px, py, 2.2, 0, Math.PI * 2); ctx.fill();
+  }
+  drawOrbits(true);
+  for (const s of sats) {
+    if (s.q[2] > 0 && Math.hypot(s.q[0] - cx, s.q[1] - cy) < Re) continue;
+    const behind = s.q[2] > 0;
+    ctx.globalAlpha = behind ? 0.35 : 1;
+    drawSat(ctx, s.q[0], s.q[1], mobile ? 5 : 7.5, s.visible ? COL.sig : '#6f8298');
+    ctx.globalAlpha = 1;
+  }
+  if (rq[2] < 0) { drawReceiver(ctx, rq[0], rq[1], COL.rcv, 3.5); }
+  $('#heroVis').textContent = vis;
+}, { animated: true });
+
+/* ════ 1. Время полёта ════ */
+const altIn = $('#alt'), clkIn = $('#clk');
+figure($('#f1'), (ctx, w, h, t) => {
+  const alt = +altIn.value, err = +clkIn.value;
+  const tt = alt / C * 1000; // мс
+  $('#altO').textContent = nf(alt) + ' км';
+  $('#clkO').textContent = err ? nf(err, 2) + ' мкс' : 'нет';
+  const sx = w * 0.14, sy = h * 0.3, rx = w * 0.86, ry = h * 0.72;
+  // «земля»
+  ctx.strokeStyle = COL.line; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, ry + 26); ctx.lineTo(w, ry + 26); ctx.stroke();
+  // волна: концентрические дуги расходятся от спутника
+  const period = 2.2, ph = (t % period) / period;
+  const D = Math.hypot(rx - sx, ry - sy);
+  for (let k = 0; k < 4; k++) {
+    const p = (ph + k / 4) % 1, r = p * D * 1.05;
+    ctx.strokeStyle = `rgba(255,122,47,${(1 - p) * 0.55})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(sx, sy, r, -0.1, Math.PI * 0.6); ctx.stroke();
+  }
+  // луч
+  ctx.setLineDash([3, 7]); ctx.strokeStyle = 'rgba(255,178,122,.5)';
+  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(rx, ry); ctx.stroke(); ctx.setLineDash([]);
+  // импульс
+  const pp = ph;
+  ctx.fillStyle = COL.sig2;
+  ctx.beginPath(); ctx.arc(sx + (rx - sx) * pp, sy + (ry - sy) * pp, 5, 0, Math.PI * 2); ctx.fill();
+  drawSat(ctx, sx, sy, 14, COL.sig, 'спутник', -0.3);
+  // ложная позиция из-за ошибки часов: сдвиг вдоль луча
+  const errKm = err * 1e-6 * C;
+  if (err > 0) {
+    const ux = (rx - sx) / D, uy = (ry - sy) / D;
+    const k = Math.min(140, errKm * 0.35);
+    drawReceiver(ctx, rx + ux * k, ry + uy * k, COL.err, 5);
+    ctx.fillStyle = COL.err; ctx.font = '500 12px "Martian Mono", monospace'; ctx.textAlign = 'left';
+    ctx.fillText('+' + nf(errKm * 1000) + ' м', rx + ux * k + 12, ry + uy * k + 4);
+  }
+  drawReceiver(ctx, rx, ry);
+  ctx.fillStyle = COL.rcv; ctx.font = '500 12px "Martian Mono", monospace'; ctx.textAlign = 'center';
+  ctx.fillText('приёмник', rx, ry + 24);
+  $('#r1').innerHTML = `время в пути: <b class="o">${nf(tt, 1)} мс</b><br>расстояние = c × t = <b>${nf(alt)} км</b>` + (err ? `<br>ошибка часов ${nf(err, 2)} мкс → <b class="r">${nf(errKm * 1000)} м</b>` : '');
+}, { animated: true });
+[altIn, clkIn].forEach((el) => el.addEventListener('input', () => {}));
+
+/* ════ общая «плоская» сцена для глав 2–4 ════ */
+function makeScene(canvas, sats) {
+  const sc = { sats, rcv: [0, 0], view: null };
+  sc.fit = (w, h) => {
+    const k = Math.min(w / 110, h / 78);
+    sc.view = { k, ox: w / 2, oy: h * 0.72 };
+  };
+  sc.toPx = (p) => [sc.view.ox + p[0] * sc.view.k, sc.view.oy - p[1] * sc.view.k];
+  sc.toW = (x, y) => [(x - sc.view.ox) / sc.view.k, (sc.view.oy - y) / sc.view.k];
+  return sc;
+}
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+function circle(ctx, c, r, color, width = 1.6, alpha = 1, dash = null) {
+  ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.lineWidth = width;
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.arc(c[0], c[1], Math.max(0, r), 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+function gridBG(ctx, w, h, sc) {
+  ctx.strokeStyle = 'rgba(127,214,255,.05)'; ctx.lineWidth = 1;
+  const step = 10 * sc.view.k;
+  for (let x = sc.view.ox % step; x < w; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+  for (let y = sc.view.oy % step; y < h; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+}
+
+/* ════ 2. Трилатерация ════ */
+let f2n = 3;
+const sc2 = makeScene($('#f2'), [[-34, 44], [30, 50], [44, 18]]);
+const f2 = figure($('#f2'), (ctx, w, h, t) => {
+  sc2.fit(w, h); gridBG(ctx, w, h, sc2);
+  const R = sc2.rcv, rp = sc2.toPx(R);
+  const colors = [COL.sig, '#ffc857', '#f25f9c'];
+  for (let i = 0; i < f2n; i++) {
+    const s = sc2.sats[i], sp = sc2.toPx(s), r = dist(s, R) * sc2.view.k;
+    ctx.save(); ctx.globalAlpha = 0.08; ctx.fillStyle = colors[i]; ctx.beginPath(); ctx.arc(sp[0], sp[1], r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    circle(ctx, sp, r, colors[i], 1.8, 0.9);
+  }
+  // точки пересечения первых двух окружностей
+  if (f2n === 2) {
+    const [a, b] = sc2.sats, ra = dist(a, R), rb = dist(b, R);
+    const d = dist(a, b), x = (d * d + ra * ra - rb * rb) / (2 * d), y2 = ra * ra - x * x;
+    if (y2 > 0) {
+      const ex = [(b[0] - a[0]) / d, (b[1] - a[1]) / d], y = Math.sqrt(y2);
+      const p1 = [a[0] + ex[0] * x - ex[1] * y, a[1] + ex[1] * x + ex[0] * y], p2 = [a[0] + ex[0] * x + ex[1] * y, a[1] + ex[1] * x - ex[0] * y];
+      for (const p of [p1, p2]) { const q = sc2.toPx(p); ctx.strokeStyle = COL.text; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(q[0], q[1], 9, 0, Math.PI * 2); ctx.stroke(); }
+    }
+  }
+  if (f2n === 3) {
+    const pulse = 1 + 0.25 * Math.sin(t * 3);
+    circle(ctx, rp, 14 * pulse, COL.rcv, 1.4, 0.6);
+  }
+  if (f2n >= 1) drawReceiver(ctx, rp[0], rp[1]);
+  for (let i = 0; i < f2n; i++) { const sp = sc2.toPx(sc2.sats[i]); drawSat(ctx, sp[0], sp[1], 11, colors[i], 'С' + (i + 1)); }
+  ctx.font = '12px "Martian Mono", monospace'; ctx.fillStyle = COL.soft; ctx.textAlign = 'left';
+  ctx.fillText(f2n === 1 ? 'где-то на окружности' : f2n === 2 ? 'две возможные точки' : 'одна точка — вы здесь', 18, 26);
+}, { animated: true });
+draggable($('#f2'), () => sc2.sats.slice(0, f2n).map(sc2.toPx), (i, x, y) => { sc2.sats[i] = sc2.toW(x, y); });
+$('#f2n').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  f2n = +b.dataset.n;
+  document.querySelectorAll('#f2n button').forEach((x) => x.classList.toggle('on', x === b));
+});
+
+/* ════ 3. Ошибка часов как неизвестная ════ */
+const sc3 = makeScene($('#f3'), [[-38, 40], [26, 52], [46, 12]]);
+let solveOn = true;
+const biasIn = $('#bias');
+/* метод Гаусса — Ньютона для (x, y, b): ρᵢ = |sᵢ − p| + b */
+function solveXYB(sats, rho) {
+  let x = 0, y = -3, b = 0;   // старт ниже спутников: там, где приёмник, а не в зеркальном решении
+  for (let it = 0; it < 30; it++) {
+    const J = [], r = [];
+    sats.forEach((s, i) => { const d = Math.hypot(x - s[0], y - s[1]); J.push([(x - s[0]) / d, (y - s[1]) / d, 1]); r.push(rho[i] - (d + b)); });
+    const dx = lsq(J, r);
+    x += dx[0]; y += dx[1]; b += dx[2];
+    if (Math.hypot(...dx) < 1e-9) break;
+  }
+  return [x, y, b];
+}
+/* наименьшие квадраты: (JᵀJ)⁻¹ Jᵀ r */
+function lsq(J, r) {
+  const n = J[0].length, A = Array.from({ length: n }, () => new Array(n).fill(0)), v = new Array(n).fill(0);
+  J.forEach((row, i) => { for (let a = 0; a < n; a++) { v[a] += row[a] * r[i]; for (let c = 0; c < n; c++) A[a][c] += row[a] * row[c]; } });
+  return solveLin(A, v);
+}
+function solveLin(A, v) {
+  const n = v.length, M = A.map((row, i) => [...row, v[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]];
+    const d = M[c][c] || 1e-12;
+    for (let k = c; k <= n; k++) M[c][k] /= d;
+    for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c]; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M.map((row) => row[n]);
+}
+function invert(A) {
+  const n = A.length, M = A.map((row, i) => [...row, ...Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))]);
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]];
+    const d = M[c][c] || 1e-12;
+    for (let k = 0; k < 2 * n; k++) M[c][k] /= d;
+    for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c]; for (let k = 0; k < 2 * n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M.map((row) => row.slice(n));
+}
+figure($('#f3'), (ctx, w, h, t) => {
+  sc3.fit(w, h); gridBG(ctx, w, h, sc3);
+  const bUs = +biasIn.value, bKm = bUs * 1e-6 * C * 10;   // схема: ×10, чтобы сдвиг был виден
+  $('#biasO').textContent = nf(bUs, 1) + ' мкс';
+  const R = sc3.rcv, rho = sc3.sats.map((s) => dist(s, R) + bKm);
+  const colors = [COL.sig, '#ffc857', '#f25f9c'];
+  sc3.sats.forEach((s, i) => {
+    const sp = sc3.toPx(s);
+    circle(ctx, sp, dist(s, R) * sc3.view.k, colors[i], 1, 0.25, [4, 5]);
+    circle(ctx, sp, rho[i] * sc3.view.k, colors[i], 1.8, 0.9);
+  });
+  const rp = sc3.toPx(R);
+  const sol = solveXYB(sc3.sats, rho);
+  if (solveOn) {
+    // окружности, уменьшенные на найденную поправку, сходятся в точку
+    sc3.sats.forEach((s, i) => circle(ctx, sc3.toPx(s), (rho[i] - sol[2]) * sc3.view.k, COL.rcv, 1.2, 0.8));
+    const q = sc3.toPx([sol[0], sol[1]]);
+    drawReceiver(ctx, q[0], q[1]);
+  } else {
+    ctx.save(); ctx.globalAlpha = 0.5; drawReceiver(ctx, rp[0], rp[1], COL.text, 4); ctx.restore();
+  }
+  sc3.sats.forEach((s, i) => { const sp = sc3.toPx(s); drawSat(ctx, sp[0], sp[1], 11, colors[i], 'С' + (i + 1)); });
+  $('#r3').innerHTML = `пунктир — истинные расстояния<br>сплошные — измеренные (+${nf(bUs, 1)} мкс)` +
+    (solveOn ? `<br>найдено: ошибка часов <b class="c">${nf(sol[2] / (C * 10) * 1e6, 2)} мкс</b>` : '<br><b class="r">окружности не сходятся</b>');
+}, { animated: true });
+draggable($('#f3'), () => sc3.sats.map(sc3.toPx), (i, x, y) => { sc3.sats[i] = sc3.toW(x, y); });
+$('#solve').onclick = () => { solveOn = !solveOn; $('#solve').classList.toggle('on', solveOn); $('#solve').textContent = solveOn ? 'Решить с поправкой на часы' : 'Показать без поправки'; };
+$('#solve').textContent = 'Решить с поправкой на часы';
+
+/* ════ 4. Геометрия и DOP ════ */
+const sc4 = makeScene($('#f4'), [[-40, 36], [8, 56], [44, 30]]);
+const noiseIn = $('#noise');
+let noiseSeed = [0.6, -0.9, 0.4];
+let anim4 = null;
+figure($('#f4'), (ctx, w, h, t) => {
+  sc4.fit(w, h); gridBG(ctx, w, h, sc4);
+  if (anim4) {
+    const k = Math.min(1, (performance.now() - anim4.t0) / 700), e = 1 - Math.pow(1 - k, 3);
+    sc4.sats = anim4.from.map((p, i) => [p[0] + (anim4.to[i][0] - p[0]) * e, p[1] + (anim4.to[i][1] - p[1]) * e]);
+    if (k >= 1) anim4 = null;
+  }
+  const sigma = +noiseIn.value;
+  $('#noiseO').textContent = '±' + nf(sigma, 1) + ' км';
+  const R = sc4.rcv;
+  // кольца неопределённости: область, где все измерения согласны в пределах 2σ
+  const cell = 3, W = Math.ceil(w / cell), H = Math.ceil(h / cell);
+  ctx.fillStyle = 'rgba(255,122,47,.55)';
+  const rs = sc4.sats.map((s) => dist(s, R));
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const p = sc4.toW(i * cell + cell / 2, j * cell + cell / 2);
+    let ok = true;
+    for (let k = 0; k < 3; k++) if (Math.abs(dist(sc4.sats[k], p) - rs[k]) > 2 * sigma) { ok = false; break; }
+    if (ok) ctx.fillRect(i * cell, j * cell, cell, cell);
+  }
+  sc4.sats.forEach((s) => {
+    const sp = sc4.toPx(s), r = rs[sc4.sats.indexOf(s)] * sc4.view.k;
+    circle(ctx, sp, r - 2 * sigma * sc4.view.k, COL.sig, 1, 0.35);
+    circle(ctx, sp, r + 2 * sigma * sc4.view.k, COL.sig, 1, 0.35);
+  });
+  // эллипс ошибки: Q = (HᵀH)⁻¹ σ²
+  const Hm = sc4.sats.map((s) => { const d = dist(s, R); return [(R[0] - s[0]) / d, (R[1] - s[1]) / d]; });
+  const A = [[0, 0], [0, 0]];
+  Hm.forEach((r) => { A[0][0] += r[0] * r[0]; A[0][1] += r[0] * r[1]; A[1][1] += r[1] * r[1]; });
+  A[1][0] = A[0][1];
+  const Q = invert(A);
+  const tr = Q[0][0] + Q[1][1], det = Q[0][0] * Q[1][1] - Q[0][1] * Q[1][0];
+  const l1 = tr / 2 + Math.sqrt(Math.max(0, tr * tr / 4 - det)), l2 = tr / 2 - Math.sqrt(Math.max(0, tr * tr / 4 - det));
+  const ang = 0.5 * Math.atan2(2 * Q[0][1], Q[0][0] - Q[1][1]);
+  const rp = sc4.toPx(R);
+  ctx.save(); ctx.translate(rp[0], rp[1]); ctx.rotate(-ang);
+  ctx.strokeStyle = COL.rcv; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(0, 0, Math.sqrt(l1) * sigma * 2 * sc4.view.k, Math.sqrt(Math.max(l2, 1e-6)) * sigma * 2 * sc4.view.k, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+  drawReceiver(ctx, rp[0], rp[1], COL.rcv, 4);
+  sc4.sats.forEach((s, i) => { const sp = sc4.toPx(s); drawSat(ctx, sp[0], sp[1], 11, COL.sig, 'С' + (i + 1)); });
+  const hdop = Math.sqrt(tr);
+  const quality = hdop < 1.5 ? 'отлично' : hdop < 3 ? 'хорошо' : hdop < 6 ? 'так себе' : 'плохо';
+  $('#r4').innerHTML = `геометрический фактор HDOP: <b class="${hdop < 3 ? 'c' : 'r'}">${nf(hdop, 2)}</b> — ${quality}<br>эллипс 2σ: <b>${nf(Math.sqrt(l1) * sigma * 2, 1)} × ${nf(Math.sqrt(Math.max(l2, 0)) * sigma * 2, 1)} км</b>`;
+  void t; void noiseSeed;
+}, { animated: true });
+draggable($('#f4'), () => sc4.sats.map(sc4.toPx), (i, x, y) => { anim4 = null; sc4.sats[i] = sc4.toW(x, y); });
+$('#bunch').onclick = () => { anim4 = { from: sc4.sats.map((p) => [...p]), to: [[-6, 52], [4, 58], [14, 50]], t0: performance.now() }; };
+$('#spread').onclick = () => { anim4 = { from: sc4.sats.map((p) => [...p]), to: [[-46, 26], [0, 60], [46, 26]], t0: performance.now() }; };
+
+/* ════ 5. Относительность ════ */
+const daysIn = $('#days');
+figure($('#f5'), (ctx, w, h, t) => {
+  const days = +daysIn.value;
+  $('#daysO').textContent = nf(days, days % 1 ? 2 : 0) + ' ' + (Math.abs(days - 1) < 1e-9 ? 'сутки' : 'сут.');
+  const drift = 38.7 * days, errKm = drift * 1e-6 * C;
+  const cx = w * 0.62, cy = h * 0.52, maxKm = 85, k = Math.min(w * 0.34, h * 0.44) / maxKm;
+  // кольца дальности
+  ctx.font = '11px "Martian Mono", monospace'; ctx.textAlign = 'left';
+  for (const r of [10, 25, 50, 75]) {
+    circle(ctx, [cx, cy], r * k, 'rgba(159,176,195,.3)', 1, 1, [2, 5]);
+    ctx.fillStyle = COL.dim; ctx.fillText(r + ' км', cx + r * k * 0.71 + 4, cy - r * k * 0.71 - 4);
+  }
+  // уплывающая точка: направление медленно гуляет, радиус растёт
+  const a = -0.6 + Math.sin(days * 1.3) * 0.5;
+  const px = cx + Math.cos(a) * errKm * k, py = cy + Math.sin(a) * errKm * k;
+  ctx.strokeStyle = 'rgba(255,93,108,.5)'; ctx.setLineDash([3, 5]); ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(px, py); ctx.stroke(); ctx.setLineDash([]);
+  drawReceiver(ctx, cx, cy, COL.rcv, 6);
+  const pulse = 1 + 0.15 * Math.sin(t * 4);
+  circle(ctx, [px, py], 10 * pulse, COL.err, 1.5, 0.6);
+  drawReceiver(ctx, px, py, COL.err, 5);
+  ctx.fillStyle = COL.rcv; ctx.fillText('где вы на самом деле', cx - 70, cy + 28);
+  ctx.fillStyle = COL.err; ctx.fillText('что покажет навигатор', Math.min(w - 170, px + 12), py - 12);
+  // двое часов
+  const x0 = 22, y0 = h - 132;
+  const clock = (label, val, color, y) => {
+    ctx.fillStyle = COL.soft; ctx.font = '12px "Geologica", sans-serif'; ctx.fillText(label, x0, y);
+    ctx.fillStyle = color; ctx.font = '500 20px "Martian Mono", monospace'; ctx.fillText(val, x0, y + 26);
+  };
+  const base = (t * 1000) % 1e6;
+  clock('Часы на Земле, мкс', nf(base, 0).padStart(9, ' '), COL.text, y0);
+  clock('Часы спутника без поправки, мкс', nf(base + drift, 1), COL.sig2, y0 + 62);
+  $('#r5').innerHTML = `накопленный уход часов: <b class="o">${nf(drift, 1)} мкс</b><br>ошибка положения: <b class="r">${nf(errKm, 1)} км</b>`;
+}, { animated: true });
+
+/* ════ 6. Небо над Москвой: полярная карта ════ */
+let speed = 600, skyT = 0;
+function enu(lat, lon, tSec) {
+  const th = lon + OMEGA_E * tSec + 1.2;
+  const up = [Math.cos(lat) * Math.cos(th), Math.cos(lat) * Math.sin(th), Math.sin(lat)];
+  const east = [-Math.sin(th), Math.cos(th), 0];
+  const north = [-Math.sin(lat) * Math.cos(th), -Math.sin(lat) * Math.sin(th), Math.cos(lat)];
+  return { up, east, north };
+}
+const trails = new Map();
+figure($('#f6'), (ctx, w, h, t, dt) => {
+  skyT += dt * speed;
+  const narrow = w < 600;
+  const cx = narrow ? w * 0.5 : w * 0.42, cy = h * 0.5, R = narrow ? Math.min(w * 0.4, h * 0.4) : Math.min(w * 0.36, h * 0.44);
+  // кольца высоты и стороны света
+  ctx.fillStyle = 'rgba(10,22,38,.6)'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  const elR = (el) => R * (1 - el / 90);
+  ctx.fillStyle = 'rgba(68,87,109,.35)'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.arc(cx, cy, elR(10), 0, Math.PI * 2, true); ctx.fill();
+  for (const el of [0, 30, 60]) circle(ctx, [cx, cy], elR(el), 'rgba(159,176,195,.35)', 1);
+  ctx.strokeStyle = 'rgba(159,176,195,.2)';
+  for (let a = 0; a < 360; a += 30) { const r = a * Math.PI / 180; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.sin(r) * R, cy - Math.cos(r) * R); ctx.stroke(); }
+  ctx.font = '600 13px "Geologica", sans-serif'; ctx.fillStyle = COL.text; ctx.textAlign = 'center';
+  ctx.fillText('С', cx, cy - R - 10); ctx.fillText('Ю', cx, cy + R + 20); ctx.fillText('В', cx + R + 14, cy + 5); ctx.fillText('З', cx - R - 14, cy + 5);
+  ctx.font = '11px "Martian Mono", monospace'; ctx.fillStyle = COL.dim;
+  ctx.fillText('60°', cx + 4, cy - elR(60) + 13); ctx.fillText('30°', cx + 4, cy - elR(30) + 13);
+  const rc = rcvECI(MOSCOW.lat, MOSCOW.lon, skyT), fr = enu(MOSCOW.lat, MOSCOW.lon, skyT);
+  const vis = [];
+  for (let i = 0; i < PLANES * PER_PLANE; i++) {
+    const s = satECI(i, skyT), d = [s[0] - rc[0], s[1] - rc[1], s[2] - rc[2]], L = Math.hypot(...d);
+    const e = [d[0] / L, d[1] / L, d[2] / L];
+    const up = e[0] * fr.up[0] + e[1] * fr.up[1] + e[2] * fr.up[2];
+    const ea = e[0] * fr.east[0] + e[1] * fr.east[1] + e[2] * fr.east[2];
+    const no = e[0] * fr.north[0] + e[1] * fr.north[1] + e[2] * fr.north[2];
+    const el = Math.asin(up) * 180 / Math.PI, az = Math.atan2(ea, no);
+    const tr = trails.get(i) || [];
+    if (el > -2) { const rr = elR(Math.max(0, el)); tr.push([cx + Math.sin(az) * rr, cy - Math.cos(az) * rr]); if (tr.length > 70) tr.shift(); } else tr.length = 0;
+    trails.set(i, tr);
+    if (tr.length > 1) {
+      ctx.beginPath(); tr.forEach((p, k) => (k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+      ctx.strokeStyle = el > 10 ? 'rgba(255,122,47,.35)' : 'rgba(111,130,152,.3)'; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+    if (el > 0) {
+      const rr = elR(el), x = cx + Math.sin(az) * rr, y = cy - Math.cos(az) * rr;
+      const on = el > 10;
+      ctx.fillStyle = on ? COL.sig : '#44576d';
+      ctx.beginPath(); ctx.arc(x, y, on ? 6 : 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = on ? COL.text : COL.dim; ctx.font = '500 11px "Martian Mono", monospace'; ctx.textAlign = 'left';
+      ctx.fillText('G' + String(i + 1).padStart(2, '0'), x + 9, y + 4);
+      if (on) vis.push({ i, el, e: [ea, no, up] });
+    }
+  }
+  // PDOP по видимым: строки [−e, 1], Q = (HᵀH)⁻¹
+  let pdop = NaN;
+  if (vis.length >= 4) {
+    const A = Array.from({ length: 4 }, () => new Array(4).fill(0));
+    vis.forEach(({ e }) => { const r = [-e[0], -e[1], -e[2], 1]; for (let a = 0; a < 4; a++) for (let c = 0; c < 4; c++) A[a][c] += r[a] * r[c]; });
+    const Q = invert(A);
+    pdop = Math.sqrt(Q[0][0] + Q[1][1] + Q[2][2]);
+  }
+  // список справа
+  const lx = w * 0.8;
+  ctx.textAlign = 'left'; ctx.font = '12px "Geologica", sans-serif'; ctx.fillStyle = COL.soft;
+  if (!narrow) ctx.fillText('над горизонтом', lx, 40);
+  (narrow ? [] : vis.slice().sort((a, b) => b.el - a.el).slice(0, 12)).forEach((v, k) => {
+    ctx.fillStyle = COL.text; ctx.font = '500 12px "Martian Mono", monospace';
+    ctx.fillText('G' + String(v.i + 1).padStart(2, '0'), lx, 66 + k * 22);
+    ctx.fillStyle = 'rgba(255,122,47,.8)'; ctx.fillRect(lx + 44, 58 + k * 22, (v.el / 90) * Math.max(40, w * 0.12), 8);
+    ctx.fillStyle = COL.dim; ctx.fillText(Math.round(v.el) + '°', lx + 50 + (v.el / 90) * Math.max(40, w * 0.12), 66 + k * 22);
+  });
+  const hh = Math.floor((skyT / 3600) % 24), mm = Math.floor((skyT / 60) % 60);
+  $('#r6').innerHTML = `модельное время: <b>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</b><br>видно: <b class="o">${vis.length}</b> · PDOP <b class="${pdop < 3 ? 'c' : 'r'}">${isNaN(pdop) ? '—' : nf(pdop, 2)}</b>`;
+}, { animated: true });
+$('#speed').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  speed = +b.dataset.s;
+  document.querySelectorAll('#speed button').forEach((x) => x.classList.toggle('on', x === b));
+});
+void heroSt; void f2; void css;
+</script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Хрущёвка. Ремонт под ключ</title>
+<meta name="description" content="Шабашник делает ремонт в хрущёвке 1974 года, а в шесть вечера бабушка-хозяйка принимает работу. Отбивайтесь словами — она решает, сколько заплатить.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Dela+Gothic+One&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script src="../_ai/ai.js"></script>
+</head>
+<body>
+<canvas id="cv" aria-label="Квартира в хрущёвке, вид от первого лица"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div id="shade" class="shade"></div>
+
+<!-- ====== HUD ====== -->
+<div id="hud" class="hud hidden">
+  <div class="topbar">
+    <div class="clockbox" title="Время. В 18:00 приедет хозяйка">
+      <svg id="clock7" class="seg" viewBox="0 0 132 44" aria-hidden="true"></svg>
+      <div class="clocklbl" id="clockLbl">хозяйка приедет в 18:00</div>
+    </div>
+    <div class="meters">
+      <div class="meter" title="Выпито пива: смелее, быстрее, но криво">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M9 2h6v4l2 3v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V9l2-3z"/><path d="M8 13h8"/></svg>
+        <b id="mBeer">0</b><span>пиво</span>
+      </div>
+      <div class="meter" title="Нервы: чем выше, тем сильнее дрожат руки">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>
+        <i class="bar"><i id="mNerves"></i></i><span>нервы</span>
+      </div>
+      <div class="meter" title="Смелость: сколько слов вы сможете сказать на приёмке">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M4 18c3-9 13-9 16 0"/><path d="M12 4v6"/></svg>
+        <i class="bar"><i id="mCourage"></i></i><span>смелость</span>
+      </div>
+    </div>
+    <div id="demoTag" class="demotag hidden">демо-режим — нейросеть не подключена</div>
+    <div class="aibox">
+      <span id="aiDot" class="dot"></span><span id="aiCost">$0.0000</span>
+      <button id="bSound" class="iconbtn" aria-label="Звук" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="sndWave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg></button>
+    </div>
+  </div>
+  <aside id="note" class="note">
+    <button id="noteHead" class="notehead" aria-expanded="true"><span>Записка от хозяйки</span><kbd>Tab</kbd></button>
+    <ol id="taskList" class="tasks"></ol>
+    <p class="notefoot">Пиво в ящике не трогай — это Толику.<br>Кота покорми. З.&nbsp;П.</p>
+  </aside>
+
+  <div id="cross" class="cross"><svg viewBox="0 0 40 40"><circle id="ring" cx="20" cy="20" r="14" pathLength="100"/></svg></div>
+  <div id="prompt" class="prompt"></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="phoneRing" class="ringing hidden"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg><span id="ringText">Звонит телефон — в прихожей</span></div>
+
+  <nav id="tools" class="tools" aria-label="Инструменты"></nav>
+</div>
+
+<!-- ====== сенсорное управление ====== -->
+<div id="touch" class="touch hidden">
+  <div id="stick" class="stick"><i id="knob"></i></div>
+  <div class="tbtns">
+    <button id="tE" class="tbtn">E</button>
+    <button id="tA" class="tbtn main">Работать</button>
+  </div>
+</div>
+
+<!-- ====== диалог ====== -->
+<section id="talk" class="talk hidden" aria-live="polite">
+  <div class="talkhead"><span id="talkWho" class="who"></span><span id="talkWhere" class="where"></span></div>
+  <div id="talkLog" class="talklog"></div>
+  <div id="chips" class="chips"></div>
+  <form id="talkForm" class="talkform">
+    <input id="talkIn" autocomplete="off" spellcheck="false" maxlength="240" placeholder="Что скажете?">
+    <span id="talkLeft" class="left"></span>
+    <button id="talkSend" type="submit" class="send">Сказать</button>
+  </form>
+  <div class="talkbtns" id="talkBtns"></div>
+</section>
+
+<!-- ====== приёмка: пузырь бабушки и конверт ====== -->
+<div id="bubble" class="bubble hidden"><div id="bubbleText"></div></div>
+<div id="envelope" class="envelope hidden">
+  <div class="envtop">Конверт</div>
+  <div id="envSum" class="envsum">40&nbsp;000&nbsp;₽</div>
+  <ul id="envList" class="envlist"></ul>
+</div>
+
+<!-- ====== титул ====== -->
+<section id="title" class="title hidden">
+  <div class="tcard">
+    <p class="kicker">Шабашка на&nbsp;один день · 4-й&nbsp;этаж · 1974&nbsp;год&nbsp;постройки</p>
+    <h1>Хрущёвка.<br><span>Ремонт под&nbsp;ключ</span></h1>
+    <p class="lead">Хозяйка уехала к&nbsp;сестре до&nbsp;шести. У&nbsp;вас обои, плитка, краска, дыра в&nbsp;стене и&nbsp;ящик чужого пива. Вечером — приёмка: бабушка ходит по&nbsp;квартире и&nbsp;видит каждый косяк. Отбивайтесь словами.</p>
+    <div class="tbtnrow">
+      <button id="bStart" class="big">Взять ключи</button>
+      <button id="bHow" class="ghost">Как играть</button>
+    </div>
+    <div id="how" class="how hidden">
+      <p><b>WASD</b> — ходить, <b>мышь</b> — смотреть, <b>ЛКМ</b> — работать инструментом, <b>E</b> — взять, открыть, выпить, закурить. <b>1–6</b> или колесо — инструменты. <b>Tab</b> — записка.</p>
+      <p>Пиво ускоряет работу и&nbsp;добавляет смелости на&nbsp;приёмке, но&nbsp;руки кривеют, а&nbsp;бабушка всё посчитает. Перекур на&nbsp;балконе успокаивает нервы, и&nbsp;сосед расскажет байку.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====== итог: дневник ====== -->
+<section id="result" class="result hidden">
+  <div class="diary">
+    <div class="dhead"><span>Дневник шабашника</span><span id="dDate">23 сентября</span></div>
+    <div class="drow"><span>Ремонт</span><b id="gWork" class="grade">—</b></div>
+    <div class="drow"><span>Поведение</span><b id="gBeh" class="grade">—</b></div>
+    <div class="dpay"><span>Заплатила</span><b id="dPay">—</b><small id="dOf">из 40&nbsp;000&nbsp;₽</small></div>
+    <p id="dRemark" class="remark"></p>
+    <p id="dWords" class="words"></p>
+    <p id="dGift" class="gift"></p>
+    <ul id="dList" class="dlist"></ul>
+    <div class="tbtnrow"><button id="bAgain" class="big">Ещё один объект</button></div>
+  </div>
+</section>
+
+<div id="boot" class="boot">Поднимаемся на четвёртый этаж…</div>
+
+<script src="tex.js"></script>
+<script src="world.js"></script>
+<script src="people.js"></script>
+<script src="sound.js"></script>
+<script src="jobs.js"></script>
+<script src="talk.js"></script>
+<script src="game.js"></script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+window.KR_BOOT({ THREE, EffectComposer, RenderPass, ShaderPass, OutputPass, RoomEnvironment, RoundedBoxGeometry, mergeGeometries });
+</script>
+</body>
+</html>

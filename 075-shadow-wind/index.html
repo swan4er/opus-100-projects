@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Девочка и ветер — силуэтный мультфильм</title>
+<meta name="description" content="Короткий мультфильм в технике театра теней: девочка поймала ветер в банку — и мир замер. Всё нарисовано и сыграно кодом.">
+<meta name="theme-color" content="#0e0b0a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,500;0,600;1,500&family=Brygada+1918:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="ambient" aria-hidden="true">
+  <i class="amb amb-dawn"></i><i class="amb amb-gold"></i><i class="amb amb-flame"></i><i class="amb amb-ash"></i><i class="amb amb-night"></i>
+</div>
+
+<main class="cinema">
+  <header class="bill">
+    <h1>Девочка и&nbsp;ветер</h1>
+    <p class="sub">Силуэтный мультфильм<span class="dot" aria-hidden="true"></span>1&nbsp;мин 52&nbsp;с<span class="dot" aria-hidden="true"></span>флейта и&nbsp;арфа</p>
+  </header>
+
+  <section class="stage" id="stage" aria-label="Мультфильм «Девочка и ветер»">
+    <div class="frame" id="frame">
+      <canvas id="film" aria-label="Кадр мультфильма"></canvas>
+      <button class="center-play" id="centerPlay" type="button" aria-label="Смотреть" hidden>
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M18 13.5v21l17-10.5z"/></svg>
+        <span id="centerLabel">Смотреть</span>
+      </button>
+    </div>
+
+    <div class="player" id="player">
+      <button class="btn icon" id="play" type="button" aria-label="Пауза">
+        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13M16 5.5v13"/></svg>
+        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+      </button>
+
+      <div class="timeline" id="timeline" role="slider" tabindex="0" aria-label="Время фильма" aria-valuemin="0" aria-valuemax="112" aria-valuenow="0" aria-valuetext="0:00, Заря">
+        <div class="track"><div class="played" id="played"><i id="playedIn"></i></div><div class="marks" id="marks"></div><div class="knob" id="knob"></div></div>
+        <div class="chapters" id="chapters"></div>
+        <div class="peek" id="peek" aria-hidden="true"><canvas id="peekCanvas" width="208" height="117"></canvas><span id="peekText"></span></div>
+      </div>
+
+      <span class="time" id="time" aria-live="off">0:00 / 1:52</span>
+
+      <button class="btn sound off" id="sound" type="button" aria-pressed="false">
+        <svg class="i-snd" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="wave" d="M15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/></svg>
+        <span class="lbl" id="soundLabel">Смотреть со&nbsp;звуком</span>
+      </button>
+
+      <button class="btn icon" id="replay" type="button" aria-label="Смотреть сначала">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.2-5.1"/><path d="M5 4.5v4h4"/></svg>
+      </button>
+      <button class="btn icon" id="fs" type="button" aria-label="Во весь экран">
+        <svg class="i-fs" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15"/></svg>
+        <svg class="i-fsx" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5V9H4.5M19.5 9H15V4.5M15 19.5V15h4.5M4.5 15H9v4.5"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <aside class="playbill" aria-label="О фильме">
+    <p class="logline">Девочка ждёт ветра, чтобы запустить воздушного змея. Ветер прилетает&nbsp;— и&nbsp;весь день они играют. Но&nbsp;вечером ветер собирается уходить.</p>
+    <p class="credits">Сюжет, силуэты, музыка&nbsp;— Opus&nbsp;5.5. Ни&nbsp;одной картинки и&nbsp;аудиофайла: всё нарисовано на&nbsp;Canvas и&nbsp;сыграно на&nbsp;Web&nbsp;Audio.</p>
+    <p class="keys"><kbd>Пробел</kbd> пауза <kbd>←</kbd><kbd>→</kbd> ±5&nbsp;с <kbd>F</kbd> экран <kbd>M</kbd> звук</p>
+  </aside>
+</main>
+
+<noscript><p class="nojs">Для просмотра нужен JavaScript.</p></noscript>
+
+<script src="lib.js"></script>
+<script src="scenery.js"></script>
+<script src="girl.js"></script>
+<script src="wind.js"></script>
+<script src="film.js"></script>
+<script src="render.js"></script>
+<script src="score.js"></script>
+<script src="player.js"></script>
+</body>
+</html>

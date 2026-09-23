@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Говорящая машина — формантный синтезатор речи</title>
+<meta name="description" content="Синтезатор речи по мотивам «Водера» Bell Labs (1939): треугольник гласных, речевой тракт, спектр гармоник и формант.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poiret+One&family=Tenor+Sans&family=Jura:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="console">
+
+  <header class="plate">
+    <svg class="sunburst" viewBox="0 0 1200 240" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+      <g id="rays"></g>
+    </svg>
+    <p class="over">Формантный синтезатор речи <span>·</span> по&nbsp;мотивам «Водера» Bell&nbsp;Labs, 1939</p>
+    <h1>Говорящая машина</h1>
+  </header>
+
+  <main class="deck">
+    <section class="porthole" aria-label="Речевой тракт в разрезе">
+      <svg id="tract" viewBox="0 0 300 300" aria-hidden="true"></svg>
+      <p class="cap">Речевой тракт <span id="tract-label">[а]</span></p>
+    </section>
+
+    <section class="dial" aria-label="Треугольник гласных">
+      <div class="dial-glass">
+        <canvas id="plane"></canvas>
+        <p class="dial-note" id="dial-note">Ведите по&nbsp;стеклу — машина запоёт гласную</p>
+      </div>
+      <div class="readout">
+        <span>F1 <b id="f1">700</b>&nbsp;Гц</span>
+        <span>F2 <b id="f2">1220</b>&nbsp;Гц</span>
+        <span>F0 <b id="f0">110</b>&nbsp;Гц</span>
+      </div>
+    </section>
+
+    <section class="porthole" aria-label="Спектр звука">
+      <canvas id="spec"></canvas>
+      <p class="cap">Гармоники и&nbsp;форманты, 0–5&nbsp;кГц</p>
+    </section>
+  </main>
+
+  <section class="keys" aria-label="Клавиши фонем">
+    <div class="key-row vowels" id="vowel-keys"></div>
+    <div class="key-row consonants" id="cons-keys"></div>
+  </section>
+
+  <section class="speak">
+    <div class="words" id="words" role="group" aria-label="Готовые слова"></div>
+    <form class="say" id="say-form" autocomplete="off">
+      <label class="visually-hidden" for="say">Фраза для машины</label>
+      <input id="say" type="text" maxlength="80" placeholder="Напишите фразу, ударение — знаком +: мол+око">
+      <button type="submit" class="brass">Сказать</button>
+    </form>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Голос" id="voice-seg">
+        <button type="button" data-v="male" aria-pressed="true">Мужской</button>
+        <button type="button" data-v="female" aria-pressed="false">Женский</button>
+        <button type="button" data-v="child" aria-pressed="false">Детский</button>
+      </div>
+      <label class="knob-row"><span>Высота</span><input id="pitch" type="range" min="60" max="320" step="1" value="110"></label>
+      <button type="button" class="toggle" id="whisper" aria-pressed="false">Шёпот</button>
+      <button type="button" class="toggle" id="mute" aria-pressed="true" aria-label="Звук включён">Звук</button>
+      <button type="button" class="toggle" id="sing">Спеть гамму</button>
+    </div>
+  </section>
+
+  <p class="footnote">Звук включится после первого нажатия. Клавиатура: гласные и&nbsp;согласные печатаются прямо с&nbsp;русской раскладки.</p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

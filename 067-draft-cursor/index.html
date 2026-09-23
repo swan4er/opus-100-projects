@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Черновик — мультфильм</title>
+<meta name="description" content="Кинетическая типографика: в три часа ночи мигающий курсор помогает писателю найти первую фразу.">
+<meta name="theme-color" content="#0B0C0F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Display:ital,wght@0,200..900;1,200..900&family=Dela+Gothic+One&family=Anonymous+Pro:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Черновик</h1>
+      <p>мультфильм <span class="sep">·</span> 1&nbsp;мин 45&nbsp;с</p>
+    </div>
+    <button class="sound-start" id="soundStart" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 8.8a4.6 4.6 0 0 1 0 6.4M18.2 6.2a8.3 8.3 0 0 1 0 11.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <span>Смотреть со&nbsp;звуком</span>
+    </button>
+  </header>
+
+  <section class="player" id="player" aria-label="Плеер">
+    <div class="stage" id="stage">
+      <canvas id="film" role="img" aria-label="Мультфильм «Черновик»: три часа ночи, пустой документ и мигающий курсор, который помогает писателю найти первую фразу"></canvas>
+      <div class="veil" id="veil" aria-hidden="true"><span class="veil-caret"></span></div>
+      <p class="offline" id="offline" hidden>Шрифты не загрузились без сети — фильм идёт на системных. История та же.</p>
+    </div>
+
+    <div class="controls" id="controls">
+      <button class="ctl ctl-play" id="play" type="button" aria-label="Пауза">
+        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="3.6" height="14" rx="1" fill="currentColor"/><rect x="13.9" y="5" width="3.6" height="14" rx="1" fill="currentColor"/></svg>
+        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 5.2v13.6L19 12z" fill="currentColor"/></svg>
+        <span class="lbl" id="playLbl">Пауза</span>
+      </button>
+      <span class="time" id="time"><span id="tNow">0:00</span><span class="slash"> / </span><span id="tAll">1:45</span></span>
+      <div class="timeline" id="timeline" role="slider" tabindex="0" aria-label="Перемотка" aria-valuemin="0" aria-valuemax="105" aria-valuenow="0" aria-valuetext="0:00">
+        <div class="marks" id="marks"></div>
+        <div class="track"><div class="fill" id="fill"></div></div>
+        <div class="head" id="head"></div>
+        <div class="hover" id="hover" hidden></div>
+      </div>
+      <div class="ctl-row">
+        <button class="ctl" id="mute" type="button" aria-label="Включить звук" aria-pressed="false">
+          <svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 8.8a4.6 4.6 0 0 1 0 6.4M18.2 6.2a8.3 8.3 0 0 1 0 11.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="ctl" id="replay" type="button" aria-label="Смотреть сначала">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12a6.5 6.5 0 1 0 2-4.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4.6 4.8l.9 3.9 3.9-.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="ctl" id="fs" type="button" aria-label="Во весь экран">
+          <svg class="i-full" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="i-exit" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5V9H4.5M19.5 9H15V4.5M15 19.5V15h4.5M4.5 15H9v4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="about" aria-label="О фильме">
+    <h2>Сцены</h2>
+    <ol class="chapters" id="chapters"></ol>
+    <p class="keys"><kbd>Пробел</kbd>&nbsp;— пауза, <kbd>←</kbd> <kbd>→</kbd>&nbsp;— на&nbsp;5&nbsp;секунд, <kbd>F</kbd>&nbsp;— во&nbsp;весь экран</p>
+  </section>
+</main>
+
+<script src="engine.js"></script>
+<script src="actors.js"></script>
+<script src="render.js"></script>
+<script src="story.js"></script>
+<script src="story2.js"></script>
+<script src="sound.js"></script>
+<script src="player.js"></script>
+</body>
+</html>

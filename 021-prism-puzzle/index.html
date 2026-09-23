@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Призма — головоломка со светом</title>
+<meta name="description" content="Головоломка со светом: зеркала, призмы, фильтры и полупрозрачные стёкла. 24 уровня, решаемость каждого проверена решателем.">
+<meta name="theme-color" content="#06070c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tektur:wght@500;700&family=Onest:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="app">
+  <section class="stage" aria-label="Игровое поле">
+    <canvas id="board" aria-label="Поле с источниками света, мишенями и деталями"></canvas>
+  </section>
+
+  <aside class="panel" aria-label="Уровень и детали">
+    <header class="brand">
+      <h1>Призма</h1>
+      <p>головоломка со&nbsp;светом</p>
+    </header>
+
+    <div class="level-head">
+      <div class="lvnum"><span id="lvNum">01</span><span class="of">/ <span id="lvTotal">24</span></span></div>
+      <h2 id="lvName">Первый луч</h2>
+    </div>
+    <p class="lvtext" id="lvText"></p>
+
+    <div class="targets" id="targets" aria-live="polite"></div>
+
+    <div class="tray-wrap">
+      <p class="label">Детали</p>
+      <div class="tray" id="tray"></div>
+      <p class="tip" id="trayTip">Перетащите деталь на&nbsp;поле. Щелчок по&nbsp;зеркалу или стеклу поворачивает его, а&nbsp;чтобы убрать деталь, утащите её с&nbsp;поля.</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="hintBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z"/></svg><span>Подсказка</span></button>
+      <button class="btn" id="resetBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4.5h4.5"/></svg><span>Заново</span></button>
+      <button class="btn" id="levelsBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg><span>Уровни</span></button>
+      <button class="btn icon" id="soundBtn" aria-pressed="true" aria-label="Звук"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z"/><path class="wave" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/><path class="mute" d="M16 9.5l5 5M21 9.5l-5 5" style="display:none"/></svg></button>
+    </div>
+
+    <details class="rules" open>
+      <summary>Как ведёт себя свет</summary>
+      <ul>
+        <li><b>Зеркало</b> поворачивает луч на&nbsp;90°.</li>
+        <li><b>Призма</b> раскладывает белый свет: красный уходит налево от&nbsp;луча, зелёный — прямо, синий — направо. Цветной луч в&nbsp;призме тоже поворачивает.</li>
+        <li><b>Фильтр</b> пропускает только свои цвета.</li>
+        <li><b>Полупрозрачное стекло</b> делит луч надвое.</li>
+        <li><b>Мишень</b> складывает всё, что в&nbsp;неё попало, и&nbsp;ждёт точного цвета: красный + зелёный = жёлтый, все три = белый.</li>
+      </ul>
+    </details>
+  </aside>
+</main>
+
+<div class="win" id="win" hidden>
+  <div class="win-card">
+    <p class="kicker">Уровень пройден</p>
+    <h2 id="winName">Первый луч</h2>
+    <p id="winText">Свет нашёл дорогу.</p>
+    <button class="btn primary" id="nextBtn">Следующий уровень</button>
+  </div>
+</div>
+
+<div class="levels" id="levels" hidden>
+  <div class="levels-card">
+    <div class="levels-head">
+      <h2>Уровни</h2>
+      <button class="btn icon" id="closeLevels" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="grid" id="levelGrid"></div>
+    <p class="note">Решаемость каждого уровня проверена решателем, а&nbsp;лишних деталей нет: без любой из&nbsp;них уровень не&nbsp;решается.</p>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="levels.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
