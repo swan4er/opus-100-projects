@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Сто проектов Opus 5.5</title>
+<title>100+ проектов Opus 5.5</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<meta name="description" content="Коллекция из 100 интерактивных проектов: шейдеры, физика, компиляторы, игры, музыка и объяснялки. Собрано Opus 5.5 за один автономный запуск.">
+<meta name="description" content="Коллекция из 121 интерактивного проекта: шейдеры, физика, компиляторы, игры с нейросетью, мультфильмы, музыка и объяснялки. Собрано Opus 5.5 за один автономный запуск.">
 <meta name="theme-color" content="#0f0f0d">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -170,7 +170,7 @@ main { padding: 28px var(--gut) 80px; min-height: 60vh; }
 @keyframes flash { 0%, 100% { outline: 0 solid transparent; outline-offset: 0; } 15% { outline: 3px solid var(--acc); outline-offset: 6px; } 70% { outline: 3px solid var(--acc); outline-offset: 10px; } }
 
 /* ---------- Стена ---------- */
-.wall { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+.wall { display: grid; grid-template-columns: repeat(11, 1fr); gap: 3px; }
 .tile { position: relative; aspect-ratio: 16 / 10; background: var(--cbg, var(--bg2)); display: block; text-decoration: none; transform-origin: var(--ox, 50%) var(--oy, 50%);
   transition: transform .45s var(--ease), box-shadow .45s var(--ease), filter .3s; z-index: 1; }
 .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -231,7 +231,7 @@ footer li a:hover { color: var(--ink); border-color: var(--ink); }
   .stat b { font-size: 22px; }
   .stats .cta { grid-column: 1 / -1; margin-top: 6px; }
   .top .date { display: none; }
-  .stage { min-height: 46vw; } /* своё место под цифру «100» из точек */
+  .stage { min-height: 46vw; } /* своё место под цифру «121» из точек */
   .wall { grid-template-columns: repeat(4, 1fr); gap: 2px; }
   .wall .tile:hover { transform: scale(1.8); }
   footer ul { columns: 1; }
@@ -250,11 +250,11 @@ footer li a:hover { color: var(--ink); border-color: var(--ink); }
   <canvas id="hundred" aria-hidden="true"></canvas>
   <div class="top">
     <span class="kick"><span class="dot"></span>Коллекция<span class="date"> · 23 сентября 2026</span></span>
-    <nav><a href="IDEAS.md">100 идей</a><a href="BRIEF.md">Правила сборки</a><a href="#list">К проектам</a><button type="button" class="aikey" id="aikey" title="Игры с нейросетью работают на вашем ключе OpenRouter (BYOK)">Нейросеть</button></nav>
+    <nav><a href="IDEAS.md">121 идея</a><a href="BRIEF.md">Правила сборки</a><a href="#list">К проектам</a><button type="button" class="aikey" id="aikey" title="Игры с нейросетью работают на вашем ключе OpenRouter (BYOK)">Нейросеть</button></nav>
   </div>
   <div class="stage" aria-hidden="true"></div>
   <div class="intro">
-    <h1>Сто проектов, в&nbsp;которых силён <em>Opus&nbsp;5.5</em></h1>
+    <h1>100+ проектов, в&nbsp;которых силён <em>Opus&nbsp;5.5</em></h1>
     <div>
       <p class="lead">Игры, где персонажей играет нейросеть, десять мультфильмов, 3D, музыка и&nbsp;объяснялки. Каждый проект собран автономно, проверен по&nbsp;скриншотам и&nbsp;открывается двойным кликом. Цифра выше сложена из&nbsp;самих проектов&nbsp;— наведите на&nbsp;точку.</p>
     </div>
@@ -320,11 +320,13 @@ window.STATS = /*__STATS__*/{};
   const ORDER = [11, 10, 4, 0, 1, 9, 5, 7, 6, 8, 3, 2];
   const rank = (p) => { const r = ORDER.indexOf(p.cat); return (r < 0 ? 99 : r) * 1000 + p.n; };
   P.sort((a, b) => a.n - b.n); // номера перемешаны — показываем вразнобой, как в папке
-  const HERO = P.filter((p) => p.cat <= 9); // цифра «100» — из основной сотни
+  const HERO = P; // цифра из всех проектов, поэтому фильтры подсвечивают в ней любую категорию
+  const HERO_TEXT = String(P.length);
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const pad = (n) => String(n).padStart(3, '0');
   const norm = (s) => String(s ?? '').toLowerCase().replace(/ё/g, 'е');
+  const plural = (n, one, few, many) => { const a = n % 100, b = n % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b > 1 && b < 5 ? few : many; };
   const fmt = (n) => Math.round(n).toLocaleString('ru-RU').replace(/\s/g, ' ');
   const ICON_NET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>';
   const ICON_FILM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>';
@@ -335,7 +337,7 @@ window.STATS = /*__STATS__*/{};
 
   // ---------- Цифры в шапке ----------
   const stats = [
-    [S.main ?? P.length, 'проектов'],
+    [P.length, plural(P.length, 'проект', 'проекта', 'проектов')],
     ...(S.films ? [[S.films, 'мультфильмов']] : []),
     ...(S.aiGames ? [[S.aiGames, 'игр с нейросетью']] : []),
     [10 + (S.films ? 1 : 0) + (S.aiGames ? 1 : 0), 'категорий'],
@@ -363,10 +365,19 @@ window.STATS = /*__STATS__*/{};
       <div class="body"><h3>${esc(p.title)}</h3><p>${esc(p.tagline)}</p>
         <div class="meta"><span class="c">${esc(CATS[p.cat])}</span>${p.tech.slice(0, 3).map((t) => `<span>${esc(t)}</span>`).join('')}</div></div>
     </a>`).join('');
-  $('#wall').innerHTML = P.map((p, i) => {
-    const col = i % 10, row = Math.floor(i / 10);
-    return `<a class="tile" data-n="${p.n}" href="${esc(url(p))}" target="_blank" rel="noopener" style="${style(p)};--ox:${col === 0 ? '0%' : col === 9 ? '100%' : '50%'};--oy:${row === 0 ? '0%' : row === 9 ? '100%' : '50%'}" aria-label="${esc(pad(p.n) + ' · ' + p.title)}">${shot(p)}<span class="cap"><b>${pad(p.n)}</b>${esc(p.title)}</span></a>`;
-  }).join('');
+  $('#wall').innerHTML = P.map((p) => `<a class="tile" data-n="${p.n}" href="${esc(url(p))}" target="_blank" rel="noopener" style="${style(p)}" aria-label="${esc(pad(p.n) + ' · ' + p.title)}">${shot(p)}<span class="cap"><b>${pad(p.n)}</b>${esc(p.title)}</span></a>`).join('');
+  // плитка у края стены растёт внутрь, а не за экран; колонок 11, 5 или 4 — смотря по ширине
+  function wallOrigins() {
+    const wall = $('#wall'); if (wall.hidden) return;
+    const cols = getComputedStyle(wall).gridTemplateColumns.split(' ').length || 1;
+    const tiles = wall.children, rows = Math.ceil(tiles.length / cols);
+    for (let i = 0; i < tiles.length; i++) {
+      const c = i % cols, r = Math.floor(i / cols);
+      tiles[i].style.setProperty('--ox', c === 0 ? '0%' : c === cols - 1 ? '100%' : '50%');
+      tiles[i].style.setProperty('--oy', r === 0 ? '0%' : r === rows - 1 ? '100%' : '50%');
+    }
+  }
+  addEventListener('resize', wallOrigins);
   $('#catalog').innerHTML = `<div class="rowhead"><span>№</span><span>Проект</span><span>Категория</span><span>Техника</span><span>Сила Opus 5.5</span></div>` + P.map((p) => `
     <a class="row" data-n="${p.n}" href="${esc(url(p))}" target="_blank" rel="noopener" style="${style(p)}">
       <span class="rn">${pad(p.n)}</span><span class="rt"><b>${esc(p.title)}</b><span>${esc(p.tagline)}</span></span>
@@ -394,6 +405,7 @@ window.STATS = /*__STATS__*/{};
     for (const b of document.querySelectorAll('.chip')) b.setAttribute('aria-pressed', String(+b.dataset.c === state.cat));
     for (const b of document.querySelectorAll('#views button')) b.setAttribute('aria-pressed', String(b.dataset.v === state.view));
     for (const v of ['grid', 'wall', 'catalog']) $('#' + v).hidden = v !== state.view || shown === 0;
+    wallOrigins();
   }
   $('#chips').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return; state.cat = +b.dataset.c; apply(); });
   $('#views').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; state.view = b.dataset.v; store.set('gallery-view', state.view); apply(); });
@@ -414,7 +426,7 @@ window.STATS = /*__STATS__*/{};
     if (card) { card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash'); }
   });
 
-  // ---------- Цифра «100» из ста проектов ----------
+  // ---------- Цифра «121» из всех проектов ----------
   const hundred = (() => {
     const cv = $('#hundred'), ctx = cv.getContext('2d'), tip = $('#tip');
     const hero = $('.hero');
@@ -438,12 +450,12 @@ window.STATS = /*__STATS__*/{};
       const m = document.createElement('canvas'); m.width = mw; m.height = mh;
       const mc = m.getContext('2d', { willReadFrequently: true });
       let fs = mh * 1.3; mc.font = `400 ${fs}px "Dela Gothic One", Impact, sans-serif`;
-      const tw = mc.measureText('100').width; if (tw > mw * 0.96) fs *= mw * 0.96 / tw;
+      const tw = mc.measureText(HERO_TEXT).width; if (tw > mw * 0.96) fs *= mw * 0.96 / tw;
       mc.font = `400 ${fs}px "Dela Gothic One", Impact, sans-serif`; mc.textAlign = 'center'; mc.textBaseline = 'middle';
-      mc.fillStyle = '#fff'; mc.fillText('100', mw / 2, mh / 2 + fs * 0.02);
+      mc.fillStyle = '#fff'; mc.fillText(HERO_TEXT, mw / 2, mh / 2 + fs * 0.02);
       const a = mc.getImageData(0, 0, mw, mh).data, cand = [];
       for (let y = 1; y < mh; y += 3) for (let x = 1; x < mw; x += 3) if (a[(y * mw + x) * 4 + 3] > 140) cand.push([x, y]);
-      const N = HERO.length || 100, pts = [];
+      const N = HERO.length, pts = [];
       if (!cand.length) return;
       // выбор точек: самые удалённые друг от друга, затем несколько шагов релаксации Ллойда внутри маски
       const dist = new Float32Array(cand.length).fill(1e9);

@@ -37,7 +37,7 @@
   const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
   const STORE_KEY = 'openrouter_key';
   const PKCE_KEY = 'openrouter_pkce_verifier';
-  const APP_LABEL = 'Opus 5.5: 100 проектов';
+  const APP_LABEL = 'Opus 5.5: 121 проект';
   const MAX_PARALLEL = 4;
 
   const store = {
